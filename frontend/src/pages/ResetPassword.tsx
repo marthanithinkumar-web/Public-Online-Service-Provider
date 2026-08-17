@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
+import { apiBase } from '../services/apiBase'
 
 export default function ResetPassword(){
   const [token, setToken] = useState('')
@@ -11,7 +12,7 @@ export default function ResetPassword(){
   const submit = async (e:any)=>{
     e.preventDefault()
     try{
-      const res = await axios.post('/api/auth/reset-password', { token, new_password: newPassword })
+      const res = await axios.post(`${apiBase}/auth/reset-password`, { token, new_password: newPassword })
       setMessage(res.data.message)
       if(res.data.message?.toLowerCase().includes('successful')){
         setTimeout(()=>nav('/login'), 1200)

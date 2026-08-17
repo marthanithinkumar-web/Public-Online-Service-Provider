@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import axios from 'axios'
+import { apiBase } from '../services/apiBase'
 
 export default function RequestReset(){
   const [email, setEmail] = useState('')
@@ -8,7 +9,7 @@ export default function RequestReset(){
   const submit = async (e:any)=>{
     e.preventDefault()
     try{
-      const res = await axios.post('/api/auth/request-password-reset', { email })
+      const res = await axios.post(`${apiBase}/auth/request-password-reset`, { email })
       setMessage(res.data.message + (res.data.reset_token ? (' Token: '+res.data.reset_token) : ''))
     }catch(err:any){
       setMessage(err?.response?.data?.error || 'Error')

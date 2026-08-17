@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import axios from 'axios'
+import { apiBase } from '../services/apiBase'
 
 export default function ServiceDetail(){
   const { id } = useParams()
@@ -13,14 +14,14 @@ export default function ServiceDetail(){
 
   useEffect(()=>{
     if(!id) return
-    axios.get(`/api/services/${id}`).then(r=>setService(r.data)).catch(()=>{})
+    axios.get(`${apiBase}/services/${id}`).then(r=>setService(r.data)).catch(()=>{})
   }, [id])
 
   const submit = async (e:any)=>{
     e.preventDefault()
     try{
       const payload = { ...form, service_id: Number(id) }
-      const res = await axios.post('/api/orders', payload)
+      const res = await axios.post(`${apiBase}/orders`, payload)
       setMessage(res.data.message + ' Order: ' + res.data.order.order_code)
       setLastOrder(res.data.order)
       setForm({ client_name: '', phone: '', email: '', description: '' })
@@ -36,7 +37,7 @@ export default function ServiceDetail(){
     fd.append('file', file)
     fd.append('order_id', String(lastOrder.id))
     try{
-      const res = await axios.post('/api/uploads', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      const res = await axios.post(`${apiBase}/uploads`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       setUploadMsg(res.data.message)
     }catch(err:any){
       setUploadMsg(err?.response?.data?.error || 'Upload failed')

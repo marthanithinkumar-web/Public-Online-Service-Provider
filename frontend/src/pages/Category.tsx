@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import axios from 'axios'
 import { Link, useParams } from 'react-router-dom'
+import { apiBase } from '../services/apiBase'
 
 export default function Category(){
   const { name } = useParams()
@@ -12,7 +13,7 @@ export default function Category(){
     const load = async ()=>{
       try{
         // Using search endpoint to match category name and keywords
-        const res = await axios.get('/api/services/search', { params: { q: name } })
+        const res = await axios.get(`${apiBase}/services/search`, { params: { q: name } })
         setServices(res.data)
         setTitle((name || '').replace('-', ' '))
       }catch(err){ console.error(err) }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import axios from 'axios'
+import { apiBase } from '../services/apiBase'
 
 export default function SubmitReview(){
   const [form, setForm] = useState({ order_id:'', rating:5, comment:'', client_name:'' })
@@ -11,7 +12,7 @@ export default function SubmitReview(){
       const payload:any = { rating: Number(form.rating), comment: form.comment }
       if(form.order_id) payload.order_id = Number(form.order_id)
       if(form.client_name) payload.client_name = form.client_name
-      const res = await axios.post('/api/reviews', payload)
+      const res = await axios.post(`${apiBase}/reviews`, payload)
       setMsg(res.data.message)
       setForm({ order_id:'', rating:5, comment:'', client_name:'' })
     }catch(err:any){

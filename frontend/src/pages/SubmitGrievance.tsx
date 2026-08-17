@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import axios from 'axios'
+import { apiBase } from '../services/apiBase'
 
 export default function SubmitGrievance(){
   const [form, setForm] = useState({ order_id:'', client_name:'', phone:'', email:'', description:'' })
@@ -11,7 +12,7 @@ export default function SubmitGrievance(){
       const payload:any = { client_name: form.client_name, phone: form.phone, description: form.description }
       if(form.order_id) payload.order_id = Number(form.order_id)
       if(form.email) payload.email = form.email
-      const res = await axios.post('/api/grievances', payload)
+      const res = await axios.post(`${apiBase}/grievances`, payload)
       setMsg(res.data.message + (res.data.grievance ? (' Code: '+res.data.grievance.grievance_code) : ''))
       setForm({ order_id:'', client_name:'', phone:'', email:'', description:'' })
     }catch(err:any){

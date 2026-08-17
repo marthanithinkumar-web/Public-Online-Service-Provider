@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import axios from 'axios'
 import { authHeader } from '../services/auth'
+import { apiBase } from '../services/apiBase'
 
 export default function MyOrders(){
   const [orders, setOrders] = useState<any[]>([])
@@ -9,7 +10,7 @@ export default function MyOrders(){
   useEffect(()=>{
     const fetch = async ()=>{
       try{
-        const res = await axios.get('/api/orders/mine', { headers: authHeader() })
+        const res = await axios.get(`${apiBase}/orders/mine`, { headers: authHeader() })
         setOrders(res.data)
       }catch(err){
         console.error(err)

@@ -1,7 +1,8 @@
 import axios from 'axios'
 import { saveToken, getToken, clearToken } from './localStorage'
+import { apiBase } from './apiBase'
 
-const api = axios.create({ baseURL: '/api' })
+const api = axios.create({ baseURL: apiBase })
 
 export async function register(email:string, password:string){
   const res = await api.post('/auth/register', { email, password })
@@ -25,5 +26,5 @@ export function logout(){
 
 export function authHeader(){
   const t = getToken()
-  return t ? { Authorization: `Bearer ${t}` } : {}
+  return t ? { Authorization: 'Bearer ' + t } : {}
 }

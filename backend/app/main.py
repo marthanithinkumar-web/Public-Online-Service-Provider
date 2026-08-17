@@ -33,7 +33,16 @@ def create_app():
     Talisman(app, content_security_policy=None, force_https=force_https)
 
     db.init_app(app)
-    CORS(app, supports_credentials=True)
+
+    frontends = os.getenv('CORS_ORIGINS', os.getenv('FRONTEND_URL', 'http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173'))
+    allowed_origins = [origin.strip() for origin in frontends.split(',') if origin.strip()]
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": allowed_origins}},
+        supports_credentials=True,
+        allow_headers=['Content-Type', 'Authorization'],
+        methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+    )
 
     # migrations
     migrate = Migrate(app, db)

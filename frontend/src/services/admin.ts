@@ -1,7 +1,8 @@
 import axios from 'axios'
 import { authHeader } from './auth'
+import { apiBase } from './apiBase'
 
-const api = axios.create({ baseURL: '/api' })
+const api = axios.create({ baseURL: apiBase })
 
 export async function fetchAdminOrders(page=1, per_page=20, status=''){
   const params:any = { page, per_page }
