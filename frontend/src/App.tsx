@@ -45,7 +45,8 @@ export default function App(){
               ) : (
                 <>
                   <Link to="/login" style={{color:'#fff',marginRight:12}}>Login</Link>
-                  <Link to="/register" style={{color:'#fff'}}>Register</Link>
+                  <Link to="/register" style={{color:'#fff',marginRight:12}}>Register</Link>
+                  <Link to="/admin/login" style={{color:'#dff7ff',background:'rgba(255,255,255,0.08)',padding:'6px 10px',borderRadius:6,border:'1px solid rgba(255,255,255,0.2)'}}>Admin Login</Link>
                 </>
               )}
             </nav>
