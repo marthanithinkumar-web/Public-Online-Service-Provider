@@ -2,6 +2,7 @@
 from flask import Flask, jsonify
 from dotenv import load_dotenv
 from .utils.database import db
+from .models.user import User
 from .routes import auth, services, orders, admin, reviews, grievances, categories
 from flask_cors import CORS
 from flask_limiter import Limiter
@@ -9,8 +10,34 @@ from flask_limiter.util import get_remote_address
 from flask_migrate import Migrate
 from flask_talisman import Talisman
 from flask_mail import Mail
+from .utils.password import hash_password, verify_password
 
 load_dotenv()
+
+
+def ensure_admin_user():
+    admin_email = (os.getenv('ADMIN_EMAIL') or '').strip().lower()
+    admin_password = os.getenv('ADMIN_PASSWORD')
+    if not admin_email or not admin_password:
+        return
+
+    user = User.query.filter_by(email=admin_email).first()
+    if user is None:
+        user = User(email=admin_email, password_hash=hash_password(admin_password), is_admin=True)
+        db.session.add(user)
+        db.session.commit()
+        return
+
+    needs_update = False
+    if not user.is_admin:
+        user.is_admin = True
+        needs_update = True
+    if not verify_password(admin_password, user.password_hash):
+        user.password_hash = hash_password(admin_password)
+        needs_update = True
+
+    if needs_update:
+        db.session.commit()
 
 
 def create_app():
@@ -60,6 +87,7 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        ensure_admin_user()
 
     # register blueprints
     app.register_blueprint(auth.bp, url_prefix='/api/auth')
