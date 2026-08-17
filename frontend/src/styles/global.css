@@ -1,0 +1,41 @@
+*{box-sizing:border-box}
+:root{
+  --brand-blue:#0b5cff;
+  --teal:#06b6d4;
+  --bg:#f7fbff;
+  --text:#0b2333;
+  --card-bg:#ffffff;
+  --muted:#6b7280;
+}
+body{font-family:Inter,Arial,Helvetica,sans-serif;margin:0;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased}
+.container{max-width:1100px;margin:0 auto;padding:18px}
+.site-header{background:linear-gradient(90deg,var(--brand-blue),var(--teal));color:#fff;padding:14px;border-bottom:4px solid rgba(255,255,255,0.06)}
+.site-header .brand{color:#fff;text-decoration:none;font-weight:800;font-size:1.2rem}
+.site-header nav a{color:#fff;text-decoration:none;margin-right:12px}
+.hero{background:linear-gradient(135deg,#7dd3fc,#60a5fa);color:#03396c;padding:36px;border-radius:10px;margin:18px 0;display:flex;flex-direction:column;gap:12px}
+.hero h1{font-size:1.6rem;margin:0}
+.hero p{margin:0;color:var(--muted)}
+.search-box input{width:100%;padding:14px;border-radius:10px;border:1px solid #cde8ff;font-size:1rem}
+.service-list{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.service-card{background:var(--card-bg);border:1px solid #eef6ff;padding:18px;margin:0;border-radius:10px;box-shadow:0 6px 18px rgba(11,92,255,0.06);transition:transform .15s ease,box-shadow .15s ease}
+.service-card:hover{transform:translateY(-4px);box-shadow:0 10px 26px rgba(11,92,255,0.08)}
+.request-form input,.request-form textarea{width:100%;padding:12px;margin-bottom:10px;border:1px solid #e6eef9;border-radius:8px}
+button{background:var(--brand-blue);color:#fff;padding:10px 16px;border:none;border-radius:10px;cursor:pointer}
+button.secondary{background:#fff;color:var(--brand-blue);border:1px solid rgba(11,92,255,0.12)}
+.info{background:#e6f7ff;padding:10px;border-left:4px solid var(--brand-blue);border-radius:6px}
+.site-footer{background:#fff;padding:18px;margin-top:28px;border-top:1px solid #eef5fb}
+
+/* Small utility */
+.container-flex{display:flex;align-items:center;justify-content:space-between}
+
+/* Responsive */
+@media (max-width:900px){
+  .hero{padding:20px}
+  .hero h1{font-size:1.3rem}
+}
+@media (max-width:600px){
+  .site-header .brand{font-size:1rem}
+  .site-header nav{display:none}
+  .container{padding:12px}
+  .service-list{gap:10px}
+}

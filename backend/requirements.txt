@@ -1,0 +1,16 @@
+Flask==2.3.3
+Flask-SQLAlchemy==3.0.3
+psycopg2-binary==2.9.9
+python-dotenv==1.0.0
+PyJWT==2.8.0
+passlib[bcrypt]==1.7.4
+Flask-Cors==3.0.10
+marshmallow==3.19.0
+flask-marshmallow==0.14.0
+Flask-Limiter==2.9.0
+Flask-Migrate==4.0.4
+Flask-Talisman==1.0.1
+Flask-Mail==0.9.1
+boto3==1.26.149
+pytest==7.4.0
+requests==2.32.0

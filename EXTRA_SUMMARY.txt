@@ -1,0 +1,48 @@
+﻿Public Online Service Provider â€” EXTRA ZIP Manifest
+
+This archive is a snapshot of the current project state created on 2026-08-17T18:35:02+05:30.
+It contains the frontend (React + TypeScript), backend (Flask), database schema, docs, tests and CI workflow.
+
+What is included:
+- frontend/: React app (pages, components, services)
+- backend/: Flask app (models, routes, utils, tests)
+- database/: schema.sql, seeds.sql
+- docs/: API docs, setup guides, security notes
+- .github/workflows/ci.yml : CI for backend tests
+- manage.py : migration helper
+- EXTRA_SUMMARY.txt : this manifest
+
+Progress summary (approx):
+- Core scaffold and major features implemented (search, service detail, order creation, admin flows, reviews, grievances).
+- JWT-based auth for admin and clients; bcrypt password hashing.
+- Live search on frontend (debounced API calls).
+- Admin panel components and endpoints present.
+- Dev conveniences: seed script, uploads/ folder, local file storage for attachments.
+
+Remaining high-priority items to finish (recommended next steps):
+1) Configure SMTP credentials and enable email delivery for password reset / verification.
+2) Apply Flask-Migrate/Alembic migration scripts and commit migration files.
+3) Integrate production file storage (S3) and virus-scanning for uploads.
+4) Expand automated tests (backend endpoints, frontend E2E) and run CI.
+5) Final UI polish, accessibility and content for About/Privacy/Terms pages.
+
+How to use this ZIP locally (quick):
+1) Extract to a working directory.
+2) Backend setup:
+   - create a Python 3.11 venv
+   - pip install -r backend/requirements.txt
+   - set environment variables (see backend/.env.example)
+   - run `python -m flask --app app.main create_app` or use provided manage.py for migrations
+   - run backend: `flask run` or use the provided wsgi entrypoint
+3) Frontend setup:
+   - cd frontend
+   - npm install
+   - npm run dev (Vite) or build for production
+
+Notes:
+- No secrets or production credentials are included. Fill .env with SMTP, DATABASE_URL, and other secrets before deploying.
+- In development the app will fall back to sqlite if DATABASE_URL is not provided.
+
+Contact/Owner: Provider contact details are stored in the frontend and docs (update in admin panel or config files).
+
+If you want, I can now create the extra.zip in C:\Users\marth\Downloads and verify its contents. After that I will continue implementing the remaining priority items sequentially without break, starting with SMTP/email integration (or leaving console-mode if you prefer).
