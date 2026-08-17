@@ -1,11 +1,17 @@
+databases:
+  - name: public-online-service-provider-db
+    databaseName: posp
+    user: posp
+    plan: free
+
 services:
   - type: web
     name: public-online-service-provider-api
-    env: python
+    runtime: python
     rootDir: backend
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT
+    startCommand: gunicorn -w 2 -b 0.0.0.0:$PORT wsgi:app
     healthCheckPath: /
     envVars:
       - key: PYTHON_VERSION
@@ -17,7 +23,9 @@ services:
       - key: FRONTEND_URL
         sync: false
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: public-online-service-provider-db
+          property: connectionString
       - key: SECRET_KEY
         sync: false
       - key: ADMIN_EMAIL
@@ -35,10 +43,11 @@ services:
       - key: CORS_ORIGINS
         sync: false
 
-  - type: static
+  - type: web
     name: public-online-service-provider-ui
-    env: static
+    runtime: static
     rootDir: frontend
+    plan: free
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
