@@ -24,8 +24,8 @@ export default function NavBar(){
           <Link className={isActive('/contact')? 'active':''} to="/contact">Contact</Link>
         </nav>
         <div className="header-actions">
-          <Link className="header-link" to="/admin/login">Admin Portal</Link>
-          <Link className="header-link" to="/login">Login</Link>
+          <Link className="header-link" to="/login">Client Login</Link>
+          <Link className="header-admin" to="/admin/login">Admin Login</Link>
           <Link className="header-signup" to="/register">Get Started</Link>
           <button className="mobile-menu-btn" onClick={()=>setOpen(!open)} aria-label="Toggle menu">☰</button>
         </div>
