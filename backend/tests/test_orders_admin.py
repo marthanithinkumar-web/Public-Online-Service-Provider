@@ -7,12 +7,17 @@ from app.models.service import Category, Service
 def test_order_lifecycle_and_admin_controls(client):
     # create category and service
     with client.application.app_context():
-        cat = Category(name='Certificates')
-        db.session.add(cat)
-        db.session.commit()
-        svc = Service(name='Residence Certificate', description='Residence proof', price_inr=30.0, category=cat)
-        db.session.add(svc)
-        db.session.commit()
+        # Use existing seeded defaults if present, otherwise create them.
+        cat = Category.query.filter_by(name='Certificates').first()
+        if cat is None:
+            cat = Category(name='Certificates')
+            db.session.add(cat)
+            db.session.commit()
+        svc = Service.query.filter_by(name='Residence Certificate').first()
+        if svc is None:
+            svc = Service(name='Residence Certificate', description='Residence proof', price_inr=30.0, category=cat)
+            db.session.add(svc)
+            db.session.commit()
         service_id = svc.id
 
     # register user1
