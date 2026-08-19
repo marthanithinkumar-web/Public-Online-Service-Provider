@@ -7,6 +7,8 @@ import HowItWorks from '../components/ui/HowItWorks'
 import CategoriesSection from '../components/ui/CategoriesSection'
 
 export default function Home(){
+  return (
+    <div className="home-page">
       <section className="hero">
         <div className="hero-copy">
           <span className="eyebrow">Trusted public support platform</span>
