@@ -10,6 +10,7 @@ schema = ServiceSchema()
 
 
 @bp.route('/', methods=['GET'])
+@bp.route('', methods=['GET'])
 def list_services():
     # Optional filters: category_id
     from flask import request

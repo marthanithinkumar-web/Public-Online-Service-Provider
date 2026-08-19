@@ -1,6 +1,7 @@
 export const PROVIDER = {
-  name: 'Provider Name',
-  phone: '9999999999',
-  email: 'provider@example.com',
+  name: 'Martha Nithin Kumar',
+  phone: '9063403352',
+  phone2: '6281054602',
+  email: 'marthanithinkumar@gmail.com',
   whatsapp: ''
 }
