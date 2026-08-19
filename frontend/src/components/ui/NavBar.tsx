@@ -24,14 +24,14 @@ export default function NavBar(){
           <Link className={isActive('/contact')? 'active':''} to="/contact">Contact</Link>
         </nav>
         <div className="header-actions">
-          <Link className="header-link" to="/login">Client Login</Link>
           <Link className="header-admin" to="/admin/login">Admin Login</Link>
-          <Link className="header-signup" to="/register">Get Started</Link>
+          <Link className="header-link" to="/login">Client Login</Link>
+          <Link className="header-signup" to="/register">Register</Link>
           <button className="mobile-menu-btn" onClick={()=>setOpen(!open)} aria-label="Toggle menu">☰</button>
         </div>
       </div>
       <div className="container provider-strip"><span>{PROVIDER.name}</span><span><a href={`tel:${PROVIDER.phone}`}>{PROVIDER.phone}</a> · <a href={`tel:${PROVIDER.phone2}`}>{PROVIDER.phone2}</a> · <a href={`mailto:${PROVIDER.email}`}>{PROVIDER.email}</a></span></div>
-      {open && <div className="mobile-drawer"><div className="container mobile-drawer-inner"><Link to="/jobs">Jobs</Link><Link to="/scholarships">Scholarships</Link><Link to="/meeseva">MeeSeva</Link><Link to="/certificates">Certificates</Link><Link to="/schemes">Schemes</Link><Link to="/about">About</Link><Link to="/contact">Contact</Link><Link to="/login">Login</Link><Link to="/register">Get Started</Link></div></div>}
+      {open && <div className="mobile-drawer"><div className="container mobile-drawer-inner"><Link to="/admin/login">Admin Login</Link><Link to="/login">Client Login</Link><Link to="/register">Register</Link><Link to="/jobs">Jobs</Link><Link to="/scholarships">Scholarships</Link><Link to="/meeseva">MeeSeva</Link><Link to="/certificates">Certificates</Link><Link to="/schemes">Schemes</Link><Link to="/about">About</Link><Link to="/contact">Contact</Link></div></div>}
     </header>
   )
 }
