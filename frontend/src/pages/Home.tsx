@@ -51,10 +51,10 @@ export default function Home(){
       <section className="hero">
         <div className="hero-copy">
           <span className="eyebrow">Trusted public support platform</span>
-          <h1>Get help with essential services without the paperwork stress.</h1>
-          <p>Public Online Service Provider helps citizens and families apply for jobs, scholarships, government schemes, MeeSeva services and certificates with a simpler, safer process.</p>
-          <div className="cta-row"><Link className="btn btn-primary" to="/register">Request Assistance</Link><Link className="btn btn-secondary" to="/about">Learn More</Link></div>
-          <div className="hero-stats"><div><strong>5000+</strong><span>Requests guided</span></div><div><strong>120+</strong><span>Public services</span></div><div><strong>24/7</strong><span>Support access</span></div></div>
+          <h1>Public Services, Made Simple.</h1>
+          <p>Get reliable assistance with government jobs, scholarships, certificates, public services and government schemes — all in one place.</p>
+          <div className="cta-row"><Link className="btn btn-primary" to="/jobs">Explore Services</Link><Link className="btn btn-secondary" to="/register">Get Started</Link></div>
+          <div className="hero-stats"><div><strong>20+</strong><span>Services</span></div><div><strong>6</strong><span>Categories</span></div><div><strong>24/7</strong><span>Online Access</span></div><div><strong>Citizen First</strong><span>Approach</span></div></div>
         </div>
         <div className="hero-panel"><div className="mini-card"><span className="mini-label">Popular searches</span><ul><li>Income certificate</li><li>Job application help</li><li>Scholarship guidance</li><li>Government scheme support</li></ul></div><div className="mini-card trust-box"><span className="mini-label">Privacy first</span><p>Your documents and details are handled with care and only used for your requested service.</p></div></div>
       </section>

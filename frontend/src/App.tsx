@@ -20,6 +20,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy'
 import Terms from './pages/Terms'
 import Disclaimer from './pages/Disclaimer'
 import { PROVIDER } from './services/config'
+import logo from './assets/logo.svg'
 
 export default function App(){
   const nav = useNavigate(); const location = useLocation(); const token = getToken(); const isAdmin = location.pathname.startsWith('/admin')
@@ -28,7 +29,7 @@ export default function App(){
   return <div className="app-shell">
     <header className={`site-header ${isAdmin?'admin-header':''}`}>
       <div className="container site-header-inner">
-        <Link to="/" className="brand-lockup" aria-label="Public Online Service Provider home"><span className="brand-mark">P</span><span><strong className="brand">Public Online Service Provider</strong><small>Trusted assistance for public services</small></span></Link>
+        <Link to="/" className="brand-lockup" aria-label="Public Online Service Provider home"><img src={logo} alt="Public Online Service Provider logo" className="brand-mark"/><span><strong className="brand">Public Online Service Provider</strong><small>Simple. Secure. Citizen-focused.</small></span></Link>
         <nav className="main-nav" aria-label="Primary navigation"><Link className={location.pathname.startsWith('/jobs')?'active':''} to="/jobs">Jobs</Link><Link className={location.pathname.startsWith('/scholarships')?'active':''} to="/scholarships">Scholarships</Link><Link className={location.pathname.startsWith('/meeseva')?'active':''} to="/meeseva">MeeSeva</Link><Link className={location.pathname.startsWith('/certificates')?'active':''} to="/certificates">Certificates</Link><Link className={location.pathname.startsWith('/schemes')?'active':''} to="/schemes">Schemes</Link></nav>
         <div className="header-actions">{token?<><Link className={isClientArea?'header-account active':''} to="/my-orders">My Workspace</Link><Link className="header-account" to="/account-settings">Account</Link><button className="header-logout" onClick={doLogout}>Logout</button></>:<><Link className="header-link" to="/login">Login</Link><Link className="header-signup" to="/register">Get Started</Link></>}</div>
       </div>
