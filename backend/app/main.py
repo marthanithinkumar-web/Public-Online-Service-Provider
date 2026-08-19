@@ -1,8 +1,9 @@
-﻿import os
+import os
 from flask import Flask, jsonify
 from dotenv import load_dotenv
 from .utils.database import db
 from .models.user import User
+from .models.service import Category, Service
 from .routes import auth, services, orders, admin, reviews, grievances, categories
 from flask_cors import CORS
 from flask_limiter import Limiter
@@ -38,6 +39,98 @@ def ensure_admin_user():
 
     if needs_update:
         db.session.commit()
+
+
+def ensure_default_services():
+    """Ensure the production database has the public services used by the UI.
+
+    This is intentionally idempotent: existing categories/services are preserved,
+    while missing defaults are added. It also repairs the previous seed behavior
+    that only inserted services when the first category was missing.
+    """
+    defaults = [
+        {
+            'category': 'Certificates',
+            'name': 'Residence Certificate',
+            'description': 'Assistance to apply for residence/domicile certificate',
+            'price_inr': 30.0,
+            'keywords': 'residence,domicile,address,certificate',
+        },
+        {
+            'category': 'Certificates',
+            'name': 'Ration Card Services',
+            'description': 'Help with Ration Card related applications',
+            'price_inr': 50.0,
+            'keywords': 'ration,card,food,subsidy',
+        },
+        {
+            'category': 'Government Jobs',
+            'name': 'Government Job Application',
+            'description': 'Assistance to apply for government job openings',
+            'price_inr': 100.0,
+            'keywords': 'job,application,recruitment,jobs',
+        },
+        {
+            'category': 'Scholarships',
+            'name': 'Scholarship Application Assistance',
+            'description': 'Guidance and application support for eligible scholarships',
+            'price_inr': 50.0,
+            'keywords': 'scholarship,education,student,financial aid',
+        },
+        {
+            'category': 'MeeSeva / Public Services',
+            'name': 'MeeSeva Service Assistance',
+            'description': 'Assistance with common MeeSeva and public service applications',
+            'price_inr': 50.0,
+            'keywords': 'meeseva,public service,government,application',
+        },
+        {
+            'category': 'Government Schemes',
+            'name': 'Government Scheme Application Support',
+            'description': 'Eligibility guidance and application assistance for government schemes',
+            'price_inr': 50.0,
+            'keywords': 'scheme,government scheme,benefit,eligibility',
+        },
+    ]
+
+    categories_by_name = {}
+    for item in defaults:
+        category_name = item['category']
+        category = Category.query.filter_by(name=category_name).first()
+        if category is None:
+            category = Category(name=category_name)
+            db.session.add(category)
+            db.session.flush()
+        categories_by_name[category_name] = category
+
+    for item in defaults:
+        category = categories_by_name[item['category']]
+        service = Service.query.filter_by(name=item['name']).first()
+        if service is None:
+            db.session.add(
+                Service(
+                    name=item['name'],
+                    description=item['description'],
+                    price_inr=item['price_inr'],
+                    keywords=item['keywords'],
+                    category_id=category.id,
+                    is_active=True,
+                )
+            )
+        else:
+            # A default service should remain searchable if an earlier deployment
+            # created it without the expected active flag or category association.
+            changed = False
+            if not service.is_active:
+                service.is_active = True
+                changed = True
+            if service.category_id is None:
+                service.category_id = category.id
+                changed = True
+            if changed:
+                db.session.add(service)
+
+    db.session.commit()
 
 
 def create_app():
@@ -100,6 +193,7 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        ensure_default_services()
         ensure_admin_user()
 
     # register blueprints
@@ -117,4 +211,3 @@ def create_app():
         return jsonify({"message": "Public Online Service Provider API"})
 
     return app
-
