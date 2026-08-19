@@ -21,13 +21,13 @@ def test_order_lifecycle_and_admin_controls(client):
         service_id = svc.id
 
     # register user1
-    r = client.post('/api/auth/register', json={'email': 'user1@example.com', 'password': 'pass1'})
+    r = client.post('/api/auth/register', json={'name':'User One','phone':'9990001111','email': 'user1@example.com', 'password': 'pass1'})
     assert r.status_code == 200
     data = r.get_json()
     token1 = data['token']
 
     # register user2
-    r = client.post('/api/auth/register', json={'email': 'user2@example.com', 'password': 'pass2'})
+    r = client.post('/api/auth/register', json={'name':'User Two','phone':'9990002222','email': 'user2@example.com', 'password': 'pass2'})
     assert r.status_code == 200
     token2 = r.get_json()['token']
 

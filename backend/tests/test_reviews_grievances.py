@@ -29,7 +29,7 @@ def test_grievance_flow(client):
     service_id = _create_service(client)
 
     # register user and create order
-    r = client.post('/api/auth/register', json={'email': 'guser@example.com', 'password': 'pass'})
+    r = client.post('/api/auth/register', json={'name':'G User','phone':'7777777777','email': 'guser@example.com', 'password': 'pass'})
     token = r.get_json()['token']
     headers = {'Authorization': f'Bearer {token}'}
 

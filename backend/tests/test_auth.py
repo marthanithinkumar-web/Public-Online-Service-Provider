@@ -18,7 +18,7 @@ def test_register_and_login():
         db.create_all()
         client = app.test_client()
         # register
-        r = client.post('/api/auth/register', json={'email':'test@example.com','password':'secret'})
+        r = client.post('/api/auth/register', json={'name':'Test User','phone':'9990001111','email':'test@example.com','password':'secret'})
         assert r.status_code == 200
         data = r.get_json()
         assert 'token' in data

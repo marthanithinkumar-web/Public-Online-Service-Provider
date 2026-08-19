@@ -5,7 +5,7 @@ from app.utils.database import db
 def test_client_can_delete_account_with_current_password(client):
     register = client.post(
         '/api/auth/register',
-        json={'email': 'delete-me@example.com', 'password': 'secret'},
+        json={'name': 'Delete Me','phone': '9991112222','email': 'delete-me@example.com', 'password': 'secret'},
     )
     assert register.status_code == 200
     token = register.get_json()['token']
