@@ -1,5 +1,5 @@
-﻿import React from 'react'
-import { Routes, Route, Link, useNavigate } from 'react-router-dom'
+import React from 'react'
+import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom'
 import Home from './pages/Home'
 import ServiceDetail from './pages/ServiceDetail'
 import Login from './pages/Login'
@@ -20,41 +20,57 @@ import PrivacyPolicy from './pages/PrivacyPolicy'
 import Terms from './pages/Terms'
 import Disclaimer from './pages/Disclaimer'
 import { PROVIDER } from './services/config'
+
 export default function App(){
   const nav = useNavigate()
+  const location = useLocation()
   const token = getToken()
+  const isAdmin = location.pathname.startsWith('/admin')
 
   const doLogout = () => { clearToken(); nav('/') }
 
   return (
-    <div>
-      <header className="site-header">
-        <div className="container" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div style={{display:'flex',alignItems:'center',gap:16}}>
-              <Link to="/" className="brand">Public Online Service Provider</Link>
-              <div style={{fontSize:12,color:'#e6f7ff'}}>
-                <div>{PROVIDER.name}</div>
-                <div><a href={`tel:${PROVIDER.phone}`} style={{color:'#e6f7ff'}}>{PROVIDER.phone}</a> • <a href={`mailto:${PROVIDER.email}`} style={{color:'#e6f7ff'}}>{PROVIDER.email}</a></div>
-              </div>
-            </div>
-            <nav>
-              {token ? (
-                <>
-                  <Link to="/my-orders" style={{color:'#fff',marginRight:12}}>My Orders</Link>
-                  <Link to="/account-settings" style={{color:'#fff',marginRight:12}}>Account</Link>
-                  <button onClick={doLogout} style={{background:'transparent',border:'1px solid rgba(255,255,255,0.2)',color:'#fff',padding:'6px 8px',borderRadius:6}}>Logout</button>
-                </>
-              ) : (
-                <>
-                  <Link to="/login" style={{color:'#fff',marginRight:12}}>Login</Link>
-                  <Link to="/register" style={{color:'#fff',marginRight:12}}>Register</Link>
-                  <Link to="/admin/login" style={{color:'#dff7ff',background:'rgba(255,255,255,0.08)',padding:'6px 10px',borderRadius:6,border:'1px solid rgba(255,255,255,0.2)'}}>Admin Login</Link>
-                </>
-              )}
-            </nav>
+    <div className="app-shell">
+      <header className={`site-header ${isAdmin ? 'admin-header' : ''}`}>
+        <div className="container site-header-inner">
+          <Link to="/" className="brand-lockup" aria-label="Public Online Service Provider home">
+            <span className="brand-mark">P</span>
+            <span>
+              <strong className="brand">Public Online Service Provider</strong>
+              <small>Trusted assistance for public services</small>
+            </span>
+          </Link>
+
+          <nav className="main-nav" aria-label="Primary navigation">
+            <Link className={!location.pathname.startsWith('/jobs') ? '' : 'active'} to="/jobs">Jobs</Link>
+            <Link className={!location.pathname.startsWith('/scholarships') ? '' : 'active'} to="/scholarships">Scholarships</Link>
+            <Link className={!location.pathname.startsWith('/meeseva') ? '' : 'active'} to="/meeseva">MeeSeva</Link>
+            <Link className={!location.pathname.startsWith('/certificates') ? '' : 'active'} to="/certificates">Certificates</Link>
+            <Link className={!location.pathname.startsWith('/schemes') ? '' : 'active'} to="/schemes">Schemes</Link>
+          </nav>
+
+          <div className="header-actions">
+            {token ? (
+              <>
+                <Link className="header-link" to="/my-orders">My Requests</Link>
+                <Link className="header-account" to="/account-settings">Account</Link>
+                <button className="header-logout" onClick={doLogout}>Logout</button>
+              </>
+            ) : (
+              <>
+                <Link className="header-link" to="/login">Login</Link>
+                <Link className="header-signup" to="/register">Get Started</Link>
+              </>
+            )}
           </div>
+        </div>
+        <div className="container provider-strip">
+          <span>{PROVIDER.name}</span>
+          <span><a href={`tel:${PROVIDER.phone}`}>{PROVIDER.phone}</a> · <a href={`mailto:${PROVIDER.email}`}>{PROVIDER.email}</a></span>
+        </div>
       </header>
-      <main className="container">
+
+      <main className="container page-content">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/service/:id" element={<ServiceDetail />} />
@@ -80,35 +96,35 @@ export default function App(){
           <Route path="/admin/*" element={<AdminPanel />} />
         </Routes>
       </main>
+
       <footer className="site-footer">
         <div className="container footer-grid">
           <div>
-            <div className="brand footer-brand">Public Online Service Provider</div>
+            <Link to="/" className="brand-lockup footer-lockup">
+              <span className="brand-mark">P</span>
+              <span><strong className="brand footer-brand">Public Online Service Provider</strong><small>Simple. Secure. Citizen-focused.</small></span>
+            </Link>
             <p className="footer-text">Helping citizens access essential government and public assistance services with clarity, privacy, and trusted support.</p>
           </div>
           <div>
-            <h4>Quick Links</h4>
+            <h4>Explore</h4>
             <div className="footer-links">
-              <Link to="/about">About</Link>
-              <Link to="/contact">Contact</Link>
-              <Link to="/privacy">Privacy</Link>
-              <Link to="/terms">Terms</Link>
+              <Link to="/jobs">Jobs</Link><Link to="/scholarships">Scholarships</Link><Link to="/certificates">Certificates</Link><Link to="/schemes">Government Schemes</Link>
+            </div>
+          </div>
+          <div>
+            <h4>Company</h4>
+            <div className="footer-links">
+              <Link to="/about">About</Link><Link to="/contact">Contact</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link>
             </div>
           </div>
           <div>
             <h4>Contact</h4>
-            <div className="footer-links">
-              <a href={`tel:${PROVIDER.phone}`}>{PROVIDER.phone}</a>
-              <a href={`mailto:${PROVIDER.email}`}>{PROVIDER.email}</a>
-              <span>{PROVIDER.name}</span>
-            </div>
+            <div className="footer-links"><a href={`tel:${PROVIDER.phone}`}>{PROVIDER.phone}</a><a href={`mailto:${PROVIDER.email}`}>{PROVIDER.email}</a><span>{PROVIDER.name}</span></div>
           </div>
         </div>
-        <div className="container footer-bottom">
-          <span>© 2026 Public Online Service Provider</span>
-        </div>
+        <div className="container footer-bottom"><span>© 2026 Public Online Service Provider</span><span>Independent assistance platform · Not a government department</span></div>
       </footer>
     </div>
   )
 }
-
