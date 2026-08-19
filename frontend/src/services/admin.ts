@@ -17,8 +17,10 @@ export async function updateOrderStatus(orderId:number, status:string, note?:str
 }
 
 export async function fetchServices(){
-  const res = await api.get('/services')
-  return res.data
+  // Admin view should retrieve all services (including disabled)
+  const res = await api.get('/admin/services', { headers: authHeader() })
+  // normalize to array of items if wrapped
+  return Array.isArray(res.data) ? res.data : (res.data.items || [])
 }
 
 export async function createService(payload:any){

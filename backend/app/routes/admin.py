@@ -98,3 +98,62 @@ def order_detail(order_id):
         'grievances': [g.to_dict() for g in grievances],
         'reviews': [r.to_dict() for r in reviews]
     })
+
+
+# Admin: list users (clients only)
+@bp.route('/users', methods=['GET'])
+def list_users():
+    user = _require_admin()
+    if not user:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    # Only return non-admin (client) users to the admin users UI
+    users = User.query.filter_by(is_admin=False).order_by(User.created_at.desc()).all()
+    items = [u.to_dict() for u in users]
+    return jsonify({'items': items})
+
+
+# Admin: list all services (including disabled)
+@bp.route('/services', methods=['GET'])
+def admin_list_services():
+    user = _require_admin()
+    if not user:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    from ..models.service import Service
+    services = Service.query.order_by(Service.created_at.desc()).all()
+    items = [s.to_dict() for s in services]
+    return jsonify({'items': items})
+
+
+# Admin: delete user
+@bp.route('/users/<int:user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    user = _require_admin()
+    if not user:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    target = User.query.get_or_404(user_id)
+    if target.is_admin:
+        return jsonify({'error': 'Cannot delete admin user via this endpoint'}), 403
+
+    # remove related orders/grievances/reviews/attachments
+    orders = Order.query.filter_by(user_id=target.id).all()
+    order_ids = [o.id for o in orders]
+
+    attachments = Attachment.query.filter(
+        (Attachment.uploaded_by == target.id) |
+        (Attachment.order_id.in_(order_ids) if order_ids else False)
+    ).all()
+    for attachment in attachments:
+        db.session.delete(attachment)
+
+    if order_ids:
+        OrderStatusHistory.query.filter(OrderStatusHistory.order_id.in_(order_ids)).delete(synchronize_session=False)
+        Grievance.query.filter(Grievance.order_id.in_(order_ids)).delete(synchronize_session=False)
+        Review.query.filter(Review.order_id.in_(order_ids)).delete(synchronize_session=False)
+        Order.query.filter(Order.id.in_(order_ids)).delete(synchronize_session=False)
+
+    db.session.delete(target)
+    db.session.commit()
+    return jsonify({'message': 'User and associated data deleted'})
