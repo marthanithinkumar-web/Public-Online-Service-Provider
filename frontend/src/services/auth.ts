@@ -20,6 +20,15 @@ export async function login(email:string, password:string){
   return res.data
 }
 
+export async function deleteAccount(current_password:string){
+  const res = await api.delete('/auth/delete-account', {
+    headers: authHeader(),
+    data: { current_password }
+  })
+  clearToken()
+  return res.data
+}
+
 export function logout(){
   clearToken()
 }
