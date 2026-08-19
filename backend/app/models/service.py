@@ -27,5 +27,7 @@ class Service(db.Model):
             'description': self.description,
             'price_inr': float(self.price_inr or 0.0),
             'keywords': self.keywords or '',
-            'category': self.category.name if self.category else None
+            'category': self.category.name if self.category else None,
+            'category_id': self.category_id,
+            'is_active': bool(self.is_active)
         }

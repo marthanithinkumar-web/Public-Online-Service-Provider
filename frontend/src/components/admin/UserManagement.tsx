@@ -8,7 +8,7 @@ export default function UserManagement(){
   useEffect(()=>{
     (async ()=>{
       try{
-        const res = await fetch(`${apiBase}/admin/users`, { headers: { ...authHeader(), 'Content-Type':'application/json' } })
+        const res = await fetch(`${apiBase}/admin/users`, { headers: Object.assign({ 'Content-Type':'application/json' }, authHeader() as Record<string,string>) })
         if(!res.ok){ setErr('Unable to load users'); return }
         const data = await res.json()
         setItems(Array.isArray(data.items) ? data.items : [])
