@@ -1,94 +1,13 @@
-import React, { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import React,{useEffect,useState} from 'react'
+import {Link,useParams} from 'react-router-dom'
 import axios from 'axios'
-import { apiBase } from '../services/apiBase'
+import {apiBase} from '../services/apiBase'
 
 export default function ServiceDetail(){
-  const { id } = useParams()
-  const [service, setService] = useState<any|null>(null)
-  const [form, setForm] = useState({ client_name: '', phone: '', email: '', description: '' })
-  const [message, setMessage] = useState('')
-  const [lastOrder, setLastOrder] = useState<any|null>(null)
-  const [file, setFile] = useState<File | null>(null)
-  const [uploadMsg, setUploadMsg] = useState('')
-
-  useEffect(()=>{
-    if(!id) return
-    axios.get(`${apiBase}/services/${id}`).then(r=>setService(r.data)).catch(()=>{})
-  }, [id])
-
-  const submit = async (e:any)=>{
-    e.preventDefault()
-    try{
-      const payload = { ...form, service_id: Number(id) }
-      const res = await axios.post(`${apiBase}/orders`, payload)
-      setMessage(res.data.message + ' Order: ' + res.data.order.order_code)
-      setLastOrder(res.data.order)
-      setForm({ client_name: '', phone: '', email: '', description: '' })
-    }catch(err:any){
-      setMessage(err?.response?.data?.error || 'Error submitting')
-    }
-  }
-
-  const uploadFile = async (e:any)=>{
-    e.preventDefault()
-    if(!file || !lastOrder) return setUploadMsg('Select file and ensure order exists')
-    const fd = new FormData()
-    fd.append('file', file)
-    fd.append('order_id', String(lastOrder.id))
-    try{
-      const res = await axios.post(`${apiBase}/uploads`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-      setUploadMsg(res.data.message)
-    }catch(err:any){
-      setUploadMsg(err?.response?.data?.error || 'Upload failed')
-    }
-  }
-
-  return (
-    <div>
-      {service ? (
-        <div>
-          <h1>{service.name}</h1>
-          <p><strong>Category:</strong> {service.category}</p>
-          <p>{service.description}</p>
-          <p><strong>Fee:</strong> ₹{service.price_inr}</p>
-
-          <section>
-            <h2>Request Assistance</h2>
-            <div style={{background:'#eef9fb',padding:12,borderRadius:6,marginBottom:12}}>
-              <strong>Provider:</strong> {service.provider_name || 'Provider Name'} • <a href={`tel:${service.provider_phone || '9999999999'}`}>{service.provider_phone || '9999999999'}</a> • <a href={`mailto:${service.provider_email || 'provider@example.com'}`}>{service.provider_email || 'provider@example.com'}</a>
-              <div style={{marginTop:8,fontSize:12,color:'#666'}}>Privacy: We will never ask for OTPs, passwords, PINs, or bank details.</div>
-            </div>
-            <form onSubmit={submit} className="request-form">
-              <label>Full name</label>
-              <input value={form.client_name} onChange={e=>setForm({...form, client_name: e.target.value})} required />
-              <label>Phone</label>
-              <input value={form.phone} onChange={e=>setForm({...form, phone: e.target.value})} required />
-              <label>Email (optional)</label>
-              <input value={form.email} onChange={e=>setForm({...form, email: e.target.value})} />
-              <label>Short description / Notes</label>
-              <textarea value={form.description} onChange={e=>setForm({...form, description: e.target.value})} />
-              <button type="submit">Submit Request</button>
-            </form>
-            {message && <p className="info">{message}</p>}
-
-            {lastOrder && (
-              <div style={{marginTop:16}}>
-                <h3>Attach a document (optional)</h3>
-                <form onSubmit={uploadFile} encType="multipart/form-data">
-                  <input type="file" onChange={e=>setFile(e.target.files?.[0] ?? null)} accept=".pdf,.png,.jpg,.jpeg" />
-                  <button type="submit">Upload</button>
-                </form>
-                {uploadMsg && <p className="info">{uploadMsg}</p>}
-              </div>
-            )}
-
-          </section>
-
-        </div>
-      ) : (
-        <p>Loading...</p>
-      )}
-    </div>
-  )
+ const {id}=useParams();const [service,setService]=useState<any>(null);const [loading,setLoading]=useState(true);const [form,setForm]=useState({client_name:'',phone:'',email:'',description:''});const [message,setMessage]=useState('');const [error,setError]=useState('');const [lastOrder,setLastOrder]=useState<any>(null);const [file,setFile]=useState<File|null>(null);const [uploadMsg,setUploadMsg]=useState('');const [busy,setBusy]=useState(false)
+ useEffect(()=>{if(!id)return;axios.get(`${apiBase}/services/${id}`).then(r=>setService(r.data)).catch(()=>setError('Unable to load this service right now.')).finally(()=>setLoading(false))},[id])
+ const submit=async(e:React.FormEvent)=>{e.preventDefault();setError('');setMessage('');setBusy(true);try{const r=await axios.post(`${apiBase}/orders`,{...form,service_id:Number(id)});setMessage(`${r.data.message} Order: ${r.data.order.order_code}`);setLastOrder(r.data.order);setForm({client_name:'',phone:'',email:'',description:''})}catch(err:any){setError(err?.response?.data?.error||'Unable to submit your request. Please try again.')}finally{setBusy(false)}}
+ const uploadFile=async(e:React.FormEvent)=>{e.preventDefault();if(!file||!lastOrder)return setUploadMsg('Choose a PDF or image first.');const fd=new FormData();fd.append('file',file);fd.append('order_id',String(lastOrder.id));try{const r=await axios.post(`${apiBase}/uploads`,fd,{headers:{'Content-Type':'multipart/form-data'}});setUploadMsg(r.data.message);setFile(null)}catch(err:any){setUploadMsg(err?.response?.data?.error||'Upload failed. Please try again.')}}
+ if(loading)return <div className="empty-state">Loading service details…</div>;if(!service)return <div className="empty-state"><h2>Service unavailable</h2><p>{error||'We could not find this service.'}</p><Link className="btn btn-primary" to="/">Return home</Link></div>
+ return <div className="service-detail-page"><div className="service-detail-hero"><span className="eyebrow">{service.category||'Public service'}</span><h1>{service.name}</h1><p>{service.description}</p><div className="service-detail-meta"><span>Service fee <strong>₹{service.price_inr}</strong></span><span>Independent assistance</span></div></div><div className="service-request-grid"><section className="dashboard-section"><span className="eyebrow">Request assistance</span><h2>Tell us what you need</h2><div className="trust-note"><strong>Privacy first.</strong> We will never ask for OTPs, passwords, PINs or bank details.</div><form onSubmit={submit} className="request-form"><label>Full name<input required value={form.client_name} onChange={e=>setForm({...form,client_name:e.target.value})}/></label><label>Phone<input type="tel" required value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></label><label>Email (optional)<input type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></label><label>Short description / notes<textarea required minLength={5} rows={5} value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></label>{error&&<p className="info" role="alert">{error}</p>}{message&&<p className="success-message" role="status">{message}</p>}<button type="submit" disabled={busy}>{busy?'Submitting…':'Submit request'}</button></form>{lastOrder&&<div className="upload-card"><span className="eyebrow">Documents</span><h3>Attach a document</h3><p>Optional: upload a PDF, JPG or PNG related to this request.</p><form onSubmit={uploadFile}><input type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={e=>setFile(e.target.files?.[0]||null)}/><button type="submit">Upload document</button></form>{uploadMsg&&<p className="info" role="status">{uploadMsg}</p>}</div>}</section><aside className="dashboard-section service-side-card"><span className="eyebrow">Need help?</span><h2>Not sure what to choose?</h2><p>Contact the service provider or submit a grievance if you need help with an existing request.</p><Link className="btn btn-secondary" to="/contact">Contact us</Link><Link className="text-link" to="/my-orders">View my requests →</Link></aside></div></div>
 }
