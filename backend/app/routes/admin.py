@@ -100,15 +100,29 @@ def order_detail(order_id):
     })
 
 
-# Admin: list users
+# Admin: list users (clients only)
 @bp.route('/users', methods=['GET'])
 def list_users():
     user = _require_admin()
     if not user:
         return jsonify({'error': 'Unauthorized'}), 401
 
-    users = User.query.order_by(User.created_at.desc()).all()
+    # Only return non-admin (client) users to the admin users UI
+    users = User.query.filter_by(is_admin=False).order_by(User.created_at.desc()).all()
     items = [u.to_dict() for u in users]
+    return jsonify({'items': items})
+
+
+# Admin: list all services (including disabled)
+@bp.route('/services', methods=['GET'])
+def admin_list_services():
+    user = _require_admin()
+    if not user:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    from ..models.service import Service
+    services = Service.query.order_by(Service.created_at.desc()).all()
+    items = [s.to_dict() for s in services]
     return jsonify({'items': items})
 
 
