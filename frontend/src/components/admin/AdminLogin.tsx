@@ -1,38 +1,4 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { login } from '../../services/auth'
-
-export default function AdminLogin(){
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const nav = useNavigate()
-
-  const submit = async (e:any)=>{
-    e.preventDefault()
-    try{
-      const res = await login(email, password)
-      if(res?.user?.is_admin){
-        nav('/admin/dashboard')
-      }else{
-        setError('Not an admin account')
-      }
-    }catch(err:any){
-      setError(err?.response?.data?.error || 'Login failed')
-    }
-  }
-
-  return (
-    <div style={{maxWidth:420,margin:'40px auto'}}>
-      <h2>Admin Login</h2>
-      <form onSubmit={submit} className="auth-form">
-        <label>Email</label>
-        <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} />
-        <label>Password</label>
-        <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} />
-        <button type="submit">Sign in</button>
-      </form>
-      {error && <p className="info">{error}</p>}
-    </div>
-  )
-}
+import React,{useState} from 'react'
+import {Link,useNavigate} from 'react-router-dom'
+import {login} from '../../services/auth'
+export default function AdminLogin(){const [email,setEmail]=useState('');const [password,setPassword]=useState('');const [error,setError]=useState('');const [busy,setBusy]=useState(false);const nav=useNavigate();const submit=async(e:React.FormEvent)=>{e.preventDefault();setError('');setBusy(true);try{const res=await login(email,password);if(res?.user?.is_admin)nav('/admin/dashboard');else setError('This account does not have administrator access.')}catch(err:any){setError(err?.response?.data?.error||'Unable to sign in. Please check your details.')}finally{setBusy(false)}};return <div className="auth-page"><div className="auth-card"><div className="auth-intro"><span className="eyebrow">Administration</span><h1>Admin sign in</h1><p>Secure access to requests, services, grievances and citizen reviews.</p></div><form onSubmit={submit} className="auth-form"><label>Email address<input type="email" autoComplete="username" required value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/></label>{error&&<p className="info" role="alert">{error}</p>}<button type="submit" disabled={busy}>{busy?'Signing in…':'Sign in securely'}</button></form><div className="auth-footer"><Link to="/">← Back to public site</Link></div></div></div>}
