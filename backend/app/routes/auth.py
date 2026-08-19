@@ -32,7 +32,7 @@ def _current_user_from_request():
 @limiter.limit("6 per minute")
 def login():
     data = request.json or {}
-    email = data.get('email')
+    email = (data.get('email') or '').strip().lower()
     password = data.get('password')
     if not email or not password:
         return jsonify({'error': 'Email and password required'}), 400
@@ -71,20 +71,96 @@ def register_admin():
     return jsonify({'message': 'Admin created', 'user': u.to_dict()})
 
 
+# --- Google OAuth flow ----------------------------------------------------
+@bp.route('/google', methods=['GET'])
+def google_start():
+    # Redirect user to Google's OAuth 2.0 consent screen
+    client_id = os.getenv('GOOGLE_CLIENT_ID')
+    if not client_id:
+        return jsonify({'error': 'Google OAuth not configured'}), 501
+    # build redirect_uri to this callback
+    redirect_uri = (request.url_root or '').rstrip('/') + '/api/auth/google/callback'
+    scope = 'openid email profile'
+    state = ''
+    auth_url = (
+        f"https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id={client_id}"
+        f"&redirect_uri={redirect_uri}&scope={scope}&access_type=offline&prompt=select_account"
+    )
+    return '', 302, {'Location': auth_url}
+
+
+@bp.route('/google/callback', methods=['GET'])
+def google_callback():
+    # Exchange code for tokens, fetch userinfo, create or login user
+    code = request.args.get('code')
+    if not code:
+        return jsonify({'error': 'Missing code'}), 400
+    client_id = os.getenv('GOOGLE_CLIENT_ID')
+    client_secret = os.getenv('GOOGLE_CLIENT_SECRET')
+    if not client_id or not client_secret:
+        return jsonify({'error': 'Google OAuth not configured'}), 501
+    redirect_uri = (request.url_root or '').rstrip('/') + '/api/auth/google/callback'
+    # exchange code
+    import requests
+    token_resp = requests.post('https://oauth2.googleapis.com/token', data={
+        'code': code,
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'redirect_uri': redirect_uri,
+        'grant_type': 'authorization_code'
+    })
+    if token_resp.status_code != 200:
+        current_app.logger.exception('Google token exchange failed: %s', token_resp.text)
+        return jsonify({'error': 'Google token exchange failed'}), 400
+    token_data = token_resp.json()
+    access_token = token_data.get('access_token')
+    id_token = token_data.get('id_token')
+    # fetch userinfo
+    userinfo_resp = requests.get('https://www.googleapis.com/oauth2/v3/userinfo', headers={'Authorization': f'Bearer {access_token}'})
+    if userinfo_resp.status_code != 200:
+        current_app.logger.exception('Google userinfo failed: %s', userinfo_resp.text)
+        return jsonify({'error': 'Unable to fetch Google userinfo'}), 400
+    info = userinfo_resp.json()
+    email = info.get('email')
+    name = info.get('name') or ''
+    if not email:
+        return jsonify({'error': 'Google account did not provide email'}), 400
+    # find or create user
+    user = User.query.filter_by(email=email).first()
+    if user is None:
+        # create a secure random password hash so local login is not possible without reset
+        import secrets
+        rnd = secrets.token_hex(32)
+        user = User(name=name, email=email, password_hash=hash_password(rnd), is_admin=False)
+        db.session.add(user)
+        db.session.commit()
+    token = create_token({'user_id': user.id, 'is_admin': user.is_admin})
+    # redirect back to frontend with token
+    frontend = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+    return '', 302, {'Location': f"{frontend.rstrip('/')}/oauth-success?token={token}"}
+
+
 @bp.route('/register', methods=['POST'])
 @limiter.limit("4 per minute")
 def register():
     # Public client registration (email/password)
     data = request.json or {}
-    email = data.get('email')
+    name = (data.get('name') or '').strip()
+    phone = (data.get('phone') or '').strip()
+    email = (data.get('email') or '').strip().lower()
     password = data.get('password')
-    if not email or not password:
-        return jsonify({'error': 'Email and password required'}), 400
+    if not name or not phone or not email or not password:
+        return jsonify({'error': 'Name, phone, email and password are required'}), 400
+
+    # basic phone validation
+    cleaned_phone = ''.join([c for c in phone if c.isdigit()])
+    if len(cleaned_phone) < 10:
+        return jsonify({'error': 'Invalid phone number'}), 400
 
     if User.query.filter_by(email=email).first():
         return jsonify({'error': 'User exists'}), 400
 
-    u = User(email=email, password_hash=hash_password(password), is_admin=False)
+    u = User(name=name, phone=phone, email=email, password_hash=hash_password(password), is_admin=False)
     db.session.add(u)
     db.session.commit()
     token = create_token({'user_id': u.id, 'is_admin': u.is_admin})

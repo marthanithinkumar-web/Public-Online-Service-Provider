@@ -6,6 +6,7 @@ import ServiceManagement from './ServiceManagement'
 import GrievanceManagement from './GrievanceManagement'
 import ReviewManagement from './ReviewManagement'
 import AdminOrderDetail from './AdminOrderDetail'
+import UserManagement from './UserManagement'
 
 const links = [
   ['/admin/dashboard', 'Dashboard'],
@@ -13,6 +14,7 @@ const links = [
   ['/admin/services', 'Services'],
   ['/admin/grievances', 'Grievances'],
   ['/admin/reviews', 'Reviews'],
+['/admin/users', 'Users'],
 ] as const
 
 export default function AdminPanel(){
@@ -43,6 +45,7 @@ export default function AdminPanel(){
           <Route path="/services" element={<ServiceManagement/>} />
           <Route path="/grievances" element={<GrievanceManagement/>} />
           <Route path="/reviews" element={<ReviewManagement/>} />
+          <Route path="/users" element={<UserManagement/>} />
         </Routes>
       </div>
     </div>

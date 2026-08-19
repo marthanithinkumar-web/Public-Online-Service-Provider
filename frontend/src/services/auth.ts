@@ -4,8 +4,8 @@ import { apiBase } from './apiBase'
 
 const api = axios.create({ baseURL: apiBase })
 
-export async function register(email:string, password:string){
-  const res = await api.post('/auth/register', { email, password })
+export async function register(name:string, phone:string, email:string, password:string){
+  const res = await api.post('/auth/register', { name, phone, email, password })
   if(res.data?.token){
     saveToken(res.data.token)
   }
