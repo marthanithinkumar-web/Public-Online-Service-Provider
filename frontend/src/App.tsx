@@ -7,6 +7,7 @@ import AdminLogin from './components/admin/AdminLogin'
 import AdminPanel from './components/admin/AdminPanel'
 import Register from './pages/Register'
 import MyOrders from './pages/MyOrders'
+import AccountSettings from './pages/AccountSettings'
 import RequestReset from './pages/RequestReset'
 import ResetPassword from './pages/ResetPassword'
 import { getToken, clearToken } from './services/localStorage'
@@ -33,13 +34,14 @@ export default function App(){
               <Link to="/" className="brand">Public Online Service Provider</Link>
               <div style={{fontSize:12,color:'#e6f7ff'}}>
                 <div>{PROVIDER.name}</div>
-                <div><a href={`tel:${PROVIDER.phone}`} style={{color:'#e6f7ff'}}>{PROVIDER.phone}</a> â€¢ <a href={`mailto:${PROVIDER.email}`} style={{color:'#e6f7ff'}}>{PROVIDER.email}</a></div>
+                <div><a href={`tel:${PROVIDER.phone}`} style={{color:'#e6f7ff'}}>{PROVIDER.phone}</a> • <a href={`mailto:${PROVIDER.email}`} style={{color:'#e6f7ff'}}>{PROVIDER.email}</a></div>
               </div>
             </div>
             <nav>
               {token ? (
                 <>
                   <Link to="/my-orders" style={{color:'#fff',marginRight:12}}>My Orders</Link>
+                  <Link to="/account-settings" style={{color:'#fff',marginRight:12}}>Account</Link>
                   <button onClick={doLogout} style={{background:'transparent',border:'1px solid rgba(255,255,255,0.2)',color:'#fff',padding:'6px 8px',borderRadius:6}}>Logout</button>
                 </>
               ) : (
@@ -56,25 +58,26 @@ export default function App(){
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/service/:id" element={<ServiceDetail />} />
-                    <Route path="/jobs" element={<Category/>} />
-                    <Route path="/scholarships" element={<Category/>} />
-                    <Route path="/meeseva" element={<Category/>} />
-                    <Route path="/certificates" element={<Category/>} />
-                    <Route path="/schemes" element={<Category/>} />
-                    <Route path="/about" element={<About/>} />
-                    <Route path="/contact" element={<Contact/>} />
-                    <Route path="/privacy" element={<PrivacyPolicy/>} />
-                    <Route path="/terms" element={<Terms/>} />
-                    <Route path="/disclaimer" element={<Disclaimer/>} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
-                    <Route path="/request-reset" element={<RequestReset />} />
-                    <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="/my-orders" element={<MyOrders />} />
-                    <Route path="/submit-grievance" element={<SubmitGrievance />} />
-                    <Route path="/submit-review" element={<SubmitReview />} />
-                    <Route path="/admin/login" element={<AdminLogin />} />
-                    <Route path="/admin/*" element={<AdminPanel />} />
+          <Route path="/jobs" element={<Category/>} />
+          <Route path="/scholarships" element={<Category/>} />
+          <Route path="/meeseva" element={<Category/>} />
+          <Route path="/certificates" element={<Category/>} />
+          <Route path="/schemes" element={<Category/>} />
+          <Route path="/about" element={<About/>} />
+          <Route path="/contact" element={<Contact/>} />
+          <Route path="/privacy" element={<PrivacyPolicy/>} />
+          <Route path="/terms" element={<Terms/>} />
+          <Route path="/disclaimer" element={<Disclaimer/>} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/request-reset" element={<RequestReset />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/my-orders" element={<MyOrders />} />
+          <Route path="/account-settings" element={<AccountSettings />} />
+          <Route path="/submit-grievance" element={<SubmitGrievance />} />
+          <Route path="/submit-review" element={<SubmitReview />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/*" element={<AdminPanel />} />
         </Routes>
       </main>
       <footer className="site-footer">
