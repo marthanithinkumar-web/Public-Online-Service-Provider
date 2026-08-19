@@ -33,6 +33,6 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: postgresql://psp:psp_pass@localhost:5432/psp_db
+          PYTHONPATH: ${{ github.workspace }}/backend
         run: |
-          cd backend
-          pytest -q
+          python -m pytest -q backend/tests
