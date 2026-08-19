@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { login } from '../services/auth'
+import '../styles/auth.css'
 
 export default function Login(){
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const nav = useNavigate()
@@ -20,21 +22,34 @@ export default function Login(){
   }
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
+    <div className="auth-page auth-page-centered">
+      <div className="auth-card auth-card-modern" role="region" aria-labelledby="login-heading">
         <div className="auth-intro">
-          <span className="eyebrow">Welcome back</span>
-          <h1>Sign in to your service account</h1>
-          <p>Track requests, manage your profile and stay updated on your public service applications.</p>
+          <h1 id="login-heading">Client Login</h1>
+          <p className="muted">Login to access your public service requests and account.</p>
         </div>
         <form onSubmit={submit} className="auth-form" aria-label="Client login form">
-          <label>Email address<input type="email" autoComplete="email" required value={email} onChange={e=>setEmail(e.target.value)} /></label>
-          <label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)} /></label>
+          <label className="form-label">Email Address<span className="required">*</span>
+            <input className="form-input" type="email" autoComplete="email" required value={email} onChange={e=>setEmail(e.target.value)} />
+          </label>
+
+          <label className="form-label">Password<span className="required">*</span>
+            <div className="password-field">
+              <input className="form-input" type={showPassword ? 'text' : 'password'} autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)} />
+              <button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} className="password-toggle" onClick={()=>setShowPassword(s=>!s)}>{showPassword ? '🙈' : '👁️'}</button>
+            </div>
+          </label>
+
           {error && <p className="info" role="alert">{error}</p>}
-          <button type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
-          <Link className="auth-secondary-link" to="/request-reset">Forgot your password?</Link>
+
+          <button type="submit" className="btn btn-primary btn-block" disabled={busy}>{busy ? 'Signing in…' : 'Login'}</button>
+
+          <div className="auth-bottom">
+            <Link className="auth-secondary-link" to="/request-reset">Forgot your password?</Link>
+            <span className="auth-divider" />
+            <Link to="/register" className="auth-link">Don't have an account? Register</Link>
+          </div>
         </form>
-        <div className="auth-footer">New here? <Link to="/register">Create your account</Link></div>
       </div>
     </div>
   )
