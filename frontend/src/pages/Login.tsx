@@ -33,9 +33,6 @@ export default function Login(){
           {error && <p className="info" role="alert">{error}</p>}
           <button type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
           <Link className="auth-secondary-link" to="/request-reset">Forgot your password?</Link>
-          <div style={{marginTop:12}}>
-            <button type="button" className="btn btn-secondary" onClick={()=>{ window.location.href = `${(import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/,'') || ''}/api/auth/google`; }}>Continue with Google</button>
-          </div>
         </form>
         <div className="auth-footer">New here? <Link to="/register">Create your account</Link></div>
       </div>

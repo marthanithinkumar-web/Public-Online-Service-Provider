@@ -51,9 +51,6 @@ export default function Register(){
           <p className="auth-hint">Use at least 8 characters for your password.</p>
           {error && <p className="info" role="alert">{error}</p>}
           <button type="submit" disabled={busy}>{busy ? 'Creating account…' : 'Create account'}</button>
-          <div style={{marginTop:12}}>
-            <button type="button" className="btn btn-secondary" onClick={()=>{ window.location.href = `${(import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/,'') || ''}/api/auth/google`; }}>Continue with Google</button>
-          </div>
         </form>
         <div className="auth-footer">Already have an account? <Link to="/login">Sign in</Link></div>
       </div>
