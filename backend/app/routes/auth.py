@@ -1,5 +1,10 @@
 ﻿from flask import Blueprint, request, jsonify, current_app
 from ..models.user import User
+from ..models.order import Order
+from ..models.order_history import OrderStatusHistory
+from ..models.attachment import Attachment
+from ..models.grievance import Grievance
+from ..models.review import Review
 from ..utils.database import db
 from ..utils.password import hash_password, verify_password
 from ..utils.jwt_handler import create_token, decode_token
@@ -9,6 +14,18 @@ import os
 from datetime import timedelta
 
 bp = Blueprint('auth', __name__)
+
+
+def _current_user_from_request():
+    auth = request.headers.get('Authorization', '')
+    if not auth.startswith('Bearer '):
+        return None
+    token = auth.split(' ', 1)[1]
+    try:
+        payload = decode_token(token)
+    except Exception:
+        return None
+    return User.query.get(payload.get('user_id'))
 
 
 @bp.route('/login', methods=['POST'])
@@ -72,6 +89,61 @@ def register():
     db.session.commit()
     token = create_token({'user_id': u.id, 'is_admin': u.is_admin})
     return jsonify({'message': 'User registered', 'token': token, 'user': u.to_dict()})
+
+
+@bp.route('/delete-account', methods=['DELETE'])
+@limiter.limit("3 per hour")
+def delete_account():
+    """Permanently delete a client account and its client-owned data.
+
+    The current password is required as an explicit confirmation. Admin accounts
+    cannot be deleted through this client endpoint. Related orders, grievances,
+    reviews, status history, and attachments are removed with the account.
+    """
+    user = _current_user_from_request()
+    if not user:
+        return jsonify({'error': 'Unauthorized'}), 401
+    if user.is_admin:
+        return jsonify({'error': 'Admin accounts must be managed separately'}), 403
+
+    data = request.json or {}
+    current_password = data.get('current_password')
+    if not current_password:
+        return jsonify({'error': 'Current password is required'}), 400
+    if not verify_password(current_password, user.password_hash):
+        return jsonify({'error': 'Current password is incorrect'}), 401
+
+    orders = Order.query.filter_by(user_id=user.id).all()
+    order_ids = [order.id for order in orders]
+
+    # Remove uploaded files before deleting their attachment records.
+    attachments = Attachment.query.filter(
+        (Attachment.uploaded_by == user.id) |
+        (Attachment.order_id.in_(order_ids) if order_ids else False)
+    ).all()
+    for attachment in attachments:
+        stored_path = attachment.stored_path or ''
+        try:
+            if stored_path.startswith('s3://'):
+                import boto3
+                parts = stored_path.replace('s3://', '', 1).split('/', 1)
+                if len(parts) == 2:
+                    boto3.client('s3').delete_object(Bucket=parts[0], Key=parts[1])
+            elif stored_path and os.path.exists(stored_path):
+                os.remove(stored_path)
+        except Exception:
+            current_app.logger.exception('Unable to remove attachment during account deletion: %s', stored_path)
+        db.session.delete(attachment)
+
+    if order_ids:
+        OrderStatusHistory.query.filter(OrderStatusHistory.order_id.in_(order_ids)).delete(synchronize_session=False)
+        Grievance.query.filter(Grievance.order_id.in_(order_ids)).delete(synchronize_session=False)
+        Review.query.filter(Review.order_id.in_(order_ids)).delete(synchronize_session=False)
+        Order.query.filter(Order.id.in_(order_ids)).delete(synchronize_session=False)
+
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({'message': 'Account and associated client data deleted successfully'}), 200
 
 
 # Password reset & verification scaffolding
