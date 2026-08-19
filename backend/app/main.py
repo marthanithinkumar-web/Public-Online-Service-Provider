@@ -2,6 +2,7 @@ import os
 from flask import Flask, jsonify
 from dotenv import load_dotenv
 from .utils.database import db
+from .utils.schema_compat import ensure_user_schema
 from .models.user import User
 from .models.service import Category, Service
 from .routes import auth, services, orders, admin, reviews, grievances, categories
@@ -118,8 +119,6 @@ def ensure_default_services():
                 )
             )
         else:
-            # A default service should remain searchable if an earlier deployment
-            # created it without the expected active flag or category association.
             changed = False
             if not service.is_active:
                 service.is_active = True
@@ -147,16 +146,11 @@ def create_app():
         MAIL_USE_SSL=False,
     )
 
-    # security headers - do not force HTTPS redirects by default in dev/test.
-    # Set FORCE_HTTPS=1 in environment to enable strict HTTPS redirects in production.
     force_https = os.getenv('FORCE_HTTPS', '0') == '1'
     Talisman(app, content_security_policy=None, force_https=force_https)
 
     db.init_app(app)
 
-    # Keep explicit CORS configuration for production, while also including the
-    # known Render UI origin so a missing/incorrect FRONTEND_URL cannot silently
-    # break public read-only endpoints such as service search.
     configured_origins = os.getenv('CORS_ORIGINS')
     if configured_origins:
         frontends = configured_origins
@@ -177,26 +171,23 @@ def create_app():
         methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
     )
 
-    # migrations
     migrate = Migrate(app, db)
 
-    # rate limiter (configured globally in utils.limiter)
     from .utils.limiter import limiter
     limiter._default_limits = ["2000 per day", "500 per hour"]
     limiter.init_app(app)
 
-    # mail
     mail = Mail(app)
-
-    # limit uploads to reasonable size (default 5MB)
     app.config.setdefault('MAX_CONTENT_LENGTH', int(os.getenv('MAX_UPLOAD_MB', '5')) * 1024 * 1024)
 
     with app.app_context():
         db.create_all()
+        # db.create_all() does not alter existing tables. Repair legacy
+        # production schemas before any ORM query touches the User model.
+        ensure_user_schema(db)
         ensure_default_services()
         ensure_admin_user()
 
-    # register blueprints
     app.register_blueprint(auth.bp, url_prefix='/api/auth')
     app.register_blueprint(services.bp, url_prefix='/api/services')
     app.register_blueprint(orders.bp, url_prefix='/api/orders')
