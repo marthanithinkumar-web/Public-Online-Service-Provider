@@ -61,8 +61,21 @@ def create_app():
 
     db.init_app(app)
 
-    frontends = os.getenv('CORS_ORIGINS', os.getenv('FRONTEND_URL', 'http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173'))
-    allowed_origins = [origin.strip() for origin in frontends.split(',') if origin.strip()]
+    # Keep explicit CORS configuration for production, while also including the
+    # known Render UI origin so a missing/incorrect FRONTEND_URL cannot silently
+    # break public read-only endpoints such as service search.
+    configured_origins = os.getenv('CORS_ORIGINS')
+    if configured_origins:
+        frontends = configured_origins
+    else:
+        frontends = os.getenv(
+            'FRONTEND_URL',
+            'http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173'
+        )
+    allowed_origins = [origin.strip().rstrip('/') for origin in frontends.split(',') if origin.strip()]
+    render_ui_origin = 'https://public-online-service-provider-ui.onrender.com'
+    if render_ui_origin not in allowed_origins:
+        allowed_origins.append(render_ui_origin)
     CORS(
         app,
         resources={r"/api/*": {"origins": allowed_origins}},
