@@ -1,18 +1,37 @@
-import React, { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import React, { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import logo from '../../assets/logo.svg'
 import { PROVIDER } from '../../services/config'
+import { getSession } from '../../services/session'
+import { logout } from '../../services/auth'
 
 export default function NavBar(){
   const [open,setOpen] = useState(false)
+  const [session,setSession] = useState(getSession())
   const loc = useLocation()
+  const nav = useNavigate()
   const isActive = (p:string) => loc.pathname.startsWith(p)
+
+  useEffect(() => {
+    setSession(getSession())
+  }, [loc.pathname])
+
+  const doLogout = () => {
+    logout()
+    setSession(null)
+    setOpen(false)
+    nav('/')
+  }
+
+  const authenticated = !!session
+  const admin = !!session?.is_admin
+
   return (
     <header className="site-header">
       <div className="container site-header-inner">
-        <Link to="/" className="brand-lockup" aria-label="Public Online Service Provider home">
+        <Link to={admin ? '/admin/dashboard' : '/'} className="brand-lockup" aria-label="Public Online Service Provider home">
           <img src={logo} alt="logo" className="brand-mark" />
-          <span><strong className="brand">Public Online Service Provider</strong><small>Simple. Secure. Citizen-focused.</small></span>
+          <span><strong className="brand">Public Online Service Provider</strong><small>{admin ? 'Administration portal' : 'Simple. Secure. Citizen-focused.'}</small></span>
         </Link>
         <nav className="main-nav" aria-label="Primary navigation">
           <Link className={isActive('/jobs')? 'active':''} to="/jobs">Jobs</Link>
@@ -24,14 +43,29 @@ export default function NavBar(){
           <Link className={isActive('/contact')? 'active':''} to="/contact">Contact</Link>
         </nav>
         <div className="header-actions">
-          <Link className="header-admin" to="/admin/login">Admin Login</Link>
-          <Link className="header-link" to="/login">Client Login</Link>
-          <Link className="header-signup" to="/register">Register</Link>
+          {!authenticated && <>
+            <Link className="header-admin" to="/admin/login">Admin Login</Link>
+            <Link className="header-link" to="/login">Client Login</Link>
+            <Link className="header-signup" to="/register">Register</Link>
+          </>}
+          {authenticated && !admin && <>
+            <Link className="header-link" to="/my-orders">My Requests</Link>
+            <Link className="header-signup" to="/account-settings">My Account</Link>
+            <button className="header-link" type="button" onClick={doLogout}>Logout</button>
+          </>}
+          {authenticated && admin && <>
+            <Link className="header-link" to="/admin/dashboard">Dashboard</Link>
+            <Link className="header-signup" to="/admin/orders">Requests</Link>
+            <button className="header-link" type="button" onClick={doLogout}>Logout</button>
+          </>}
           <button className="mobile-menu-btn" onClick={()=>setOpen(!open)} aria-label="Toggle menu">☰</button>
         </div>
       </div>
       <div className="container provider-strip"><span>{PROVIDER.name}</span><span><a href={`tel:${PROVIDER.phone}`}>{PROVIDER.phone}</a> · <a href={`tel:${PROVIDER.phone2}`}>{PROVIDER.phone2}</a> · <a href={`mailto:${PROVIDER.email}`}>{PROVIDER.email}</a></span></div>
-      {open && <div className="mobile-drawer"><div className="container mobile-drawer-inner"><Link to="/admin/login">Admin Login</Link><Link to="/login">Client Login</Link><Link to="/register">Register</Link><Link to="/jobs">Jobs</Link><Link to="/scholarships">Scholarships</Link><Link to="/meeseva">MeeSeva</Link><Link to="/certificates">Certificates</Link><Link to="/schemes">Schemes</Link><Link to="/about">About</Link><Link to="/contact">Contact</Link></div></div>}
+      {open && <div className="mobile-drawer"><div className="container mobile-drawer-inner">
+        {authenticated ? (admin ? <><Link to="/admin/dashboard" onClick={()=>setOpen(false)}>Dashboard</Link><Link to="/admin/orders" onClick={()=>setOpen(false)}>Requests</Link><Link to="/admin/services" onClick={()=>setOpen(false)}>Services</Link><Link to="/admin/users" onClick={()=>setOpen(false)}>Clients</Link><button type="button" onClick={doLogout}>Logout</button></> : <><Link to="/my-orders" onClick={()=>setOpen(false)}>My Requests</Link><Link to="/account-settings" onClick={()=>setOpen(false)}>My Account</Link><button type="button" onClick={doLogout}>Logout</button></>) : <><Link to="/admin/login" onClick={()=>setOpen(false)}>Admin Login</Link><Link to="/login" onClick={()=>setOpen(false)}>Client Login</Link><Link to="/register" onClick={()=>setOpen(false)}>Register</Link></>}
+        <Link to="/jobs" onClick={()=>setOpen(false)}>Jobs</Link><Link to="/scholarships" onClick={()=>setOpen(false)}>Scholarships</Link><Link to="/meeseva" onClick={()=>setOpen(false)}>MeeSeva</Link><Link to="/certificates" onClick={()=>setOpen(false)}>Certificates</Link><Link to="/schemes" onClick={()=>setOpen(false)}>Schemes</Link><Link to="/about" onClick={()=>setOpen(false)}>About</Link><Link to="/contact" onClick={()=>setOpen(false)}>Contact</Link>
+      </div></div>}
     </header>
   )
 }
