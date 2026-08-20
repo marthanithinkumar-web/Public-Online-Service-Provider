@@ -1,5 +1,6 @@
 from ..utils.database import db
 from datetime import datetime
+import json
 
 
 class Order(db.Model):
@@ -19,6 +20,13 @@ class Order(db.Model):
     status = db.Column(db.String(50), default='New')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    def application_data(self):
+        try:
+            data = json.loads(self.description or '{}')
+            return data.get('application_data', {}) if isinstance(data, dict) else {}
+        except (TypeError, ValueError):
+            return {'notes': self.description or ''}
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -26,9 +34,12 @@ class Order(db.Model):
             'client_name': self.client_name,
             'phone': self.phone,
             'email': self.email,
+            'contact_method': self.contact_method,
             'service': self.service.name if self.service else None,
+            'service_id': self.service_id,
             'user_id': self.user_id,
             'fee_inr': float(self.fee_inr or 0.0),
             'status': self.status,
-            'created_at': self.created_at.isoformat()
+            'created_at': self.created_at.isoformat(),
+            'application_data': self.application_data(),
         }
