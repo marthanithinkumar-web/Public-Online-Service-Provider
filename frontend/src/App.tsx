@@ -23,7 +23,22 @@ import NavBar from './components/ui/NavBar'
 import Footer from './components/ui/Footer'
 import {getSession} from './services/session'
 
-function AuthRedirect({children}:{children:React.ReactNode}){const location=useLocation();const session=getSession();if(!session)return <>{children}</>;return <Navigate to={session.is_admin?'/admin/dashboard':'/my-orders'} replace state={{from:location.pathname}}/>}
+function safeReturnTo(value:string|null){
+  if(!value)return null
+  try{
+    const decoded=decodeURIComponent(value)
+    return decoded.startsWith('/')&&!decoded.startsWith('//')&&!decoded.startsWith('/login')&&!decoded.startsWith('/register')&&!decoded.startsWith('/admin/login')?decoded:null
+  }catch{return null}
+}
+
+function AuthRedirect({children}:{children:React.ReactNode}){
+  const location=useLocation()
+  const session=getSession()
+  if(!session)return <>{children}</>
+  const returnTo=safeReturnTo(new URLSearchParams(location.search).get('returnTo'))
+  if(returnTo)return <Navigate to={returnTo} replace/>
+  return <Navigate to={session.is_admin?'/admin/dashboard':'/my-orders'} replace/>
+}
 function ClientRoute({children}:{children:React.ReactNode}){const session=getSession();if(!session)return <Navigate to="/login" replace/>;if(session.is_admin)return <Navigate to="/admin/dashboard" replace/>;return <>{children}</>}
 function AdminRoute({children}:{children:React.ReactNode}){const session=getSession();if(!session)return <Navigate to="/admin/login" replace/>;if(!session.is_admin)return <Navigate to="/my-orders" replace/>;return <>{children}</>}
 
