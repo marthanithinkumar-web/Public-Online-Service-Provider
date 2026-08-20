@@ -7,15 +7,14 @@ from datetime import datetime
 from secrets import token_hex
 from ..schemas.order_schema import OrderCreateSchema, OrderSchema
 from ..utils.jwt_handler import decode_token
+import json
 
 bp = Blueprint('orders', __name__)
-
 create_schema = OrderCreateSchema()
 dump_schema = OrderSchema()
 
 
 def _generate_order_code():
-    # Collision-resistant public identifier; never depends on row counts.
     return f"POSP-{datetime.utcnow().year}-{token_hex(5).upper()}"
 
 
@@ -47,46 +46,36 @@ def create_order():
     if not service:
         return jsonify({'error': 'This service is currently unavailable.'}), 400
 
-    # Use the authenticated account as the source of ownership and identity.
     name = (user.name or data.get('client_name') or '').strip()
     phone = (user.phone or data.get('phone') or '').strip()
     email = (user.email or data.get('email') or '').strip() or None
     if len(name) < 2 or len(phone) < 7:
         return jsonify({'error': 'Please complete your name and phone number in Account Settings before requesting a service.'}), 400
 
-    description = (data.get('description') or '').strip()
-    if len(description) < 5:
-        return jsonify({'error': 'Please provide the information needed for this service.'}), 400
+    application_data = data.get('application_data') or {}
+    if not isinstance(application_data, dict) or not application_data:
+        return jsonify({'error': 'Please complete the service application before submitting.'}), 400
 
+    # Keep structured application answers in the existing database field so this upgrade is backward compatible.
+    description = json.dumps({'application_data': application_data}, ensure_ascii=False)
     order = Order(
-        order_code=_generate_order_code(),
-        client_name=name,
-        phone=phone,
-        email=email,
-        contact_method=data.get('contact_method'),
-        service=service,
-        user_id=user.id,
-        description=description,
-        fee_inr=service.price_inr or 0.0,
-        status='New'
+        order_code=_generate_order_code(), client_name=name, phone=phone, email=email,
+        contact_method=data.get('contact_method'), service=service, user_id=user.id,
+        description=description, fee_inr=service.price_inr or 0.0, status='New'
     )
     db.session.add(order)
     db.session.commit()
-
-    return jsonify({
-        'message': 'Your service request has been submitted successfully.',
-        'order': dump_schema.dump(order)
-    }), 201
+    return jsonify({'message': 'Your service request has been submitted successfully.', 'order': dump_schema.dump(order)}), 201
 
 
 @bp.route('/<int:order_id>', methods=['GET'])
 def get_order(order_id):
     user = _authenticated_user()
-    o = Order.query.get_or_404(order_id)
     if not user:
         return jsonify({'error': 'Unauthorized'}), 401
-    if user.is_admin or o.user_id == user.id:
-        return jsonify(dump_schema.dump(o))
+    order = Order.query.get_or_404(order_id)
+    if user.is_admin or order.user_id == user.id:
+        return jsonify(dump_schema.dump(order))
     return jsonify({'error': 'Unauthorized'}), 403
 
 
