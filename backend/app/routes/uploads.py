@@ -1,5 +1,4 @@
 import os
-import hashlib
 from ..utils.s3 import upload_file_to_s3
 from flask import Blueprint, request, jsonify, current_app, send_file
 from werkzeug.utils import secure_filename
@@ -87,13 +86,6 @@ def upload_file():
     if not _matches_signature(filename, header):
         return jsonify({'error': 'The uploaded file type does not match its filename.'}), 400
 
-    # Hash the uploaded content so a retry/double tap cannot create an identical attachment.
-    content = f.stream.read()
-    f.stream.seek(0)
-    content_hash = hashlib.sha256(content).hexdigest()
-    if any(getattr(a, 'content_hash', None) == content_hash for a in Attachment.query.filter_by(order_id=order.id).all()):
-        return jsonify({'error': 'This document has already been uploaded to this request.'}), 409
-
     timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S%f')
     stored_name = f"{timestamp}_{filename}"
     upload_folder = os.path.join(current_app.root_path, '..', '..', 'uploads')
@@ -124,8 +116,6 @@ def upload_file():
 
     try:
         a = Attachment(order_id=order.id, filename=filename, stored_path=stored_path_value, uploaded_by=user.id)
-        if hasattr(a, 'content_hash'):
-            a.content_hash = content_hash
         db.session.add(a)
         previous_status = order.status
         # A client response to Documents Required automatically returns the request to review.
