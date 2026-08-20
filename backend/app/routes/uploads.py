@@ -1,4 +1,5 @@
 import os
+import hashlib
 from ..utils.s3 import upload_file_to_s3
 from flask import Blueprint, request, jsonify, current_app, send_file
 from werkzeug.utils import secure_filename
@@ -81,11 +82,17 @@ def upload_file():
     if not filename:
         return jsonify({'error': 'Invalid filename.'}), 400
 
-    # Validate the actual file signature rather than trusting only the extension.
     header = f.stream.read(16)
     f.stream.seek(0)
     if not _matches_signature(filename, header):
         return jsonify({'error': 'The uploaded file type does not match its filename.'}), 400
+
+    # Hash the uploaded content so a retry/double tap cannot create an identical attachment.
+    content = f.stream.read()
+    f.stream.seek(0)
+    content_hash = hashlib.sha256(content).hexdigest()
+    if any(getattr(a, 'content_hash', None) == content_hash for a in Attachment.query.filter_by(order_id=order.id).all()):
+        return jsonify({'error': 'This document has already been uploaded to this request.'}), 409
 
     timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S%f')
     stored_name = f"{timestamp}_{filename}"
@@ -94,7 +101,6 @@ def upload_file():
     local_path = os.path.join(upload_folder, stored_name)
     f.save(local_path)
 
-    # content_length is optional, so enforce the real size after saving as well.
     try:
         if os.path.getsize(local_path) > MAX_FILE_SIZE:
             os.remove(local_path)
@@ -118,13 +124,19 @@ def upload_file():
 
     try:
         a = Attachment(order_id=order.id, filename=filename, stored_path=stored_path_value, uploaded_by=user.id)
+        if hasattr(a, 'content_hash'):
+            a.content_hash = content_hash
         db.session.add(a)
+        previous_status = order.status
+        # A client response to Documents Required automatically returns the request to review.
+        if not user.is_admin and order.status == 'Documents Required':
+            order.status = 'Under Review'
         db.session.add(OrderStatusHistory(
             order_id=order.id,
-            previous_status=order.status,
+            previous_status=previous_status,
             new_status=order.status,
             changed_by=user.email,
-            note=f'Document uploaded: {filename}',
+            note=(f'Document uploaded: {filename}' if previous_status == order.status else f'Document uploaded: {filename}. Request returned to Under Review.'),
         ))
         db.session.commit()
     except Exception:
