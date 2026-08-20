@@ -28,24 +28,18 @@ def test_order_lifecycle_and_admin_controls(client):
     headers2 = {'Authorization': f'Bearer {token2}'}
 
     application = {'certificate_type': 'Residence', 'purpose': 'Official use'}
-    order_payload = {
-        'service_id': service_id,
-        'application_data': application,
-        'contact_method': 'phone',
-    }
+    order_payload = {'service_id': service_id, 'application_data': application, 'contact_method': 'phone'}
     r = client.post('/api/orders/', json=order_payload, headers=headers1)
     assert r.status_code == 201
     order = r.get_json()['order']
     order_id = order['id']
 
-    # Another client cannot access this request.
     r = client.get(f'/api/orders/{order_id}', headers=headers2)
     assert r.status_code == 403
     r = client.get(f'/api/orders/{order_id}', headers=headers1)
     assert r.status_code == 200
     assert r.get_json()['order']['id'] == order_id
 
-    # A repeated identical submission in the duplicate-protection window returns the existing request.
     r = client.post('/api/orders/', json=order_payload, headers=headers1)
     assert r.status_code == 200
     assert r.get_json()['duplicate'] is True
@@ -65,23 +59,19 @@ def test_order_lifecycle_and_admin_controls(client):
     assert r.status_code == 200
     assert any(it['id'] == order_id for it in r.get_json()['items'])
 
-    # Valid lifecycle transition.
     r = client.post(f'/api/admin/orders/{order_id}/status', json={'status': 'Under Review'}, headers=admin_headers)
     assert r.status_code == 200
     r = client.post(f'/api/admin/orders/{order_id}/status', json={'status': 'In Progress', 'note': 'Started processing.'}, headers=admin_headers)
     assert r.status_code == 200
 
-    # Invalid backward transition is rejected.
     r = client.post(f'/api/admin/orders/{order_id}/status', json={'status': 'New'}, headers=admin_headers)
     assert r.status_code == 409
 
-    # Completion requires a client-facing completion note.
     r = client.post(f'/api/admin/orders/{order_id}/status', json={'status': 'Completed'}, headers=admin_headers)
     assert r.status_code == 400
     r = client.post(f'/api/admin/orders/{order_id}/status', json={'status': 'Completed', 'note': 'Service completed and result delivered.'}, headers=admin_headers)
     assert r.status_code == 200
 
-    # Closed requests cannot be changed again.
     r = client.post(f'/api/admin/orders/{order_id}/status', json={'status': 'Cancelled', 'note': 'No longer needed.'}, headers=admin_headers)
     assert r.status_code == 409
 
@@ -90,5 +80,5 @@ def test_order_lifecycle_and_admin_controls(client):
     detail = r.get_json()
     assert detail['order']['id'] == order_id
     assert detail['order']['status'] == 'Completed'
-    assert 'Under Review' in detail['allowed_next_statuses'] or detail['allowed_next_statuses'] == []
+    assert detail['allowed_next_statuses'] == []
     assert len(detail['history']) >= 4
