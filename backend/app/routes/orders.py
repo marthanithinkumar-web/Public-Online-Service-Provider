@@ -2,11 +2,16 @@ from flask import Blueprint, request, jsonify
 from ..models.order import Order
 from ..models.service import Service
 from ..models.user import User
+from ..models.order_history import OrderStatusHistory
+from ..models.attachment import Attachment
+from ..models.grievance import Grievance
+from ..models.review import Review
 from ..utils.database import db
-from datetime import datetime
+from datetime import datetime, timedelta
 from secrets import token_hex
 from ..schemas.order_schema import OrderCreateSchema, OrderSchema
 from ..utils.jwt_handler import decode_token
+from ..utils.service_requirements import validate_service_application
 import json
 
 bp = Blueprint('orders', __name__)
@@ -14,6 +19,7 @@ create_schema = OrderCreateSchema()
 dump_schema = OrderSchema()
 MAX_APPLICATION_BYTES = 64 * 1024
 ALLOWED_CONTACT_METHODS = {'email', 'phone', 'whatsapp'}
+DUPLICATE_WINDOW_SECONDS = 60
 
 
 def _generate_order_code():
@@ -32,7 +38,6 @@ def _authenticated_user():
 
 
 def _normalise_application(value, depth=0):
-    """Allow only JSON-safe, bounded application data before persistence."""
     if depth > 6:
         raise ValueError('Application data is too deeply nested.')
     if isinstance(value, dict):
@@ -84,9 +89,28 @@ def create_order():
     if not isinstance(application_data, dict) or not application_data:
         return jsonify({'error': 'Please complete the service application before submitting.'}), 400
 
+    _, missing = validate_service_application(service, application_data)
+    if missing:
+        return jsonify({'error': 'Please complete the required application fields.', 'missing_fields': missing}), 400
+
     description = json.dumps({'application_data': application_data}, ensure_ascii=False, separators=(',', ':'))
     if len(description.encode('utf-8')) > MAX_APPLICATION_BYTES:
         return jsonify({'error': 'Application information is too large. Please remove unnecessary text and try again.'}), 413
+
+    # Protect against double taps/retries creating the same request repeatedly.
+    recent_cutoff = datetime.utcnow() - timedelta(seconds=DUPLICATE_WINDOW_SECONDS)
+    duplicate = (Order.query.filter(
+        Order.user_id == user.id,
+        Order.service_id == service.id,
+        Order.description == description,
+        Order.created_at >= recent_cutoff,
+    ).order_by(Order.created_at.desc()).first())
+    if duplicate:
+        return jsonify({
+            'message': 'This request was already submitted recently.',
+            'duplicate': True,
+            'order': dump_schema.dump(duplicate),
+        }), 200
 
     order = Order(
         order_code=_generate_order_code(), client_name=name, phone=phone, email=email,
@@ -94,6 +118,8 @@ def create_order():
         description=description, fee_inr=service.price_inr or 0.0, status='New'
     )
     db.session.add(order)
+    db.session.flush()
+    db.session.add(OrderStatusHistory(order_id=order.id, previous_status=None, new_status='New', changed_by=user.email, note='Request submitted by client.'))
     db.session.commit()
     return jsonify({'message': 'Your service request has been submitted successfully.', 'order': dump_schema.dump(order)}), 201
 
@@ -104,9 +130,19 @@ def get_order(order_id):
     if not user:
         return jsonify({'error': 'Unauthorized'}), 401
     order = Order.query.get_or_404(order_id)
-    if user.is_admin or order.user_id == user.id:
-        return jsonify(dump_schema.dump(order))
-    return jsonify({'error': 'Unauthorized'}), 403
+    if not user.is_admin and order.user_id != user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    history = OrderStatusHistory.query.filter_by(order_id=order.id).order_by(OrderStatusHistory.created_at.asc()).all()
+    attachments = Attachment.query.filter_by(order_id=order.id).order_by(Attachment.id.asc()).all()
+    grievances = Grievance.query.filter_by(order_id=order.id).order_by(Grievance.id.desc()).all()
+    reviews = Review.query.filter_by(order_id=order.id).order_by(Review.id.desc()).all()
+    return jsonify({
+        'order': dump_schema.dump(order),
+        'history': [h.to_dict() for h in history],
+        'attachments': [a.to_dict() for a in attachments],
+        'grievances': [g.to_dict() for g in grievances],
+        'reviews': [r.to_dict() for r in reviews],
+    })
 
 
 @bp.route('/mine', methods=['GET'])

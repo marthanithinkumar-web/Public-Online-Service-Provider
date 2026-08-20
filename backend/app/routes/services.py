@@ -3,11 +3,17 @@ from ..models.service import Service, Category
 from ..utils.database import db
 from ..middleware.auth import require_admin
 from ..schemas.service_schema import ServiceSchema
+from ..utils.service_requirements import get_service_requirements
 from sqlalchemy import or_, func
 
 bp = Blueprint('services', __name__)
-
 schema = ServiceSchema()
+
+
+def _service_dict(service):
+    data = service.to_dict()
+    data['requirements'] = get_service_requirements(service)
+    return data
 
 
 @bp.route('/', methods=['GET'])
@@ -21,34 +27,24 @@ def list_services():
         except (TypeError, ValueError):
             return jsonify({'error': 'Invalid category_id'}), 400
     services = q.order_by(Service.created_at.desc(), Service.name.asc()).all()
-    return jsonify([s.to_dict() for s in services])
+    return jsonify([_service_dict(s) for s in services])
 
 
 @bp.route('/<int:service_id>', methods=['GET'])
 def service_detail(service_id):
     s = Service.query.filter_by(id=service_id, is_active=True).first_or_404()
-    return jsonify(s.to_dict())
+    return jsonify(_service_dict(s))
 
 
 @bp.route('/search', methods=['GET'])
 def search():
-    """Public service search.
-
-    Searches service names, keywords and category names. Matching is
-    case-insensitive and supports phrases/acronyms such as ePASS, EAMCET,
-    POLYCET, AP EAPCET, Aadhaar, PAN and Gurukulam.
-    """
     raw = (request.args.get('q') or '').strip()
     if not raw:
         services = Service.query.filter_by(is_active=True).order_by(Service.name.asc()).all()
-        return jsonify([s.to_dict() for s in services])
+        return jsonify([_service_dict(s) for s in services])
 
-    # Search each meaningful token as well as the complete phrase. This makes
-    # queries such as "ap eapcet", "voter correction" and "epass renewal"
-    # work even when their words are stored in different keyword positions.
     tokens = [t for t in raw.lower().replace('-', ' ').replace('/', ' ').split() if t]
     search_terms = [raw.lower()] + tokens
-
     conditions = []
     for term in search_terms:
         pattern = f"%{term}%"
@@ -60,15 +56,11 @@ def search():
         ])
 
     services = (
-        Service.query
-        .join(Category, isouter=True)
+        Service.query.join(Category, isouter=True)
         .filter(Service.is_active.is_(True), or_(*conditions))
-        .order_by(Service.name.asc())
-        .limit(100)
-        .all()
+        .order_by(Service.name.asc()).limit(100).all()
     )
-
-    return jsonify([s.to_dict() for s in services])
+    return jsonify([_service_dict(s) for s in services])
 
 
 @bp.route('/', methods=['POST'])
@@ -78,17 +70,10 @@ def create_service():
     errors = schema.validate(data)
     if errors:
         return jsonify({'error': errors}), 400
-
-    s = Service(
-        name=data['name'],
-        description=data.get('description'),
-        price_inr=data.get('price_inr', 0.0),
-        keywords=data.get('keywords'),
-        category_id=data.get('category_id')
-    )
+    s = Service(name=data['name'], description=data.get('description'), price_inr=data.get('price_inr', 0.0), keywords=data.get('keywords'), category_id=data.get('category_id'))
     db.session.add(s)
     db.session.commit()
-    return jsonify({'message': 'Service created', 'service': s.to_dict()})
+    return jsonify({'message': 'Service created', 'service': _service_dict(s)})
 
 
 @bp.route('/<int:service_id>', methods=['PUT'])
@@ -99,14 +84,13 @@ def update_service(service_id):
     errors = schema.validate(data, partial=True)
     if errors:
         return jsonify({'error': errors}), 400
-
     s.name = data.get('name', s.name)
     s.description = data.get('description', s.description)
     s.price_inr = data.get('price_inr', s.price_inr)
     s.keywords = data.get('keywords', s.keywords)
     s.category_id = data.get('category_id', s.category_id)
     db.session.commit()
-    return jsonify({'message': 'Service updated', 'service': s.to_dict()})
+    return jsonify({'message': 'Service updated', 'service': _service_dict(s)})
 
 
 @bp.route('/<int:service_id>/active', methods=['POST'])
@@ -119,4 +103,4 @@ def set_service_active(service_id):
         return jsonify({'error': 'active required (true/false)'}), 400
     s.is_active = bool(active)
     db.session.commit()
-    return jsonify({'message': 'Service status updated', 'service': s.to_dict()})
+    return jsonify({'message': 'Service status updated', 'service': _service_dict(s)})

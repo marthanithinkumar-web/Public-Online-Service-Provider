@@ -74,3 +74,5 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+
+# Verification trigger: keep this workflow synchronized with end-to-end branch testing.

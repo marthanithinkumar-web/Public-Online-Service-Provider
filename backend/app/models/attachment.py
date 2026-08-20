@@ -12,11 +12,11 @@ class Attachment(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
+        # Never expose filesystem paths, S3 bucket names, or storage keys to clients.
         return {
             'id': self.id,
             'order_id': self.order_id,
             'filename': self.filename,
-            'stored_path': self.stored_path,
             'uploaded_by': self.uploaded_by,
             'created_at': self.created_at.isoformat()
         }

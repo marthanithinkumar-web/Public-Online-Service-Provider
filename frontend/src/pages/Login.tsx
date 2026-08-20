@@ -1,56 +1,13 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { login } from '../services/auth'
 import '../styles/auth.css'
 
 export default function Login(){
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-  const nav = useNavigate()
-
-  const submit = async (e: React.FormEvent)=>{
-    e.preventDefault(); setError(''); setBusy(true)
-    try{
-      const res = await login(email, password)
-      if(res?.token) nav('/my-orders')
-      else setError(res?.error || 'Login failed. Please check your details.')
-    }catch(err:any){ setError(err?.response?.data?.error || 'Unable to sign in right now.') }
-    finally{ setBusy(false) }
-  }
-
-  return (
-    <div className="auth-page auth-page-centered">
-      <div className="auth-card auth-card-modern" role="region" aria-labelledby="login-heading">
-        <div className="auth-intro">
-          <h1 id="login-heading">Client Login</h1>
-          <p className="muted">Login to access your public service requests and account.</p>
-        </div>
-        <form onSubmit={submit} className="auth-form" aria-label="Client login form">
-          <label className="form-label">Email Address<span className="required">*</span>
-            <input className="form-input" type="email" autoComplete="email" required value={email} onChange={e=>setEmail(e.target.value)} />
-          </label>
-
-          <label className="form-label">Password<span className="required">*</span>
-            <div className="password-field">
-              <input className="form-input" type={showPassword ? 'text' : 'password'} autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)} />
-              <button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} className="password-toggle" onClick={()=>setShowPassword(s=>!s)}>{showPassword ? '🙈' : '👁️'}</button>
-            </div>
-          </label>
-
-          {error && <p className="info" role="alert">{error}</p>}
-
-          <button type="submit" className="btn btn-primary btn-block" disabled={busy}>{busy ? 'Signing in…' : 'Login'}</button>
-
-          <div className="auth-bottom">
-            <Link className="auth-secondary-link" to="/request-reset">Forgot your password?</Link>
-            <span className="auth-divider" />
-            <Link to="/register" className="auth-link">Don't have an account? Register</Link>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
+  const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [showPassword,setShowPassword]=useState(false); const [error,setError]=useState(''); const [busy,setBusy]=useState(false)
+  const nav=useNavigate(); const location=useLocation()
+  const params=new URLSearchParams(location.search); const requestedReturn=params.get('returnTo');
+  const safeReturn=requestedReturn && requestedReturn.startsWith('/') && !requestedReturn.startsWith('//') ? requestedReturn : '/my-orders'
+  const submit=async(e:React.FormEvent)=>{e.preventDefault();setError('');setBusy(true);try{const res=await login(email,password);if(res?.token)nav(safeReturn,{replace:true});else setError(res?.error||'Login failed. Please check your details.')}catch(err:any){setError(err?.response?.data?.error||'Unable to sign in right now.')}finally{setBusy(false)}}
+  return <div className="auth-page auth-page-centered"><div className="auth-card auth-card-modern" role="region" aria-labelledby="login-heading"><div className="auth-intro"><h1 id="login-heading">Client Login</h1><p className="muted">Login to access your public service requests and account.</p>{requestedReturn&&<p className="muted">After signing in, you’ll return to the service you selected.</p>}</div><form onSubmit={submit} className="auth-form" aria-label="Client login form"><label className="form-label">Email Address<span className="required">*</span><input className="form-input" type="email" autoComplete="email" required value={email} onChange={e=>setEmail(e.target.value)}/></label><label className="form-label">Password<span className="required">*</span><div className="password-field"><input className="form-input" type={showPassword?'text':'password'} autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/><button type="button" aria-label={showPassword?'Hide password':'Show password'} className="password-toggle" onClick={()=>setShowPassword(s=>!s)}>{showPassword?'🙈':'👁️'}</button></div></label>{error&&<p className="info" role="alert">{error}</p>}<button type="submit" className="btn btn-primary btn-block" disabled={busy}>{busy?'Signing in…':'Login'}</button><div className="auth-bottom"><Link className="auth-secondary-link" to="/request-reset">Forgot your password?</Link><span className="auth-divider"/><Link to={`/register${requestedReturn?`?returnTo=${encodeURIComponent(safeReturn)}`:''}`} className="auth-link">Don't have an account? Register</Link></div></form></div></div>
 }
