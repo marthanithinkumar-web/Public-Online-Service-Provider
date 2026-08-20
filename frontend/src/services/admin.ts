@@ -2,7 +2,7 @@ import axios from 'axios'
 import { authHeader } from './auth'
 import { apiBase } from './apiBase'
 
-const api = axios.create({ baseURL: apiBase })
+const api = axios.create({ baseURL: apiBase, timeout: 15000 })
 
 export async function fetchAdminOrders(page=1, per_page=20, status=''){
   const params:any = { page, per_page }
@@ -17,9 +17,7 @@ export async function updateOrderStatus(orderId:number, status:string, note?:str
 }
 
 export async function fetchServices(){
-  // Admin view should retrieve all services (including disabled)
   const res = await api.get('/admin/services', { headers: authHeader() })
-  // normalize to array of items if wrapped
   return Array.isArray(res.data) ? res.data : (res.data.items || [])
 }
 
