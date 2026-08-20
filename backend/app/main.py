@@ -5,10 +5,8 @@ from .utils.database import db
 from .utils.schema_compat import ensure_user_schema
 from .models.user import User
 from .models.service import Category, Service
-from .routes import auth, services, orders, admin, admin_workflow, reviews, grievances, categories
+from .routes import auth, services, orders, admin, admin_workflow, client_actions, reviews, grievances, categories
 from flask_cors import CORS
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from flask_migrate import Migrate
 from flask_talisman import Talisman
 from flask_mail import Mail
@@ -20,8 +18,7 @@ def ensure_admin_user():
     admin_email=(os.getenv('ADMIN_EMAIL') or '').strip().lower();admin_password=os.getenv('ADMIN_PASSWORD')
     if not admin_email or not admin_password:return
     user=User.query.filter_by(email=admin_email).first()
-    if user is None:
-        db.session.add(User(email=admin_email,password_hash=hash_password(admin_password),is_admin=True));db.session.commit();return
+    if user is None:db.session.add(User(email=admin_email,password_hash=hash_password(admin_password),is_admin=True));db.session.commit();return
     changed=False
     if not user.is_admin:user.is_admin=True;changed=True
     if not verify_password(admin_password,user.password_hash):user.password_hash=hash_password(admin_password);changed=True
@@ -34,23 +31,19 @@ def ensure_default_services():
         if cat is None:cat=Category(name=cat_name);db.session.add(cat);db.session.flush()
         service=Service.query.filter_by(name=name).first()
         if service is None:db.session.add(Service(name=name,description=desc,price_inr=price,keywords=keywords,category_id=cat.id,is_active=True))
-        else:
-            service.is_active=True
-            if service.category_id is None:service.category_id=cat.id
+        else:service.is_active=True;service.category_id=service.category_id or cat.id
     db.session.commit()
 
 def create_app():
-    app=Flask(__name__)
-    app.config.from_mapping(SECRET_KEY=os.getenv('SECRET_KEY','dev-key'),SQLALCHEMY_DATABASE_URI=os.getenv('DATABASE_URL','sqlite:///psp.db'),SQLALCHEMY_TRACK_MODIFICATIONS=False,MAIL_SERVER=os.getenv('SMTP_HOST',''),MAIL_PORT=int(os.getenv('SMTP_PORT') or 0),MAIL_USERNAME=os.getenv('SMTP_USER'),MAIL_PASSWORD=os.getenv('SMTP_PASS'),MAIL_USE_TLS=True,MAIL_USE_SSL=False)
-    force_https=os.getenv('FORCE_HTTPS','0')=='1';Talisman(app,content_security_policy=None,force_https=force_https);db.init_app(app)
+    app=Flask(__name__);app.config.from_mapping(SECRET_KEY=os.getenv('SECRET_KEY','dev-key'),SQLALCHEMY_DATABASE_URI=os.getenv('DATABASE_URL','sqlite:///psp.db'),SQLALCHEMY_TRACK_MODIFICATIONS=False,MAIL_SERVER=os.getenv('SMTP_HOST',''),MAIL_PORT=int(os.getenv('SMTP_PORT') or 0),MAIL_USERNAME=os.getenv('SMTP_USER'),MAIL_PASSWORD=os.getenv('SMTP_PASS'),MAIL_USE_TLS=True,MAIL_USE_SSL=False)
+    Talisman(app,content_security_policy=None,force_https=os.getenv('FORCE_HTTPS','0')=='1');db.init_app(app)
     configured_origins=os.getenv('CORS_ORIGINS');frontends=configured_origins or os.getenv('FRONTEND_URL','http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173');allowed_origins=[o.strip().rstrip('/') for o in frontends.split(',') if o.strip()];render_ui='https://public-online-service-provider-ui.onrender.com'
     if render_ui not in allowed_origins:allowed_origins.append(render_ui)
-    CORS(app,resources={r'/api/*':{'origins':allowed_origins}},supports_credentials=True,allow_headers=['Content-Type','Authorization'],methods=['GET','POST','PUT','PATCH','DELETE','OPTIONS'])
-    Migrate(app,db)
+    CORS(app,resources={r'/api/*':{'origins':allowed_origins}},supports_credentials=True,allow_headers=['Content-Type','Authorization'],methods=['GET','POST','PUT','PATCH','DELETE','OPTIONS']);Migrate(app,db)
     from .utils.limiter import limiter
     limiter._default_limits=['2000 per day','500 per hour'];limiter.init_app(app);Mail(app);app.config.setdefault('MAX_CONTENT_LENGTH',int(os.getenv('MAX_UPLOAD_MB','5'))*1024*1024)
     with app.app_context():db.create_all();ensure_user_schema(db);ensure_default_services();ensure_admin_user()
-    app.register_blueprint(auth.bp,url_prefix='/api/auth');app.register_blueprint(services.bp,url_prefix='/api/services');app.register_blueprint(orders.bp,url_prefix='/api/orders');app.register_blueprint(admin_workflow.bp,url_prefix='/api/admin');app.register_blueprint(admin.bp,url_prefix='/api/admin');app.register_blueprint(reviews.bp,url_prefix='/api/reviews');app.register_blueprint(grievances.bp,url_prefix='/api/grievances');app.register_blueprint(categories.bp,url_prefix='/api/categories');app.register_blueprint(__import__('app.routes.uploads',fromlist=['bp']).bp,url_prefix='/api/uploads')
+    app.register_blueprint(auth.bp,url_prefix='/api/auth');app.register_blueprint(services.bp,url_prefix='/api/services');app.register_blueprint(orders.bp,url_prefix='/api/orders');app.register_blueprint(admin_workflow.bp,url_prefix='/api/admin');app.register_blueprint(admin.bp,url_prefix='/api/admin');app.register_blueprint(client_actions.bp,url_prefix='/api');app.register_blueprint(reviews.bp,url_prefix='/api/reviews');app.register_blueprint(grievances.bp,url_prefix='/api/grievances');app.register_blueprint(categories.bp,url_prefix='/api/categories');app.register_blueprint(__import__('app.routes.uploads',fromlist=['bp']).bp,url_prefix='/api/uploads')
     @app.get('/')
     def index():return jsonify({'message':'Public Online Service Provider API'})
     return app
