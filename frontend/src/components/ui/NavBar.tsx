@@ -14,7 +14,16 @@ export default function NavBar(){
 
   useEffect(() => {
     setSession(getSession())
+    setOpen(false)
   }, [loc.pathname])
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [])
 
   const doLogout = () => {
     logout()
@@ -58,13 +67,13 @@ export default function NavBar(){
             <Link className="header-signup" to="/admin/orders">Requests</Link>
             <button className="header-link" type="button" onClick={doLogout}>Logout</button>
           </>}
-          <button className="mobile-menu-btn" onClick={()=>setOpen(!open)} aria-label="Toggle menu">☰</button>
+          <button className="mobile-menu-btn" type="button" onClick={()=>setOpen(!open)} aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} aria-controls="mobile-navigation">☰</button>
         </div>
       </div>
       <div className="container provider-strip"><span>{PROVIDER.name}</span><span><a href={`tel:${PROVIDER.phone}`}>{PROVIDER.phone}</a> · <a href={`tel:${PROVIDER.phone2}`}>{PROVIDER.phone2}</a> · <a href={`mailto:${PROVIDER.email}`}>{PROVIDER.email}</a></span></div>
-      {open && <div className="mobile-drawer"><div className="container mobile-drawer-inner">
-        {authenticated ? (admin ? <><Link to="/admin/dashboard" onClick={()=>setOpen(false)}>Dashboard</Link><Link to="/admin/orders" onClick={()=>setOpen(false)}>Requests</Link><Link to="/admin/services" onClick={()=>setOpen(false)}>Services</Link><Link to="/admin/users" onClick={()=>setOpen(false)}>Clients</Link><button type="button" onClick={doLogout}>Logout</button></> : <><Link to="/my-orders" onClick={()=>setOpen(false)}>My Requests</Link><Link to="/account-settings" onClick={()=>setOpen(false)}>My Account</Link><button type="button" onClick={doLogout}>Logout</button></>) : <><Link to="/admin/login" onClick={()=>setOpen(false)}>Admin Login</Link><Link to="/login" onClick={()=>setOpen(false)}>Client Login</Link><Link to="/register" onClick={()=>setOpen(false)}>Register</Link></>}
-        <Link to="/jobs" onClick={()=>setOpen(false)}>Jobs</Link><Link to="/scholarships" onClick={()=>setOpen(false)}>Scholarships</Link><Link to="/meeseva" onClick={()=>setOpen(false)}>MeeSeva</Link><Link to="/certificates" onClick={()=>setOpen(false)}>Certificates</Link><Link to="/schemes" onClick={()=>setOpen(false)}>Schemes</Link><Link to="/about" onClick={()=>setOpen(false)}>About</Link><Link to="/contact" onClick={()=>setOpen(false)}>Contact</Link>
+      {open && <div id="mobile-navigation" className="mobile-drawer"><div className="container mobile-drawer-inner">
+        {authenticated ? (admin ? <><Link to="/admin/dashboard">Dashboard</Link><Link to="/admin/orders">Requests</Link><Link to="/admin/services">Services</Link><Link to="/admin/users">Clients</Link><button type="button" onClick={doLogout}>Logout</button></> : <><Link to="/my-orders">My Requests</Link><Link to="/account-settings">My Account</Link><button type="button" onClick={doLogout}>Logout</button></>) : <><Link to="/admin/login">Admin Login</Link><Link to="/login">Client Login</Link><Link to="/register">Register</Link></>}
+        <Link to="/jobs">Jobs</Link><Link to="/scholarships">Scholarships</Link><Link to="/meeseva">MeeSeva</Link><Link to="/certificates">Certificates</Link><Link to="/schemes">Schemes</Link><Link to="/about">About</Link><Link to="/contact">Contact</Link>
       </div></div>}
     </header>
   )
