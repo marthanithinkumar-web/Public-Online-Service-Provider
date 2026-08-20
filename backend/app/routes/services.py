@@ -3,6 +3,7 @@ from ..models.service import Service, Category
 from ..utils.database import db
 from ..middleware.auth import require_admin
 from ..schemas.service_schema import ServiceSchema
+from sqlalchemy import or_, func
 
 bp = Blueprint('services', __name__)
 
@@ -12,45 +13,64 @@ schema = ServiceSchema()
 @bp.route('/', methods=['GET'])
 @bp.route('', methods=['GET'])
 def list_services():
-    # Optional filters: category_id
-    from flask import request
     category_id = request.args.get('category_id')
     q = Service.query.filter_by(is_active=True)
     if category_id:
         try:
-            cid = int(category_id)
-            q = q.filter_by(category_id=cid)
-        except Exception:
-            pass
-    services = q.order_by(Service.created_at.desc()).all()
+            q = q.filter_by(category_id=int(category_id))
+        except (TypeError, ValueError):
+            return jsonify({'error': 'Invalid category_id'}), 400
+    services = q.order_by(Service.created_at.desc(), Service.name.asc()).all()
     return jsonify([s.to_dict() for s in services])
 
 
 @bp.route('/<int:service_id>', methods=['GET'])
 def service_detail(service_id):
-    s = Service.query.get_or_404(service_id)
+    s = Service.query.filter_by(id=service_id, is_active=True).first_or_404()
     return jsonify(s.to_dict())
 
 
 @bp.route('/search', methods=['GET'])
 def search():
-    q = (request.args.get('q') or '').strip()
-    if not q:
-        services = Service.query.filter_by(is_active=True).limit(20).all()
+    """Public service search.
+
+    Searches service names, keywords and category names. Matching is
+    case-insensitive and supports phrases/acronyms such as ePASS, EAMCET,
+    POLYCET, AP EAPCET, Aadhaar, PAN and Gurukulam.
+    """
+    raw = (request.args.get('q') or '').strip()
+    if not raw:
+        services = Service.query.filter_by(is_active=True).order_by(Service.name.asc()).all()
         return jsonify([s.to_dict() for s in services])
 
-    # simple case-insensitive substring search across name, keywords and category
-    term = f"%{q.lower()}%"
-    services = Service.query.join(Category, isouter=True).filter(
-        (Service.is_active == True) & (
-            (Service.name.ilike(term)) | (Service.keywords.ilike(term)) | (Category.name.ilike(term))
-        )
-    ).limit(50).all()
+    # Search each meaningful token as well as the complete phrase. This makes
+    # queries such as "ap eapcet", "voter correction" and "epass renewal"
+    # work even when their words are stored in different keyword positions.
+    tokens = [t for t in raw.lower().replace('-', ' ').replace('/', ' ').split() if t]
+    search_terms = [raw.lower()] + tokens
+
+    conditions = []
+    for term in search_terms:
+        pattern = f"%{term}%"
+        conditions.extend([
+            func.lower(Service.name).like(pattern),
+            func.lower(Service.keywords).like(pattern),
+            func.lower(Category.name).like(pattern),
+            func.lower(Service.description).like(pattern),
+        ])
+
+    services = (
+        Service.query
+        .join(Category, isouter=True)
+        .filter(Service.is_active.is_(True), or_(*conditions))
+        .order_by(Service.name.asc())
+        .limit(100)
+        .all()
+    )
 
     return jsonify([s.to_dict() for s in services])
 
 
-# Admin: create service
 @bp.route('/', methods=['POST'])
 @require_admin
 def create_service():
@@ -71,7 +91,6 @@ def create_service():
     return jsonify({'message': 'Service created', 'service': s.to_dict()})
 
 
-# Admin: update service
 @bp.route('/<int:service_id>', methods=['PUT'])
 @require_admin
 def update_service(service_id):
@@ -90,7 +109,6 @@ def update_service(service_id):
     return jsonify({'message': 'Service updated', 'service': s.to_dict()})
 
 
-# Admin: disable/enable service
 @bp.route('/<int:service_id>/active', methods=['POST'])
 @require_admin
 def set_service_active(service_id):
