@@ -7,7 +7,7 @@ from ..models.attachment import Attachment
 from ..models.grievance import Grievance
 from ..models.review import Review
 from ..utils.database import db
-from datetime import datetime
+from datetime import datetime, timedelta
 from secrets import token_hex
 from ..schemas.order_schema import OrderCreateSchema, OrderSchema
 from ..utils.jwt_handler import decode_token
@@ -19,6 +19,7 @@ create_schema = OrderCreateSchema()
 dump_schema = OrderSchema()
 MAX_APPLICATION_BYTES = 64 * 1024
 ALLOWED_CONTACT_METHODS = {'email', 'phone', 'whatsapp'}
+DUPLICATE_WINDOW_SECONDS = 60
 
 
 def _generate_order_code():
@@ -95,6 +96,21 @@ def create_order():
     description = json.dumps({'application_data': application_data}, ensure_ascii=False, separators=(',', ':'))
     if len(description.encode('utf-8')) > MAX_APPLICATION_BYTES:
         return jsonify({'error': 'Application information is too large. Please remove unnecessary text and try again.'}), 413
+
+    # Protect against double taps/retries creating the same request repeatedly.
+    recent_cutoff = datetime.utcnow() - timedelta(seconds=DUPLICATE_WINDOW_SECONDS)
+    duplicate = (Order.query.filter(
+        Order.user_id == user.id,
+        Order.service_id == service.id,
+        Order.description == description,
+        Order.created_at >= recent_cutoff,
+    ).order_by(Order.created_at.desc()).first())
+    if duplicate:
+        return jsonify({
+            'message': 'This request was already submitted recently.',
+            'duplicate': True,
+            'order': dump_schema.dump(duplicate),
+        }), 200
 
     order = Order(
         order_code=_generate_order_code(), client_name=name, phone=phone, email=email,
