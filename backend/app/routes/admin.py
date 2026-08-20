@@ -15,6 +15,12 @@ ALLOWED_STATUSES = {
     'Completed', 'Rejected', 'Cancelled'
 }
 CLOSED_STATUSES = {'Completed', 'Rejected', 'Cancelled'}
+TRANSITIONS = {
+    'New': {'Under Review', 'Cancelled'},
+    'Under Review': {'Documents Required', 'In Progress', 'Rejected', 'Cancelled'},
+    'Documents Required': {'Under Review', 'Cancelled'},
+    'In Progress': {'Documents Required', 'Completed', 'Rejected', 'Cancelled'},
+}
 
 
 def _require_admin():
@@ -72,8 +78,12 @@ def update_status(order_id):
         return jsonify({'error': 'The request is already in this status.'}), 409
     if previous in CLOSED_STATUSES:
         return jsonify({'error': 'Closed requests cannot be moved to another status.'}), 409
+    if status not in TRANSITIONS.get(previous, set()):
+        return jsonify({'error': f'Invalid workflow transition: {previous} → {status}.'}), 409
     if status in {'Rejected', 'Cancelled', 'Documents Required'} and not note:
         return jsonify({'error': 'A reason or instruction is required for this status.'}), 400
+    if status == 'Completed' and not note:
+        return jsonify({'error': 'Add a completion note describing the result delivered to the client.'}), 400
 
     o.status = status
     history = OrderStatusHistory(
@@ -100,7 +110,8 @@ def order_detail(order_id):
         'history': [h.to_dict() for h in history],
         'attachments': [a.to_dict() for a in attachments],
         'grievances': [g.to_dict() for g in grievances],
-        'reviews': [r.to_dict() for r in reviews]
+        'reviews': [r.to_dict() for r in reviews],
+        'allowed_next_statuses': sorted(TRANSITIONS.get(o.status, set()))
     })
 
 
