@@ -10,7 +10,7 @@ from ..utils.jwt_handler import decode_token
 
 bp=Blueprint('admin_workflow',__name__)
 ALLOWED={'New','Under Review','Documents Required','In Progress','Completed','Rejected','Cancelled'}
-TRANSITIONS={'New':{'Under Review','Cancelled'},'Under Review':{'Documents Required','In Progress','Rejected','Cancelled'},'Documents Required':{'Under Review','In Progress','Cancelled'},'In Progress':{'Documents Required','Completed','Rejected','Cancelled'},'Completed':set(),'Rejected':set(),'Cancelled':set()}
+TRANSITIONS={'New':{'Under Review','In Progress','Cancelled'},'Under Review':{'Documents Required','In Progress','Rejected','Cancelled'},'Documents Required':{'Under Review','In Progress','Cancelled'},'In Progress':{'Documents Required','Completed','Rejected','Cancelled'},'Completed':set(),'Rejected':set(),'Cancelled':set()}
 
 def admin_user():
     auth=request.headers.get('Authorization','')
