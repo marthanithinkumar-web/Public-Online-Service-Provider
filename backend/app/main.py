@@ -35,7 +35,7 @@ def ensure_default_services():
     db.session.commit()
 
 def create_app():
-    app=Flask(__name__);app.config.from_mapping(SECRET_KEY=os.getenv('SECRET_KEY','dev-key'),SQLALCHEMY_DATABASE_URI=os.getenv('DATABASE_URL','sqlite:///psp.db'),SQLALCHEMY_TRACK_MODIFICATIONS=False,MAIL_SERVER=os.getenv('SMTP_HOST',''),MAIL_PORT=int(os.getenv('SMTP_PORT') or 0),MAIL_USERNAME=os.getenv('SMTP_USER'),MAIL_PASSWORD=os.getenv('SMTP_PASS'),MAIL_USE_TLS=True,MAIL_USE_SSL=False)
+    app=Flask(__name__);app.config.from_mapping(SECRET_KEY=os.getenv('SECRET_KEY','dev-key'),SQLALCHEMY_DATABASE_URI=os.getenv('DATABASE_URL','sqlite:///psp.db'),SQLALCHEMY_TRACK_MODIFICATIONS=False,SQLALCHEMY_ENGINE_OPTIONS={'pool_pre_ping':True,'pool_recycle':280},MAIL_SERVER=os.getenv('SMTP_HOST',''),MAIL_PORT=int(os.getenv('SMTP_PORT') or 0),MAIL_USERNAME=os.getenv('SMTP_USER'),MAIL_PASSWORD=os.getenv('SMTP_PASS'),MAIL_USE_TLS=True,MAIL_USE_SSL=False)
     Talisman(app,content_security_policy=None,force_https=os.getenv('FORCE_HTTPS','0')=='1');db.init_app(app)
     configured_origins=os.getenv('CORS_ORIGINS');frontends=configured_origins or os.getenv('FRONTEND_URL','http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173');allowed_origins=[o.strip().rstrip('/') for o in frontends.split(',') if o.strip()];render_ui='https://public-online-service-provider-ui.onrender.com'
     if render_ui not in allowed_origins:allowed_origins.append(render_ui)
