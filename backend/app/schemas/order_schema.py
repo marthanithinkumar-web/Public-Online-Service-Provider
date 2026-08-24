@@ -2,12 +2,8 @@ from marshmallow import Schema, fields, validate
 
 
 class OrderCreateSchema(Schema):
-    client_name = fields.Str(required=True, validate=validate.Length(min=2, max=200))
-    phone = fields.Str(required=True, validate=validate.Length(min=3, max=50))
-    email = fields.Email(allow_none=True)
     contact_method = fields.Str(allow_none=True)
     service_id = fields.Int(required=True)
-    description = fields.Str(allow_none=True)
     application_data = fields.Dict(required=True, allow_none=False)
 
 

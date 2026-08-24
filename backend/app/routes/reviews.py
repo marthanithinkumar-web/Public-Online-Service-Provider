@@ -4,6 +4,8 @@ from ..models.order import Order
 from ..utils.database import db
 from ..schemas.review_schema import ReviewCreateSchema, ReviewSchema
 from ..middleware.auth import require_admin
+from ..models.user import User
+from ..utils.jwt_handler import decode_token
 
 bp = Blueprint('reviews', __name__)
 
@@ -11,29 +13,48 @@ create_schema = ReviewCreateSchema()
 dump_schema = ReviewSchema()
 
 
+def _authenticated_user():
+    auth = request.headers.get('Authorization', '')
+    if not auth.startswith('Bearer '):
+        return None
+    try:
+        payload = decode_token(auth.split(' ', 1)[1])
+        return User.query.get(payload.get('user_id'))
+    except Exception:
+        return None
+
+
 @bp.route('/', methods=['POST'])
 def create_review():
+    user = _authenticated_user()
+    if not user or user.is_admin:
+        return jsonify({'error': 'Please log in with a client account.'}), 401
     data = request.json or {}
     errors = create_schema.validate(data)
     if errors:
         return jsonify({'error': errors}), 400
 
-    order_id = data.get('order_id')
-    if order_id:
-        order = Order.query.get(order_id)
-        if not order:
-            return jsonify({'error': 'Invalid order_id'}), 400
+    order_id = data['order_id']
+    order = Order.query.get(order_id)
+    if not order:
+        return jsonify({'error': 'Invalid order_id'}), 400
+    if order.user_id != user.id:
+        return jsonify({'error': 'You can only review your own request.'}), 403
+    if order.status != 'Completed':
+        return jsonify({'error': 'Reviews can be submitted after the request is completed.'}), 409
+    if Review.query.filter_by(order_id=order.id).first():
+        return jsonify({'error': 'A review has already been submitted for this request.'}), 409
 
     r = Review(
         order_id=order_id,
         rating=data['rating'],
         comment=data.get('comment'),
-        client_name=data.get('client_name'),
+        client_name=user.name,
         is_public=False  # default false; admin can make it public
     )
     db.session.add(r)
     db.session.commit()
-    return jsonify({'message': 'Review submitted', 'review': dump_schema.dump(r)})
+    return jsonify({'message': 'Review submitted', 'review': dump_schema.dump(r)}), 201
 
 
 @bp.route('/public', methods=['GET'])

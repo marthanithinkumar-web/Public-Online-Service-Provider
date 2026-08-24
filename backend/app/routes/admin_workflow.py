@@ -44,6 +44,6 @@ def update_status(order_id):
     if status not in ALLOWED:return jsonify({'error':'Invalid request status.'}),400
     if status==o.status:return jsonify({'error':'The request is already in this status.'}),400
     if status not in TRANSITIONS.get(o.status,set()):return jsonify({'error':f'Cannot move a request from {o.status} to {status}.'}),409
-    if status in {'Documents Required','Rejected'} and len(note)<5:return jsonify({'error':'A clear note is required for this status.'}),400
+    if status in {'Documents Required','Completed','Rejected'} and len(note)<5:return jsonify({'error':'A clear note is required for this status.'}),400
     previous=o.status;o.status=status;h=OrderStatusHistory(order_id=o.id,previous_status=previous,new_status=status,changed_by=user.email,note=note or None);db.session.add(h);db.session.commit()
     return jsonify({'message':'Request status updated.','order':o.to_dict(),'history':h.to_dict()})

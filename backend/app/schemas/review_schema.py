@@ -2,10 +2,9 @@ from marshmallow import Schema, fields, validate
 
 
 class ReviewCreateSchema(Schema):
-    order_id = fields.Int(allow_none=True)
+    order_id = fields.Int(required=True)
     rating = fields.Int(required=True, validate=validate.Range(min=1, max=5))
-    comment = fields.Str(allow_none=True)
-    client_name = fields.Str(allow_none=True)
+    comment = fields.Str(allow_none=True, validate=validate.Length(max=2000))
 
 
 class ReviewSchema(Schema):
