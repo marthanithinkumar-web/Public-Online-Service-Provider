@@ -5,7 +5,7 @@ from ..utils.database import db
 from ..schemas.review_schema import ReviewCreateSchema, ReviewSchema
 from ..middleware.auth import require_admin
 from ..models.user import User
-from ..utils.jwt_handler import decode_token
+from ..utils.jwt_handler import get_request_user
 
 bp = Blueprint('reviews', __name__)
 
@@ -14,14 +14,7 @@ dump_schema = ReviewSchema()
 
 
 def _authenticated_user():
-    auth = request.headers.get('Authorization', '')
-    if not auth.startswith('Bearer '):
-        return None
-    try:
-        payload = decode_token(auth.split(' ', 1)[1])
-        return User.query.get(payload.get('user_id'))
-    except Exception:
-        return None
+    return get_request_user()
 
 
 @bp.route('/', methods=['POST'])
@@ -35,7 +28,7 @@ def create_review():
         return jsonify({'error': errors}), 400
 
     order_id = data['order_id']
-    order = Order.query.get(order_id)
+    order = db.session.get(Order, order_id)
     if not order:
         return jsonify({'error': 'Invalid order_id'}), 400
     if order.user_id != user.id:
@@ -82,7 +75,7 @@ def admin_list_reviews():
 def publish_review(review_id):
     data = request.json or {}
     make_public = data.get('public', True)
-    r = Review.query.get_or_404(review_id)
+    r = db.get_or_404(Review, review_id)
     r.is_public = bool(make_public)
     db.session.commit()
     return jsonify({'message': 'Review updated', 'review': dump_schema.dump(r)})

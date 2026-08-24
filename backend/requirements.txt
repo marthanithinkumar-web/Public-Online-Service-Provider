@@ -14,4 +14,4 @@ Flask-Talisman==1.1.0
 Flask-Mail==0.9.1
 boto3==1.26.149
 pytest==7.4.0
-requests==2.32.0
+requests==2.32.5

@@ -1,5 +1,6 @@
 from ..utils.database import db
-from datetime import datetime
+from datetime import datetime, timezone
+def utc_now(): return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class OrderStatusHistory(db.Model):
@@ -10,7 +11,7 @@ class OrderStatusHistory(db.Model):
     new_status = db.Column(db.String(50))
     changed_by = db.Column(db.String(200))
     note = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     def to_dict(self):
         return {

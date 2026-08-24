@@ -30,7 +30,7 @@ def create_category():
 @bp.route('/<int:cat_id>', methods=['PUT'])
 @require_admin
 def update_category(cat_id):
-    c = Category.query.get_or_404(cat_id)
+    c = db.get_or_404(Category, cat_id)
     data = request.json or {}
     name = data.get('name')
     if not name:
@@ -43,7 +43,7 @@ def update_category(cat_id):
 @bp.route('/<int:cat_id>', methods=['DELETE'])
 @require_admin
 def delete_category(cat_id):
-    c = Category.query.get_or_404(cat_id)
+    c = db.get_or_404(Category, cat_id)
     # soft-delete: do not remove, but prevent use. For now, just delete if no services
     db.session.delete(c)
     db.session.commit()

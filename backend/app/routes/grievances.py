@@ -5,8 +5,8 @@ from ..utils.database import db
 from ..schemas.grievance_schema import GrievanceCreateSchema, GrievanceSchema
 from ..middleware.auth import require_admin
 from ..models.user import User
-from ..utils.jwt_handler import decode_token
-from datetime import datetime
+from ..utils.jwt_handler import get_request_user
+from datetime import datetime, timezone
 
 bp = Blueprint('grievances', __name__)
 
@@ -15,20 +15,13 @@ dump_schema = GrievanceSchema()
 
 
 def _authenticated_user():
-    auth = request.headers.get('Authorization', '')
-    if not auth.startswith('Bearer '):
-        return None
-    try:
-        payload = decode_token(auth.split(' ', 1)[1])
-        return User.query.get(payload.get('user_id'))
-    except Exception:
-        return None
+    return get_request_user()
 
 
 def _generate_grievance_code(db_session):
     # db_session is the SQLAlchemy object; use its session to query
     count = db_session.session.query(Grievance).count() or 0
-    return f"GV-{datetime.utcnow().year}-{count+1:04d}"
+    return f"GV-{datetime.now(timezone.utc).year}-{count+1:04d}"
 
 
 @bp.route('/', methods=['POST'])
@@ -42,7 +35,7 @@ def create_grievance():
         return jsonify({'error': errors}), 400
 
     order_id = data['order_id']
-    order = Order.query.get(order_id)
+    order = db.session.get(Order, order_id)
     if not order:
         return jsonify({'error': 'Invalid order_id'}), 400
     if order.user_id != user.id:
@@ -83,7 +76,7 @@ def update_grievance_status(grievance_id):
     status = data.get('status')
     if not status:
         return jsonify({'error': 'status required'}), 400
-    g = Grievance.query.get_or_404(grievance_id)
+    g = db.get_or_404(Grievance, grievance_id)
     g.status = status
     db.session.commit()
     return jsonify({'message': 'Grievance status updated', 'grievance': dump_schema.dump(g)})

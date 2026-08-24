@@ -20,6 +20,12 @@ export async function login(email:string, password:string){
   return res.data
 }
 
+export async function verifyAdmin2FA(challenge_token:string, code:string){
+  const res = await api.post('/auth/verify-admin-2fa', {challenge_token, code})
+  if(res.data?.token) saveToken(res.data.token)
+  return res.data
+}
+
 export async function deleteAccount(current_password:string){
   const res = await api.delete('/auth/delete-account', {
     headers: authHeader(),
@@ -30,6 +36,8 @@ export async function deleteAccount(current_password:string){
 }
 
 export function logout(){
+  const headers=authHeader()
+  if(headers.Authorization)fetch(`${apiBase}/auth/logout`,{method:'POST',headers,keepalive:true}).catch(()=>{})
   clearToken()
 }
 

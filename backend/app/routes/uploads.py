@@ -1,5 +1,5 @@
 import os
-from ..utils.s3 import upload_file_to_s3
+from ..utils.s3 import presigned_download, upload_file_to_s3
 from flask import Blueprint, request, jsonify, current_app, send_file
 from werkzeug.utils import secure_filename
 from ..models.attachment import Attachment
@@ -7,8 +7,8 @@ from ..models.order import Order
 from ..models.user import User
 from ..models.order_history import OrderStatusHistory
 from ..utils.database import db
-from ..utils.jwt_handler import decode_token
-from datetime import datetime
+from ..utils.jwt_handler import get_request_user
+from datetime import datetime, timezone
 
 bp = Blueprint('uploads', __name__)
 ALLOWED_EXT = {'pdf', 'png', 'jpg', 'jpeg'}
@@ -22,14 +22,7 @@ def allowed_file(filename):
 
 
 def _auth():
-    auth = request.headers.get('Authorization', '')
-    if not auth.startswith('Bearer '):
-        return None
-    try:
-        payload = decode_token(auth.split(' ', 1)[1])
-        return User.query.get(payload.get('user_id'))
-    except Exception:
-        return None
+    return get_request_user()
 
 
 def _matches_signature(filename, header):
@@ -67,7 +60,7 @@ def upload_file():
     except (TypeError, ValueError):
         return jsonify({'error': 'Invalid request.'}), 400
 
-    order = Order.query.get(order_id)
+    order = db.session.get(Order, order_id)
     if not order:
         return jsonify({'error': 'Invalid request.'}), 404
     if not user.is_admin and order.user_id != user.id:
@@ -86,7 +79,7 @@ def upload_file():
     if not _matches_signature(filename, header):
         return jsonify({'error': 'The uploaded file type does not match its filename.'}), 400
 
-    timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S%f')
+    timestamp = datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')
     stored_name = f"{timestamp}_{filename}"
     upload_folder = os.path.join(current_app.root_path, '..', '..', 'uploads')
     os.makedirs(upload_folder, exist_ok=True)
@@ -105,14 +98,16 @@ def upload_file():
     if s3_bucket:
         s3_key = f"attachments/{stored_name}"
         try:
-            if upload_file_to_s3(local_path, s3_bucket, s3_key):
-                stored_path_value = f"s3://{s3_bucket}/{s3_key}"
-                try:
-                    os.remove(local_path)
-                except OSError:
-                    pass
+            if not upload_file_to_s3(local_path, s3_bucket, s3_key):
+                os.remove(local_path)
+                return jsonify({'error': 'Persistent document storage is temporarily unavailable.'}), 503
+            stored_path_value = f"s3://{s3_bucket}/{s3_key}"
+            os.remove(local_path)
         except Exception:
             current_app.logger.exception('S3 upload failed')
+            if os.path.exists(local_path):
+                os.remove(local_path)
+            return jsonify({'error': 'Persistent document storage is temporarily unavailable.'}), 503
 
     try:
         a = Attachment(order_id=order.id, filename=filename, stored_path=stored_path_value, uploaded_by=user.id)
@@ -146,16 +141,15 @@ def download_attachment(attachment_id):
     user = _auth()
     if not user:
         return jsonify({'error': 'Unauthorized'}), 401
-    a = Attachment.query.get_or_404(attachment_id)
-    order = Order.query.get(a.order_id) if a.order_id else None
+    a = db.get_or_404(Attachment, attachment_id)
+    order = db.session.get(Order, a.order_id) if a.order_id else None
     if not user.is_admin and (not order or order.user_id != user.id):
         return jsonify({'error': 'Unauthorized'}), 403
 
     if a.stored_path and a.stored_path.startswith('s3://'):
         try:
-            import boto3
             parts = a.stored_path.replace('s3://', '').split('/', 1)
-            url = boto3.client('s3').generate_presigned_url('get_object', Params={'Bucket': parts[0], 'Key': parts[1]}, ExpiresIn=300)
+            url = presigned_download(parts[0], parts[1])
             return jsonify({'url': url}), 200
         except Exception:
             current_app.logger.exception('Error generating presigned URL')

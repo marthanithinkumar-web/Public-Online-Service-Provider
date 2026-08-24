@@ -1,5 +1,6 @@
 from ..utils.database import db
-from datetime import datetime
+from datetime import datetime, timezone
+def utc_now(): return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Grievance(db.Model):
@@ -12,7 +13,7 @@ class Grievance(db.Model):
     email = db.Column(db.String(200), nullable=True)
     description = db.Column(db.Text)
     status = db.Column(db.String(50), default='New')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     def to_dict(self):
         return {

@@ -7,10 +7,10 @@ from ..models.attachment import Attachment
 from ..models.grievance import Grievance
 from ..models.review import Review
 from ..utils.database import db
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from secrets import token_hex
 from ..schemas.order_schema import OrderCreateSchema, OrderSchema
-from ..utils.jwt_handler import decode_token
+from ..utils.jwt_handler import get_request_user
 from ..utils.service_requirements import validate_service_application
 import json
 
@@ -23,18 +23,11 @@ DUPLICATE_WINDOW_SECONDS = 60
 
 
 def _generate_order_code():
-    return f"POSP-{datetime.utcnow().year}-{token_hex(5).upper()}"
+    return f"POSP-{datetime.now(timezone.utc).year}-{token_hex(5).upper()}"
 
 
 def _authenticated_user():
-    auth = request.headers.get('Authorization', '')
-    if not auth.startswith('Bearer '):
-        return None
-    try:
-        payload = decode_token(auth.split(' ', 1)[1])
-        return User.query.get(payload.get('user_id'))
-    except Exception:
-        return None
+    return get_request_user()
 
 
 def _normalise_application(value, depth=0):
@@ -98,7 +91,7 @@ def create_order():
         return jsonify({'error': 'Application information is too large. Please remove unnecessary text and try again.'}), 413
 
     # Protect against double taps/retries creating the same request repeatedly.
-    recent_cutoff = datetime.utcnow() - timedelta(seconds=DUPLICATE_WINDOW_SECONDS)
+    recent_cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=DUPLICATE_WINDOW_SECONDS)
     duplicate = (Order.query.filter(
         Order.user_id == user.id,
         Order.service_id == service.id,
@@ -129,7 +122,7 @@ def get_order(order_id):
     user = _authenticated_user()
     if not user:
         return jsonify({'error': 'Unauthorized'}), 401
-    order = Order.query.get_or_404(order_id)
+    order = db.get_or_404(Order, order_id)
     if not user.is_admin and order.user_id != user.id:
         return jsonify({'error': 'Unauthorized'}), 403
     history = OrderStatusHistory.query.filter_by(order_id=order.id).order_by(OrderStatusHistory.created_at.asc()).all()

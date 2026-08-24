@@ -1,5 +1,6 @@
 from ..utils.database import db
-from datetime import datetime
+from datetime import datetime, timezone
+def utc_now(): return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Review(db.Model):
@@ -10,7 +11,7 @@ class Review(db.Model):
     comment = db.Column(db.Text)
     client_name = db.Column(db.String(200))
     is_public = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     def to_dict(self):
         return {

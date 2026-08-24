@@ -1,5 +1,6 @@
 from ..utils.database import db
-from datetime import datetime
+from datetime import datetime, timezone
+def utc_now(): return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Attachment(db.Model):
@@ -9,7 +10,7 @@ class Attachment(db.Model):
     filename = db.Column(db.String(300), nullable=False)
     stored_path = db.Column(db.String(1000), nullable=False)
     uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     def to_dict(self):
         # Never expose filesystem paths, S3 bucket names, or storage keys to clients.

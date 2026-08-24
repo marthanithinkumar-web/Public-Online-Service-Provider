@@ -5,13 +5,17 @@ from ..models.order_history import OrderStatusHistory
 from ..models.attachment import Attachment
 from ..models.grievance import Grievance
 from ..models.review import Review
+from ..models.notification import Notification
 from ..utils.database import db
 from ..utils.password import hash_password, verify_password
 from ..utils.jwt_handler import create_token, decode_token
 from ..utils.limiter import limiter
 from ..utils.email import send_email
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
+from hashlib import sha256
+from secrets import randbelow
+from ..models.security import AdminLoginChallenge, RevokedToken
 
 bp = Blueprint('auth', __name__)
 
@@ -25,7 +29,10 @@ def _current_user_from_request():
         payload = decode_token(token)
     except Exception:
         return None
-    return User.query.get(payload.get('user_id'))
+    user = db.session.get(User, payload.get('user_id'))
+    if not user or not user.is_active or payload.get('token_version', 0) != user.token_version:
+        return None
+    return user
 
 
 @bp.route('/login', methods=['POST'])
@@ -41,34 +48,75 @@ def login():
     if not user:
         return jsonify({'error': 'Invalid credentials'}), 401
 
+    if not user.is_active:
+        return jsonify({'error': 'This account is suspended. Contact the service administrator.'}), 403
+
     if not verify_password(password, user.password_hash):
         return jsonify({'error': 'Invalid credentials'}), 401
 
-    token = create_token({'user_id': user.id, 'is_admin': user.is_admin})
+    if user.is_admin and os.getenv('ADMIN_2FA_ENABLED', '0') == '1':
+        code = f'{randbelow(1000000):06d}'
+        challenge = AdminLoginChallenge(
+            user_id=user.id, code_hash=sha256(code.encode()).hexdigest(),
+            expires_at=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=10),
+        )
+        db.session.add(challenge)
+        db.session.commit()
+        delivered = send_email(user.email, 'Public Online Service Provider — admin verification code', f'Your administrator verification code is {code}. It expires in 10 minutes.')
+        if not delivered:
+            db.session.delete(challenge);db.session.commit()
+            return jsonify({'error': 'Unable to deliver the administrator verification code.'}), 503
+        challenge_token = create_token({'action': 'admin_2fa', 'challenge_id': challenge.id, 'user_id': user.id}, expires_hours=1)
+        return jsonify({'requires_2fa': True, 'challenge_token': challenge_token}), 202
+
+    token = create_token({'user_id': user.id, 'is_admin': user.is_admin, 'token_version': user.token_version})
     return jsonify({'token': token, 'user': user.to_dict()})
+
+
+@bp.route('/verify-admin-2fa', methods=['POST'])
+@limiter.limit('6 per minute')
+def verify_admin_2fa():
+    data = request.json or {}
+    try:
+        payload = decode_token(data.get('challenge_token') or '')
+    except Exception:
+        return jsonify({'error': 'Verification session expired. Sign in again.'}), 401
+    if payload.get('action') != 'admin_2fa':
+        return jsonify({'error': 'Invalid verification session.'}), 401
+    challenge = db.session.get(AdminLoginChallenge, payload.get('challenge_id'))
+    user = db.session.get(User, payload.get('user_id'))
+    if not challenge or not user or not user.is_admin or challenge.used_at or challenge.expires_at < datetime.now(timezone.utc).replace(tzinfo=None) or challenge.attempts >= 5:
+        return jsonify({'error': 'Verification session expired. Sign in again.'}), 401
+    challenge.attempts += 1
+    if sha256(str(data.get('code') or '').encode()).hexdigest() != challenge.code_hash:
+        db.session.commit()
+        return jsonify({'error': 'Incorrect verification code.'}), 401
+    challenge.used_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    db.session.commit()
+    token = create_token({'user_id': user.id, 'is_admin': True, 'token_version': user.token_version})
+    return jsonify({'token': token, 'user': user.to_dict()})
+
+
+@bp.route('/logout', methods=['POST'])
+def revoke_logout_token():
+    auth = request.headers.get('Authorization', '')
+    if not auth.startswith('Bearer '):
+        return jsonify({'message': 'Signed out.'}), 200
+    try:
+        payload = decode_token(auth.split(' ', 1)[1])
+        expires_at = datetime.fromtimestamp(payload['exp'], timezone.utc).replace(tzinfo=None)
+        if payload.get('jti') and not RevokedToken.query.filter_by(jti=payload['jti']).first():
+            db.session.add(RevokedToken(jti=payload['jti'], expires_at=expires_at))
+            db.session.commit()
+    except Exception:
+        pass
+    return jsonify({'message': 'Signed out.'}), 200
 
 
 @bp.route('/register-admin', methods=['POST'])
 @limiter.limit("2 per minute")
 def register_admin():
-    # For initial setup; protected in production
-    secret = os.getenv('ADMIN_PASSWORD')
-    data = request.json or {}
-    if not secret or data.get('admin_secret') != secret:
-        return jsonify({'error': 'Forbidden'}), 403
-
-    email = data.get('email')
-    password = data.get('password')
-    if not email or not password:
-        return jsonify({'error': 'Email and password required'}), 400
-
-    if User.query.filter_by(email=email).first():
-        return jsonify({'error': 'User exists'}), 400
-
-    u = User(email=email, password_hash=hash_password(password), is_admin=True)
-    db.session.add(u)
-    db.session.commit()
-    return jsonify({'message': 'Admin created', 'user': u.to_dict()})
+    return jsonify({'error': 'Public administrator registration is disabled.'}), 404
 
 
 
@@ -96,7 +144,7 @@ def register():
     u = User(name=name, phone=phone, email=email, password_hash=hash_password(password), is_admin=False)
     db.session.add(u)
     db.session.commit()
-    token = create_token({'user_id': u.id, 'is_admin': u.is_admin})
+    token = create_token({'user_id': u.id, 'is_admin': u.is_admin, 'token_version': u.token_version})
     return jsonify({'message': 'User registered', 'token': token, 'user': u.to_dict()})
 
 
@@ -124,6 +172,7 @@ def delete_account():
 
     orders = Order.query.filter_by(user_id=user.id).all()
     order_ids = [order.id for order in orders]
+    Notification.query.filter_by(user_id=user.id).delete(synchronize_session=False)
 
     # Remove uploaded files before deleting their attachment records.
     attachments = Attachment.query.filter(
@@ -200,10 +249,11 @@ def reset_password():
         return jsonify({'error': 'Invalid or expired token'}), 400
     if payload.get('action') != 'password_reset':
         return jsonify({'error': 'Invalid token action'}), 400
-    user = User.query.get(payload.get('user_id'))
+    user = db.session.get(User, payload.get('user_id'))
     if not user:
         return jsonify({'error': 'Invalid token'}), 400
     user.password_hash = hash_password(new_password)
+    user.token_version = (user.token_version or 0) + 1
     db.session.commit()
     return jsonify({'message': 'Password reset successful'}), 200
 
@@ -244,9 +294,8 @@ def verify_account():
         return jsonify({'error': 'Invalid or expired token'}), 400
     if payload.get('action') != 'verify':
         return jsonify({'error': 'Invalid token action'}), 400
-    user = User.query.get(payload.get('user_id'))
+    user = db.session.get(User, payload.get('user_id'))
     if not user:
         return jsonify({'error': 'Invalid token'}), 400
     # placeholder: mark email verified. Add field if needed. For now, return success
     return jsonify({'message': 'Account verified.'}), 200
-

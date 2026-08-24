@@ -79,7 +79,7 @@ def create_service():
 @bp.route('/<int:service_id>', methods=['PUT'])
 @require_admin
 def update_service(service_id):
-    s = Service.query.get_or_404(service_id)
+    s = db.get_or_404(Service, service_id)
     data = request.json or {}
     errors = schema.validate(data, partial=True)
     if errors:
@@ -96,7 +96,7 @@ def update_service(service_id):
 @bp.route('/<int:service_id>/active', methods=['POST'])
 @require_admin
 def set_service_active(service_id):
-    s = Service.query.get_or_404(service_id)
+    s = db.get_or_404(Service, service_id)
     data = request.json or {}
     active = data.get('active')
     if active is None:
