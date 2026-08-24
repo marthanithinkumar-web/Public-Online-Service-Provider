@@ -6,38 +6,41 @@ export default function ServiceManagement(){
   const [name, setName] = useState('')
   const [desc, setDesc] = useState('')
   const [price, setPrice] = useState(0)
+  const [editing,setEditing]=useState<number|null>(null);const [error,setError]=useState('');const [busy,setBusy]=useState(false)
 
   const load = async ()=>{
     try{
       const res = await fetchServices()
       setServices(res)
-    }catch(err){ console.error(err) }
+    }catch(err){ setError('Unable to load services.') }
   }
   useEffect(()=>{ load() }, [])
 
   const add = async ()=>{
-    try{
-      await createService({ name, description: desc, price_inr: price })
+    try{setBusy(true);setError('')
+      if(editing)await updateService(editing,{ name, description: desc, price_inr: price })
+      else await createService({ name, description: desc, price_inr: price })
       setName(''); setDesc(''); setPrice(0)
+      setEditing(null)
       load()
-    }catch(err){ console.error(err) }
+    }catch(err:any){ setError(err?.response?.data?.error||'Unable to save service.') }finally{setBusy(false)}
   }
 
   const toggle = async (s:any)=>{
     try{
       await setServiceActive(s.id, !s.is_active)
       load()
-    }catch(err){ console.error(err) }
+    }catch(err){ setError('Unable to update service availability.') }
   }
 
   return (
     <div>
       <h2>Service Management</h2>
-      <div style={{marginBottom:12}}>
+      {error&&<p className="info" role="alert">{error}</p>}<div className="dashboard-section admin-form" style={{marginBottom:12}}>
         <input placeholder="Name" value={name} onChange={e=>setName(e.target.value)} />
         <input placeholder="Description" value={desc} onChange={e=>setDesc(e.target.value)} />
         <input type="number" placeholder="Price" value={price} onChange={e=>setPrice(Number(e.target.value))} />
-        <button onClick={add}>Add Service</button>
+        <button disabled={busy||name.trim().length<2} onClick={add}>{busy?'Saving…':editing?'Save changes':'Add service'}</button>{editing&&<button className="btn-secondary" onClick={()=>{setEditing(null);setName('');setDesc('');setPrice(0)}}>Cancel edit</button>}
       </div>
       <ul>
         {services.map(s=> (
@@ -46,7 +49,7 @@ export default function ServiceManagement(){
             <div>{s.description}</div>
             <div>Category: {s.category}</div>
             <div>Active: {String(s.is_active)}</div>
-            <div><button onClick={()=>toggle(s)}>{s.is_active ? 'Disable' : 'Enable'}</button></div>
+            <div className="button-row"><button onClick={()=>{setEditing(s.id);setName(s.name);setDesc(s.description||'');setPrice(s.price_inr||0);window.scrollTo({top:0,behavior:'smooth'})}}>Edit</button><button className="btn-secondary" onClick={()=>toggle(s)}>{s.is_active ? 'Disable' : 'Enable'}</button></div>
           </li>
         ))}
       </ul>

@@ -5,6 +5,7 @@ from ..models.order_history import OrderStatusHistory
 from ..models.attachment import Attachment
 from ..models.grievance import Grievance
 from ..models.review import Review
+from ..models.notification import Notification
 from ..utils.database import db
 from ..utils.password import hash_password, verify_password
 from ..utils.jwt_handler import create_token, decode_token
@@ -124,6 +125,7 @@ def delete_account():
 
     orders = Order.query.filter_by(user_id=user.id).all()
     order_ids = [order.id for order in orders]
+    Notification.query.filter_by(user_id=user.id).delete(synchronize_session=False)
 
     # Remove uploaded files before deleting their attachment records.
     attachments = Attachment.query.filter(
@@ -249,4 +251,3 @@ def verify_account():
         return jsonify({'error': 'Invalid token'}), 400
     # placeholder: mark email verified. Add field if needed. For now, return success
     return jsonify({'message': 'Account verified.'}), 200
-

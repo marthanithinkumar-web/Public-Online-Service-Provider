@@ -1,12 +1,19 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response
+from sqlalchemy import func, or_
+from datetime import datetime, time
+import csv
+import io
 from ..models.order import Order
 from ..models.user import User
 from ..models.order_history import OrderStatusHistory
 from ..models.attachment import Attachment
 from ..models.grievance import Grievance
 from ..models.review import Review
+from ..models.notification import Notification
+from ..models.service import Service
 from ..utils.database import db
 from ..utils.jwt_handler import decode_token
+from ..utils.password import hash_password, verify_password
 
 bp = Blueprint('admin', __name__)
 
@@ -18,7 +25,7 @@ CLOSED_STATUSES = {'Completed', 'Rejected', 'Cancelled'}
 TRANSITIONS = {
     'New': {'Under Review', 'Cancelled'},
     'Under Review': {'Documents Required', 'In Progress', 'Rejected', 'Cancelled'},
-    'Documents Required': {'Under Review', 'Cancelled'},
+    'Documents Required': {'Under Review', 'In Progress', 'Cancelled'},
     'In Progress': {'Documents Required', 'Completed', 'Rejected', 'Cancelled'},
 }
 
@@ -41,6 +48,38 @@ def _clean_note(value):
     return str(value).strip()[:2000] or None
 
 
+def _parse_date(value, end=False):
+    if not value:
+        return None
+    try:
+        day = datetime.strptime(value, '%Y-%m-%d').date()
+        return datetime.combine(day, time.max if end else time.min)
+    except (TypeError, ValueError):
+        raise ValueError('Dates must use YYYY-MM-DD format.')
+
+
+@bp.route('/overview', methods=['GET'])
+def overview():
+    if not _require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    counts = dict(db.session.query(Order.status, func.count(Order.id)).group_by(Order.status).all())
+    fee_total = db.session.query(func.coalesce(func.sum(Order.fee_inr), 0)).filter(Order.status == 'Completed').scalar()
+    average_rating = db.session.query(func.avg(Review.rating)).scalar()
+    recent_history = OrderStatusHistory.query.order_by(OrderStatusHistory.created_at.desc()).limit(12).all()
+    recent_orders = Order.query.order_by(Order.created_at.desc()).limit(8).all()
+    return jsonify({
+        'counts': {status: int(counts.get(status, 0)) for status in ALLOWED_STATUSES},
+        'total_requests': int(sum(counts.values())),
+        'completed_fee_total': float(fee_total or 0),
+        'open_grievances': Grievance.query.filter(Grievance.status.notin_(['Resolved', 'Closed'])).count(),
+        'average_rating': round(float(average_rating or 0), 1),
+        'client_count': User.query.filter_by(is_admin=False).count(),
+        'service_count': Service.query.count(),
+        'recent_orders': [order.to_dict() for order in recent_orders],
+        'activity': [item.to_dict() for item in recent_history],
+    })
+
+
 @bp.route('/orders', methods=['GET'])
 def list_orders():
     user = _require_admin()
@@ -55,6 +94,22 @@ def list_orders():
         if status not in ALLOWED_STATUSES:
             return jsonify({'error': 'Invalid status filter.'}), 400
         q = q.filter_by(status=status)
+    search = (args.get('q') or '').strip()
+    if search:
+        pattern = f'%{search}%'
+        q = q.join(Service, Order.service_id == Service.id, isouter=True).filter(or_(
+            Order.order_code.ilike(pattern), Order.client_name.ilike(pattern),
+            Order.phone.ilike(pattern), Order.email.ilike(pattern), Service.name.ilike(pattern)
+        ))
+    try:
+        date_from = _parse_date(args.get('date_from'))
+        date_to = _parse_date(args.get('date_to'), end=True)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    if date_from:
+        q = q.filter(Order.created_at >= date_from)
+    if date_to:
+        q = q.filter(Order.created_at <= date_to)
     q = q.order_by(Order.created_at.desc())
     from ..utils.pagination import paginate_query
     res = paginate_query(q, page, per_page)
@@ -91,6 +146,11 @@ def update_status(order_id):
         changed_by=user.email, note=note
     )
     db.session.add(history)
+    if o.user_id:
+        message = f'Your request {o.order_code} is now {status}.'
+        if note:
+            message += f' {note}'
+        db.session.add(Notification(user_id=o.user_id, order_id=o.id, title='Request status updated', message=message[:4000]))
     db.session.commit()
     return jsonify({'message': 'Status updated', 'order': o.to_dict(), 'history': history.to_dict()})
 
@@ -120,8 +180,28 @@ def list_users():
     user = _require_admin()
     if not user:
         return jsonify({'error': 'Unauthorized'}), 401
-    users = User.query.filter_by(is_admin=False).order_by(User.created_at.desc()).all()
-    return jsonify({'items': [u.to_dict() for u in users]})
+    q = User.query.filter_by(is_admin=False)
+    search = (request.args.get('q') or '').strip()
+    if search:
+        pattern = f'%{search}%'
+        q = q.filter(or_(User.name.ilike(pattern), User.email.ilike(pattern), User.phone.ilike(pattern)))
+    from ..utils.pagination import paginate_query
+    res = paginate_query(q.order_by(User.created_at.desc()), request.args.get('page', 1), request.args.get('per_page', 20))
+    items = []
+    for item in res['items']:
+        data = item.to_dict()
+        data['request_count'] = Order.query.filter_by(user_id=item.id).count()
+        items.append(data)
+    return jsonify({'items': items, 'meta': res['meta']})
+
+
+@bp.route('/users/<int:user_id>', methods=['GET'])
+def user_detail(user_id):
+    if not _require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    target = User.query.filter_by(id=user_id, is_admin=False).first_or_404()
+    orders = Order.query.filter_by(user_id=target.id).order_by(Order.created_at.desc()).all()
+    return jsonify({'user': target.to_dict(), 'orders': [order.to_dict() for order in orders]})
 
 
 @bp.route('/services', methods=['GET'])
@@ -129,9 +209,89 @@ def admin_list_services():
     user = _require_admin()
     if not user:
         return jsonify({'error': 'Unauthorized'}), 401
-    from ..models.service import Service
     services = Service.query.order_by(Service.created_at.desc()).all()
     return jsonify({'items': [s.to_dict() for s in services]})
+
+
+@bp.route('/documents', methods=['GET'])
+def documents():
+    if not _require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    q = Attachment.query.order_by(Attachment.created_at.desc())
+    from ..utils.pagination import paginate_query
+    res = paginate_query(q, request.args.get('page', 1), request.args.get('per_page', 20))
+    items = []
+    for attachment in res['items']:
+        data = attachment.to_dict()
+        order = Order.query.get(attachment.order_id) if attachment.order_id else None
+        data['order_code'] = order.order_code if order else None
+        data['client_name'] = order.client_name if order else None
+        items.append(data)
+    return jsonify({'items': items, 'meta': res['meta']})
+
+
+@bp.route('/notifications', methods=['POST'])
+def send_notification():
+    admin = _require_admin()
+    if not admin:
+        return jsonify({'error': 'Unauthorized'}), 401
+    data = request.json or {}
+    title = (data.get('title') or '').strip()[:200]
+    message = (data.get('message') or '').strip()[:4000]
+    user_id = data.get('user_id')
+    order_id = data.get('order_id')
+    if not title or len(message) < 3:
+        return jsonify({'error': 'Title and message are required.'}), 400
+    target = User.query.filter_by(id=user_id, is_admin=False).first() if user_id else None
+    order = Order.query.get(order_id) if order_id else None
+    if not target and order and order.user_id:
+        target = User.query.get(order.user_id)
+    if not target:
+        return jsonify({'error': 'Select a valid client or request.'}), 400
+    if order and order.user_id != target.id:
+        return jsonify({'error': 'The selected request does not belong to this client.'}), 400
+    item = Notification(user_id=target.id, order_id=order.id if order else None, title=title, message=message)
+    db.session.add(item)
+    db.session.commit()
+    return jsonify({'message': 'Notification sent.', 'notification': item.to_dict()}), 201
+
+
+@bp.route('/profile', methods=['GET', 'PUT'])
+def profile():
+    admin = _require_admin()
+    if not admin:
+        return jsonify({'error': 'Unauthorized'}), 401
+    if request.method == 'GET':
+        return jsonify({'user': admin.to_dict()})
+    data = request.json or {}
+    name = (data.get('name') or '').strip()[:200]
+    phone = (data.get('phone') or '').strip()[:50]
+    if len(name) < 2:
+        return jsonify({'error': 'Admin name is required.'}), 400
+    current_password = data.get('current_password')
+    new_password = data.get('new_password')
+    if new_password:
+        if not current_password or not verify_password(current_password, admin.password_hash):
+            return jsonify({'error': 'Current password is incorrect.'}), 400
+        if len(new_password) < 8:
+            return jsonify({'error': 'New password must be at least 8 characters.'}), 400
+        admin.password_hash = hash_password(new_password)
+    admin.name = name
+    admin.phone = phone or None
+    db.session.commit()
+    return jsonify({'message': 'Admin profile updated.', 'user': admin.to_dict()})
+
+
+@bp.route('/reports/requests.csv', methods=['GET'])
+def request_report():
+    if not _require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Request ID', 'Client', 'Phone', 'Email', 'Service', 'Status', 'Fee INR', 'Created'])
+    for order in Order.query.order_by(Order.created_at.desc()).all():
+        writer.writerow([order.order_code, order.client_name, order.phone, order.email or '', order.service.name if order.service else '', order.status, order.fee_inr or 0, order.created_at.isoformat()])
+    return Response(output.getvalue(), mimetype='text/csv', headers={'Content-Disposition': 'attachment; filename=request-report.csv'})
 
 
 @bp.route('/users/<int:user_id>', methods=['DELETE'])
@@ -144,6 +304,7 @@ def delete_user(user_id):
         return jsonify({'error': 'Cannot delete admin user via this endpoint'}), 403
     orders = Order.query.filter_by(user_id=target.id).all()
     order_ids = [o.id for o in orders]
+    Notification.query.filter_by(user_id=target.id).delete(synchronize_session=False)
     attachments = Attachment.query.filter(
         (Attachment.uploaded_by == target.id) |
         (Attachment.order_id.in_(order_ids) if order_ids else False)

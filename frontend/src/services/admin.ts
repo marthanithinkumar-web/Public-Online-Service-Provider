@@ -4,12 +4,41 @@ import { apiBase } from './apiBase'
 
 const api = axios.create({ baseURL: apiBase, timeout: 15000 })
 
-export async function fetchAdminOrders(page=1, per_page=20, status=''){
+export async function fetchAdminOrders(page=1, per_page=20, status='', q='', date_from='', date_to=''){
   const params:any = { page, per_page }
   if(status) params.status = status
+  if(q) params.q = q
+  if(date_from) params.date_from = date_from
+  if(date_to) params.date_to = date_to
   const res = await api.get('/admin/orders', { params, headers: authHeader() })
   return res.data
 }
+
+export async function fetchAdminOverview(){
+  return (await api.get('/admin/overview', { headers: authHeader() })).data
+}
+
+export async function fetchAdminUsers(page=1, q=''){
+  return (await api.get('/admin/users', { params:{page, per_page:20, q}, headers:authHeader() })).data
+}
+
+export async function fetchAdminDocuments(page=1){
+  return (await api.get('/admin/documents', { params:{page, per_page:20}, headers:authHeader() })).data
+}
+
+export async function sendClientNotification(payload:any){
+  return (await api.post('/admin/notifications', payload, { headers:authHeader() })).data
+}
+
+export async function fetchAdminProfile(){
+  return (await api.get('/admin/profile', { headers:authHeader() })).data
+}
+
+export async function updateAdminProfile(payload:any){
+  return (await api.put('/admin/profile', payload, { headers:authHeader() })).data
+}
+
+export function requestReportUrl(){ return `${apiBase}/admin/reports/requests.csv` }
 
 export async function updateOrderStatus(orderId:number, status:string, note?:string){
   const res = await api.post(`/admin/orders/${orderId}/status`, { status, note }, { headers: authHeader() })

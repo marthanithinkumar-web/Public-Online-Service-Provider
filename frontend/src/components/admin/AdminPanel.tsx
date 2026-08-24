@@ -7,6 +7,10 @@ import GrievanceManagement from './GrievanceManagement'
 import ReviewManagement from './ReviewManagement'
 import AdminOrderDetail from './AdminOrderDetail'
 import UserManagement from './UserManagement'
+import DocumentManagement from './DocumentManagement'
+import NotificationManagement from './NotificationManagement'
+import ActivityReports from './ActivityReports'
+import AdminSettings from './AdminSettings'
 
 const links = [
   ['/admin/dashboard', 'Dashboard'],
@@ -15,6 +19,10 @@ const links = [
   ['/admin/grievances', 'Grievances'],
   ['/admin/reviews', 'Reviews'],
 ['/admin/users', 'Users'],
+  ['/admin/documents', 'Documents'],
+  ['/admin/notifications', 'Notifications'],
+  ['/admin/reports', 'Reports'],
+  ['/admin/settings', 'Settings'],
 ] as const
 
 export default function AdminPanel(){
@@ -46,6 +54,10 @@ export default function AdminPanel(){
           <Route path="/grievances" element={<GrievanceManagement/>} />
           <Route path="/reviews" element={<ReviewManagement/>} />
           <Route path="/users" element={<UserManagement/>} />
+          <Route path="/documents" element={<DocumentManagement/>} />
+          <Route path="/notifications" element={<NotificationManagement/>} />
+          <Route path="/reports" element={<ActivityReports/>} />
+          <Route path="/settings" element={<AdminSettings/>} />
         </Routes>
       </div>
     </div>
