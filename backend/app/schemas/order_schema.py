@@ -14,7 +14,7 @@ class OrderSchema(Schema):
     phone = fields.Str()
     email = fields.Str(allow_none=True)
     contact_method = fields.Str(allow_none=True)
-    service = fields.Str()
+    service = fields.Function(lambda order: order.service.name if order.service else None)
     service_id = fields.Int()
     user_id = fields.Int(dump_only=True)
     fee_inr = fields.Float()
