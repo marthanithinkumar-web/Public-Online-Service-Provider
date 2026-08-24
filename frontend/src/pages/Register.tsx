@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { register } from '../services/auth'
 import '../styles/auth.css'
 
@@ -12,6 +12,8 @@ export default function Register(){
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const nav = useNavigate()
+  const location=useLocation();const requestedReturn=new URLSearchParams(location.search).get('returnTo')
+  const safeReturn=requestedReturn&&requestedReturn.startsWith('/')&&!requestedReturn.startsWith('//')?requestedReturn:'/my-orders'
 
   const validatePhone = (p:string) => {
     // basic 10-digit validation (allow digits, spaces, + and -)
@@ -29,7 +31,7 @@ export default function Register(){
     setBusy(true)
     try{
       const res = await register(name.trim(), phone.trim(), email.trim(), password)
-      if(res?.token) nav('/my-orders')
+      if(res?.token) nav(safeReturn,{replace:true})
       else setError(res?.error || 'Registration failed. Please check your details.')
     }catch(err:any){ setError(err?.response?.data?.error || 'Unable to create your account right now.') }
     finally{ setBusy(false) }
@@ -53,7 +55,7 @@ export default function Register(){
           {error && <p className="info" role="alert">{error}</p>}
           <button type="submit" disabled={busy}>{busy ? 'Creating account…' : 'Create account'}</button>
         </form>
-        <div className="auth-footer">Already have an account? <Link to="/login">Sign in</Link></div>
+        <div className="auth-footer">Already have an account? <Link to={`/login${requestedReturn?`?returnTo=${encodeURIComponent(safeReturn)}`:''}`}>Sign in</Link></div>
       </div>
     </div>
   )
