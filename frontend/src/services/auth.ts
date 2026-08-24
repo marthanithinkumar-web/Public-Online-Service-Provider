@@ -2,7 +2,7 @@ import axios from 'axios'
 import { saveToken, saveUser, getToken, clearToken } from './localStorage'
 import { apiBase } from './apiBase'
 
-const api = axios.create({ baseURL: apiBase })
+const api = axios.create({ baseURL: apiBase, timeout: 20000 })
 
 export async function register(name:string, phone:string, email:string, password:string){
   const res = await api.post('/auth/register', { name, phone, email, password })
