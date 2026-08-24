@@ -26,6 +26,16 @@ export async function verifyAdmin2FA(challenge_token:string, code:string){
   return res.data
 }
 
+export async function fetchClientProfile(){
+  return (await api.get('/auth/profile', {headers:authHeader()})).data
+}
+
+export async function updateClientProfile(payload:any){
+  const result=(await api.put('/auth/profile',payload,{headers:authHeader()})).data
+  if(result.token)saveToken(result.token)
+  return result
+}
+
 export async function deleteAccount(current_password:string){
   const res = await api.delete('/auth/delete-account', {
     headers: authHeader(),

@@ -6,6 +6,7 @@ from ..models.order_history import OrderStatusHistory
 from ..models.attachment import Attachment
 from ..models.grievance import Grievance
 from ..models.review import Review
+from ..models.notification import Notification
 from ..utils.database import db
 from datetime import datetime, timedelta, timezone
 from secrets import token_hex
@@ -108,11 +109,11 @@ def create_order():
     order = Order(
         order_code=_generate_order_code(), client_name=name, phone=phone, email=email,
         contact_method=contact_method, service=service, user_id=user.id,
-        description=description, fee_inr=service.price_inr or 0.0, status='New'
+        description=description, fee_inr=service.price_inr or 0.0, status='Submitted'
     )
     db.session.add(order)
     db.session.flush()
-    db.session.add(OrderStatusHistory(order_id=order.id, previous_status=None, new_status='New', changed_by=user.email, note='Request submitted by client.'))
+    db.session.add(OrderStatusHistory(order_id=order.id, previous_status=None, new_status='Submitted', changed_by=user.email, note='Application submitted by client.'))
     db.session.commit()
     return jsonify({'message': 'Your service request has been submitted successfully.', 'order': dump_schema.dump(order)}), 201
 
@@ -129,12 +130,14 @@ def get_order(order_id):
     attachments = Attachment.query.filter_by(order_id=order.id).order_by(Attachment.id.asc()).all()
     grievances = Grievance.query.filter_by(order_id=order.id).order_by(Grievance.id.desc()).all()
     reviews = Review.query.filter_by(order_id=order.id).order_by(Review.id.desc()).all()
+    notifications = Notification.query.filter_by(user_id=order.user_id, order_id=order.id).order_by(Notification.created_at.desc()).all()
     return jsonify({
         'order': dump_schema.dump(order),
         'history': [h.to_dict() for h in history],
         'attachments': [a.to_dict() for a in attachments],
         'grievances': [g.to_dict() for g in grievances],
         'reviews': [r.to_dict() for r in reviews],
+        'notifications': [n.to_dict() for n in notifications],
     })
 
 

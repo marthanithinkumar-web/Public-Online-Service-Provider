@@ -27,3 +27,27 @@ def test_register_and_login():
         assert r2.status_code == 200
         data2 = r2.get_json()
         assert 'token' in data2
+
+
+def test_authenticated_client_can_load_dashboard_profile(client):
+    registered = client.post('/api/auth/register', json={
+        'name': 'Dashboard Client', 'phone': '9990002222',
+        'email': 'client-profile@example.com', 'password': 'secret123',
+    })
+    token = registered.get_json()['token']
+    response = client.get('/api/auth/profile', headers={'Authorization': f'Bearer {token}'})
+    assert response.status_code == 200
+    assert response.get_json()['user']['name'] == 'Dashboard Client'
+    assert 'password_hash' not in response.get_json()['user']
+
+    updated = client.put('/api/auth/profile', headers={'Authorization': f'Bearer {token}'}, json={
+        'name': 'Updated Client', 'phone': '9990003333',
+        'email': 'updated-profile@example.com', 'current_password': 'secret123',
+        'new_password': 'newsecret123',
+    })
+    assert updated.status_code == 200
+    assert updated.get_json()['user']['name'] == 'Updated Client'
+    assert client.get('/api/auth/profile', headers={'Authorization': f'Bearer {token}'}).status_code == 401
+    replacement = updated.get_json()['token']
+    assert client.get('/api/auth/profile', headers={'Authorization': f'Bearer {replacement}'}).status_code == 200
+    assert client.post('/api/auth/login', json={'email': 'updated-profile@example.com', 'password': 'newsecret123'}).status_code == 200

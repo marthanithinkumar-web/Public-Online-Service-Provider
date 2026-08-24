@@ -58,7 +58,8 @@ export default function NavBar(){
             <Link className="header-signup" to="/register">Register</Link>
           </>}
           {authenticated && !admin && <>
-            <Link className="header-link" to="/my-orders">My Requests</Link>
+            <Link className="header-link" to="/my-orders">Dashboard</Link>
+            <Link className="header-link" to="/my-orders#applications">My Applications</Link>
             <Link className="header-signup" to="/account-settings">My Account</Link>
             <button className="header-link" type="button" onClick={doLogout}>Logout</button>
           </>}
@@ -72,7 +73,7 @@ export default function NavBar(){
       </div>
       <div className="container provider-strip"><span>{PROVIDER.name}</span><span><a href={`tel:${PROVIDER.phone}`}>{PROVIDER.phone}</a> · <a href={`tel:${PROVIDER.phone2}`}>{PROVIDER.phone2}</a> · <a href={`mailto:${PROVIDER.email}`}>{PROVIDER.email}</a></span></div>
       {open && <div id="mobile-navigation" className="mobile-drawer"><div className="container mobile-drawer-inner">
-        {authenticated ? (admin ? <><Link to="/admin/dashboard">Dashboard</Link><Link to="/admin/orders">Requests</Link><Link to="/admin/services">Services</Link><Link to="/admin/users">Clients</Link><button type="button" onClick={doLogout}>Logout</button></> : <><Link to="/my-orders">My Requests</Link><Link to="/account-settings">My Account</Link><button type="button" onClick={doLogout}>Logout</button></>) : <><Link to="/admin/login">Admin Login</Link><Link to="/login">Client Login</Link><Link to="/register">Register</Link></>}
+        {authenticated ? (admin ? <><Link to="/admin/dashboard">Dashboard</Link><Link to="/admin/orders">Requests</Link><Link to="/admin/services">Services</Link><Link to="/admin/users">Clients</Link><button type="button" onClick={doLogout}>Logout</button></> : <><Link to="/my-orders">Dashboard</Link><Link to="/my-orders#applications">My Applications</Link><Link to="/account-settings">My Account</Link><button type="button" onClick={doLogout}>Logout</button></>) : <><Link to="/admin/login">Admin Login</Link><Link to="/login">Client Login</Link><Link to="/register">Register</Link></>}
         <Link to="/jobs">Jobs</Link><Link to="/scholarships">Scholarships</Link><Link to="/meeseva">MeeSeva</Link><Link to="/certificates">Certificates</Link><Link to="/schemes">Schemes</Link><Link to="/about">About</Link><Link to="/contact">Contact</Link>
       </div></div>}
     </header>

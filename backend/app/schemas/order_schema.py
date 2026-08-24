@@ -20,4 +20,5 @@ class OrderSchema(Schema):
     fee_inr = fields.Float()
     status = fields.Str()
     created_at = fields.DateTime()
+    updated_at = fields.DateTime()
     application_data = fields.Dict()
