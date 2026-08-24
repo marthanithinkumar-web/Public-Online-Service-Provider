@@ -4,7 +4,7 @@ from ..utils.database import db
 from ..middleware.auth import require_admin
 from ..schemas.service_schema import ServiceSchema
 from ..utils.service_requirements import get_service_requirements
-from sqlalchemy import or_, func
+from sqlalchemy import or_
 
 bp = Blueprint('services', __name__)
 schema = ServiceSchema()
@@ -43,21 +43,20 @@ def search():
         services = Service.query.filter_by(is_active=True).order_by(Service.name.asc()).all()
         return jsonify([_service_dict(s) for s in services])
 
-    tokens = [t for t in raw.lower().replace('-', ' ').replace('/', ' ').split() if t]
-    search_terms = [raw.lower()] + tokens
+    tokens = [t for t in raw.replace('-', ' ').replace('/', ' ').split() if t]
+    search_terms = list(dict.fromkeys([raw, *tokens]))
     conditions = []
     for term in search_terms:
         pattern = f"%{term}%"
         conditions.extend([
-            func.lower(Service.name).like(pattern),
-            func.lower(Service.keywords).like(pattern),
-            func.lower(Category.name).like(pattern),
-            func.lower(Service.description).like(pattern),
+            Service.name.ilike(pattern),
+            Service.keywords.ilike(pattern),
+            Service.description.ilike(pattern),
+            Service.category.has(Category.name.ilike(pattern)),
         ])
 
     services = (
-        Service.query.join(Category, isouter=True)
-        .filter(Service.is_active.is_(True), or_(*conditions))
+        Service.query.filter(Service.is_active.is_(True), or_(*conditions))
         .order_by(Service.name.asc()).limit(100).all()
     )
     return jsonify([_service_dict(s) for s in services])
