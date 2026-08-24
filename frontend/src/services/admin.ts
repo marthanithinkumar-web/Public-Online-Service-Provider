@@ -66,7 +66,7 @@ export async function fetchServices(){
 }
 
 export async function createService(payload:any){
-  const res = await api.post('/services', payload, { headers: authHeader() })
+  const res = await api.post('/services/', payload, { headers: authHeader() })
   return res.data
 }
 

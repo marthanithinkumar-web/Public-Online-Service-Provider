@@ -39,8 +39,8 @@ function AuthRedirect({children}:{children:React.ReactNode}){
   if(returnTo)return <Navigate to={returnTo} replace/>
   return <Navigate to={session.is_admin?'/admin/dashboard':'/my-orders'} replace/>
 }
-function ClientRoute({children}:{children:React.ReactNode}){const session=getSession();if(!session)return <Navigate to="/login" replace/>;if(session.is_admin)return <Navigate to="/admin/dashboard" replace/>;return <>{children}</>}
-function AdminRoute({children}:{children:React.ReactNode}){const session=getSession();if(!session)return <Navigate to="/admin/login" replace/>;if(!session.is_admin)return <Navigate to="/my-orders" replace/>;return <>{children}</>}
+function ClientRoute({children}:{children:React.ReactNode}){const session=getSession();const location=useLocation();if(!session){const returnTo=encodeURIComponent(`${location.pathname}${location.search}${location.hash}`);return <Navigate to={`/login?returnTo=${returnTo}`} replace/>}if(session.is_admin)return <Navigate to="/admin/dashboard" replace/>;return <>{children}</>}
+function AdminRoute({children}:{children:React.ReactNode}){const session=getSession();const location=useLocation();if(!session){const returnTo=encodeURIComponent(`${location.pathname}${location.search}${location.hash}`);return <Navigate to={`/admin/login?returnTo=${returnTo}`} replace/>}if(!session.is_admin)return <Navigate to="/my-orders" replace/>;return <>{children}</>}
 
 export default function App(){return <div className="app-shell"><NavBar/><main className="container page-content"><Routes>
  <Route path="/" element={<Home/>}/><Route path="/service/:id" element={<ServiceDetail/>}/><Route path="/jobs" element={<Category/>}/><Route path="/scholarships" element={<Category/>}/><Route path="/meeseva" element={<Category/>}/><Route path="/certificates" element={<Category/>}/><Route path="/schemes" element={<Category/>}/><Route path="/about" element={<About/>}/><Route path="/contact" element={<Contact/>}/><Route path="/privacy" element={<PrivacyPolicy/>}/><Route path="/terms" element={<Terms/>}/><Route path="/disclaimer" element={<Disclaimer/>}/>

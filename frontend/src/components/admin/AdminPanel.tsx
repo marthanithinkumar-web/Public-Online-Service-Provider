@@ -1,5 +1,5 @@
 import React from 'react'
-import { Link, Routes, Route, useLocation } from 'react-router-dom'
+import { Link, Navigate, Routes, Route, useLocation } from 'react-router-dom'
 import AdminDashboard from './AdminDashboard'
 import OrderManagement from './OrderManagement'
 import ServiceManagement from './ServiceManagement'
@@ -47,6 +47,7 @@ export default function AdminPanel(){
 
       <div style={{marginTop:22}}>
         <Routes>
+          <Route index element={<Navigate to="/admin/dashboard" replace/>} />
           <Route path="/dashboard" element={<AdminDashboard/>} />
           <Route path="/orders" element={<OrderManagement/>} />
           <Route path="/orders/:id" element={<AdminOrderDetail/>} />
@@ -58,6 +59,7 @@ export default function AdminPanel(){
           <Route path="/notifications" element={<NotificationManagement/>} />
           <Route path="/reports" element={<ActivityReports/>} />
           <Route path="/settings" element={<AdminSettings/>} />
+          <Route path="*" element={<Navigate to="/admin/dashboard" replace/>} />
         </Routes>
       </div>
     </div>
