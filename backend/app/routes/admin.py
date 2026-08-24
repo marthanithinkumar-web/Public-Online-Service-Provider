@@ -12,8 +12,9 @@ from ..models.review import Review
 from ..models.notification import Notification
 from ..models.service import Service
 from ..utils.database import db
-from ..utils.jwt_handler import decode_token
+from ..utils.jwt_handler import create_token, decode_token
 from ..utils.password import hash_password, verify_password
+from ..utils.email import send_email
 
 bp = Blueprint('admin', __name__)
 
@@ -38,8 +39,8 @@ def _require_admin():
         data = decode_token(auth.split(' ', 1)[1])
     except Exception:
         return None
-    user = User.query.get(data.get('user_id'))
-    return user if user and user.is_admin else None
+    user = db.session.get(User, data.get('user_id'))
+    return user if user and user.is_admin and user.is_active and data.get('token_version', 0) == user.token_version else None
 
 
 def _clean_note(value):
@@ -56,6 +57,22 @@ def _parse_date(value, end=False):
         return datetime.combine(day, time.max if end else time.min)
     except (TypeError, ValueError):
         raise ValueError('Dates must use YYYY-MM-DD format.')
+
+
+def _filtered_orders(args):
+    query = Order.query
+    status = args.get('status')
+    if status:
+        if status not in ALLOWED_STATUSES:
+            raise ValueError('Invalid status filter.')
+        query = query.filter(Order.status == status)
+    date_from = _parse_date(args.get('date_from'))
+    date_to = _parse_date(args.get('date_to'), end=True)
+    if date_from:
+        query = query.filter(Order.created_at >= date_from)
+    if date_to:
+        query = query.filter(Order.created_at <= date_to)
+    return query
 
 
 @bp.route('/overview', methods=['GET'])
@@ -127,7 +144,7 @@ def update_status(order_id):
     if status not in ALLOWED_STATUSES:
         return jsonify({'error': 'Invalid request status.'}), 400
 
-    o = Order.query.get_or_404(order_id)
+    o = db.get_or_404(Order, order_id)
     previous = o.status
     if previous == status:
         return jsonify({'error': 'The request is already in this status.'}), 409
@@ -160,7 +177,7 @@ def order_detail(order_id):
     user = _require_admin()
     if not user:
         return jsonify({'error': 'Unauthorized'}), 401
-    o = Order.query.get_or_404(order_id)
+    o = db.get_or_404(Order, order_id)
     history = OrderStatusHistory.query.filter_by(order_id=o.id).order_by(OrderStatusHistory.created_at.asc()).all()
     attachments = Attachment.query.filter_by(order_id=o.id).order_by(Attachment.id.asc()).all()
     grievances = Grievance.query.filter_by(order_id=o.id).order_by(Grievance.id.desc()).all()
@@ -204,6 +221,21 @@ def user_detail(user_id):
     return jsonify({'user': target.to_dict(), 'orders': [order.to_dict() for order in orders]})
 
 
+@bp.route('/users/<int:user_id>/active', methods=['POST'])
+def set_user_active(user_id):
+    if not _require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    target = User.query.filter_by(id=user_id, is_admin=False).first_or_404()
+    data = request.json or {}
+    if not isinstance(data.get('active'), bool):
+        return jsonify({'error': 'active must be true or false.'}), 400
+    target.is_active = data['active']
+    target.token_version = (target.token_version or 0) + 1
+    db.session.commit()
+    action = 'reactivated' if target.is_active else 'suspended'
+    return jsonify({'message': f'Client account {action}.', 'user': target.to_dict()})
+
+
 @bp.route('/services', methods=['GET'])
 def admin_list_services():
     user = _require_admin()
@@ -223,7 +255,7 @@ def documents():
     items = []
     for attachment in res['items']:
         data = attachment.to_dict()
-        order = Order.query.get(attachment.order_id) if attachment.order_id else None
+        order = db.session.get(Order, attachment.order_id) if attachment.order_id else None
         data['order_code'] = order.order_code if order else None
         data['client_name'] = order.client_name if order else None
         items.append(data)
@@ -243,9 +275,9 @@ def send_notification():
     if not title or len(message) < 3:
         return jsonify({'error': 'Title and message are required.'}), 400
     target = User.query.filter_by(id=user_id, is_admin=False).first() if user_id else None
-    order = Order.query.get(order_id) if order_id else None
+    order = db.session.get(Order, order_id) if order_id else None
     if not target and order and order.user_id:
-        target = User.query.get(order.user_id)
+        target = db.session.get(User, order.user_id)
     if not target:
         return jsonify({'error': 'Select a valid client or request.'}), 400
     if order and order.user_id != target.id:
@@ -253,6 +285,8 @@ def send_notification():
     item = Notification(user_id=target.id, order_id=order.id if order else None, title=title, message=message)
     db.session.add(item)
     db.session.commit()
+    if target.email:
+        send_email(target.email, f'Public Online Service Provider — {title}', message)
     return jsonify({'message': 'Notification sent.', 'notification': item.to_dict()}), 201
 
 
@@ -276,22 +310,46 @@ def profile():
         if len(new_password) < 8:
             return jsonify({'error': 'New password must be at least 8 characters.'}), 400
         admin.password_hash = hash_password(new_password)
+        admin.token_version = (admin.token_version or 0) + 1
     admin.name = name
     admin.phone = phone or None
     db.session.commit()
-    return jsonify({'message': 'Admin profile updated.', 'user': admin.to_dict()})
+    token = create_token({'user_id': admin.id, 'is_admin': True, 'token_version': admin.token_version})
+    return jsonify({'message': 'Admin profile updated.', 'user': admin.to_dict(), 'token': token})
 
 
 @bp.route('/reports/requests.csv', methods=['GET'])
 def request_report():
     if not _require_admin():
         return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        orders = _filtered_orders(request.args).order_by(Order.created_at.desc()).all()
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(['Request ID', 'Client', 'Phone', 'Email', 'Service', 'Status', 'Fee INR', 'Created'])
-    for order in Order.query.order_by(Order.created_at.desc()).all():
+    for order in orders:
         writer.writerow([order.order_code, order.client_name, order.phone, order.email or '', order.service.name if order.service else '', order.status, order.fee_inr or 0, order.created_at.isoformat()])
     return Response(output.getvalue(), mimetype='text/csv', headers={'Content-Disposition': 'attachment; filename=request-report.csv'})
+
+
+@bp.route('/reports/summary', methods=['GET'])
+def report_summary():
+    if not _require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        query = _filtered_orders(request.args)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    counts = dict(query.with_entities(Order.status, func.count(Order.id)).group_by(Order.status).all())
+    total = int(sum(counts.values()))
+    completed_fees = query.with_entities(func.coalesce(func.sum(Order.fee_inr), 0)).filter(Order.status == 'Completed').scalar()
+    return jsonify({
+        'total': total,
+        'counts': {status: int(counts.get(status, 0)) for status in ALLOWED_STATUSES},
+        'completed_fee_total': float(completed_fees or 0),
+    })
 
 
 @bp.route('/users/<int:user_id>', methods=['DELETE'])
@@ -299,7 +357,7 @@ def delete_user(user_id):
     user = _require_admin()
     if not user:
         return jsonify({'error': 'Unauthorized'}), 401
-    target = User.query.get_or_404(user_id)
+    target = db.get_or_404(User, user_id)
     if target.is_admin:
         return jsonify({'error': 'Cannot delete admin user via this endpoint'}), 403
     orders = Order.query.filter_by(user_id=target.id).all()

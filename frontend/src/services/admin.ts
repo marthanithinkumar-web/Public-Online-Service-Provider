@@ -22,6 +22,14 @@ export async function fetchAdminUsers(page=1, q=''){
   return (await api.get('/admin/users', { params:{page, per_page:20, q}, headers:authHeader() })).data
 }
 
+export async function fetchAdminUser(id:number){
+  return (await api.get(`/admin/users/${id}`, {headers:authHeader()})).data
+}
+
+export async function setClientActive(id:number, active:boolean){
+  return (await api.post(`/admin/users/${id}/active`, {active}, {headers:authHeader()})).data
+}
+
 export async function fetchAdminDocuments(page=1){
   return (await api.get('/admin/documents', { params:{page, per_page:20}, headers:authHeader() })).data
 }
@@ -38,7 +46,14 @@ export async function updateAdminProfile(payload:any){
   return (await api.put('/admin/profile', payload, { headers:authHeader() })).data
 }
 
-export function requestReportUrl(){ return `${apiBase}/admin/reports/requests.csv` }
+export function requestReportUrl(filters:Record<string,string>={}){
+  const params = new URLSearchParams(Object.entries(filters).filter(([,value])=>value))
+  return `${apiBase}/admin/reports/requests.csv${params.size?`?${params}`:''}`
+}
+
+export async function fetchReportSummary(filters:Record<string,string>={}){
+  return (await api.get('/admin/reports/summary', {params:filters, headers:authHeader()})).data
+}
 
 export async function updateOrderStatus(orderId:number, status:string, note?:string){
   const res = await api.post(`/admin/orders/${orderId}/status`, { status, note }, { headers: authHeader() })

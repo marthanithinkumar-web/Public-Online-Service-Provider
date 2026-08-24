@@ -1,5 +1,6 @@
 from ..utils.database import db
-from datetime import datetime
+from datetime import datetime, timezone
+def utc_now(): return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Category(db.Model):
@@ -18,7 +19,7 @@ class Service(db.Model):
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
     category = db.relationship('Category')
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
 
     def to_dict(self):
         return {

@@ -10,7 +10,11 @@ def ensure_user_schema(db):
     """
     inspector = inspect(db.engine)
     columns = {column["name"] for column in inspector.get_columns("users")}
-    additions = {"name": "VARCHAR(200)", "phone": "VARCHAR(50)"}
+    additions = {
+        "name": "VARCHAR(200)", "phone": "VARCHAR(50)",
+        "is_active": "BOOLEAN NOT NULL DEFAULT TRUE",
+        "token_version": "INTEGER NOT NULL DEFAULT 0",
+    }
     missing = [(name, sql_type) for name, sql_type in additions.items() if name not in columns]
     if not missing:
         return

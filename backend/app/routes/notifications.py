@@ -3,21 +3,14 @@ from flask import Blueprint, jsonify, request
 from ..models.notification import Notification
 from ..models.user import User
 from ..utils.database import db
-from ..utils.jwt_handler import decode_token
+from ..utils.jwt_handler import get_request_user
 
 bp = Blueprint('notifications', __name__)
 
 
 def _client_user():
-    auth = request.headers.get('Authorization', '')
-    if not auth.startswith('Bearer '):
-        return None
-    try:
-        payload = decode_token(auth.split(' ', 1)[1])
-        user = User.query.get(payload.get('user_id'))
-        return user if user and not user.is_admin else None
-    except Exception:
-        return None
+    user = get_request_user()
+    return user if user and not user.is_admin else None
 
 
 @bp.get('')

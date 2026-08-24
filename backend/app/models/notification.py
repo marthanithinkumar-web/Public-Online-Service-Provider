@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timezone
+def utc_now(): return datetime.now(timezone.utc).replace(tzinfo=None)
 
 from ..utils.database import db
 
@@ -12,7 +13,7 @@ class Notification(db.Model):
     title = db.Column(db.String(200), nullable=False)
     message = db.Column(db.Text, nullable=False)
     is_read = db.Column(db.Boolean, nullable=False, default=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
 
     def to_dict(self):
         return {

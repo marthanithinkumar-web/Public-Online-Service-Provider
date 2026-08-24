@@ -29,6 +29,7 @@ def test_admin_dashboard_requires_admin(client):
     assert client.get('/api/admin/overview', headers=headers).status_code == 401
     assert client.get('/api/admin/documents', headers=headers).status_code == 401
     assert client.get('/api/admin/reports/requests.csv', headers=headers).status_code == 401
+    assert client.post('/api/auth/register-admin', json={'email': 'attacker@example.com', 'password': 'pass', 'admin_secret': 'anything'}).status_code == 404
 
 
 def test_admin_status_update_reaches_client_notifications(client):
@@ -82,3 +83,62 @@ def test_admin_can_send_notification_and_update_profile(client):
     report = client.get('/api/admin/reports/requests.csv', headers=admin_headers)
     assert report.status_code == 200
     assert order['order_code'] in report.get_data(as_text=True)
+
+    summary = client.get('/api/admin/reports/summary?status=New', headers=admin_headers)
+    assert summary.status_code == 200
+    assert summary.get_json()['total'] == 1
+    assert summary.get_json()['counts']['New'] == 1
+    assert client.get('/api/admin/reports/summary?status=Invalid', headers=admin_headers).status_code == 400
+    assert client.get('/api/admin/reports/requests.csv?date_from=not-a-date', headers=admin_headers).status_code == 400
+
+
+def test_admin_can_suspend_client_and_invalidate_existing_token(client):
+    client_token, admin_token, _ = _setup_flow(client)
+    admin_headers = {'Authorization': f'Bearer {admin_token}'}
+    client_headers = {'Authorization': f'Bearer {client_token}'}
+    with client.application.app_context():
+        target_id = User.query.filter_by(email='dashboard-client@example.com').first().id
+
+    suspended = client.post(f'/api/admin/users/{target_id}/active', json={'active': False}, headers=admin_headers)
+    assert suspended.status_code == 200
+    assert suspended.get_json()['user']['is_active'] is False
+    assert client.get('/api/orders/mine', headers=client_headers).status_code == 401
+    assert client.post('/api/auth/login', json={'email': 'dashboard-client@example.com', 'password': 'clientpass'}).status_code == 403
+
+    reactivated = client.post(f'/api/admin/users/{target_id}/active', json={'active': True}, headers=admin_headers)
+    assert reactivated.status_code == 200
+    login = client.post('/api/auth/login', json={'email': 'dashboard-client@example.com', 'password': 'clientpass'})
+    assert login.status_code == 200
+    assert client.get('/api/orders/mine', headers={'Authorization': f"Bearer {login.get_json()['token']}"}).status_code == 200
+
+
+def test_logout_revokes_token(client):
+    client_token, _, _ = _setup_flow(client)
+    headers = {'Authorization': f'Bearer {client_token}'}
+    assert client.get('/api/orders/mine', headers=headers).status_code == 200
+    assert client.post('/api/auth/logout', headers=headers).status_code == 200
+    assert client.get('/api/orders/mine', headers=headers).status_code == 401
+
+
+def test_optional_admin_two_factor_login(client, monkeypatch):
+    _, _, _ = _setup_flow(client)
+    delivered = {}
+    monkeypatch.setenv('ADMIN_2FA_ENABLED', '1')
+
+    def capture_email(address, subject, body):
+        delivered['address'] = address
+        delivered['code'] = body.split(' is ', 1)[1].split('.', 1)[0]
+        return True
+
+    monkeypatch.setattr('app.routes.auth.send_email', capture_email)
+    login = client.post('/api/auth/login', json={'email': 'dashboard-admin@example.com', 'password': 'adminpass'})
+    assert login.status_code == 202
+    assert login.get_json()['requires_2fa'] is True
+    assert delivered['address'] == 'dashboard-admin@example.com'
+
+    verified = client.post('/api/auth/verify-admin-2fa', json={
+        'challenge_token': login.get_json()['challenge_token'],
+        'code': delivered['code'],
+    })
+    assert verified.status_code == 200
+    assert verified.get_json()['user']['is_admin'] is True

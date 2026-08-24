@@ -14,7 +14,7 @@ services:
     # Seed the idempotent public service catalog before starting the API.
     # This ensures newly added services appear after each deployment without
     # creating duplicates in the production database.
-    startCommand: python seed.py && gunicorn -w 2 -b 0.0.0.0:$PORT wsgi:app
+    startCommand: flask --app app.main:create_app db upgrade --directory migrations_alembic && python seed.py && gunicorn -w 2 -b 0.0.0.0:$PORT wsgi:app
     healthCheckPath: /
     envVars:
       - key: PYTHON_VERSION
@@ -35,6 +35,8 @@ services:
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
+      - key: ADMIN_2FA_ENABLED
+        sync: false
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
@@ -44,6 +46,18 @@ services:
       - key: SMTP_PASS
         sync: false
       - key: CORS_ORIGINS
+        sync: false
+      - key: RATELIMIT_STORAGE_URI
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: AWS_REGION
+        value: "ap-south-1"
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
         sync: false
 
   - type: web
