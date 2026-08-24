@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { authHeader } from './auth'
 import { apiBase } from './apiBase'
+import { clearServiceCatalog } from './serviceCatalog'
 
 const api = axios.create({ baseURL: apiBase, timeout: 15000 })
 
@@ -67,16 +68,19 @@ export async function fetchServices(){
 
 export async function createService(payload:any){
   const res = await api.post('/services/', payload, { headers: authHeader() })
+  clearServiceCatalog()
   return res.data
 }
 
 export async function updateService(id:number, payload:any){
   const res = await api.put(`/services/${id}`, payload, { headers: authHeader() })
+  clearServiceCatalog()
   return res.data
 }
 
 export async function setServiceActive(id:number, active:boolean){
   const res = await api.post(`/services/${id}/active`, { active }, { headers: authHeader() })
+  clearServiceCatalog()
   return res.data
 }
 

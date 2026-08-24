@@ -33,7 +33,7 @@ export default function Register(){
       const res = await register(name.trim(), phone.trim(), email.trim(), password)
       if(res?.token) nav(safeReturn,{replace:true})
       else setError(res?.error || 'Registration failed. Please check your details.')
-    }catch(err:any){ setError(err?.response?.data?.error || 'Unable to create your account right now.') }
+    }catch(err:any){ setError(err?.code==='ECONNABORTED'?'The secure server took too long to respond. Please try again.':err?.response?.data?.error || 'Unable to create your account right now.') }
     finally{ setBusy(false) }
   }
 
