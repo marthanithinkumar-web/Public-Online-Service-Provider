@@ -47,3 +47,12 @@ def test_request_verify_console_fallback(client, monkeypatch):
     data = resp.get_json()
     assert 'verify_token' not in data
     assert 'message' in data
+
+
+def test_password_reset_rejects_short_password_before_token_processing(client):
+    response = client.post('/api/auth/reset-password', json={
+        'token': 'not-a-real-token',
+        'new_password': 'short',
+    })
+    assert response.status_code == 400
+    assert response.get_json()['error'] == 'New password must be at least 8 characters.'
