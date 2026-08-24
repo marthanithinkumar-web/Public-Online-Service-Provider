@@ -33,7 +33,7 @@ export function logout(){
   clearToken()
 }
 
-export function authHeader(){
+export function authHeader(): Record<string, string>{
   const t = getToken()
   return t ? { Authorization: 'Bearer ' + t } : {}
 }

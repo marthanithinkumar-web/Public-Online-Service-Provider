@@ -46,7 +46,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://psp:psp_pass@localhost:5432/psp_db
           PYTHONPATH: ${{ github.workspace }}/backend
-        run: python -c "from app import create_app; create_app()"
+        run: python -c "from app.main import create_app; create_app()"
       - name: Run backend tests
         env:
           DATABASE_URL: postgresql://psp:psp_pass@localhost:5432/psp_db
@@ -74,3 +74,5 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+
+# Verification trigger: keep this workflow synchronized with end-to-end branch testing.

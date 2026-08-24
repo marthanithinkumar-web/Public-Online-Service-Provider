@@ -33,15 +33,15 @@ def test_grievance_flow(client):
     token = r.get_json()['token']
     headers = {'Authorization': f'Bearer {token}'}
 
-    r = client.post('/api/orders/', json={'client_name': 'G User', 'phone': '777', 'service_id': service_id}, headers=headers)
-    assert r.status_code == 200
+    r = client.post('/api/orders/', json={'service_id': service_id, 'application_data': {'assistance_type': 'Application help'}}, headers=headers)
+    assert r.status_code == 201
     order = r.get_json()['order']
     order_id = order['id']
 
     # submit grievance
-    gpay = {'client_name': 'G User', 'phone': '777', 'order_id': order_id, 'description': 'Problem with service'}
-    r = client.post('/api/grievances/', json=gpay)
-    assert r.status_code == 200
+    gpay = {'order_id': order_id, 'description': 'Problem with service'}
+    r = client.post('/api/grievances/', json=gpay, headers=headers)
+    assert r.status_code == 201
     grievance = r.get_json()['grievance']
     gid = grievance['id']
 
@@ -61,21 +61,29 @@ def test_grievance_flow(client):
 
 def test_review_flow_and_publish(client):
     service_id = _create_service(client)
-    # create order anonymously
-    r = client.post('/api/orders/', json={'client_name': 'R User', 'phone': '888', 'service_id': service_id})
-    assert r.status_code == 200
+    r = client.post('/api/auth/register', json={'name':'R User','phone':'8888888888','email':'ruser@example.com','password':'pass'})
+    token = r.get_json()['token']
+    headers = {'Authorization': f'Bearer {token}'}
+    r = client.post('/api/orders/', json={'service_id': service_id, 'application_data': {'assistance_type': 'Application help'}}, headers=headers)
+    assert r.status_code == 201
     order = r.get_json()['order']
     order_id = order['id']
 
-    # submit review
-    r = client.post('/api/reviews/', json={'order_id': order_id, 'rating': 5, 'comment': 'Great', 'client_name': 'R User'})
+    admin_token = _create_admin(client)
+    admin_headers = {'Authorization': f'Bearer {admin_token}'}
+    r = client.post(f'/api/admin/orders/{order_id}/status', json={'status': 'Under Review'}, headers=admin_headers)
     assert r.status_code == 200
+    r = client.post(f'/api/admin/orders/{order_id}/status', json={'status': 'In Progress'}, headers=admin_headers)
+    assert r.status_code == 200
+    r = client.post(f'/api/admin/orders/{order_id}/status', json={'status': 'Completed', 'note': 'Completed.'}, headers=admin_headers)
+    assert r.status_code == 200
+
+    r = client.post('/api/reviews/', json={'order_id': order_id, 'rating': 5, 'comment': 'Great'}, headers=headers)
+    assert r.status_code == 201
     review = r.get_json()['review']
     rid = review['id']
 
     # admin publishes review
-    admin_token = _create_admin(client)
-    admin_headers = {'Authorization': f'Bearer {admin_token}'}
     r = client.post(f'/api/reviews/admin/{rid}/publish', json={'public': True}, headers=admin_headers)
     assert r.status_code == 200
 

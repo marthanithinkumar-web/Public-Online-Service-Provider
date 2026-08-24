@@ -4,12 +4,25 @@ from ..models.order import Order
 from ..utils.database import db
 from ..schemas.grievance_schema import GrievanceCreateSchema, GrievanceSchema
 from ..middleware.auth import require_admin
+from ..models.user import User
+from ..utils.jwt_handler import decode_token
 from datetime import datetime
 
 bp = Blueprint('grievances', __name__)
 
 create_schema = GrievanceCreateSchema()
 dump_schema = GrievanceSchema()
+
+
+def _authenticated_user():
+    auth = request.headers.get('Authorization', '')
+    if not auth.startswith('Bearer '):
+        return None
+    try:
+        payload = decode_token(auth.split(' ', 1)[1])
+        return User.query.get(payload.get('user_id'))
+    except Exception:
+        return None
 
 
 def _generate_grievance_code(db_session):
@@ -20,30 +33,34 @@ def _generate_grievance_code(db_session):
 
 @bp.route('/', methods=['POST'])
 def create_grievance():
+    user = _authenticated_user()
+    if not user or user.is_admin:
+        return jsonify({'error': 'Please log in with a client account.'}), 401
     data = request.json or {}
     errors = create_schema.validate(data)
     if errors:
         return jsonify({'error': errors}), 400
 
-    order_id = data.get('order_id')
-    if order_id:
-        order = Order.query.get(order_id)
-        if not order:
-            return jsonify({'error': 'Invalid order_id'}), 400
+    order_id = data['order_id']
+    order = Order.query.get(order_id)
+    if not order:
+        return jsonify({'error': 'Invalid order_id'}), 400
+    if order.user_id != user.id:
+        return jsonify({'error': 'You can only raise a grievance for your own request.'}), 403
 
     code = _generate_grievance_code(db)
     g = Grievance(
         grievance_code=code,
         order_id=order_id,
-        client_name=data['client_name'],
-        phone=data['phone'],
-        email=data.get('email'),
+        client_name=user.name,
+        phone=user.phone,
+        email=user.email,
         description=data.get('description'),
         status='New'
     )
     db.session.add(g)
     db.session.commit()
-    return jsonify({'message': 'Grievance submitted', 'grievance': dump_schema.dump(g)})
+    return jsonify({'message': 'Grievance submitted', 'grievance': dump_schema.dump(g)}), 201
 
 
 @bp.route('/admin', methods=['GET'])
