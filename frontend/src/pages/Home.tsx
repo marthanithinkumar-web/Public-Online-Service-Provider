@@ -17,7 +17,7 @@ export default function Home(){
           <div className="cta-row"><Link className="btn btn-primary" to="/jobs">Explore Services</Link><Link className="btn btn-secondary" to="/register">Get Started</Link></div>
           <div className="hero-stats"><div><strong>20+</strong><span>Services</span></div><div><strong>6</strong><span>Categories</span></div><div><strong>24/7</strong><span>Online Access</span></div><div><strong>Citizen First</strong><span>Approach</span></div></div>
         </div>
-        <div className="hero-panel"><div className="mini-card"><span className="mini-label">Popular searches</span><ul><li>Income certificate</li><li>Job application help</li><li>Scholarship guidance</li><li>Government scheme support</li></ul></div><div className="mini-card trust-box"><span className="mini-label">Privacy first</span><p>Your documents and details are handled with care and only used for your requested service.</p></div></div>
+        <div className="hero-panel"><div className="mini-card"><span className="mini-label">Simple request journey</span><ul><li>Find the right service</li><li>Review requirements and fees</li><li>Submit only necessary details</li><li>Track every important update</li></ul></div><div className="mini-card trust-box"><span className="mini-label">Privacy first</span><p>Your documents and details are handled with care and only used for your requested service.</p></div></div>
       </section>
 
       <SearchPanel />
