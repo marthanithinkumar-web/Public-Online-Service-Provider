@@ -275,6 +275,8 @@ def reset_password():
     new_password = data.get('new_password')
     if not token or not new_password:
         return jsonify({'error': 'token and new_password required'}), 400
+    if len(new_password) < 8:
+        return jsonify({'error': 'New password must be at least 8 characters.'}), 400
     try:
         payload = decode_token(token)
     except Exception:
