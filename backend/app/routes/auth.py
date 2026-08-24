@@ -35,6 +35,38 @@ def _current_user_from_request():
     return user
 
 
+@bp.route('/profile', methods=['GET', 'PUT'])
+def client_profile():
+    user = _current_user_from_request()
+    if not user or user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 401
+    if request.method == 'GET':
+        return jsonify({'user': user.to_dict()})
+    data = request.json or {}
+    name = (data.get('name') or '').strip()[:200]
+    phone = (data.get('phone') or '').strip()[:50]
+    email = (data.get('email') or '').strip().lower()[:200]
+    current_password = data.get('current_password')
+    new_password = data.get('new_password')
+    if len(name) < 2 or len(''.join(c for c in phone if c.isdigit())) < 10 or '@' not in email:
+        return jsonify({'error': 'Enter a valid name, email and phone number.'}), 400
+    sensitive_change = email != user.email or bool(new_password)
+    if sensitive_change and (not current_password or not verify_password(current_password, user.password_hash)):
+        return jsonify({'error': 'Your current password is required to change email or password.'}), 400
+    existing = User.query.filter(User.email == email, User.id != user.id).first()
+    if existing:
+        return jsonify({'error': 'That email address is already in use.'}), 409
+    if new_password and len(new_password) < 8:
+        return jsonify({'error': 'New password must be at least 8 characters.'}), 400
+    user.name = name;user.phone = phone;user.email = email
+    if new_password:
+        user.password_hash = hash_password(new_password)
+        user.token_version = (user.token_version or 0) + 1
+    db.session.commit()
+    token = create_token({'user_id': user.id, 'is_admin': False, 'token_version': user.token_version})
+    return jsonify({'message': 'Profile updated successfully.', 'user': user.to_dict(), 'token': token})
+
+
 @bp.route('/login', methods=['POST'])
 @limiter.limit("6 per minute")
 def login():
@@ -183,10 +215,10 @@ def delete_account():
         stored_path = attachment.stored_path or ''
         try:
             if stored_path.startswith('s3://'):
-                import boto3
+                from ..utils.s3 import s3_client
                 parts = stored_path.replace('s3://', '', 1).split('/', 1)
                 if len(parts) == 2:
-                    boto3.client('s3').delete_object(Bucket=parts[0], Key=parts[1])
+                    s3_client().delete_object(Bucket=parts[0], Key=parts[1])
             elif stored_path and os.path.exists(stored_path):
                 os.remove(stored_path)
         except Exception:

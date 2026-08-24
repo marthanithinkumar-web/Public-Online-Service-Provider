@@ -2,7 +2,7 @@ import React,{useEffect,useState} from 'react'
 import {fetchAdminOverview,fetchReportSummary,requestReportUrl} from '../../services/admin'
 import {authHeader} from '../../services/auth'
 
-const statuses=['New','Under Review','Documents Required','In Progress','Completed','Rejected','Cancelled']
+const statuses=['Submitted','Pending','Under Review','Documents Required','In Progress','Completed','Rejected','Cancelled']
 
 export default function ActivityReports(){
  const [data,setData]=useState<any>({activity:[]}),[summary,setSummary]=useState<any>({counts:{}}),[error,setError]=useState('')

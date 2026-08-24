@@ -40,7 +40,7 @@ def test_admin_status_update_reaches_client_notifications(client):
     overview = client.get('/api/admin/overview', headers=admin_headers)
     assert overview.status_code == 200
     assert overview.get_json()['total_requests'] == 1
-    assert overview.get_json()['counts']['New'] == 1
+    assert overview.get_json()['counts']['Submitted'] == 1
 
     search = client.get('/api/admin/orders?q=Dashboard+Client', headers=admin_headers)
     assert search.status_code == 200
@@ -52,12 +52,17 @@ def test_admin_status_update_reaches_client_notifications(client):
     mine = client.get('/api/orders/mine', headers=client_headers)
     assert mine.status_code == 200
     assert mine.get_json()[0]['status'] == 'Under Review'
+    assert mine.get_json()[0]['updated_at'] >= mine.get_json()[0]['created_at']
 
     notifications = client.get('/api/notifications', headers=client_headers)
     assert notifications.status_code == 200
     body = notifications.get_json()
     assert body['unread'] == 1
     assert order['order_code'] in body['items'][0]['message']
+
+    detail = client.get(f"/api/orders/{order['id']}", headers=client_headers)
+    assert detail.status_code == 200
+    assert detail.get_json()['notifications'][0]['order_id'] == order['id']
 
     with client.application.app_context():
         assert Notification.query.count() == 1
@@ -84,10 +89,10 @@ def test_admin_can_send_notification_and_update_profile(client):
     assert report.status_code == 200
     assert order['order_code'] in report.get_data(as_text=True)
 
-    summary = client.get('/api/admin/reports/summary?status=New', headers=admin_headers)
+    summary = client.get('/api/admin/reports/summary?status=Submitted', headers=admin_headers)
     assert summary.status_code == 200
     assert summary.get_json()['total'] == 1
-    assert summary.get_json()['counts']['New'] == 1
+    assert summary.get_json()['counts']['Submitted'] == 1
     assert client.get('/api/admin/reports/summary?status=Invalid', headers=admin_headers).status_code == 400
     assert client.get('/api/admin/reports/requests.csv?date_from=not-a-date', headers=admin_headers).status_code == 400
 

@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, Response
 from sqlalchemy import func, or_
-from datetime import datetime, time
+from datetime import datetime, time, timezone
 import csv
 import io
 from ..models.order import Order
@@ -19,12 +19,14 @@ from ..utils.email import send_email
 bp = Blueprint('admin', __name__)
 
 ALLOWED_STATUSES = {
-    'New', 'Under Review', 'Documents Required', 'In Progress',
+    'New', 'Submitted', 'Pending', 'Under Review', 'Documents Required', 'In Progress',
     'Completed', 'Rejected', 'Cancelled'
 }
 CLOSED_STATUSES = {'Completed', 'Rejected', 'Cancelled'}
 TRANSITIONS = {
-    'New': {'Under Review', 'Cancelled'},
+    'New': {'Pending', 'Under Review', 'Cancelled'},
+    'Submitted': {'Pending', 'Under Review', 'Cancelled'},
+    'Pending': {'Under Review', 'Cancelled'},
     'Under Review': {'Documents Required', 'In Progress', 'Rejected', 'Cancelled'},
     'Documents Required': {'Under Review', 'In Progress', 'Cancelled'},
     'In Progress': {'Documents Required', 'Completed', 'Rejected', 'Cancelled'},
@@ -158,6 +160,7 @@ def update_status(order_id):
         return jsonify({'error': 'Add a completion note describing the result delivered to the client.'}), 400
 
     o.status = status
+    o.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     history = OrderStatusHistory(
         order_id=o.id, previous_status=previous, new_status=status,
         changed_by=user.email, note=note

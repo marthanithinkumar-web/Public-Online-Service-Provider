@@ -2,7 +2,7 @@ import React,{useEffect,useState} from 'react'
 import {Link,useSearchParams} from 'react-router-dom'
 import {fetchAdminOrders} from '../../services/admin'
 
-const STATUSES=['','New','Under Review','Documents Required','In Progress','Completed','Rejected','Cancelled']
+const STATUSES=['','Submitted','Pending','Under Review','Documents Required','In Progress','Completed','Rejected','Cancelled']
 
 export default function OrderManagement(){
  const [params,setParams]=useSearchParams();const status=params.get('status')||''

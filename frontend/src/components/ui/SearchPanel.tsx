@@ -24,7 +24,7 @@ export default function SearchPanel(){
   },[q])
 
   return (
-    <section className="content-section search-panel-premium">
+    <section className="content-section search-panel-premium" id="service-search">
       <div className="section-header inline"><div><span className="eyebrow">Quick search</span><h2>What service do you need help with?</h2></div><span className="search-meta">Live</span></div>
       <div className="search-box"><input aria-label="Search services" placeholder="Search jobs, scholarships, certificates, schemes..." value={q} onChange={e=>setQ(e.target.value)}/></div>
       {loading && <div className="empty-state">Searching…</div>}

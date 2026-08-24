@@ -14,7 +14,7 @@ bp = Blueprint('uploads', __name__)
 ALLOWED_EXT = {'pdf', 'png', 'jpg', 'jpeg'}
 MAX_FILE_SIZE = 10 * 1024 * 1024
 MAX_ATTACHMENTS_PER_REQUEST = 20
-OPEN_UPLOAD_STATUSES = {'New', 'Under Review', 'Documents Required', 'In Progress'}
+OPEN_UPLOAD_STATUSES = {'New', 'Submitted', 'Pending', 'Under Review', 'Documents Required', 'In Progress'}
 
 
 def allowed_file(filename):
@@ -116,6 +116,7 @@ def upload_file():
         # A client response to Documents Required automatically returns the request to review.
         if not user.is_admin and order.status == 'Documents Required':
             order.status = 'Under Review'
+        order.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.session.add(OrderStatusHistory(
             order_id=order.id,
             previous_status=previous_status,
