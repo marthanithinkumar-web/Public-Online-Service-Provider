@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { saveToken, getToken, clearToken } from './localStorage'
+import { saveToken, saveUser, getToken, clearToken } from './localStorage'
 import { apiBase } from './apiBase'
 
 const api = axios.create({ baseURL: apiBase })
@@ -8,6 +8,7 @@ export async function register(name:string, phone:string, email:string, password
   const res = await api.post('/auth/register', { name, phone, email, password })
   if(res.data?.token){
     saveToken(res.data.token)
+    if(res.data.user)saveUser(res.data.user)
   }
   return res.data
 }
@@ -16,6 +17,7 @@ export async function login(email:string, password:string){
   const res = await api.post('/auth/login', { email, password })
   if(res.data?.token){
     saveToken(res.data.token)
+    if(res.data.user)saveUser(res.data.user)
   }
   return res.data
 }
@@ -23,6 +25,7 @@ export async function login(email:string, password:string){
 export async function verifyAdmin2FA(challenge_token:string, code:string){
   const res = await api.post('/auth/verify-admin-2fa', {challenge_token, code})
   if(res.data?.token) saveToken(res.data.token)
+  if(res.data?.user) saveUser(res.data.user)
   return res.data
 }
 
@@ -33,6 +36,7 @@ export async function fetchClientProfile(){
 export async function updateClientProfile(payload:any){
   const result=(await api.put('/auth/profile',payload,{headers:authHeader()})).data
   if(result.token)saveToken(result.token)
+  if(result.user)saveUser(result.user)
   return result
 }
 
