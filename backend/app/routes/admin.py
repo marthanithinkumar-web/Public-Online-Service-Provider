@@ -331,9 +331,9 @@ def request_report():
         return jsonify({'error': str(exc)}), 400
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(['Request ID', 'Client', 'Phone', 'Email', 'Service', 'Status', 'Fee INR', 'Created'])
+    writer.writerow(['Request ID', 'Client', 'Phone', 'Email', 'Service', 'Status', 'Assistance Fee INR', 'Official Fee Status', 'Official Fee INR', 'Total Payable INR', 'Created'])
     for order in orders:
-        writer.writerow([order.order_code, order.client_name, order.phone, order.email or '', order.service.name if order.service else '', order.status, order.fee_inr or 0, order.created_at.isoformat()])
+        writer.writerow([order.order_code, order.client_name, order.phone, order.email or '', order.service.name if order.service else '', order.status, order.fee_inr or 0, order.official_fee_status or 'unconfirmed', order.official_fee_inr if order.official_fee_inr is not None else '', order.total_fee_inr if order.total_fee_inr is not None else '', order.created_at.isoformat()])
     return Response(output.getvalue(), mimetype='text/csv', headers={'Content-Disposition': 'attachment; filename=request-report.csv'})
 
 

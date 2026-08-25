@@ -15,6 +15,8 @@ class Service(db.Model):
     name = db.Column(db.String(300), nullable=False)
     description = db.Column(db.Text)
     price_inr = db.Column(db.Float, default=0.0)
+    official_fee_inr = db.Column(db.Float, nullable=True)
+    official_fee_status = db.Column(db.String(20), nullable=False, default='unconfirmed')
     keywords = db.Column(db.String(500))
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
     category = db.relationship('Category')
@@ -27,6 +29,8 @@ class Service(db.Model):
             'name': self.name,
             'description': self.description,
             'price_inr': float(self.price_inr or 0.0),
+            'official_fee_inr': float(self.official_fee_inr) if self.official_fee_inr is not None else None,
+            'official_fee_status': self.official_fee_status or 'unconfirmed',
             'keywords': self.keywords or '',
             'category': self.category.name if self.category else None,
             'category_id': self.category_id,

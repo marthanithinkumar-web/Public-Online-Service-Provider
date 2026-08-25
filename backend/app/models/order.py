@@ -5,7 +5,13 @@ import json
 
 class Order(db.Model):
     __tablename__='orders'
-    id=db.Column(db.Integer,primary_key=True);order_code=db.Column(db.String(50),unique=True,nullable=False);client_name=db.Column(db.String(200),nullable=False);phone=db.Column(db.String(50),nullable=False);email=db.Column(db.String(200),nullable=True);contact_method=db.Column(db.String(50),nullable=True);service_id=db.Column(db.Integer,db.ForeignKey('services.id'));service=db.relationship('Service');user_id=db.Column(db.Integer,db.ForeignKey('users.id'),nullable=True);user=db.relationship('User');description=db.Column(db.Text);fee_inr=db.Column(db.Float,default=0.0);status=db.Column(db.String(50),default='Submitted');created_at=db.Column(db.DateTime,default=utc_now);updated_at=db.Column(db.DateTime,default=utc_now,onupdate=utc_now,nullable=False)
+    id=db.Column(db.Integer,primary_key=True);order_code=db.Column(db.String(50),unique=True,nullable=False);client_name=db.Column(db.String(200),nullable=False);phone=db.Column(db.String(50),nullable=False);email=db.Column(db.String(200),nullable=True);contact_method=db.Column(db.String(50),nullable=True);service_id=db.Column(db.Integer,db.ForeignKey('services.id'));service=db.relationship('Service');user_id=db.Column(db.Integer,db.ForeignKey('users.id'),nullable=True);user=db.relationship('User');description=db.Column(db.Text);fee_inr=db.Column(db.Float,default=0.0);official_fee_inr=db.Column(db.Float,nullable=True);official_fee_status=db.Column(db.String(20),nullable=False,default='unconfirmed');status=db.Column(db.String(50),default='Submitted');created_at=db.Column(db.DateTime,default=utc_now);updated_at=db.Column(db.DateTime,default=utc_now,onupdate=utc_now,nullable=False)
+
+    @property
+    def total_fee_inr(self):
+        if self.official_fee_status not in {'known', 'none'}:
+            return None
+        return float(self.fee_inr or 0.0) + float(self.official_fee_inr or 0.0)
 
     @property
     def application_data(self):
@@ -16,4 +22,4 @@ class Order(db.Model):
             return {'notes':self.description or ''}
 
     def to_dict(self):
-        return {'id':self.id,'order_code':self.order_code,'client_name':self.client_name,'phone':self.phone,'email':self.email,'contact_method':self.contact_method,'service':self.service.name if self.service else None,'service_id':self.service_id,'user_id':self.user_id,'fee_inr':float(self.fee_inr or 0.0),'status':self.status,'created_at':self.created_at.isoformat(),'updated_at':(self.updated_at or self.created_at).isoformat(),'application_data':self.application_data}
+        return {'id':self.id,'order_code':self.order_code,'client_name':self.client_name,'phone':self.phone,'email':self.email,'contact_method':self.contact_method,'service':self.service.name if self.service else None,'service_id':self.service_id,'user_id':self.user_id,'fee_inr':float(self.fee_inr or 0.0),'official_fee_inr':float(self.official_fee_inr) if self.official_fee_inr is not None else None,'official_fee_status':self.official_fee_status or 'unconfirmed','total_fee_inr':self.total_fee_inr,'status':self.status,'created_at':self.created_at.isoformat(),'updated_at':(self.updated_at or self.created_at).isoformat(),'application_data':self.application_data}

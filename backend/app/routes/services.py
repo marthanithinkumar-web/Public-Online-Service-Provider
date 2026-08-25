@@ -10,6 +10,18 @@ bp = Blueprint('services', __name__)
 schema = ServiceSchema()
 
 
+def _fee_values(data, current=None):
+    status = data.get('official_fee_status', getattr(current, 'official_fee_status', 'unconfirmed') or 'unconfirmed')
+    amount = data.get('official_fee_inr', getattr(current, 'official_fee_inr', None))
+    if status == 'known' and amount is None:
+        raise ValueError('Official fee amount is required when its status is known.')
+    if status == 'none':
+        amount = 0.0
+    elif status == 'unconfirmed':
+        amount = None
+    return status, amount
+
+
 def _service_dict(service):
     data = service.to_dict()
     data['requirements'] = get_service_requirements(service)
@@ -69,7 +81,11 @@ def create_service():
     errors = schema.validate(data)
     if errors:
         return jsonify({'error': errors}), 400
-    s = Service(name=data['name'], description=data.get('description'), price_inr=data.get('price_inr', 0.0), keywords=data.get('keywords'), category_id=data.get('category_id'))
+    try:
+        official_status, official_amount = _fee_values(data)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    s = Service(name=data['name'], description=data.get('description'), price_inr=data.get('price_inr', 0.0), official_fee_inr=official_amount, official_fee_status=official_status, keywords=data.get('keywords'), category_id=data.get('category_id'))
     db.session.add(s)
     db.session.commit()
     return jsonify({'message': 'Service created', 'service': _service_dict(s)})
@@ -83,9 +99,14 @@ def update_service(service_id):
     errors = schema.validate(data, partial=True)
     if errors:
         return jsonify({'error': errors}), 400
+    try:
+        official_status, official_amount = _fee_values(data, s)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
     s.name = data.get('name', s.name)
     s.description = data.get('description', s.description)
     s.price_inr = data.get('price_inr', s.price_inr)
+    s.official_fee_status, s.official_fee_inr = official_status, official_amount
     s.keywords = data.get('keywords', s.keywords)
     s.category_id = data.get('category_id', s.category_id)
     db.session.commit()

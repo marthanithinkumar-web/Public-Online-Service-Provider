@@ -1,0 +1,37 @@
+from app.models.service import Service
+from app.models.user import User
+from app.utils.database import db
+from app.utils.password import hash_password
+
+
+def _admin_headers(client):
+    with client.application.app_context():
+        db.session.add(User(email='fee-admin@example.com', password_hash=hash_password('strong-pass'), is_admin=True))
+        db.session.commit()
+    response = client.post('/api/auth/login', json={'email':'fee-admin@example.com','password':'strong-pass'})
+    return {'Authorization':f"Bearer {response.get_json()['token']}"}
+
+
+def test_admin_configures_distinct_official_and_assistance_fees(client):
+    headers = _admin_headers(client)
+    response = client.post('/api/services/', json={'name':'Fee Test Service','description':'Assistance','price_inr':50,'official_fee_status':'known','official_fee_inr':120}, headers=headers)
+    assert response.status_code == 200
+    service = response.get_json()['service']
+    assert service['price_inr'] == 50
+    assert service['official_fee_status'] == 'known'
+    assert service['official_fee_inr'] == 120
+
+
+def test_known_official_fee_requires_an_amount(client):
+    response = client.post('/api/services/', json={'name':'Invalid Fee Service','price_inr':30,'official_fee_status':'known'}, headers=_admin_headers(client))
+    assert response.status_code == 400
+    assert 'Official fee amount is required' in response.get_json()['error']
+
+
+def test_unconfirmed_official_fee_does_not_invent_total(client):
+    with client.application.app_context():
+        service = Service(name='Unconfirmed Fee Service', price_inr=30, official_fee_status='unconfirmed')
+        db.session.add(service);db.session.commit()
+        data = service.to_dict()
+    assert data['official_fee_inr'] is None
+    assert data['official_fee_status'] == 'unconfirmed'

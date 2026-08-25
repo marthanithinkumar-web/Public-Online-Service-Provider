@@ -109,7 +109,9 @@ def create_order():
     order = Order(
         order_code=_generate_order_code(), client_name=name, phone=phone, email=email,
         contact_method=contact_method, service=service, user_id=user.id,
-        description=description, fee_inr=service.price_inr or 0.0, status='Submitted'
+        description=description, fee_inr=service.price_inr or 0.0,
+        official_fee_inr=service.official_fee_inr,
+        official_fee_status=service.official_fee_status or 'unconfirmed', status='Submitted'
     )
     db.session.add(order)
     db.session.flush()
