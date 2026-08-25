@@ -35,3 +35,69 @@ def test_unconfirmed_official_fee_does_not_invent_total(client):
         data = service.to_dict()
     assert data['official_fee_inr'] is None
     assert data['official_fee_status'] == 'unconfirmed'
+
+
+def test_admin_can_change_assistance_fee_without_repricing_existing_requests(client):
+    admin_headers = _admin_headers(client)
+    created_service = client.post(
+        '/api/services/',
+        json={
+            'name': 'Configurable Assistance Service',
+            'description': 'A service with an editable private assistance fee.',
+            'price_inr': 30,
+            'official_fee_status': 'none',
+        },
+        headers=admin_headers,
+    )
+    assert created_service.status_code == 200
+    service_id = created_service.get_json()['service']['id']
+
+    registration = client.post(
+        '/api/auth/register',
+        json={
+            'name': 'Fee Client',
+            'phone': '9990001111',
+            'email': 'fee-client@example.com',
+            'password': 'strong-pass',
+        },
+    )
+    client_headers = {'Authorization': f"Bearer {registration.get_json()['token']}"}
+    first_request = client.post(
+        '/api/orders/',
+        json={
+            'service_id': service_id,
+            'contact_method': 'phone',
+            'application_data': {'assistance_type': 'First request'},
+        },
+        headers=client_headers,
+    )
+    assert first_request.status_code == 201
+    first_order = first_request.get_json()['order']
+    assert first_order['fee_inr'] == 30
+
+    updated_service = client.put(
+        f'/api/services/{service_id}',
+        json={'price_inr': 100},
+        headers=admin_headers,
+    )
+    assert updated_service.status_code == 200
+    assert updated_service.get_json()['service']['price_inr'] == 100
+
+    saved_first_order = client.get(
+        f"/api/orders/{first_order['id']}",
+        headers=client_headers,
+    )
+    assert saved_first_order.status_code == 200
+    assert saved_first_order.get_json()['order']['fee_inr'] == 30
+
+    second_request = client.post(
+        '/api/orders/',
+        json={
+            'service_id': service_id,
+            'contact_method': 'phone',
+            'application_data': {'assistance_type': 'Second request'},
+        },
+        headers=client_headers,
+    )
+    assert second_request.status_code == 201
+    assert second_request.get_json()['order']['fee_inr'] == 100
