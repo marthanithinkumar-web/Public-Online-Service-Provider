@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import axios from 'axios'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { apiBase } from '../services/apiBase'
+import AuthLayout from '../components/ui/AuthLayout'
 
 export default function ResetPassword(){
   const [params]=useSearchParams()
@@ -30,6 +31,6 @@ export default function ResetPassword(){
   }
 
   return (
-    <div className="auth-page"><div className="auth-card"><div className="auth-intro"><span className="eyebrow">Account recovery</span><h1>Choose a new password</h1><p>Your new password must contain at least eight characters.</p></div>{!token?<div className="dashboard-state error-state"><p>This reset link is incomplete or invalid.</p><Link className="btn btn-primary" to="/request-reset">Request a new link</Link></div>:<form onSubmit={submit} className="auth-form"><label>New password<input type="password" minLength={8} autoComplete="new-password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} required /></label><label>Confirm new password<input type="password" minLength={8} autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)} required /></label>{error&&<p className="info" role="alert">{error}</p>}{message&&<p className="success-message" role="status">{message}</p>}<button type="submit" disabled={busy}>{busy?'Updating…':'Set new password'}</button></form>}</div></div>
+    <AuthLayout title="Choose New Password" eyebrow="Account recovery"><div className="auth-card auth-card-modern"><div className="auth-intro"><h2>Choose a new password</h2><p>Your new password must contain at least eight characters.</p></div>{!token?<div className="dashboard-state error-state"><p>This reset link is incomplete or invalid.</p><Link className="btn btn-primary" to="/request-reset">Request a new link</Link></div>:<form onSubmit={submit} className="auth-form"><label className="form-label">New password<input className="form-input" type="password" minLength={8} autoComplete="new-password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} required /></label><label className="form-label">Confirm new password<input className="form-input" type="password" minLength={8} autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)} required /></label>{error&&<p className="info" role="alert">{error}</p>}{message&&<p className="success-message" role="status">{message}</p>}<button className="btn btn-primary btn-block" type="submit" disabled={busy}>{busy?'Updating…':'Set new password'}</button></form>}</div></AuthLayout>
   )
 }
