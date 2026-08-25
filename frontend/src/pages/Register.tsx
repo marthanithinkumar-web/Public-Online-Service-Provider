@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { register } from '../services/auth'
 import '../styles/auth.css'
+import AuthLayout from '../components/ui/AuthLayout'
 
 export default function Register(){
   const [name, setName] = useState('')
@@ -38,25 +39,24 @@ export default function Register(){
   }
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
+    <AuthLayout title="Create Account" eyebrow="Public service account">
+      <div className="auth-card auth-card-modern">
         <div className="auth-intro">
-          <span className="eyebrow">Get started</span>
-          <h1>Create your service account</h1>
+          <h2>Create your service account</h2>
           <p>Keep your requests organized and access your service history from one secure place.</p>
         </div>
         <form onSubmit={submit} className="auth-form" aria-label="Client registration form">
-          <label>Name<span className="required">*</span><input type="text" autoComplete="name" required value={name} onChange={e=>setName(e.target.value)} /></label>
-          <label>Phone number<span className="required">*</span><input type="tel" autoComplete="tel" required value={phone} onChange={e=>setPhone(e.target.value)} /></label>
-          <label>Email address<span className="required">*</span><input type="email" autoComplete="email" required value={email} onChange={e=>setEmail(e.target.value)} /></label>
-          <label>Password<span className="required">*</span><input type="password" autoComplete="new-password" minLength={8} required value={password} onChange={e=>setPassword(e.target.value)} /></label>
-          <label>Confirm password<span className="required">*</span><input type="password" autoComplete="new-password" minLength={8} required value={confirm} onChange={e=>setConfirm(e.target.value)} /></label>
+          <label className="form-label">Name<span className="required">*</span><input className="form-input" type="text" autoComplete="name" required value={name} onChange={e=>setName(e.target.value)} /></label>
+          <label className="form-label">Phone number<span className="required">*</span><input className="form-input" type="tel" autoComplete="tel" required value={phone} onChange={e=>setPhone(e.target.value)} /></label>
+          <label className="form-label">Email address<span className="required">*</span><input className="form-input" type="email" autoComplete="email" required value={email} onChange={e=>setEmail(e.target.value)} /></label>
+          <label className="form-label">Password<span className="required">*</span><input className="form-input" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={e=>setPassword(e.target.value)} /></label>
+          <label className="form-label">Confirm password<span className="required">*</span><input className="form-input" type="password" autoComplete="new-password" minLength={8} required value={confirm} onChange={e=>setConfirm(e.target.value)} /></label>
           <p className="auth-hint">Use at least 8 characters for your password.</p>
           {error && <p className="info" role="alert">{error}</p>}
-          <button type="submit" disabled={busy}>{busy ? 'Creating account…' : 'Create account'}</button>
+          <button className="btn btn-primary btn-block" type="submit" disabled={busy}>{busy ? 'Creating account…' : 'Create account'}</button>
         </form>
         <div className="auth-footer">Already have an account? <Link to={`/login${requestedReturn?`?returnTo=${encodeURIComponent(safeReturn)}`:''}`}>Sign in</Link></div>
       </div>
-    </div>
+    </AuthLayout>
   )
 }
