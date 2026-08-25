@@ -3,6 +3,7 @@ import {useParams} from 'react-router-dom'
 import axios from 'axios'
 import {authHeader} from '../../services/auth'
 import {apiBase} from '../../services/apiBase'
+import FeeSummary from '../ui/FeeSummary'
 
 const REQUEST_TIMEOUT_MS = 15000
 const statuses=['Under Review','Documents Required','In Progress','Completed','Rejected','Cancelled']
@@ -17,6 +18,7 @@ export default function AdminOrderDetail(){
  const allowed=data.allowed_next_statuses||statuses
  const terminal=['Completed','Rejected','Cancelled'].includes(data.order.status)
  return <div className="admin-order-detail"><h2>Request {data.order.order_code}</h2><div><strong>Client:</strong> {data.order.client_name} • {data.order.phone}</div><div><strong>Service:</strong> {data.order.service}</div><div><strong>Status:</strong> {data.order.status}</div>
+  <FeeSummary data={data.order}/>
   {!terminal&&<section className="dashboard-section"><h3>Process request</h3><p>Move the request only when the corresponding work is actually complete. Add a clear client-facing note when asking for documents or closing the request.</p><label>Next status<select value={status} onChange={e=>setStatus(e.target.value)}><option value="">Select status</option>{allowed.map((s:string)=><option key={s} value={s}>{s}</option>)}</select></label><label>Processing note<textarea rows={4} value={note} onChange={e=>setNote(e.target.value)} placeholder="Tell the client what happened or what is needed…"/></label>{error&&<p className="info" role="alert">{error}</p>}{message&&<p className="success-message" role="status">{message}</p>}<button disabled={busy||!status} onClick={update}>{busy?'Updating…':'Update request'}</button></section>}
   {terminal&&<p className="info">This request is closed and can no longer be moved to another status.</p>}
   <h3>Application</h3><div className="request-summary">{Object.entries(data.order.application_data||{}).map(([k,v])=><p key={k}><strong>{k.replace(/_/g,' ')}:</strong> {String(v||'—')}</p>)}</div>
