@@ -21,6 +21,7 @@ dump_schema = OrderSchema()
 MAX_APPLICATION_BYTES = 64 * 1024
 ALLOWED_CONTACT_METHODS = {'email', 'phone', 'whatsapp'}
 DUPLICATE_WINDOW_SECONDS = 60
+CLIENT_CANCELLABLE_STATUSES = {'New', 'Submitted', 'Pending', 'Documents Required'}
 
 
 def _generate_order_code():
@@ -57,7 +58,7 @@ def create_order():
     if user.is_admin:
         return jsonify({'error': 'Administrator accounts cannot create client service requests.'}), 403
 
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}
     errors = create_schema.validate(data)
     if errors:
         return jsonify({'error': errors}), 400
@@ -150,3 +151,38 @@ def my_orders():
         return jsonify({'error': 'Unauthorized'}), 401
     orders = Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).all()
     return jsonify(dump_schema.dump(orders, many=True))
+
+
+@bp.route('/<int:order_id>/cancel', methods=['POST'])
+def cancel_order(order_id):
+    user = _authenticated_user()
+    if not user or user.is_admin:
+        return jsonify({'error': 'Please log in as a client.'}), 401
+    order = Order.query.filter_by(id=order_id).with_for_update().first_or_404()
+    if order.user_id != user.id:
+        return jsonify({'error': 'You can cancel only your own request.'}), 403
+    if order.status not in CLIENT_CANCELLABLE_STATUSES:
+        return jsonify({
+            'error': 'This request can no longer be cancelled directly. Contact the provider or submit a grievance for help.',
+            'status': order.status,
+        }), 409
+    data = request.get_json(silent=True) or {}
+    reason = str(data.get('reason') or 'Cancelled by the client before processing.').strip()[:500]
+    previous = order.status
+    order.status = 'Cancelled'
+    order.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    db.session.add(OrderStatusHistory(
+        order_id=order.id,
+        previous_status=previous,
+        new_status='Cancelled',
+        changed_by=user.email,
+        note=reason or 'Cancelled by the client before processing.',
+    ))
+    db.session.add(Notification(
+        user_id=user.id,
+        order_id=order.id,
+        title='Request cancelled',
+        message=f'Your request {order.order_code} was cancelled. No further processing will take place.',
+    ))
+    db.session.commit()
+    return jsonify({'message': 'Your request has been cancelled.', 'order': dump_schema.dump(order)})

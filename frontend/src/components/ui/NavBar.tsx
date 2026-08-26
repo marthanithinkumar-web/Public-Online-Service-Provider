@@ -50,12 +50,11 @@ export default function NavBar(){
           <span><strong className="brand">Public Online Service Provider</strong><small>{admin ? 'Administration portal' : 'Simple. Secure. Citizen-focused.'}</small></span>
         </Link>
         <nav className="main-nav" aria-label="Primary navigation">
-          <Link className={isActive('/jobs')? 'active':''} to="/jobs">Jobs</Link>
-          <Link className={isActive('/scholarships')? 'active':''} to="/scholarships">Scholarships</Link>
-          <Link className={isActive('/meeseva')? 'active':''} to="/meeseva">MeeSeva</Link>
-          <Link className={isActive('/certificates')? 'active':''} to="/certificates">Certificates</Link>
-          <Link className={isActive('/schemes')? 'active':''} to="/schemes">Schemes</Link>
-          <Link className={isActive('/about')? 'active':''} to="/about">About</Link>
+          <Link className={loc.pathname==='/'&&!loc.hash? 'active':''} to="/">Home</Link>
+          <Link to="/#services">Services</Link>
+          <Link to="/login?returnTo=%2Fmy-orders">Track Request</Link>
+          <Link to="/#how-it-works">How It Works</Link>
+          <Link to="/#help">Help</Link>
           <Link className={isActive('/contact')? 'active':''} to="/contact">Contact</Link>
         </nav>
         <div className="header-actions">
@@ -81,7 +80,7 @@ export default function NavBar(){
       </div>
       <div className="container provider-strip"><span>{PROVIDER.name}</span><span><a href={`tel:${PROVIDER.phone}`}>{PROVIDER.phone}</a> · <a href={`tel:${PROVIDER.phone2}`}>{PROVIDER.phone2}</a> · <a href={`mailto:${PROVIDER.email}`}>{PROVIDER.email}</a></span></div>
       {open&&<><button className="mobile-drawer-backdrop" type="button" onClick={()=>setOpen(false)} aria-label="Close navigation menu"/><nav id="mobile-navigation" className="mobile-drawer" aria-label="Mobile navigation"><div className="mobile-drawer-header"><div><strong>Menu</strong><small>Public Online Service Provider</small></div><button type="button" onClick={()=>setOpen(false)} aria-label="Close navigation menu">×</button></div><div className="mobile-drawer-inner">
-        <section className="mobile-drawer-section"><strong>Account</strong><div className="mobile-drawer-links">{authenticated ? (admin ? <><Link to="/admin/dashboard">Dashboard</Link><Link to="/admin/orders">Requests</Link><Link to="/admin/services">Services</Link><Link to="/admin/users">Clients</Link><button type="button" onClick={doLogout}>Logout</button></> : <><Link to="/my-orders">Dashboard</Link><Link to="/my-orders#applications">My Applications</Link><Link to="/account-settings">My Account</Link><button type="button" onClick={doLogout}>Logout</button></>) : <><Link className="drawer-primary-action" to="/login">Client Login</Link><Link className="drawer-register-action" to="/register">Create Account</Link><Link to="/admin/login">Admin Login</Link></>}</div></section>
+        <section className="mobile-drawer-section"><strong>Account</strong><div className="mobile-drawer-links">{authenticated ? (admin ? <><Link to="/admin/dashboard">Dashboard</Link><Link to="/admin/orders">Requests</Link><Link to="/admin/services">Services</Link><Link to="/admin/users">Clients</Link><button type="button" onClick={doLogout}>Logout</button></> : <><Link to="/my-orders">Dashboard</Link><Link to="/my-orders#applications">My Applications</Link><Link to="/account-settings">My Account</Link><button type="button" onClick={doLogout}>Logout</button></>) : <><Link className="drawer-primary-action" to="/login">Client Login</Link><Link className="drawer-register-action" to="/register">Create Account</Link><Link to="/login?returnTo=%2Fmy-orders">Track My Request</Link><Link to="/admin/login">Admin Login</Link></>}</div></section>
         <section className="mobile-drawer-section"><strong>Find a service</strong><div className="mobile-drawer-links"><Link to="/#service-search">Search Services</Link><Link to="/jobs">Jobs</Link><Link to="/scholarships">Scholarships</Link><Link to="/meeseva">MeeSeva</Link><Link to="/certificates">Certificates</Link><Link to="/schemes">Schemes</Link></div></section>
         <section className="mobile-drawer-section"><strong>Information & support</strong><div className="mobile-drawer-links"><Link to="/about">About</Link><Link to="/contact">Contact</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link></div></section>
       </div></nav></>}

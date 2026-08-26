@@ -6,11 +6,21 @@ import {getSession} from '../services/session'
 import {getToken,getUser} from '../services/localStorage'
 import {fetchClientProfile} from '../services/auth'
 import FeeSummary from '../components/ui/FeeSummary'
+import {PROVIDER} from '../services/config'
 
 type Step=1|2|3|4
 type Field={key:string;label:string;placeholder?:string;type?:'text'|'date';required?:boolean}
 const SERVICE_TIMEOUT_MS=15000
 const apiErrorMessage=(value:any,fallback:string)=>typeof value==='string'?value:Object.values(value||{}).flat().join(' ')||fallback
+
+function ServiceInformation({service,requirements}:{service:any,requirements:any}){
+ return <section className="service-information" aria-label="Service information">
+  <div className="service-info-card"><span className="eyebrow">Purpose</span><h2>How we assist</h2><p>{service.description}</p></div>
+  <div className="service-info-grid"><article><h3>Information required</h3><ul>{(requirements.fields||[]).map((field:any)=><li key={field.key}>{field.label}{field.required?' (required)':''}</li>)}</ul></article><article><h3>Documents</h3>{requirements.documents?.length?<ul>{requirements.documents.map((item:string)=><li key={item}>{item}</li>)}</ul>:<p>No document is requested initially. We will tell you if a relevant document is needed.</p>}</article><article><h3>Eligibility and conditions</h3><p>Official eligibility, availability and approval rules apply. Review the official requirements before completing any final official step.</p></article><article><h3>What happens next</h3><p>Submit your request, receive a reference ID, follow updates in your dashboard and respond if more information is required.</p></article></div>
+  <div className="service-safety-banner"><strong>Security reminder</strong><p>{requirements.safety_note||'Never provide OTPs, passwords, PINs, CVV, banking credentials or account-recovery codes.'}</p></div>
+  <p className="provider-note">Questions before applying? Call <a href={`tel:${PROVIDER.phone}`}>{PROVIDER.phone}</a> or <a href={`mailto:${PROVIDER.email}`}>email the provider</a>.</p>
+ </section>
+}
 
 export default function ServiceDetail(){
  const {id}=useParams();const navigate=useNavigate();const session=getSession();const user=getUser()
@@ -31,11 +41,12 @@ export default function ServiceDetail(){
 
  if(loading)return <div className="empty-state">Loading service details…</div>
  if(!service)return <div className="empty-state"><h2>Service unavailable</h2><p>{error||'We could not find this service.'}</p><button className="btn btn-secondary" onClick={()=>window.location.reload()}>Try again</button><Link className="btn btn-primary" to="/">Return home</Link></div>
- if(!session)return <div className="service-detail-page"><div className="service-detail-hero"><span className="eyebrow">{service.category||'Public service'}</span><h1>{service.name}</h1><p>{service.description}</p><FeeSummary data={service}/></div><section className="dashboard-section"><h2>Ready to request this service?</h2><p>Browse service information without signing in. When you choose to request it, we’ll securely take you to sign in or create an account, then return you directly to this application.</p><div className="cta-row"><Link className="btn btn-primary" to={`/login?returnTo=${returnTo}`}>Sign in & continue</Link><Link className="btn btn-secondary" to={`/register?returnTo=${returnTo}`}>Create account</Link></div></section></div>
+ if(!session)return <div className="service-detail-page"><div className="service-detail-hero"><span className="eyebrow">{service.category||'Public service'}</span><h1>{service.name}</h1><p>{service.description}</p><FeeSummary data={service}/></div><ServiceInformation service={service} requirements={requirements}/><section className="dashboard-section service-request-cta"><h2>Ready to request this service?</h2><p>Sign in or create an account. After authentication, you will return directly to this service and continue the guided request.</p><div className="cta-row"><Link className="btn btn-primary" to={`/login?returnTo=${returnTo}`}>Sign in & continue</Link><Link className="btn btn-secondary" to={`/register?returnTo=${returnTo}`}>Create account</Link></div></section></div>
  if(session.is_admin)return <div className="service-detail-page"><div className="service-detail-hero"><span className="eyebrow">{service.category||'Public service'}</span><h1>{service.name}</h1><p>{service.description}</p><FeeSummary data={service}/></div><section className="dashboard-section"><h2>Client requests only</h2><p>Admin accounts manage incoming requests from the admin dashboard. Please use a client account to submit a service request.</p><Link className="btn btn-primary" to="/admin/dashboard">Go to admin dashboard</Link></section></div>
 
  return <div className="service-detail-page">
-  <div className="service-detail-hero"><span className="eyebrow">{service.category||'Public service'}</span><h1>{service.name}</h1><p>{service.description}</p><FeeSummary data={service}/></div>
+ <div className="service-detail-hero"><span className="eyebrow">{service.category||'Public service'}</span><h1>{service.name}</h1><p>{service.description}</p><FeeSummary data={service}/></div>
+  <ServiceInformation service={service} requirements={requirements}/>
   <div className="request-steps" aria-label="Request progress"><span className={step>=1?'active':''}>1. Contact</span><span className={step>=2?'active':''}>2. Application</span><span className={step>=3?'active':''}>3. Review</span><span className={step>=4?'active':''}>4. Submitted</span></div>
   {error&&<p className="info" role="alert">{error}</p>}
   {step===1&&<section className="dashboard-section request-form"><span className="eyebrow">Step 1</span><h2>Confirm your account contact details</h2><p>These verified details come from your client profile and will be attached to the request. Update your profile first if anything is incorrect.</p><label>Full name<input value={form.client_name} readOnly aria-readonly="true" required/></label><label>Phone<input type="tel" value={form.phone} readOnly aria-readonly="true" required/></label><label>Email<input type="email" value={form.email} readOnly aria-readonly="true"/></label><div className="cta-row"><Link className="btn btn-secondary" to="/account-settings">Update profile</Link><button type="button" onClick={()=>{if(form.client_name.trim().length<2||form.phone.trim().length<7){setError('Please complete your name and phone number in Account Settings.');return}setError('');setStep(2)}}>Details are correct — continue</button></div></section>}

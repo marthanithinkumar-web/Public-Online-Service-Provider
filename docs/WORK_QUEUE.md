@@ -37,12 +37,50 @@ Last updated: 2026-08-26
    - Confirmed smartphone-header gap from production screenshots: at phone and mobile “desktop site” widths, all Login/Register/navigation destinations are hidden behind a small icon-only control. Keep the complete drawer, add always-visible account shortcuts, improve touch targets/grouping, protect contact text from overflow, and verify both viewport modes.
    - User refinement: preserve one shared homepage across laptop and smartphone; do not create a separate mobile homepage. Replace the disliked shortcut row with a compact search icon plus off-canvas menu, and make the existing homepage scale cleanly at phone widths.
 
+## Completed public homepage refresh
+
+8. Completed: implemented the approved search-first homepage proposal without creating a separate mobile homepage.
+   - Kept Client Login, Create Account, and Admin Login easy to find.
+   - Moved live service search and Popular Searches into the hero.
+   - Added database-backed Popular Services, clear categories, a three-step request journey, safety warnings, private-provider disclosure, and fee transparency.
+   - Added Railway Ticket Booking Assistance as a searchable database-backed service.
+   - Applied a one-time ₹30 current assistance-fee migration while preserving future per-service admin editing and historical order fee snapshots.
+
 ## Preserved fee rule
 
 - The private assistance fee is admin-configurable per service; ₹30 is only a starting value.
 - The admin may change it to ₹50, ₹100, or another valid non-negative value.
 - Existing requests retain the fee recorded when they were submitted; later requests use the updated fee.
 - Government/official fees and private assistance fees must always remain clearly separated.
+
+## Completed Option A whole-site checkpoint (local)
+
+9. Completed: extended the approved Option A search-first design across the public, client, and admin experiences.
+   - Added a clear Track My Request path and retained visible Client Login, Create Account, and Admin Login access.
+   - Added responsive vertical client and admin workspace navigation, with Delete Account kept discreet inside the protected client account menu.
+   - Reworked public information, service-detail, contact, footer, application, grievance, review, and admin-management screens around the shared blue/teal design system.
+   - Added Railway Ticket Booking Assistance requirements and explicit warnings that clients must complete OTP and payment themselves on the official platform.
+   - Added production database pooling, Gunicorn concurrency settings, query indexes, and responsive/loading improvements.
+
+10. Completed: added an admin-dashboard-only **Update fee across website** control.
+   - The admin can replace the current assistance fee on every service with one confirmed value.
+   - The action requires an authenticated active admin, a confirmation checkbox, a final confirmation prompt, and server-side amount validation.
+   - Existing submitted requests and receipts retain their original fee snapshot.
+   - Public homepage, search results, popular services, service details, and future requests load the database-backed value instead of a hard-coded ₹30.
+   - Important bulk fee changes are stored in the admin audit log and shown in Activity & Reports.
+
+11. Verified locally on 2026-08-26:
+   - Frontend TypeScript check and production Vite build passed.
+   - All 34 backend tests passed, including client isolation and client → admin → status → client notification workflow coverage.
+   - Full migrations `20260824_01` through `20260826_07` and the 91-service seed completed successfully on a clean database.
+   - These latest changes still require GitHub push, Render deployment, and production-browser verification before this checkpoint can be called live.
+
+12. Completed: safe client request withdrawal and account-deletion protection.
+   - Clients can cancel only their own request and only while its status is New, Submitted, Pending, or Documents Required.
+   - Requests already In Progress, Completed, Rejected, or otherwise beyond the safe cancellation window cannot be cancelled directly; the client is directed to provider support/grievances.
+   - Every cancellation adds a status-history entry, timestamp, and client notification.
+   - Account deletion is blocked while active requests exist and lists the affected request references with links to resolve them.
+   - Password verification, two-step UI confirmation, ownership enforcement, and session invalidation remain required for deletion.
 
 ## Continuation rule
 

@@ -24,21 +24,21 @@ export default function ReviewManagement(){
   }
 
   return (
-    <div>
-      <h2>Reviews</h2>
+    <div className="admin-record-page">
+      <div className="section-header"><div><span className="eyebrow">Client feedback</span><h2>Reviews</h2><p>Moderate verified feedback before it appears publicly.</p></div></div>
       {error&&<div className="dashboard-state error-state"><p>{error}</p><button onClick={()=>load(page)}>Try again</button></div>}
-      {loading?<div className="dashboard-state"><div className="loading-dot"/><p>Loading reviews...</p></div>:!items.length&&!error?<div className="dashboard-state"><p>No reviews found.</p></div>:<ul>
+      {loading?<div className="dashboard-state"><div className="loading-dot"/><p>Loading reviews...</p></div>:!items.length&&!error?<div className="dashboard-state"><p>No reviews found.</p></div>:<ul className="admin-record-list stacked">
         {items.map(r=> (
-          <li key={r.id} style={{border:'1px solid #eee',padding:8,margin:8,borderRadius:6}}>
+          <li key={r.id}>
             <div>Rating: {r.rating} — {r.comment}</div>
             <div>Public: {String(r.is_public)}</div>
             <div><button disabled={busyId===r.id} onClick={()=>toggle(r.id, r.is_public)}>{busyId===r.id?'Updating…':r.is_public ? 'Hide' : 'Make public'}</button></div>
           </li>
         ))}
       </ul>}
-      <div style={{display:'flex',gap:8}}>
+      <div className="pagination">
         <button disabled={loading||page<=1} onClick={()=>setPage(Math.max(1,page-1))}>Prev</button>
-        <div>Page {meta.page ?? 1} / {meta.pages ?? 1}</div>
+        <span>Page {meta.page ?? 1} of {meta.pages ?? 1}</span>
         <button disabled={loading||page>=(meta.pages||1)} onClick={()=>setPage((meta.page||1)+1)}>Next</button>
       </div>
     </div>

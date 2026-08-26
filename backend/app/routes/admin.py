@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, Response
 from sqlalchemy import func, or_
 from datetime import datetime, time, timezone
+import math
 import csv
 import io
 from ..models.order import Order
@@ -11,6 +12,7 @@ from ..models.grievance import Grievance
 from ..models.review import Review
 from ..models.notification import Notification
 from ..models.service import Service
+from ..models.admin_audit import AdminAuditLog
 from ..utils.database import db
 from ..utils.jwt_handler import create_token, decode_token
 from ..utils.password import hash_password, verify_password
@@ -246,6 +248,59 @@ def admin_list_services():
         return jsonify({'error': 'Unauthorized'}), 401
     services = Service.query.order_by(Service.created_at.desc()).all()
     return jsonify({'items': [s.to_dict() for s in services]})
+
+
+@bp.route('/services/assistance-fee', methods=['PUT'])
+def update_all_assistance_fees():
+    admin = _require_admin()
+    if not admin:
+        return jsonify({'error': 'Unauthorized'}), 401
+    data = request.json or {}
+    if data.get('confirm') is not True:
+        return jsonify({'error': 'Confirm the website-wide fee change before continuing.'}), 400
+    try:
+        new_fee = round(float(data.get('price_inr')), 2)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Enter a valid assistance fee.'}), 400
+    if not math.isfinite(new_fee) or new_fee < 0 or new_fee > 100000:
+        return jsonify({'error': 'Assistance fee must be between ₹0 and ₹1,00,000.'}), 400
+
+    services = Service.query.all()
+    if not services:
+        return jsonify({'error': 'No services are available to update.'}), 404
+    previous_fees = sorted({float(service.price_inr or 0) for service in services})
+    for service in services:
+        service.price_inr = new_fee
+    audit = AdminAuditLog(
+        admin_id=admin.id,
+        action='assistance_fee_bulk_update',
+        summary=f'Changed the current assistance fee for {len(services)} services to ₹{new_fee:.2f}.',
+        details={
+            'new_fee_inr': new_fee,
+            'affected_services': len(services),
+            'previous_fee_values_inr': previous_fees,
+            'existing_requests_repriced': False,
+        },
+    )
+    db.session.add(audit)
+    db.session.commit()
+    return jsonify({
+        'message': f'Assistance fee updated to ₹{new_fee:g} across {len(services)} services.',
+        'price_inr': new_fee,
+        'affected_services': len(services),
+        'existing_requests_repriced': False,
+        'audit': audit.to_dict(),
+    })
+
+
+@bp.route('/audit', methods=['GET'])
+def audit_log():
+    if not _require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    from ..utils.pagination import paginate_query
+    query = AdminAuditLog.query.order_by(AdminAuditLog.created_at.desc())
+    result = paginate_query(query, request.args.get('page', 1), request.args.get('per_page', 20))
+    return jsonify({'items': [item.to_dict() for item in result['items']], 'meta': result['meta']})
 
 
 @bp.route('/documents', methods=['GET'])

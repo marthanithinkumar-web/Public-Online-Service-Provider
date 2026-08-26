@@ -101,3 +101,60 @@ def test_admin_can_change_assistance_fee_without_repricing_existing_requests(cli
     )
     assert second_request.status_code == 201
     assert second_request.get_json()['order']['fee_inr'] == 100
+
+
+def test_global_assistance_fee_update_is_admin_only_and_requires_confirmation(client):
+    unauthorized = client.put('/api/admin/services/assistance-fee', json={'price_inr': 50, 'confirm': True})
+    assert unauthorized.status_code == 401
+
+    headers = _admin_headers(client)
+    unconfirmed = client.put('/api/admin/services/assistance-fee', json={'price_inr': 50}, headers=headers)
+    assert unconfirmed.status_code == 400
+    assert 'Confirm' in unconfirmed.get_json()['error']
+    invalid = client.put('/api/admin/services/assistance-fee', json={'price_inr':'NaN','confirm':True}, headers=headers)
+    assert invalid.status_code == 400
+
+
+def test_admin_changes_fee_across_catalog_without_repricing_existing_requests(client):
+    admin_headers = _admin_headers(client)
+    created = client.post(
+        '/api/services/',
+        json={'name':'Bulk Fee Test Service','price_inr':30,'official_fee_status':'none'},
+        headers=admin_headers,
+    )
+    service_id = created.get_json()['service']['id']
+    registration = client.post(
+        '/api/auth/register',
+        json={'name':'Bulk Fee Client','phone':'9990002222','email':'bulk-fee-client@example.com','password':'strong-pass'},
+    )
+    client_headers = {'Authorization': f"Bearer {registration.get_json()['token']}"}
+    submitted = client.post(
+        '/api/orders/',
+        json={'service_id':service_id,'contact_method':'phone','application_data':{'assistance_type':'Fee snapshot'}},
+        headers=client_headers,
+    )
+    assert submitted.status_code == 201
+    order_id = submitted.get_json()['order']['id']
+
+    changed = client.put(
+        '/api/admin/services/assistance-fee',
+        json={'price_inr':75,'confirm':True},
+        headers=admin_headers,
+    )
+    assert changed.status_code == 200
+    result = changed.get_json()
+    assert result['price_inr'] == 75
+    assert result['affected_services'] >= 1
+    assert result['existing_requests_repriced'] is False
+
+    catalog = client.get('/api/services/').get_json()
+    assert catalog
+    assert all(service['price_inr'] == 75 for service in catalog)
+    saved_order = client.get(f'/api/orders/{order_id}', headers=client_headers).get_json()['order']
+    assert saved_order['fee_inr'] == 30
+
+    audit = client.get('/api/admin/audit', headers=admin_headers)
+    assert audit.status_code == 200
+    item = audit.get_json()['items'][0]
+    assert item['action'] == 'assistance_fee_bulk_update'
+    assert item['details']['new_fee_inr'] == 75

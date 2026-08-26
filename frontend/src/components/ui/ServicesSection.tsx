@@ -1,29 +1,26 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
-import { ArrowRight } from './Icons'
+import React,{useEffect,useMemo,useState} from 'react'
+import {Link} from 'react-router-dom'
+import {fetchServiceCatalog,readCachedServices} from '../../services/serviceCatalog'
 
-const services = [
-  { key: 'jobs', title: 'Government Jobs', desc: 'Assistance with government job opportunities and applications.', to: '/jobs' },
-  { key: 'scholarships', title: 'Scholarships', desc: 'Find scholarship opportunities and understand eligibility.', to: '/scholarships' },
-  { key: 'certificates', title: 'Certificates', desc: 'Get assistance understanding certificate applications.', to: '/certificates' },
-  { key: 'meeseva', title: 'MeeSeva Services', desc: 'Get guidance for common public-service applications.', to: '/meeseva' },
-  { key: 'schemes', title: 'Government Schemes', desc: 'Explore schemes and understand eligibility.', to: '/schemes' },
-]
+const preferred=['income certificate','scholarship','government job','aadhaar','birth certificate','ration card']
+const categoryName=(service:any)=>typeof service.category==='string'?service.category:service.category?.name||'Public service'
 
 export default function ServicesSection(){
-  return (
-    <section className="content-section services-section">
-      <div className="section-header"><div><span className="eyebrow">Everything you need</span><h2>Everything You Need, In One Place</h2></div></div>
-      <div className="service-list-grid">
-        {services.map(s=> (
-          <article key={s.key} className="service-card premium">
-            <div className="service-card-top"><span className="service-badge">{s.title}</span><span className="service-price">&nbsp;</span></div>
-            <h3>{s.title}</h3>
-            <p>{s.desc}</p>
-            <div className="service-actions"><Link to={s.to} className="text-link">Learn More</Link><Link to={s.to} className="btn btn-secondary small">{<ArrowRight/>}</Link></div>
-          </article>
-        ))}
-      </div>
-    </section>
-  )
+  const [services,setServices]=useState<any[]>(()=>readCachedServices(true))
+  const [loading,setLoading]=useState(services.length===0)
+
+  useEffect(()=>{let active=true;fetchServiceCatalog(true).then(items=>{if(active)setServices(items)}).catch(()=>{}).finally(()=>{if(active)setLoading(false)});return()=>{active=false}},[])
+
+  const popular=useMemo(()=>{
+    const available=services.filter(service=>service.is_active!==false)
+    const chosen:any[]=[]
+    preferred.forEach(term=>{const match=available.find(service=>!chosen.includes(service)&&`${service.name} ${service.keywords||''}`.toLowerCase().includes(term));if(match)chosen.push(match)})
+    available.forEach(service=>{if(chosen.length<6&&!chosen.includes(service))chosen.push(service)})
+    return chosen.slice(0,6)
+  },[services])
+
+  return <section className="content-section services-section" aria-labelledby="popular-services-title">
+    <div className="section-header"><div><span className="eyebrow">Frequently requested</span><h2 id="popular-services-title">Popular Services</h2><p className="section-intro">Review the service, requirements and complete fee information before submitting.</p></div><Link className="text-link" to="/#service-search">View all services →</Link></div>
+    {loading&&popular.length===0?<div className="empty-state" role="status"><div className="loading-dot"/><p>Loading popular services…</p></div>:<div className="popular-service-grid">{popular.map(service=><article key={service.id} className="popular-service-card"><div className="popular-service-heading"><span className="popular-service-icon" aria-hidden="true">{String(service.name||'S').charAt(0)}</span><div><span className="service-badge">{categoryName(service)}</span><h3>{service.name}</h3></div></div><p>{service.description}</p><div className="popular-service-meta"><span><small>Our Assistance Fee</small><strong>{service.price_inr==null?'To be confirmed':`₹${Number(service.price_inr)}`}</strong></span><span><small>Official fee</small><strong>{service.official_fee_status==='known'?`₹${Number(service.official_fee_inr??0)}`:service.official_fee_status==='none'?'₹0':'To be confirmed'}</strong></span></div><Link className="btn btn-secondary small" to={`/service/${service.id}`}>View details →</Link></article>)}</div>}
+  </section>
 }

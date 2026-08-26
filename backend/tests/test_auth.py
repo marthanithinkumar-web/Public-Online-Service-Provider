@@ -5,14 +5,15 @@ from app.models.user import User
 from app.utils.password import hash_password
 
 
-def setup_test_app():
+def setup_test_app(monkeypatch, tmp_path):
+    monkeypatch.setenv('DATABASE_URL', f'sqlite:///{tmp_path / "auth.db"}')
     app = create_app()
     app.config['TESTING'] = True
     return app
 
 
-def test_register_and_login():
-    app = setup_test_app()
+def test_register_and_login(monkeypatch, tmp_path):
+    app = setup_test_app(monkeypatch, tmp_path)
     with app.app_context():
         db.drop_all()
         db.create_all()
