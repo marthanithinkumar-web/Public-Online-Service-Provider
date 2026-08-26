@@ -20,3 +20,4 @@ def test_complete_request_lifecycle(monkeypatch, tmp_path):
         r3=client.post(f'/api/admin/orders/{order_id}/status',json={'status':'Completed','note':'Service completed and result delivered.'},headers=admin_headers);assert r3.status_code==200
         r4=client.post('/api/reviews',json={'order_id':order_id,'rating':5,'comment':'Excellent assistance.'},headers={'Authorization':f'Bearer {client_token}'});assert r4.status_code==201
         r5=client.post('/api/grievances',json={'order_id':order_id,'description':'I need clarification about the completed request.'},headers={'Authorization':f'Bearer {client_token}'});assert r5.status_code==201
+        detail=client.get(f'/api/orders/{order_id}',headers={'Authorization':f'Bearer {client_token}'}).get_json();assert all('changed_by' not in item for item in detail['history'])

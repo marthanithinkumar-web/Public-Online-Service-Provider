@@ -1,4 +1,4 @@
-from app.models.service import Service
+from app.models.service import Service, PlatformSetting
 from app.models.user import User
 from app.utils.database import db
 from app.utils.password import hash_password
@@ -158,3 +158,22 @@ def test_admin_changes_fee_across_catalog_without_repricing_existing_requests(cl
     item = audit.get_json()['items'][0]
     assert item['action'] == 'assistance_fee_bulk_update'
     assert item['details']['new_fee_inr'] == 75
+
+
+def test_new_services_inherit_the_persisted_website_wide_fee(client):
+    headers = _admin_headers(client)
+    changed = client.put(
+        '/api/admin/services/assistance-fee',
+        json={'price_inr': 65, 'confirm': True},
+        headers=headers,
+    )
+    assert changed.status_code == 200
+    created = client.post(
+        '/api/services/',
+        json={'name': 'New Catalog Service After Fee Change', 'official_fee_status': 'unconfirmed'},
+        headers=headers,
+    )
+    assert created.status_code == 200
+    assert created.get_json()['service']['price_inr'] == 65
+    with client.application.app_context():
+        assert db.session.get(PlatformSetting, 'assistance_fee_inr').value == '65.00'

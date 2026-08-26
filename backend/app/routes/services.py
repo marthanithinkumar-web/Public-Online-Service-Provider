@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from ..models.service import Service, Category
+from ..models.service import Service, Category, PlatformSetting
 from ..utils.database import db
 from ..middleware.auth import require_admin
 from ..schemas.service_schema import ServiceSchema
@@ -8,6 +8,17 @@ from sqlalchemy import or_
 
 bp = Blueprint('services', __name__)
 schema = ServiceSchema()
+
+
+def current_assistance_fee():
+    setting = db.session.get(PlatformSetting, 'assistance_fee_inr')
+    if setting:
+        try:
+            return max(0.0, float(setting.value))
+        except (TypeError, ValueError):
+            pass
+    first = Service.query.filter(Service.price_inr.isnot(None)).order_by(Service.id.asc()).first()
+    return float(first.price_inr) if first else 30.0
 
 
 def _fee_values(data, current=None):
@@ -28,6 +39,12 @@ def _service_dict(service):
     return data
 
 
+def _catalog_response(services):
+    response = jsonify([service.to_dict() for service in services])
+    response.headers['Cache-Control'] = 'public, max-age=60, stale-while-revalidate=300'
+    return response
+
+
 @bp.route('/', methods=['GET'])
 @bp.route('', methods=['GET'])
 def list_services():
@@ -39,7 +56,7 @@ def list_services():
         except (TypeError, ValueError):
             return jsonify({'error': 'Invalid category_id'}), 400
     services = q.order_by(Service.created_at.desc(), Service.name.asc()).all()
-    return jsonify([_service_dict(s) for s in services])
+    return _catalog_response(services)
 
 
 @bp.route('/<int:service_id>', methods=['GET'])
@@ -53,7 +70,7 @@ def search():
     raw = (request.args.get('q') or '').strip()
     if not raw:
         services = Service.query.filter_by(is_active=True).order_by(Service.name.asc()).all()
-        return jsonify([_service_dict(s) for s in services])
+        return _catalog_response(services)
 
     tokens = [t for t in raw.replace('-', ' ').replace('/', ' ').split() if t]
     search_terms = list(dict.fromkeys([raw, *tokens]))
@@ -71,7 +88,7 @@ def search():
         Service.query.filter(Service.is_active.is_(True), or_(*conditions))
         .order_by(Service.name.asc()).limit(100).all()
     )
-    return jsonify([_service_dict(s) for s in services])
+    return _catalog_response(services)
 
 
 @bp.route('/', methods=['POST'])
@@ -85,7 +102,7 @@ def create_service():
         official_status, official_amount = _fee_values(data)
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
-    s = Service(name=data['name'], description=data.get('description'), price_inr=data.get('price_inr', 0.0), official_fee_inr=official_amount, official_fee_status=official_status, keywords=data.get('keywords'), category_id=data.get('category_id'))
+    s = Service(name=data['name'], description=data.get('description'), price_inr=data.get('price_inr', current_assistance_fee()), official_fee_inr=official_amount, official_fee_status=official_status, keywords=data.get('keywords'), category_id=data.get('category_id'))
     db.session.add(s)
     db.session.commit()
     return jsonify({'message': 'Service created', 'service': _service_dict(s)})

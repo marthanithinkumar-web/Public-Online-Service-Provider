@@ -2,6 +2,7 @@ import os
 from app.main import create_app
 from app.utils.database import db
 from app.models.service import Category, Service
+from app.models.service import PlatformSetting
 from app.models.user import User
 from app.utils.password import hash_password
 
@@ -18,6 +19,8 @@ SERVICE_CATALOG = {
         ('Passport - Renewal / Reissue', 'Assistance with eligible passport renewal/reissue applications.', 'passport, renewal, reissue, passport renewal'),
         ('Driving Licence / Learner Licence Assistance', 'Assistance with eligible learner and driving licence application processes.', 'driving licence, driving license, dl, learner licence, llr, rto'),
         ('RC / Vehicle Service Assistance', 'Assistance with eligible vehicle-registration related online services.', 'rc, vehicle registration, transport, rto, vehicle service'),
+        ('Aadhaar PVC Card Order Guidance', 'Guidance for ordering an Aadhaar PVC card through the official UIDAI process. Clients complete OTP and payment directly with UIDAI.', 'aadhaar pvc, aadhar pvc, uidai, pvc card, aadhaar card order'),
+        ('DigiLocker Document Access Assistance', 'Guidance for finding and accessing eligible issued documents through DigiLocker. Clients sign in and complete OTP themselves.', 'digilocker, digital locker, issued documents, digital certificate, document access'),
     ],
     'Scholarships & Student Welfare': [
         ('ePASS - Fresh Scholarship Application', 'Assistance with eligible ePASS fresh scholarship applications.', 'epass, e-pass, scholarship, fresh, post matric, pre matric, telangana'),
@@ -71,6 +74,8 @@ SERVICE_CATALOG = {
         ('Medical Admission Assistance', 'Assistance with eligible medical admission processes.', 'medical, mbbs, bds, admission, neet, counselling'),
         ('Skill Development Admission Assistance', 'Assistance with eligible government/approved skill-development applications.', 'skill development, training, vocational, admission'),
         ('University / College Admission Form Assistance', 'Assistance with eligible online university and college admission forms.', 'college admission, university admission, application form'),
+        ('DOST Telangana Degree Admission Assistance', 'Assistance with eligible Telangana DOST undergraduate admission applications and option entry.', 'dost, dost telangana, degree admission, undergraduate, option entry'),
+        ('Open School Admission / Examination Assistance', 'Assistance with eligible open-school admission, examination and status processes.', 'open school, nios, toss, admission, examination, distance education'),
     ],
     'Certificates & Public Documents': [
         ('Income Certificate Assistance', 'Assistance with eligible income certificate applications.', 'income certificate, income, certificate'),
@@ -82,6 +87,10 @@ SERVICE_CATALOG = {
         ('Marriage Certificate Assistance', 'Assistance with eligible marriage certificate services.', 'marriage certificate, marriage, certificate'),
         ('Family / Legal Heir Certificate Assistance', 'Assistance with eligible family/legal heir certificate processes.', 'family certificate, legal heir, heir certificate'),
         ('Disability Certificate Assistance', 'Assistance with eligible disability certificate processes.', 'disability certificate, pwd, udid, certificate'),
+        ('Non-Creamy Layer Certificate Assistance', 'Assistance with eligible non-creamy-layer certificate applications.', 'non creamy layer, ncl, obc certificate, bc certificate'),
+        ('Police Clearance Certificate Assistance', 'Assistance with eligible police-clearance certificate application steps and appointments.', 'police clearance, pcc, clearance certificate, police verification'),
+        ('Encumbrance Certificate Assistance', 'Assistance with eligible encumbrance-certificate searches and applications through the official process.', 'encumbrance certificate, ec, property document, registration'),
+        ('Land Record / Pahani / Adangal Assistance', 'Assistance with eligible land-record, Pahani, Adangal or record-of-rights services.', 'land record, pahani, adangal, ror, dharani, meebhoomi'),
     ],
     'Government Jobs & Employment': [
         ('Government Job Application Assistance', 'Assistance with eligible government recruitment applications.', 'government job, govt job, recruitment, application, job'),
@@ -90,6 +99,11 @@ SERVICE_CATALOG = {
         ('Employment Registration Assistance', 'Assistance with eligible employment registration processes.', 'employment registration, job seeker, employment exchange'),
         ('Job Application Correction / Status Assistance', 'Assistance with eligible application corrections and status checks.', 'job correction, application correction, status, recruitment'),
         ('Apprenticeship Application Assistance', 'Assistance with eligible apprenticeship registration/application processes.', 'apprenticeship, apprentice, training, employment'),
+        ('EPFO UAN Activation Assistance', 'Guidance for eligible EPFO UAN activation through the official process. Clients complete OTP themselves.', 'epfo, uan, uan activation, provident fund, pf'),
+        ('EPF Claim / Transfer / Status Assistance', 'Guidance for eligible EPF claim, transfer and status processes. Clients authorize official steps themselves.', 'epf, pf claim, provident fund, pf transfer, claim status, epfo'),
+        ('e-Shram Registration / Update Assistance', 'Assistance with eligible e-Shram registration and profile-update processes.', 'eshram, e shram, unorganised worker, labour card, worker registration'),
+        ('National Career Service Registration Assistance', 'Assistance with eligible National Career Service job-seeker registration and profile setup.', 'ncs, national career service, job seeker, employment registration'),
+        ('ESIC e-Pehchan / Benefit Assistance', 'Guidance for eligible ESIC e-Pehchan and benefit-related online processes.', 'esic, esi, e pehchan, employee insurance, benefit'),
     ],
     'Government Schemes & Welfare': [
         ('Government Scheme Application Assistance', 'Assistance with eligible central/state government scheme applications.', 'government scheme, scheme, welfare, application'),
@@ -99,6 +113,12 @@ SERVICE_CATALOG = {
         ('Women & Child Welfare Scheme Assistance', 'Assistance with eligible women and child welfare schemes.', 'women welfare, child welfare, welfare scheme'),
         ('Disability Welfare Scheme Assistance', 'Assistance with eligible disability welfare schemes.', 'disability welfare, pwd, welfare scheme'),
         ('Housing Scheme Application Assistance', 'Assistance with eligible government housing-scheme applications.', 'housing scheme, house, welfare, government scheme'),
+        ('PM-KISAN Registration / Status Assistance', 'Assistance with eligible PM-KISAN registration, correction and payment-status processes.', 'pm kisan, pmkisan, farmer, registration, beneficiary status'),
+        ('Ayushman Bharat / PM-JAY Eligibility Assistance', 'Guidance for checking eligible Ayushman Bharat or PM-JAY beneficiary and card processes.', 'ayushman bharat, pmjay, pm jay, health card, eligibility'),
+        ('ABHA Health ID Assistance', 'Guidance for eligible ABHA health-ID creation and profile processes. Clients complete OTP themselves.', 'abha, health id, ayushman bharat health account, digital health'),
+        ('Ration Card - New / Member Update Assistance', 'Assistance with eligible ration-card applications, member additions and corrections.', 'ration card, food security card, member add, ration update, new ration'),
+        ('Widow / Single Women Pension Assistance', 'Assistance with eligible widow or single-women pension application processes.', 'widow pension, single women pension, aasara, social security'),
+        ('Labour Welfare Board Service Assistance', 'Assistance with eligible labour-welfare-board registration, renewal and benefit applications.', 'labour welfare, construction worker, labour card, worker benefit'),
     ],
     'Other Online Public Services': [
         ('MeeSeva / Public Service Application Assistance', 'Assistance with eligible MeeSeva and public-service applications.', 'meeseva, mee seva, public service, online service'),
@@ -108,14 +128,40 @@ SERVICE_CATALOG = {
         ('Online Document Upload Assistance', 'Assistance with preparing and uploading eligible documents to official portals.', 'document upload, online upload, application documents'),
         ('Government Portal Account Assistance', 'Assistance with eligible public-portal registration and account setup.', 'portal registration, government portal, account, registration'),
     ],
+    'Business & Licence Assistance': [
+        ('Udyam MSME Registration Assistance', 'Assistance with eligible Udyam/MSME registration through the official portal.', 'udyam, msme, micro enterprise, small business, business registration'),
+        ('GST Registration Application Assistance', 'Form-filling guidance for eligible GST registration applications. Tax advice is not provided.', 'gst, gst registration, goods services tax, business tax registration'),
+        ('FSSAI Registration / Licence Assistance', 'Assistance with eligible FSSAI food-business registration or licence applications.', 'fssai, food licence, food license, food business, registration'),
+        ('Shop & Establishment Registration Assistance', 'Assistance with eligible shop-and-establishment registration or renewal processes.', 'shop establishment, trade registration, labour department, business licence'),
+        ('Municipal Trade Licence Assistance', 'Assistance with eligible municipal trade-licence application and renewal processes.', 'trade licence, trade license, municipal, business licence, renewal'),
+    ],
+    'Utility & Civic Services': [
+        ('Electricity New Connection / Name Change Assistance', 'Assistance with eligible electricity-connection applications and account-name changes.', 'electricity connection, power connection, name change, electricity service'),
+        ('Electricity Bill Payment Assistance', 'Guidance for paying electricity bills through the official provider. Clients complete payment authorization themselves.', 'electricity bill, power bill, bill payment, utility'),
+        ('Water Connection / Bill Assistance', 'Assistance with eligible water-connection, account and bill-payment processes.', 'water connection, water bill, utility, municipal water'),
+        ('Property Tax Payment / Assessment Assistance', 'Guidance for eligible property-tax search, assessment and payment processes.', 'property tax, house tax, municipal tax, assessment'),
+        ('LPG Connection / Subsidy Status Assistance', 'Guidance for eligible LPG connection and subsidy-status processes.', 'lpg, gas connection, cylinder, subsidy, dbtl'),
+    ],
     'Travel & Ticketing Assistance': [
         ('Railway Ticket Booking Assistance', 'Guidance for railway ticket search and booking through the official railway process. Clients complete OTP and payment directly on the official portal.', 'railway, train, ticket, tickets, booking, irctc, travel'),
+        ('Government Bus Ticket Booking Assistance', 'Guidance for bus search and booking through the relevant official transport portal. Clients complete OTP and payment themselves.', 'bus ticket, government bus, tsrtc, apsrtc, ticket booking, travel'),
+        ('Student / Concession Bus Pass Assistance', 'Assistance with eligible student or concession bus-pass applications and renewals.', 'bus pass, student bus pass, concession pass, tsrtc, apsrtc, renewal'),
     ],
 }
 
 app = create_app()
 
 with app.app_context():
+    fee_setting = db.session.get(PlatformSetting, 'assistance_fee_inr')
+    if fee_setting:
+        try:
+            catalog_fee = max(0.0, float(fee_setting.value))
+        except (TypeError, ValueError):
+            catalog_fee = 30.0
+    else:
+        existing_fee = db.session.query(Service.price_inr).filter(Service.price_inr.isnot(None)).order_by(Service.id.asc()).first()
+        catalog_fee = float(existing_fee[0]) if existing_fee else 30.0
+        db.session.add(PlatformSetting(key='assistance_fee_inr', value=f'{catalog_fee:.2f}'))
     for category_name, services in SERVICE_CATALOG.items():
         category = Category.query.filter_by(name=category_name).first()
         if not category:
@@ -125,7 +171,7 @@ with app.app_context():
         for name, description, keywords in services:
             service = Service.query.filter_by(name=name).first()
             if not service:
-                service = Service(name=name, description=description, price_inr=30.0, keywords=keywords, category_id=category.id, is_active=True)
+                service = Service(name=name, description=description, price_inr=catalog_fee, keywords=keywords, category_id=category.id, is_active=True)
                 db.session.add(service)
             else:
                 service.description = description

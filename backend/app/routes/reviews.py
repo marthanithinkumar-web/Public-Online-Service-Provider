@@ -17,6 +17,7 @@ def _authenticated_user():
     return get_request_user()
 
 
+@bp.route('', methods=['POST'])
 @bp.route('/', methods=['POST'])
 def create_review():
     user = _authenticated_user()
@@ -53,7 +54,20 @@ def create_review():
 @bp.route('/public', methods=['GET'])
 def public_reviews():
     reviews = Review.query.filter_by(is_public=True).order_by(Review.created_at.desc()).limit(20).all()
-    return jsonify(dump_schema.dump(reviews, many=True))
+    # Public review cards deliberately omit client names, contact details,
+    # internal order IDs and request references.
+    items = []
+    for review in reviews:
+        order = db.session.get(Order, review.order_id) if review.order_id else None
+        items.append({
+            'id': review.id,
+            'rating': review.rating,
+            'comment': review.comment,
+            'service': order.service.name if order and order.service else None,
+            'reviewer': 'Verified client',
+            'created_at': review.created_at.isoformat(),
+        })
+    return jsonify(items)
 
 
 # Admin endpoints

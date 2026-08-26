@@ -56,3 +56,12 @@ def test_password_reset_rejects_short_password_before_token_processing(client):
     })
     assert response.status_code == 400
     assert response.get_json()['error'] == 'New password must be at least 8 characters.'
+
+
+def test_production_email_does_not_print_security_tokens(monkeypatch, capsys):
+    from app.utils.email import send_email
+    monkeypatch.delenv('SMTP_HOST', raising=False)
+    monkeypatch.setenv('FLASK_ENV', 'production')
+    delivered = send_email('client@example.com', 'Password reset', 'sensitive-reset-token')
+    assert delivered is False
+    assert 'sensitive-reset-token' not in capsys.readouterr().out

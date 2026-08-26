@@ -8,15 +8,43 @@ collect OTPs, passwords, PINs, bank credentials, or other authentication secrets
 def get_service_requirements(service):
     text = f"{service.name or ''} {service.keywords or ''} {service.category.name if getattr(service, 'category', None) else ''}".lower()
 
-    if 'railway' in text and any(x in text for x in ('ticket', 'booking', 'travel')):
+    if any(x in text for x in ('railway ticket', 'bus ticket')):
         fields = [
             {'key': 'journey_from', 'label': 'Travelling from', 'required': True},
             {'key': 'journey_to', 'label': 'Travelling to', 'required': True},
             {'key': 'journey_date', 'label': 'Preferred travel date', 'type': 'date', 'required': True},
             {'key': 'passengers', 'label': 'Number of passengers', 'required': True},
-            {'key': 'travel_preference', 'label': 'Class / travel preference', 'placeholder': 'Sleeper / 3A / 2A / Chair Car / other', 'required': False},
+            {'key': 'travel_preference', 'label': 'Class / travel preference', 'placeholder': 'Preferred class or service type', 'required': False},
         ]
         documents = []
+    elif any(x in text for x in ('epfo', 'uan', 'epf ', 'e-shram', 'eshram', 'esic', 'career service')):
+        fields = [
+            {'key': 'assistance_type', 'label': 'Employment service needed', 'required': True},
+            {'key': 'member_status', 'label': 'Registration / membership status', 'required': False},
+            {'key': 'deadline', 'label': 'Deadline (if any)', 'type': 'date', 'required': False},
+        ]
+        documents = ['Relevant employment/member document, if required by the official process']
+    elif any(x in text for x in ('udyam', 'gst ', 'fssai', 'trade licence', 'trade license', 'shop & establishment')):
+        fields = [
+            {'key': 'business_type', 'label': 'Business / activity type', 'required': True},
+            {'key': 'assistance_type', 'label': 'Registration or licence assistance needed', 'required': True},
+            {'key': 'state_district', 'label': 'State / district', 'required': True},
+        ]
+        documents = ['Business and identity documents required by the applicable official process']
+    elif any(x in text for x in ('electricity', 'water connection', 'water bill', 'property tax', 'lpg')):
+        fields = [
+            {'key': 'utility_service', 'label': 'Utility / civic service needed', 'required': True},
+            {'key': 'location', 'label': 'Service location / municipality', 'required': True},
+            {'key': 'account_reference', 'label': 'Consumer or property reference (if available)', 'required': False},
+        ]
+        documents = ['Relevant account/property document if required; never share payment PINs or OTPs']
+    elif any(x in text for x in ('pm-kisan', 'pm kisan', 'ayushman', 'abha', 'pension', 'welfare', 'ration card', 'labour')):
+        fields = [
+            {'key': 'scheme_service', 'label': 'Scheme / welfare assistance needed', 'required': True},
+            {'key': 'state_district', 'label': 'State / district', 'required': True},
+            {'key': 'application_status', 'label': 'New application, correction or status check', 'required': True},
+        ]
+        documents = ['Identity/eligibility document only if required by the official scheme']
     elif 'scholarship' in text or 'epass' in text:
         fields = [
             {'key': 'application_type', 'label': 'Application type', 'placeholder': 'Fresh or Renewal', 'required': True},

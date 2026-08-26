@@ -6,7 +6,7 @@ from app.utils.database import db
 def test_client_can_delete_account_with_current_password(client):
     register = client.post(
         '/api/auth/register',
-        json={'name': 'Delete Me','phone': '9991112222','email': 'delete-me@example.com', 'password': 'secret'},
+        json={'name': 'Delete Me','phone': '9991112222','email': 'delete-me@example.com', 'password': 'secret123'},
     )
     assert register.status_code == 200
     token = register.get_json()['token']
@@ -21,7 +21,7 @@ def test_client_can_delete_account_with_current_password(client):
     deleted = client.delete(
         '/api/auth/delete-account',
         headers={'Authorization': f'Bearer {token}'},
-        json={'current_password': 'secret'},
+        json={'current_password': 'secret123'},
     )
     assert deleted.status_code == 200
 
@@ -30,7 +30,7 @@ def test_client_can_delete_account_with_current_password(client):
 
     login_after_deletion = client.post(
         '/api/auth/login',
-        json={'email': 'delete-me@example.com', 'password': 'secret'},
+        json={'email': 'delete-me@example.com', 'password': 'secret123'},
     )
     assert login_after_deletion.status_code == 401
 

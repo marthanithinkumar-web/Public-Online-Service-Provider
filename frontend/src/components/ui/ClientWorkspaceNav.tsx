@@ -7,7 +7,7 @@ const links=[
   ['/my-orders#applications','My Applications'],
   ['/my-orders#notifications','Notifications'],
   ['/account-settings','Profile & Security'],
-  ['/submit-grievance','Help & Feedback'],
+  ['/grievances','Help & Grievances'],
 ] as const
 
 function WorkspaceLinks(){return <>{links.map(([to,label])=><Link key={to} to={to}>{label}</Link>)}<Link className="workspace-delete-link" to="/account-settings#delete-account">Delete Account</Link></>}

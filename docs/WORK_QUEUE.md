@@ -85,3 +85,39 @@ Last updated: 2026-08-26
 ## Continuation rule
 
 After the items above are complete and tested, continue the existing full improvement queue one item at a time. Preserve working code, fix root causes, verify security/privacy isolation, and do not describe the website as 100% complete until the full production and end-to-end test suite passes.
+
+## Launch-readiness continuation (2026-08-26)
+
+13. Completed locally: expanded the database-backed catalog from 91 to 122 active services.
+   - Added citizen-document, student-admission, employment, welfare, health, business/licence, utility/civic and transport assistance.
+   - Railway Ticket Booking Assistance remains an ordinary searchable service.
+   - Added tailored, privacy-safe application fields and repeated warnings that clients complete OTP and payment authorization themselves.
+
+14. Completed locally: persisted the admin-controlled website-wide assistance fee.
+   - Newly seeded or newly created services inherit the last admin-set global assistance fee.
+   - Existing submitted requests retain their original fee snapshot.
+   - Added migration `20260826_08` and tests for post-change service creation and catalog seeding.
+
+15. Completed locally: finished private grievance tracking.
+   - Clients can list and track only their own grievances, including general support grievances.
+   - Admin responses, validated statuses, history, client notifications and audit records are connected.
+   - Removed duplicate legacy grievance/review routes so trailing-slash variants use the same authorization checks.
+   - Removed the unused destructive admin client-deletion endpoint; suspension/reactivation remains available.
+
+16. Completed locally: strengthened authentication and public-review privacy.
+   - Registration now enforces the same eight-character password minimum shown in the UI.
+   - Public reviews omit client names, contact details, request IDs and internal order IDs.
+   - Client request/grievance timelines no longer expose staff email addresses.
+   - The homepage shows database-backed service/category counts and moderated verified-client reviews when available.
+
+17. Verified locally for this batch:
+   - All 40 backend tests passed.
+   - TypeScript checking and the production Vite build passed.
+   - Clean migrations through `20260826_09` and an idempotent 122-service seed passed.
+   - A simulated ₹65 global fee remained ₹65 for newly seeded services.
+
+18. Still required before public-launch sign-off:
+   - Full authenticated browser E2E runs using isolated client/admin test accounts.
+   - Production migration/deployment verification for this batch.
+   - Confirm persistent S3-compatible document storage, shared rate-limit storage, SMTP delivery, admin 2FA and database backups in Render.
+   - Complete keyboard/mobile/browser/accessibility, slow-network, load/concurrency and recovery testing.

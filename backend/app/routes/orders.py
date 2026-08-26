@@ -32,6 +32,13 @@ def _authenticated_user():
     return get_request_user()
 
 
+def _client_history_dict(item):
+    data = item.to_dict()
+    # Clients need the status, time and visible note—not staff identifiers.
+    data.pop('changed_by', None)
+    return data
+
+
 def _normalise_application(value, depth=0):
     if depth > 6:
         raise ValueError('Application data is too deeply nested.')
@@ -136,7 +143,7 @@ def get_order(order_id):
     notifications = Notification.query.filter_by(user_id=order.user_id, order_id=order.id).order_by(Notification.created_at.desc()).all()
     return jsonify({
         'order': dump_schema.dump(order),
-        'history': [h.to_dict() for h in history],
+        'history': [h.to_dict() if user.is_admin else _client_history_dict(h) for h in history],
         'attachments': [a.to_dict() for a in attachments],
         'grievances': [g.to_dict() for g in grievances],
         'reviews': [r.to_dict() for r in reviews],

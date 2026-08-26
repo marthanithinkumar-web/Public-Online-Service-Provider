@@ -3,7 +3,7 @@ from ..models.user import User
 from ..models.order import Order
 from ..models.order_history import OrderStatusHistory
 from ..models.attachment import Attachment
-from ..models.grievance import Grievance
+from ..models.grievance import Grievance, GrievanceHistory
 from ..models.review import Review
 from ..models.notification import Notification
 from ..utils.database import db
@@ -164,6 +164,10 @@ def register():
     password = data.get('password')
     if not name or not phone or not email or not password:
         return jsonify({'error': 'Name, phone, email and password are required'}), 400
+    if len(password) < 8:
+        return jsonify({'error': 'Password must be at least 8 characters.'}), 400
+    if len(email) > 200 or '@' not in email or email.startswith('@') or email.endswith('@'):
+        return jsonify({'error': 'Enter a valid email address.'}), 400
 
     # basic phone validation
     cleaned_phone = ''.join([c for c in phone if c.isdigit()])
@@ -171,7 +175,7 @@ def register():
         return jsonify({'error': 'Invalid phone number'}), 400
 
     if User.query.filter_by(email=email).first():
-        return jsonify({'error': 'User exists'}), 400
+        return jsonify({'error': 'An account already exists for this email address.'}), 409
 
     u = User(name=name, phone=phone, email=email, password_hash=hash_password(password), is_admin=False)
     db.session.add(u)
@@ -215,6 +219,11 @@ def delete_account():
     order_ids = [order.id for order in orders]
     Notification.query.filter_by(user_id=user.id).delete(synchronize_session=False)
 
+    grievance_ids = [item.id for item in Grievance.query.filter_by(user_id=user.id).all()]
+    if grievance_ids:
+        GrievanceHistory.query.filter(GrievanceHistory.grievance_id.in_(grievance_ids)).delete(synchronize_session=False)
+        Grievance.query.filter(Grievance.id.in_(grievance_ids)).delete(synchronize_session=False)
+
     # Remove uploaded files before deleting their attachment records.
     attachments = Attachment.query.filter(
         (Attachment.uploaded_by == user.id) |
@@ -236,7 +245,10 @@ def delete_account():
 
     if order_ids:
         OrderStatusHistory.query.filter(OrderStatusHistory.order_id.in_(order_ids)).delete(synchronize_session=False)
-        Grievance.query.filter(Grievance.order_id.in_(order_ids)).delete(synchronize_session=False)
+        legacy_grievance_ids = [item.id for item in Grievance.query.filter(Grievance.order_id.in_(order_ids)).all()]
+        if legacy_grievance_ids:
+            GrievanceHistory.query.filter(GrievanceHistory.grievance_id.in_(legacy_grievance_ids)).delete(synchronize_session=False)
+            Grievance.query.filter(Grievance.id.in_(legacy_grievance_ids)).delete(synchronize_session=False)
         Review.query.filter(Review.order_id.in_(order_ids)).delete(synchronize_session=False)
         Order.query.filter(Order.id.in_(order_ids)).delete(synchronize_session=False)
 

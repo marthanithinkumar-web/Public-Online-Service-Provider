@@ -11,7 +11,10 @@ def send_email(to_address: str, subject: str, body: str):
     smtp_pass = os.getenv('SMTP_PASS')
 
     if not smtp_host or not smtp_port:
-        # Development fallback: print to console
+        # Never write password-reset or verification tokens into production
+        # logs. Console delivery is restricted to local development.
+        if os.getenv('FLASK_ENV') == 'production' or os.getenv('FORCE_HTTPS') == '1':
+            return False
         print(f"[EMAIL-DEV] To: {to_address}\nSubject: {subject}\n\n{body}\n")
         return True
 

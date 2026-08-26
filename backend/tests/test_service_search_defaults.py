@@ -27,9 +27,18 @@ def test_default_services_include_editable_thirty_rupee_railway_booking(client):
     assert railway['price_inr'] == 30.0
     assert railway['category'] == 'Travel & Ticketing Assistance'
     assert 'OTP' in railway['description']
-    field_keys = {field['key'] for field in railway['requirements']['fields']}
+    detail = client.get(f"/api/services/{railway['id']}").get_json()
+    field_keys = {field['key'] for field in detail['requirements']['fields']}
     assert {'journey_from', 'journey_to', 'journey_date', 'passengers'} <= field_keys
-    assert 'OTP' in railway['requirements']['safety_note']
+    assert 'OTP' in detail['requirements']['safety_note']
+
+
+def test_catalog_summary_is_cacheable_and_omits_form_definitions(client):
+    response = client.get('/api/services')
+    assert response.status_code == 200
+    assert 'max-age=60' in response.headers['Cache-Control']
+    assert response.get_json()
+    assert all('requirements' not in service for service in response.get_json())
 
 
 def test_service_search_matches_partial_words_categories_and_keywords(client):
