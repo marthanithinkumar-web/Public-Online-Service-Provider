@@ -16,3 +16,18 @@ def test_index_route():
     data = resp.get_json()
     assert 'Public Online Service Provider API' in data.get('message', '')
 
+
+def test_migration_mode_skips_model_dependent_bootstrap(monkeypatch, tmp_path):
+    import app.main as main_module
+
+    monkeypatch.setenv('DATABASE_URL', f'sqlite:///{tmp_path / "migration.db"}')
+    monkeypatch.setenv('SKIP_DATABASE_BOOTSTRAP', '1')
+
+    def fail_if_called():
+        raise AssertionError('model-dependent bootstrap ran during migration mode')
+
+    monkeypatch.setattr(main_module, 'ensure_default_services', fail_if_called)
+    monkeypatch.setattr(main_module, 'ensure_admin_user', fail_if_called)
+
+    app = main_module.create_app()
+    assert app is not None
