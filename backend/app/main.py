@@ -44,7 +44,7 @@ def create_app():
     # Multipart requests include headers and boundaries in addition to the
     # document itself, so allow one megabyte of transport overhead while the
     # upload route still enforces the advertised 10 MB file limit.
-    upload_limit_mb=int(os.getenv('MAX_UPLOAD_MB','10'));app.config.setdefault('MAX_CONTENT_LENGTH',(upload_limit_mb+1)*1024*1024)
+    upload_limit_mb=int(os.getenv('MAX_UPLOAD_MB','10'));app.config['MAX_CONTENT_LENGTH']=(upload_limit_mb+1)*1024*1024
     limiter._default_limits=['2000 per day','500 per hour'];limiter.init_app(app);Mail(app)
     with app.app_context():
         db.create_all()
