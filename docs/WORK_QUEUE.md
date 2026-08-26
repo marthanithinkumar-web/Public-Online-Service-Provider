@@ -19,7 +19,8 @@ Last updated: 2026-08-25
 ## Resume stopped checkpoint
 
 6. Complete Render backend deployment and database migration verification for the merged fee-transparency release.
-   - Production API was still serving the old service schema at the last check.
+   - Root cause found on 2026-08-26: the app factory queried the new fee columns before `flask db upgrade` could apply them, causing Render deploys to fail during startup.
+   - Apply and verify the migration-safe bootstrap fix.
    - Confirm `official_fee_status` and `official_fee_inr` are present after deployment.
    - Verify health, CORS, database connectivity, migrations, and production fee displays.
 
