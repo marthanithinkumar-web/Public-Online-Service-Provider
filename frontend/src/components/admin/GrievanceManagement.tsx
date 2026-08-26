@@ -26,12 +26,12 @@ export default function GrievanceManagement(){
   }
 
   return (
-    <div>
-      <h2>Grievances</h2>
+    <div className="admin-record-page">
+      <div className="section-header"><div><span className="eyebrow">Client support</span><h2>Grievances</h2><p>Review private client concerns and record meaningful resolutions.</p></div></div>
       {error&&<div className="dashboard-state error-state"><p>{error}</p><button onClick={()=>load(page)}>Try again</button></div>}
-      {loading?<div className="dashboard-state"><div className="loading-dot"/><p>Loading grievances...</p></div>:!items.length&&!error?<div className="dashboard-state"><p>No grievances found.</p></div>:<ul>
+      {loading?<div className="dashboard-state"><div className="loading-dot"/><p>Loading grievances...</p></div>:!items.length&&!error?<div className="dashboard-state"><p>No grievances found.</p></div>:<ul className="admin-record-list stacked">
         {items.map(g=> (
-          <li key={g.id} style={{border:'1px solid #eee',padding:8,margin:8,borderRadius:6}}>
+          <li key={g.id}>
             <div><strong>{g.grievance_code}</strong> — {g.client_name}</div>
             <div>{g.description}</div>
             <div>Status: {g.status}</div>
@@ -39,9 +39,9 @@ export default function GrievanceManagement(){
           </li>
         ))}
       </ul>}
-      <div style={{display:'flex',gap:8}}>
+      <div className="pagination">
         <button disabled={loading||page<=1} onClick={()=>setPage(Math.max(1,page-1))}>Prev</button>
-        <div>Page {meta.page ?? 1} / {meta.pages ?? 1}</div>
+        <span>Page {meta.page ?? 1} of {meta.pages ?? 1}</span>
         <button disabled={loading||page>=(meta.pages||1)} onClick={()=>setPage((meta.page||1)+1)}>Next</button>
       </div>
     </div>

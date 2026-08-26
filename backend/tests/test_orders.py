@@ -4,7 +4,8 @@ from app.utils.password import hash_password
 from app.models.user import User
 
 
-def test_complete_request_lifecycle():
+def test_complete_request_lifecycle(monkeypatch, tmp_path):
+    monkeypatch.setenv('DATABASE_URL', f'sqlite:///{tmp_path / "lifecycle.db"}')
     app=create_app();app.config['TESTING']=True
     with app.app_context():
         db.drop_all();db.create_all()

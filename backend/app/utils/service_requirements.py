@@ -8,7 +8,16 @@ collect OTPs, passwords, PINs, bank credentials, or other authentication secrets
 def get_service_requirements(service):
     text = f"{service.name or ''} {service.keywords or ''} {service.category.name if getattr(service, 'category', None) else ''}".lower()
 
-    if 'scholarship' in text or 'epass' in text:
+    if 'railway' in text and any(x in text for x in ('ticket', 'booking', 'travel')):
+        fields = [
+            {'key': 'journey_from', 'label': 'Travelling from', 'required': True},
+            {'key': 'journey_to', 'label': 'Travelling to', 'required': True},
+            {'key': 'journey_date', 'label': 'Preferred travel date', 'type': 'date', 'required': True},
+            {'key': 'passengers', 'label': 'Number of passengers', 'required': True},
+            {'key': 'travel_preference', 'label': 'Class / travel preference', 'placeholder': 'Sleeper / 3A / 2A / Chair Car / other', 'required': False},
+        ]
+        documents = []
+    elif 'scholarship' in text or 'epass' in text:
         fields = [
             {'key': 'application_type', 'label': 'Application type', 'placeholder': 'Fresh or Renewal', 'required': True},
             {'key': 'course_class', 'label': 'Course / Class', 'required': True},

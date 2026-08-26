@@ -108,6 +108,9 @@ SERVICE_CATALOG = {
         ('Online Document Upload Assistance', 'Assistance with preparing and uploading eligible documents to official portals.', 'document upload, online upload, application documents'),
         ('Government Portal Account Assistance', 'Assistance with eligible public-portal registration and account setup.', 'portal registration, government portal, account, registration'),
     ],
+    'Travel & Ticketing Assistance': [
+        ('Railway Ticket Booking Assistance', 'Guidance for railway ticket search and booking through the official railway process. Clients complete OTP and payment directly on the official portal.', 'railway, train, ticket, tickets, booking, irctc, travel'),
+    ],
 }
 
 app = create_app()

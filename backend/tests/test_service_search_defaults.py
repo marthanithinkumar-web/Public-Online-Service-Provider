@@ -18,6 +18,20 @@ def test_default_services_include_public_categories(client):
     assert 'MeeSeva / Public Services' in categories
 
 
+def test_default_services_include_editable_thirty_rupee_railway_booking(client):
+    response = client.get('/api/services/search?q=railway ticket')
+
+    assert response.status_code == 200
+    services = response.get_json()
+    railway = next(service for service in services if service['name'] == 'Railway Ticket Booking Assistance')
+    assert railway['price_inr'] == 30.0
+    assert railway['category'] == 'Travel & Ticketing Assistance'
+    assert 'OTP' in railway['description']
+    field_keys = {field['key'] for field in railway['requirements']['fields']}
+    assert {'journey_from', 'journey_to', 'journey_date', 'passengers'} <= field_keys
+    assert 'OTP' in railway['requirements']['safety_note']
+
+
 def test_service_search_matches_partial_words_categories_and_keywords(client):
     from app.models.service import Category, Service
     from app.utils.database import db

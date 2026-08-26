@@ -1,5 +1,5 @@
 import React from 'react'
-import { Link, Navigate, Routes, Route, useLocation } from 'react-router-dom'
+import {Link,Navigate,Routes,Route,useLocation} from 'react-router-dom'
 import AdminDashboard from './AdminDashboard'
 import OrderManagement from './OrderManagement'
 import ServiceManagement from './ServiceManagement'
@@ -12,56 +12,43 @@ import NotificationManagement from './NotificationManagement'
 import ActivityReports from './ActivityReports'
 import AdminSettings from './AdminSettings'
 
-const links = [
-  ['/admin/dashboard', 'Dashboard'],
-  ['/admin/orders', 'Requests'],
-  ['/admin/services', 'Services'],
-  ['/admin/grievances', 'Grievances'],
-  ['/admin/reviews', 'Reviews'],
-['/admin/users', 'Users'],
-  ['/admin/documents', 'Documents'],
-  ['/admin/notifications', 'Notifications'],
-  ['/admin/reports', 'Reports'],
-  ['/admin/settings', 'Settings'],
+const links=[
+  ['/admin/dashboard','Dashboard'],
+  ['/admin/orders','Applications'],
+  ['/admin/users','Clients'],
+  ['/admin/services','Services & Fees'],
+  ['/admin/documents','Documents'],
+  ['/admin/notifications','Notifications'],
+  ['/admin/grievances','Grievances'],
+  ['/admin/reviews','Reviews'],
+  ['/admin/reports','Activity & Reports'],
+  ['/admin/settings','Settings'],
 ] as const
 
+function AdminLinks({pathname}:{pathname:string}){return <>{links.map(([path,label])=><Link key={path} className={pathname===path||pathname.startsWith(`${path}/`)?'active':''} to={path}>{label}</Link>)}</>}
+
 export default function AdminPanel(){
-  const location = useLocation()
-
-  return (
-    <div className="admin-panel">
-      <div className="section-header">
-        <div>
-          <span className="eyebrow">Management workspace</span>
-          <h1>Admin Dashboard</h1>
-          <p style={{margin:'8px 0 0',color:'var(--muted)'}}>Manage citizen requests, services, grievances and reviews from one place.</p>
-        </div>
-        <Link className="btn btn-secondary" to="/">View public site</Link>
-      </div>
-
-      <nav className="admin-nav" aria-label="Admin navigation">
-        {links.map(([path, label]) => (
-          <Link key={path} className={location.pathname === path || location.pathname.startsWith(`${path}/`) ? 'active' : ''} to={path}>{label}</Link>
-        ))}
-      </nav>
-
-      <div style={{marginTop:22}}>
-        <Routes>
-          <Route index element={<Navigate to="/admin/dashboard" replace/>} />
-          <Route path="/dashboard" element={<AdminDashboard/>} />
-          <Route path="/orders" element={<OrderManagement/>} />
-          <Route path="/orders/:id" element={<AdminOrderDetail/>} />
-          <Route path="/services" element={<ServiceManagement/>} />
-          <Route path="/grievances" element={<GrievanceManagement/>} />
-          <Route path="/reviews" element={<ReviewManagement/>} />
-          <Route path="/users" element={<UserManagement/>} />
-          <Route path="/documents" element={<DocumentManagement/>} />
-          <Route path="/notifications" element={<NotificationManagement/>} />
-          <Route path="/reports" element={<ActivityReports/>} />
-          <Route path="/settings" element={<AdminSettings/>} />
-          <Route path="*" element={<Navigate to="/admin/dashboard" replace/>} />
-        </Routes>
-      </div>
-    </div>
-  )
+  const location=useLocation()
+  return <div className="admin-workspace">
+    <aside className="admin-sidebar"><div className="admin-sidebar-title"><strong>Administration</strong><small>Authorized provider workspace</small></div><nav aria-label="Admin navigation"><AdminLinks pathname={location.pathname}/></nav><div className="admin-sidebar-notice">Only authorized admins can view client records and documents.</div></aside>
+    <details className="admin-mobile-menu"><summary>Administration menu</summary><nav><AdminLinks pathname={location.pathname}/></nav></details>
+    <main className="admin-panel">
+      <div className="section-header admin-page-heading"><div><span className="eyebrow">Management workspace</span><h1>Admin Dashboard</h1><p>Manage applications, services, clients and updates from one secure place.</p></div><Link className="btn btn-secondary" to="/">View public site</Link></div>
+      <Routes>
+        <Route index element={<Navigate to="/admin/dashboard" replace/>}/>
+        <Route path="/dashboard" element={<AdminDashboard/>}/>
+        <Route path="/orders" element={<OrderManagement/>}/>
+        <Route path="/orders/:id" element={<AdminOrderDetail/>}/>
+        <Route path="/services" element={<ServiceManagement/>}/>
+        <Route path="/grievances" element={<GrievanceManagement/>}/>
+        <Route path="/reviews" element={<ReviewManagement/>}/>
+        <Route path="/users" element={<UserManagement/>}/>
+        <Route path="/documents" element={<DocumentManagement/>}/>
+        <Route path="/notifications" element={<NotificationManagement/>}/>
+        <Route path="/reports" element={<ActivityReports/>}/>
+        <Route path="/settings" element={<AdminSettings/>}/>
+        <Route path="*" element={<Navigate to="/admin/dashboard" replace/>}/>
+      </Routes>
+    </main>
+  </div>
 }

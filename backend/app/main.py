@@ -14,6 +14,16 @@ from .utils.password import hash_password, verify_password
 
 load_dotenv()
 
+def database_engine_options(uri):
+    options={'pool_pre_ping':True,'pool_recycle':280}
+    if uri.startswith(('postgresql://','postgres://')):
+        options.update(
+            pool_size=max(1,int(os.getenv('DB_POOL_SIZE','5'))),
+            max_overflow=max(0,int(os.getenv('DB_MAX_OVERFLOW','5'))),
+            pool_timeout=max(5,int(os.getenv('DB_POOL_TIMEOUT','20'))),
+        )
+    return options
+
 def ensure_admin_user():
     admin_email=(os.getenv('ADMIN_EMAIL') or '').strip().lower();admin_password=os.getenv('ADMIN_PASSWORD')
     if not admin_email or not admin_password:return
@@ -25,7 +35,7 @@ def ensure_admin_user():
     if changed:db.session.commit()
 
 def ensure_default_services():
-    defaults=[('Certificates','Residence Certificate','Assistance to apply for residence/domicile certificate',30.0,'residence,domicile,address,certificate'),('Certificates','Ration Card Services','Help with Ration Card related applications',50.0,'ration,card,food,subsidy'),('Government Jobs','Government Job Application','Assistance to apply for government job openings',100.0,'job,application,recruitment,jobs'),('Scholarships','Scholarship Application Assistance','Guidance and application support for eligible scholarships',50.0,'scholarship,education,student,financial aid'),('MeeSeva / Public Services','MeeSeva Service Assistance','Assistance with common MeeSeva and public service applications',50.0,'meeseva,public service,government,application'),('Government Schemes','Government Scheme Application Support','Eligibility guidance and application assistance for government schemes',50.0,'scheme,government scheme,benefit,eligibility')]
+    defaults=[('Certificates','Residence Certificate','Assistance to apply for residence/domicile certificate',30.0,'residence,domicile,address,certificate'),('Certificates','Ration Card Services','Help with Ration Card related applications',30.0,'ration,card,food,subsidy'),('Government Jobs','Government Job Application','Assistance to apply for government job openings',30.0,'job,application,recruitment,jobs'),('Scholarships','Scholarship Application Assistance','Guidance and application support for eligible scholarships',30.0,'scholarship,education,student,financial aid'),('MeeSeva / Public Services','MeeSeva Service Assistance','Assistance with common MeeSeva and public service applications',30.0,'meeseva,public service,government,application'),('Government Schemes','Government Scheme Application Support','Eligibility guidance and application assistance for government schemes',30.0,'scheme,government scheme,benefit,eligibility'),('Travel & Ticketing Assistance','Railway Ticket Booking Assistance','Guidance for railway ticket search and booking through the official railway process. Clients complete OTP and payment directly on the official portal.',30.0,'railway,train,ticket,tickets,booking,irctc,travel')]
     for cat_name,name,desc,price,keywords in defaults:
         cat=Category.query.filter_by(name=cat_name).first()
         if cat is None:cat=Category(name=cat_name);db.session.add(cat);db.session.flush()
@@ -35,7 +45,8 @@ def ensure_default_services():
     db.session.commit()
 
 def create_app():
-    app=Flask(__name__);app.config.from_mapping(SECRET_KEY=os.getenv('SECRET_KEY','dev-key'),SQLALCHEMY_DATABASE_URI=os.getenv('DATABASE_URL','sqlite:///psp.db'),SQLALCHEMY_TRACK_MODIFICATIONS=False,SQLALCHEMY_ENGINE_OPTIONS={'pool_pre_ping':True,'pool_recycle':280},MAIL_SERVER=os.getenv('SMTP_HOST',''),MAIL_PORT=int(os.getenv('SMTP_PORT') or 0),MAIL_USERNAME=os.getenv('SMTP_USER'),MAIL_PASSWORD=os.getenv('SMTP_PASS'),MAIL_USE_TLS=True,MAIL_USE_SSL=False)
+    database_uri=os.getenv('DATABASE_URL','sqlite:///psp.db')
+    app=Flask(__name__);app.config.from_mapping(SECRET_KEY=os.getenv('SECRET_KEY','dev-key'),SQLALCHEMY_DATABASE_URI=database_uri,SQLALCHEMY_TRACK_MODIFICATIONS=False,SQLALCHEMY_ENGINE_OPTIONS=database_engine_options(database_uri),MAIL_SERVER=os.getenv('SMTP_HOST',''),MAIL_PORT=int(os.getenv('SMTP_PORT') or 0),MAIL_USERNAME=os.getenv('SMTP_USER'),MAIL_PASSWORD=os.getenv('SMTP_PASS'),MAIL_USE_TLS=True,MAIL_USE_SSL=False)
     Talisman(app,content_security_policy=None,force_https=os.getenv('FORCE_HTTPS','0')=='1');db.init_app(app)
     configured_origins=os.getenv('CORS_ORIGINS');frontends=configured_origins or os.getenv('FRONTEND_URL','http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173');allowed_origins=[o.strip().rstrip('/') for o in frontends.split(',') if o.strip()];render_ui='https://public-online-service-provider-ui.onrender.com'
     if render_ui not in allowed_origins:allowed_origins.append(render_ui)

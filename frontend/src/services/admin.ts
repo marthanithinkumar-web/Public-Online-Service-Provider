@@ -66,6 +66,15 @@ export async function fetchServices(){
   return Array.isArray(res.data) ? res.data : (res.data.items || [])
 }
 
+export async function fetchCategories(){
+  const res=await api.get('/categories/')
+  return Array.isArray(res.data)?res.data:[]
+}
+
+export async function createCategory(name:string){
+  return (await api.post('/categories/',{name},{headers:authHeader()})).data
+}
+
 export async function createService(payload:any){
   const res = await api.post('/services/', payload, { headers: authHeader() })
   clearServiceCatalog()
@@ -82,6 +91,16 @@ export async function setServiceActive(id:number, active:boolean){
   const res = await api.post(`/services/${id}/active`, { active }, { headers: authHeader() })
   clearServiceCatalog()
   return res.data
+}
+
+export async function updateAllAssistanceFees(price_inr:number){
+  const res = await api.put('/admin/services/assistance-fee', { price_inr, confirm:true }, { headers:authHeader() })
+  clearServiceCatalog()
+  return res.data
+}
+
+export async function fetchAdminAudit(page=1){
+  return (await api.get('/admin/audit', { params:{page, per_page:20}, headers:authHeader() })).data
 }
 
 export async function fetchGrievances(page=1, per_page=20){

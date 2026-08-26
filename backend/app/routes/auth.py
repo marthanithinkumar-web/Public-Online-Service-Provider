@@ -203,6 +203,15 @@ def delete_account():
         return jsonify({'error': 'Current password is incorrect'}), 401
 
     orders = Order.query.filter_by(user_id=user.id).all()
+    active_orders = [order for order in orders if order.status not in {'Completed', 'Rejected', 'Cancelled'}]
+    if active_orders:
+        return jsonify({
+            'error': 'Your account has active requests. Cancel eligible requests or contact the provider before deleting your account.',
+            'active_requests': [
+                {'id': order.id, 'order_code': order.order_code, 'status': order.status}
+                for order in active_orders
+            ],
+        }), 409
     order_ids = [order.id for order in orders]
     Notification.query.filter_by(user_id=user.id).delete(synchronize_session=False)
 

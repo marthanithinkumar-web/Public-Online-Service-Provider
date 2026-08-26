@@ -3,12 +3,14 @@ import pytest
 from app.main import create_app
 
 
-def test_app_factory_creates_app():
+def test_app_factory_creates_app(monkeypatch, tmp_path):
+    monkeypatch.setenv('DATABASE_URL', f'sqlite:///{tmp_path / "factory.db"}')
     app = create_app()
     assert app is not None
 
 
-def test_index_route():
+def test_index_route(monkeypatch, tmp_path):
+    monkeypatch.setenv('DATABASE_URL', f'sqlite:///{tmp_path / "index.db"}')
     app = create_app()
     client = app.test_client()
     resp = client.get('/')
@@ -33,7 +35,8 @@ def test_migration_mode_skips_model_dependent_bootstrap(monkeypatch, tmp_path):
     assert app is not None
 
 
-def test_default_upload_limit_matches_client_ten_megabyte_message(monkeypatch):
+def test_default_upload_limit_matches_client_ten_megabyte_message(monkeypatch, tmp_path):
     monkeypatch.delenv('MAX_UPLOAD_MB', raising=False)
+    monkeypatch.setenv('DATABASE_URL', f'sqlite:///{tmp_path / "upload-limit.db"}')
     app = create_app()
     assert app.config['MAX_CONTENT_LENGTH'] == 11 * 1024 * 1024

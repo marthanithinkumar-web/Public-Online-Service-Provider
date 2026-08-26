@@ -14,7 +14,7 @@ export default function Footer(){
         </div>
         <div>
           <h4>Explore</h4>
-          <div className="footer-links"><Link to="/jobs">Jobs</Link><Link to="/scholarships">Scholarships</Link><Link to="/certificates">Certificates</Link><Link to="/schemes">Government Schemes</Link></div>
+          <div className="footer-links"><Link to="/jobs">Jobs</Link><Link to="/scholarships">Scholarships</Link><Link to="/certificates">Certificates</Link><Link to="/meeseva">MeeSeva Services</Link><Link to="/schemes">Government Schemes</Link></div>
         </div>
         <div>
           <h4>Company</h4>

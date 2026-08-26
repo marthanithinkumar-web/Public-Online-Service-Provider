@@ -14,7 +14,7 @@ services:
     # Seed the idempotent public service catalog before starting the API.
     # This ensures newly added services appear after each deployment without
     # creating duplicates in the production database.
-    startCommand: SKIP_DATABASE_BOOTSTRAP=1 flask --app app.main:create_app db upgrade --directory migrations_alembic && python seed.py && gunicorn -w 2 -b 0.0.0.0:$PORT wsgi:app
+    startCommand: SKIP_DATABASE_BOOTSTRAP=1 flask --app app.main:create_app db upgrade --directory migrations_alembic && python seed.py && gunicorn -c gunicorn.conf.py wsgi:app
     healthCheckPath: /
     envVars:
       - key: PYTHON_VERSION
@@ -49,6 +49,14 @@ services:
         sync: false
       - key: MAX_UPLOAD_MB
         value: "10"
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: GUNICORN_THREADS
+        value: "2"
+      - key: DB_POOL_SIZE
+        value: "5"
+      - key: DB_MAX_OVERFLOW
+        value: "5"
       - key: RATELIMIT_STORAGE_URI
         sync: false
       - key: S3_BUCKET
