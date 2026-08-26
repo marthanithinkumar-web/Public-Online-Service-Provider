@@ -47,6 +47,8 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false
+      - key: MAX_UPLOAD_MB
+        value: "10"
       - key: RATELIMIT_STORAGE_URI
         sync: false
       - key: S3_BUCKET
