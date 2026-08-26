@@ -2,7 +2,7 @@ from marshmallow import Schema, fields, validate
 
 
 class GrievanceCreateSchema(Schema):
-    order_id = fields.Int(required=True)
+    order_id = fields.Int(required=False, allow_none=True)
     description = fields.Str(required=True, validate=validate.Length(min=5, max=4000))
 
 

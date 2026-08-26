@@ -4,9 +4,9 @@ from ..models.order import Order
 from ..utils.database import db
 from ..schemas.grievance_schema import GrievanceCreateSchema, GrievanceSchema
 from ..middleware.auth import require_admin
-from ..models.user import User
 from ..utils.jwt_handler import get_request_user
 from datetime import datetime, timezone
+from secrets import token_hex
 
 bp = Blueprint('grievances', __name__)
 
@@ -18,10 +18,10 @@ def _authenticated_user():
     return get_request_user()
 
 
-def _generate_grievance_code(db_session):
-    # db_session is the SQLAlchemy object; use its session to query
-    count = db_session.session.query(Grievance).count() or 0
-    return f"GV-{datetime.now(timezone.utc).year}-{count+1:04d}"
+def _generate_grievance_code():
+    # Random references avoid collisions when two clients submit at once and
+    # do not reveal the number of grievances in the system.
+    return f"GV-{datetime.now(timezone.utc).year}-{token_hex(5).upper()}"
 
 
 @bp.route('/', methods=['POST'])
@@ -34,17 +34,17 @@ def create_grievance():
     if errors:
         return jsonify({'error': errors}), 400
 
-    order_id = data['order_id']
-    order = db.session.get(Order, order_id)
-    if not order:
-        return jsonify({'error': 'Invalid order_id'}), 400
-    if order.user_id != user.id:
+    order_id = data.get('order_id')
+    order = db.session.get(Order, order_id) if order_id else None
+    if order_id and not order:
+        return jsonify({'error': 'The selected request could not be found.'}), 400
+    if order and order.user_id != user.id:
         return jsonify({'error': 'You can only raise a grievance for your own request.'}), 403
 
-    code = _generate_grievance_code(db)
+    code = _generate_grievance_code()
     g = Grievance(
         grievance_code=code,
-        order_id=order_id,
+        order_id=order.id if order else None,
         client_name=user.name,
         phone=user.phone,
         email=user.email,

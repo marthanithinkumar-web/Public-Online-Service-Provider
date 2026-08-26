@@ -59,6 +59,16 @@ def test_grievance_flow(client):
     assert r.get_json()['grievance']['status'] == 'Under Review'
 
 
+def test_general_grievance_does_not_require_internal_order_id(client):
+    r = client.post('/api/auth/register', json={'name':'Help User','phone':'7666666666','email':'help@example.com','password':'pass'})
+    token = r.get_json()['token']
+    r = client.post('/api/grievances/', json={'description': 'I need general account support.'}, headers={'Authorization': f'Bearer {token}'})
+    assert r.status_code == 201
+    grievance = r.get_json()['grievance']
+    assert grievance['order_id'] is None
+    assert grievance['grievance_code'].startswith('GV-')
+
+
 def test_review_flow_and_publish(client):
     service_id = _create_service(client)
     r = client.post('/api/auth/register', json={'name':'R User','phone':'8888888888','email':'ruser@example.com','password':'pass'})

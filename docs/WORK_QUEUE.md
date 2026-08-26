@@ -1,28 +1,36 @@
 # Public Online Service Provider — Active Work Queue
 
-Last updated: 2026-08-25
+Last updated: 2026-08-26
 
-## Next session — execute first
+## Completed production checkpoint
 
-1. Change the homepage hero heading from **“Public Services, Made Simple”** to **“Public Services, Made Easier for You”**.
-2. Preserve the existing homepage menu because its Sign In/Register actions and service links are clearly visible and easy to use.
+1. Completed: changed the homepage hero heading from **“Public Services, Made Simple”** to **“Public Services, Made Easier for You”**.
+2. Completed: preserved the existing homepage menu because its Sign In/Register actions and service links are clearly visible and easy to use.
    - Keep the existing Jobs, Scholarships, MeeSeva, Certificates, and Schemes navigation.
    - Do not create a duplicate category/menu section.
    - Limit this instruction to the homepage; preserve the separate vertical client/account dashboard menu.
-3. Inspect and repair the client dashboard **Explore Services** search bar.
+3. Completed: inspected and repaired the client dashboard **Explore Services** search bar.
    - Verify the actual root cause before editing.
    - Test live typing, partial words, substrings, case-insensitive matching, categories, tags/keywords, result links, empty/error/loading states, keyboard use, and mobile behavior.
    - Verify frontend-to-backend API communication and prevent slow, hanging, duplicated, or stale requests.
-4. Run targeted frontend and backend tests for these changes.
-5. Verify the updated journeys on the deployed production website, not localhost only.
+4. Completed: ran targeted frontend and backend tests for these changes.
+5. Completed: verified the updated journeys on the deployed production website, not localhost only.
 
-## Resume stopped checkpoint
+## Completed stopped checkpoint
 
-6. Complete Render backend deployment and database migration verification for the merged fee-transparency release.
+6. Completed: Render backend deployment and database migration verification for the merged fee-transparency release.
    - Root cause found on 2026-08-26: the app factory queried the new fee columns before `flask db upgrade` could apply them, causing Render deploys to fail during startup.
-   - Apply and verify the migration-safe bootstrap fix.
-   - Confirm `official_fee_status` and `official_fee_inr` are present after deployment.
-   - Verify health, CORS, database connectivity, migrations, and production fee displays.
+   - Applied and verified the migration-safe bootstrap fix through the successful Blueprint deploy on 2026-08-26.
+   - Confirmed `official_fee_status` and `official_fee_inr` are present in production.
+   - Verified health, CORS, database connectivity, migrations, partial service search, and production fee displays.
+
+## Active audit
+
+7. In progress: audit every visible button, link, form, menu and navigation journey.
+   - First confirmed gap: grievance/review forms exposed internal numeric IDs, and the grievance UI claimed the request was optional while its endpoint required one.
+   - Replace typed internal IDs with choices from the signed-in client's own requests.
+   - Allow an honest general-support grievance without a linked request, preserve ownership checks for linked requests, and use non-sequential unique grievance references.
+   - Offer reviews only for completed requests owned by the signed-in client.
 
 ## Preserved fee rule
 
