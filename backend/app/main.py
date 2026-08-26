@@ -5,7 +5,7 @@ from .utils.database import db
 from .utils.schema_compat import ensure_user_schema
 from .models.user import User
 from .models.service import Category, Service
-from .routes import auth, services, orders, admin, client_actions, reviews, grievances, categories, notifications
+from .routes import auth, services, orders, admin, reviews, grievances, categories, notifications
 from flask_cors import CORS
 from flask_migrate import Migrate
 from flask_talisman import Talisman
@@ -66,7 +66,7 @@ def create_app():
         if os.getenv('SKIP_DATABASE_BOOTSTRAP') != '1':
             ensure_default_services()
             ensure_admin_user()
-    app.register_blueprint(auth.bp,url_prefix='/api/auth');app.register_blueprint(services.bp,url_prefix='/api/services');app.register_blueprint(orders.bp,url_prefix='/api/orders');app.register_blueprint(admin.bp,url_prefix='/api/admin');app.register_blueprint(client_actions.bp,url_prefix='/api');app.register_blueprint(reviews.bp,url_prefix='/api/reviews');app.register_blueprint(grievances.bp,url_prefix='/api/grievances');app.register_blueprint(categories.bp,url_prefix='/api/categories');app.register_blueprint(notifications.bp,url_prefix='/api/notifications');app.register_blueprint(__import__('app.routes.uploads',fromlist=['bp']).bp,url_prefix='/api/uploads')
+    app.register_blueprint(auth.bp,url_prefix='/api/auth');app.register_blueprint(services.bp,url_prefix='/api/services');app.register_blueprint(orders.bp,url_prefix='/api/orders');app.register_blueprint(admin.bp,url_prefix='/api/admin');app.register_blueprint(reviews.bp,url_prefix='/api/reviews');app.register_blueprint(grievances.bp,url_prefix='/api/grievances');app.register_blueprint(categories.bp,url_prefix='/api/categories');app.register_blueprint(notifications.bp,url_prefix='/api/notifications');app.register_blueprint(__import__('app.routes.uploads',fromlist=['bp']).bp,url_prefix='/api/uploads')
     @app.get('/')
     def index():return jsonify({'message':'Public Online Service Provider API'})
     return app

@@ -29,7 +29,7 @@ def test_grievance_flow(client):
     service_id = _create_service(client)
 
     # register user and create order
-    r = client.post('/api/auth/register', json={'name':'G User','phone':'7777777777','email': 'guser@example.com', 'password': 'pass'})
+    r = client.post('/api/auth/register', json={'name':'G User','phone':'7777777777','email': 'guser@example.com', 'password': 'strong-pass'})
     token = r.get_json()['token']
     headers = {'Authorization': f'Bearer {token}'}
 
@@ -60,7 +60,7 @@ def test_grievance_flow(client):
 
 
 def test_general_grievance_does_not_require_internal_order_id(client):
-    r = client.post('/api/auth/register', json={'name':'Help User','phone':'7666666666','email':'help@example.com','password':'pass'})
+    r = client.post('/api/auth/register', json={'name':'Help User','phone':'7666666666','email':'help@example.com','password':'strong-pass'})
     token = r.get_json()['token']
     r = client.post('/api/grievances/', json={'description': 'I need general account support.'}, headers={'Authorization': f'Bearer {token}'})
     assert r.status_code == 201
@@ -69,9 +69,45 @@ def test_general_grievance_does_not_require_internal_order_id(client):
     assert grievance['grievance_code'].startswith('GV-')
 
 
+def test_client_can_track_only_their_own_grievances_and_admin_response(client):
+    first = client.post('/api/auth/register', json={'name':'First Client','phone':'7555555555','email':'first-grievance@example.com','password':'strong-pass'})
+    second = client.post('/api/auth/register', json={'name':'Second Client','phone':'7444444444','email':'second-grievance@example.com','password':'strong-pass'})
+    first_headers = {'Authorization': f"Bearer {first.get_json()['token']}"}
+    second_headers = {'Authorization': f"Bearer {second.get_json()['token']}"}
+    created = client.post('/api/grievances/', json={'description':'Please help with my private account issue.'}, headers=first_headers)
+    assert created.status_code == 201
+    grievance = created.get_json()['grievance']
+
+    first_list = client.get('/api/grievances/mine', headers=first_headers)
+    second_list = client.get('/api/grievances/mine', headers=second_headers)
+    assert [item['id'] for item in first_list.get_json()['items']] == [grievance['id']]
+    assert second_list.get_json()['items'] == []
+    assert client.get(f"/api/grievances/{grievance['id']}", headers=second_headers).status_code == 404
+
+    admin_headers = {'Authorization': f'Bearer {_create_admin(client)}'}
+    missing_response = client.post(
+        f"/api/grievances/admin/{grievance['id']}/status",
+        json={'status':'Resolved'}, headers=admin_headers,
+    )
+    assert missing_response.status_code == 400
+    updated = client.post(
+        f"/api/grievances/admin/{grievance['id']}/status",
+        json={'status':'Resolved','response':'We reviewed and resolved your account issue.'},
+        headers=admin_headers,
+    )
+    assert updated.status_code == 200
+    tracked = client.get(f"/api/grievances/{grievance['id']}", headers=first_headers).get_json()['grievance']
+    assert tracked['status'] == 'Resolved'
+    assert tracked['admin_response'] == 'We reviewed and resolved your account issue.'
+    assert [entry['new_status'] for entry in tracked['history']] == ['New', 'Resolved']
+    assert all('changed_by' not in entry for entry in tracked['history'])
+    notifications = client.get('/api/notifications', headers=first_headers).get_json()['items']
+    assert any(grievance['grievance_code'] in item['message'] for item in notifications)
+
+
 def test_review_flow_and_publish(client):
     service_id = _create_service(client)
-    r = client.post('/api/auth/register', json={'name':'R User','phone':'8888888888','email':'ruser@example.com','password':'pass'})
+    r = client.post('/api/auth/register', json={'name':'R User','phone':'8888888888','email':'ruser@example.com','password':'strong-pass'})
     token = r.get_json()['token']
     headers = {'Authorization': f'Bearer {token}'}
     r = client.post('/api/orders/', json={'service_id': service_id, 'application_data': {'assistance_type': 'Application help'}}, headers=headers)
@@ -102,3 +138,7 @@ def test_review_flow_and_publish(client):
     assert r.status_code == 200
     pubs = r.get_json()
     assert any(p['id'] == rid for p in pubs)
+    published = next(p for p in pubs if p['id'] == rid)
+    assert published['reviewer'] == 'Verified client'
+    assert 'client_name' not in published
+    assert 'order_id' not in published

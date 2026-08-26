@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, Response
 from sqlalchemy import func, or_
 from datetime import datetime, time, timezone
 import math
+import os
 import csv
 import io
 from ..models.order import Order
@@ -11,7 +12,7 @@ from ..models.attachment import Attachment
 from ..models.grievance import Grievance
 from ..models.review import Review
 from ..models.notification import Notification
-from ..models.service import Service
+from ..models.service import Service, PlatformSetting
 from ..models.admin_audit import AdminAuditLog
 from ..utils.database import db
 from ..utils.jwt_handler import create_token, decode_token
@@ -99,7 +100,6 @@ def overview():
         'recent_orders': [order.to_dict() for order in recent_orders],
         'activity': [item.to_dict() for item in recent_history],
     })
-
 
 @bp.route('/orders', methods=['GET'])
 def list_orders():
@@ -271,6 +271,11 @@ def update_all_assistance_fees():
     previous_fees = sorted({float(service.price_inr or 0) for service in services})
     for service in services:
         service.price_inr = new_fee
+    setting = db.session.get(PlatformSetting, 'assistance_fee_inr')
+    if setting:
+        setting.value = f'{new_fee:.2f}'
+    else:
+        db.session.add(PlatformSetting(key='assistance_fee_inr', value=f'{new_fee:.2f}'))
     audit = AdminAuditLog(
         admin_id=admin.id,
         action='assistance_fee_bulk_update',
@@ -376,6 +381,24 @@ def profile():
     return jsonify({'message': 'Admin profile updated.', 'user': admin.to_dict(), 'token': token})
 
 
+@bp.route('/system-readiness', methods=['GET'])
+def system_readiness():
+    if not _require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    secret = os.getenv('SECRET_KEY') or ''
+    rate_store = os.getenv('RATELIMIT_STORAGE_URI') or 'memory://'
+    checks = [
+        {'key':'database','label':'Database connection','ready':True,'guidance':'Production database is reachable.'},
+        {'key':'secret_key','label':'Secure application secret','ready':len(secret) >= 32 and secret not in {'dev-key','change-me-to-a-secure-random-string'},'guidance':'Set a unique SECRET_KEY of at least 32 characters in Render.'},
+        {'key':'document_storage','label':'Persistent document storage','ready':bool(os.getenv('S3_BUCKET')),'guidance':'Configure S3_BUCKET and its credentials so uploads survive deployments.'},
+        {'key':'email','label':'Password-reset email delivery','ready':bool(os.getenv('SMTP_HOST') and os.getenv('SMTP_PORT')),'guidance':'Configure SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASS.'},
+        {'key':'admin_2fa','label':'Admin two-factor authentication','ready':os.getenv('ADMIN_2FA_ENABLED') == '1','guidance':'Set ADMIN_2FA_ENABLED=1 after SMTP is confirmed.'},
+        {'key':'shared_rate_limits','label':'Shared rate-limit storage','ready':bool(rate_store and rate_store != 'memory://'),'guidance':'Configure RATELIMIT_STORAGE_URI with a shared Redis-compatible store for multiple workers.'},
+        {'key':'https','label':'HTTPS enforcement','ready':os.getenv('FORCE_HTTPS') == '1','guidance':'Keep FORCE_HTTPS=1 in production.'},
+    ]
+    return jsonify({'ready': all(item['ready'] for item in checks), 'checks': checks, 'manual_checks': ['Confirm automated database backups and restore instructions.', 'Complete a real password-reset email test.', 'Complete client/admin production journey tests.']})
+
+
 @bp.route('/reports/requests.csv', methods=['GET'])
 def request_report():
     if not _require_admin():
@@ -408,30 +431,3 @@ def report_summary():
         'counts': {status: int(counts.get(status, 0)) for status in ALLOWED_STATUSES},
         'completed_fee_total': float(completed_fees or 0),
     })
-
-
-@bp.route('/users/<int:user_id>', methods=['DELETE'])
-def delete_user(user_id):
-    user = _require_admin()
-    if not user:
-        return jsonify({'error': 'Unauthorized'}), 401
-    target = db.get_or_404(User, user_id)
-    if target.is_admin:
-        return jsonify({'error': 'Cannot delete admin user via this endpoint'}), 403
-    orders = Order.query.filter_by(user_id=target.id).all()
-    order_ids = [o.id for o in orders]
-    Notification.query.filter_by(user_id=target.id).delete(synchronize_session=False)
-    attachments = Attachment.query.filter(
-        (Attachment.uploaded_by == target.id) |
-        (Attachment.order_id.in_(order_ids) if order_ids else False)
-    ).all()
-    for attachment in attachments:
-        db.session.delete(attachment)
-    if order_ids:
-        OrderStatusHistory.query.filter(OrderStatusHistory.order_id.in_(order_ids)).delete(synchronize_session=False)
-        Grievance.query.filter(Grievance.order_id.in_(order_ids)).delete(synchronize_session=False)
-        Review.query.filter(Review.order_id.in_(order_ids)).delete(synchronize_session=False)
-        Order.query.filter(Order.id.in_(order_ids)).delete(synchronize_session=False)
-    db.session.delete(target)
-    db.session.commit()
-    return jsonify({'message': 'User and associated data deleted'})

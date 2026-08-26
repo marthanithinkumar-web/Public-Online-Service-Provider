@@ -32,6 +32,17 @@ def test_admin_dashboard_requires_admin(client):
     assert client.post('/api/auth/register-admin', json={'email': 'attacker@example.com', 'password': 'pass', 'admin_secret': 'anything'}).status_code == 404
 
 
+def test_admin_client_management_does_not_expose_destructive_delete(client):
+    _, admin_token, _ = _setup_flow(client)
+    with client.application.app_context():
+        target_id = User.query.filter_by(email='dashboard-client@example.com').first().id
+    response = client.delete(
+        f'/api/admin/users/{target_id}',
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+    assert response.status_code == 405
+
+
 def test_admin_status_update_reaches_client_notifications(client):
     client_token, admin_token, order = _setup_flow(client)
     admin_headers = {'Authorization': f'Bearer {admin_token}'}
@@ -95,6 +106,26 @@ def test_admin_can_send_notification_and_update_profile(client):
     assert summary.get_json()['counts']['Submitted'] == 1
     assert client.get('/api/admin/reports/summary?status=Invalid', headers=admin_headers).status_code == 400
     assert client.get('/api/admin/reports/requests.csv?date_from=not-a-date', headers=admin_headers).status_code == 400
+
+
+def test_admin_system_readiness_reports_missing_and_configured_controls(client, monkeypatch):
+    _, admin_token, _ = _setup_flow(client)
+    headers = {'Authorization': f'Bearer {admin_token}'}
+    assert client.get('/api/admin/system-readiness').status_code == 401
+    missing = client.get('/api/admin/system-readiness', headers=headers)
+    assert missing.status_code == 200
+    missing_checks = {item['key']:item['ready'] for item in missing.get_json()['checks']}
+    assert missing_checks['document_storage'] is False
+
+    monkeypatch.setenv('SECRET_KEY', 'a-production-secret-key-that-is-long-enough')
+    monkeypatch.setenv('S3_BUCKET', 'documents')
+    monkeypatch.setenv('SMTP_HOST', 'smtp.example.com')
+    monkeypatch.setenv('SMTP_PORT', '587')
+    monkeypatch.setenv('ADMIN_2FA_ENABLED', '1')
+    monkeypatch.setenv('RATELIMIT_STORAGE_URI', 'redis://cache.example.com/0')
+    monkeypatch.setenv('FORCE_HTTPS', '1')
+    configured = client.get('/api/admin/system-readiness', headers=headers).get_json()
+    assert configured['ready'] is True
 
 
 def test_admin_can_suspend_client_and_invalidate_existing_token(client):

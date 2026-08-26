@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /my-orders
+Disallow: /account-settings
+Disallow: /grievances
+Disallow: /submit-grievance
+Disallow: /submit-review
+Disallow: /reset-password
+
+Sitemap: https://public-online-service-provider-ui.onrender.com/sitemap.xml

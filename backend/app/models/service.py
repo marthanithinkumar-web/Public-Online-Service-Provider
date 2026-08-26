@@ -9,6 +9,14 @@ class Category(db.Model):
     name = db.Column(db.String(200), unique=True, nullable=False)
 
 
+class PlatformSetting(db.Model):
+    """Small, non-secret settings that must survive catalog reseeding."""
+    __tablename__ = 'platform_settings'
+    key = db.Column(db.String(100), primary_key=True)
+    value = db.Column(db.String(500), nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=False, default=utc_now, onupdate=utc_now)
+
+
 class Service(db.Model):
     __tablename__ = 'services'
     id = db.Column(db.Integer, primary_key=True)

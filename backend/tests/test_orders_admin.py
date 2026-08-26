@@ -18,10 +18,10 @@ def test_order_lifecycle_and_admin_controls(client):
             db.session.commit()
         service_id = svc.id
 
-    r = client.post('/api/auth/register', json={'name':'User One','phone':'9990001111','email': 'user1@example.com', 'password': 'pass1'})
+    r = client.post('/api/auth/register', json={'name':'User One','phone':'9990001111','email': 'user1@example.com', 'password': 'strong-pass1'})
     assert r.status_code == 200
     token1 = r.get_json()['token']
-    r = client.post('/api/auth/register', json={'name':'User Two','phone':'9990002222','email': 'user2@example.com', 'password': 'pass2'})
+    r = client.post('/api/auth/register', json={'name':'User Two','phone':'9990002222','email': 'user2@example.com', 'password': 'strong-pass2'})
     assert r.status_code == 200
     token2 = r.get_json()['token']
     headers1 = {'Authorization': f'Bearer {token1}'}

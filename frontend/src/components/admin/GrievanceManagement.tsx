@@ -6,6 +6,7 @@ export default function GrievanceManagement(){
   const [meta, setMeta] = useState<any>({})
   const [page, setPage] = useState(1)
   const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [busyId,setBusyId]=useState<number|null>(null);const [nextStatus,setNextStatus]=useState<Record<number,string>>({})
+  const [responses,setResponses]=useState<Record<number,string>>({})
 
   const load = async (p=1)=>{
     try{setLoading(true);setError('')
@@ -20,7 +21,8 @@ export default function GrievanceManagement(){
     const s = nextStatus[id]
     if(!s) return
     try{setBusyId(id);setError('')
-      await updateGrievanceStatus(id, s)
+      await updateGrievanceStatus(id, s, responses[id]||'')
+      setResponses(current=>({...current,[id]:''}))
       load(page)
     }catch{ setError('Unable to update grievance status.') }finally{setBusyId(null)}
   }
@@ -35,7 +37,8 @@ export default function GrievanceManagement(){
             <div><strong>{g.grievance_code}</strong> — {g.client_name}</div>
             <div>{g.description}</div>
             <div>Status: {g.status}</div>
-            <div className="button-row"><label>New status<select value={nextStatus[g.id]||''} onChange={e=>setNextStatus(current=>({...current,[g.id]:e.target.value}))}><option value="">Select status</option>{['New','Under Review','Resolved','Closed'].filter(s=>s!==g.status).map(s=><option key={s}>{s}</option>)}</select></label><button disabled={!nextStatus[g.id]||busyId===g.id} onClick={()=>change(g.id)}>{busyId===g.id?'Updating…':'Update status'}</button></div>
+            {g.admin_response&&<div><strong>Latest client response:</strong> {g.admin_response}</div>}
+            <div className="admin-form"><label>New status<select value={nextStatus[g.id]||''} onChange={e=>setNextStatus(current=>({...current,[g.id]:e.target.value}))}><option value="">Select status</option>{['New','Under Review','Resolved','Closed'].filter(s=>s!==g.status).map(s=><option key={s}>{s}</option>)}</select></label><label>Response to client<textarea rows={3} maxLength={4000} value={responses[g.id]||''} onChange={e=>setResponses(current=>({...current,[g.id]:e.target.value}))} placeholder="Explain the update or resolution clearly"/></label><button disabled={!nextStatus[g.id]||busyId===g.id||(['Resolved','Closed'].includes(nextStatus[g.id])&&(responses[g.id]||'').trim().length<3)} onClick={()=>change(g.id)}>{busyId===g.id?'Updating…':'Send update'}</button></div>
           </li>
         ))}
       </ul>}

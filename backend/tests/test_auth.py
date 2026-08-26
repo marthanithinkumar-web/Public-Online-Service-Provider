@@ -19,15 +19,25 @@ def test_register_and_login(monkeypatch, tmp_path):
         db.create_all()
         client = app.test_client()
         # register
-        r = client.post('/api/auth/register', json={'name':'Test User','phone':'9990001111','email':'test@example.com','password':'secret'})
+        r = client.post('/api/auth/register', json={'name':'Test User','phone':'9990001111','email':'test@example.com','password':'secret123'})
         assert r.status_code == 200
         data = r.get_json()
         assert 'token' in data
         # login
-        r2 = client.post('/api/auth/login', json={'email':'test@example.com','password':'secret'})
+        r2 = client.post('/api/auth/login', json={'email':'test@example.com','password':'secret123'})
         assert r2.status_code == 200
         data2 = r2.get_json()
-        assert 'token' in data2
+    assert 'token' in data2
+
+
+def test_registration_rejects_weak_password_and_invalid_email(monkeypatch, tmp_path):
+    app = setup_test_app(monkeypatch, tmp_path)
+    client = app.test_client()
+    weak = client.post('/api/auth/register', json={'name':'Weak User','phone':'9990001111','email':'weak@example.com','password':'short'})
+    invalid_email = client.post('/api/auth/register', json={'name':'Email User','phone':'9990001111','email':'invalid','password':'strong-pass'})
+    assert weak.status_code == 400
+    assert '8 characters' in weak.get_json()['error']
+    assert invalid_email.status_code == 400
 
 
 def test_authenticated_client_can_load_dashboard_profile(client):

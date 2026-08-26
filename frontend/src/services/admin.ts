@@ -47,6 +47,10 @@ export async function updateAdminProfile(payload:any){
   return (await api.put('/admin/profile', payload, { headers:authHeader() })).data
 }
 
+export async function fetchSystemReadiness(){
+  return (await api.get('/admin/system-readiness', {headers:authHeader()})).data
+}
+
 export function requestReportUrl(filters:Record<string,string>={}){
   const params = new URLSearchParams(Object.entries(filters).filter(([,value])=>value))
   return `${apiBase}/admin/reports/requests.csv${params.size?`?${params}`:''}`
@@ -108,8 +112,8 @@ export async function fetchGrievances(page=1, per_page=20){
   return res.data
 }
 
-export async function updateGrievanceStatus(id:number, status:string){
-  const res = await api.post(`/grievances/admin/${id}/status`, { status }, { headers: authHeader() })
+export async function updateGrievanceStatus(id:number, status:string, response?:string){
+  const res = await api.post(`/grievances/admin/${id}/status`, { status, response }, { headers: authHeader() })
   return res.data
 }
 
