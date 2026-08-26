@@ -35,6 +35,7 @@ Last updated: 2026-08-26
    - Confirmed upload gap: client screens and route-level validation allow 10 MB documents, while the global server default allowed only 5 MB. Align local, documented, and Render limits with the visible 10 MB rule.
    - Confirmed public-navigation gap: category pages read a URL parameter that none of the explicit category routes provides, leaving all five menu destinations stuck in loading. Map each real route to its catalog query and add timeout/retry handling.
    - Confirmed smartphone-header gap from production screenshots: at phone and mobile “desktop site” widths, all Login/Register/navigation destinations are hidden behind a small icon-only control. Keep the complete drawer, add always-visible account shortcuts, improve touch targets/grouping, protect contact text from overflow, and verify both viewport modes.
+   - User refinement: preserve one shared homepage across laptop and smartphone; do not create a separate mobile homepage. Replace the disliked shortcut row with a compact search icon plus off-canvas menu, and make the existing homepage scale cleanly at phone widths.
 
 ## Preserved fee rule
 

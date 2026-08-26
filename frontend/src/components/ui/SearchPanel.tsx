@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react'
-import {Link} from 'react-router-dom'
+import {Link,useLocation} from 'react-router-dom'
 import {fetchServiceCatalog,readCachedServices} from '../../services/serviceCatalog'
 
 const POPULAR=['Passport','Income certificate','Scholarship','Government jobs','Aadhaar update']
@@ -7,6 +7,7 @@ const categoryName=(service:any)=>typeof service.category==='string'?service.cat
 const normalise=(value:string)=>value.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\bgovt\b/g,'government')
 
 export default function SearchPanel({context='home'}:{context?:'home'|'dashboard'}){
+  const location=useLocation()
   const inputRef=useRef<HTMLInputElement>(null)
   const [q,setQ]=useState('');const [services,setServices]=useState<any[]>(()=>readCachedServices(true));const [loading,setLoading]=useState(services.length===0);const [error,setError]=useState('');const [category,setCategory]=useState('');const [retry,setRetry]=useState(0)
   const term=q.trim()
@@ -23,6 +24,8 @@ export default function SearchPanel({context='home'}:{context?:'home'|'dashboard
       .finally(()=>{if(active)setLoading(false)})
     return()=>{active=false}
   },[retry])
+
+  useEffect(()=>{if(context==='home'&&location.hash==='#service-search'){requestAnimationFrame(()=>{document.getElementById('service-search')?.scrollIntoView({behavior:'smooth',block:'start'});inputRef.current?.focus()})}},[context,location.hash])
 
   const results=useMemo(()=>{if(!term)return[];const tokens=normalise(term).split(' ').filter(Boolean);return services.filter(service=>{const searchable=normalise(`${service.name||''} ${service.description||''} ${service.keywords||''} ${categoryName(service)}`);return tokens.every(token=>searchable.includes(token))})},[services,term])
   const categories=useMemo(()=>Array.from(new Set(results.map(categoryName))).sort(),[results])

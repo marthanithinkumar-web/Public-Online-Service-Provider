@@ -25,6 +25,13 @@ export default function NavBar(){
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [])
 
+  useEffect(() => {
+    if (!open) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previousOverflow }
+  }, [open])
+
   const doLogout = () => {
     logout()
     setSession(null)
@@ -52,6 +59,7 @@ export default function NavBar(){
           <Link className={isActive('/contact')? 'active':''} to="/contact">Contact</Link>
         </nav>
         <div className="header-actions">
+          <Link className="header-search" to="/#service-search" aria-label="Search services"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.2 4.2"/></svg><span>Search</span></Link>
           {!authenticated && <>
             <Link className="header-admin" to="/admin/login">Admin Login</Link>
             <Link className="header-link" to="/login">Client Login</Link>
@@ -68,19 +76,15 @@ export default function NavBar(){
             <Link className="header-signup" to="/admin/orders">Requests</Link>
             <button className="header-link" type="button" onClick={doLogout}>Logout</button>
           </>}
-          <button className="mobile-menu-btn" type="button" onClick={()=>setOpen(value=>!value)} aria-label={open ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={open} aria-controls="mobile-navigation"><span aria-hidden="true">{open?'×':'☰'}</span><span className="mobile-menu-label">{open?'Close':'Menu'}</span></button>
+          <button className="mobile-menu-btn" type="button" onClick={()=>setOpen(true)} aria-label="Open navigation menu" aria-expanded={open} aria-controls="mobile-navigation"><span aria-hidden="true">☰</span></button>
         </div>
       </div>
       <div className="container provider-strip"><span>{PROVIDER.name}</span><span><a href={`tel:${PROVIDER.phone}`}>{PROVIDER.phone}</a> · <a href={`tel:${PROVIDER.phone2}`}>{PROVIDER.phone2}</a> · <a href={`mailto:${PROVIDER.email}`}>{PROVIDER.email}</a></span></div>
-      <nav className="container mobile-primary-actions" aria-label="Account shortcuts">
-        {!authenticated&&<><Link className="mobile-login-shortcut" to="/login">Client Login</Link><Link className="mobile-register-shortcut" to="/register">Register</Link></>}
-        {authenticated&&!admin&&<><Link to="/my-orders">Dashboard</Link><Link to="/account-settings">My Account</Link></>}
-        {authenticated&&admin&&<><Link to="/admin/dashboard">Admin Dashboard</Link><Link to="/admin/orders">Requests</Link></>}
-      </nav>
-      {open && <nav id="mobile-navigation" className="mobile-drawer" aria-label="Mobile navigation"><div className="container mobile-drawer-inner">
-        <section className="mobile-drawer-section"><strong>Account</strong><div className="mobile-drawer-links">{authenticated ? (admin ? <><Link to="/admin/dashboard">Dashboard</Link><Link to="/admin/orders">Requests</Link><Link to="/admin/services">Services</Link><Link to="/admin/users">Clients</Link><button type="button" onClick={doLogout}>Logout</button></> : <><Link to="/my-orders">Dashboard</Link><Link to="/my-orders#applications">My Applications</Link><Link to="/account-settings">My Account</Link><button type="button" onClick={doLogout}>Logout</button></>) : <><Link to="/login">Client Login</Link><Link to="/register">Register</Link><Link to="/admin/login">Admin Login</Link></>}</div></section>
-        <section className="mobile-drawer-section"><strong>Explore services</strong><div className="mobile-drawer-links"><Link to="/jobs">Jobs</Link><Link to="/scholarships">Scholarships</Link><Link to="/meeseva">MeeSeva</Link><Link to="/certificates">Certificates</Link><Link to="/schemes">Schemes</Link><Link to="/about">About</Link><Link to="/contact">Contact</Link></div></section>
-      </div></nav>}
+      {open&&<><button className="mobile-drawer-backdrop" type="button" onClick={()=>setOpen(false)} aria-label="Close navigation menu"/><nav id="mobile-navigation" className="mobile-drawer" aria-label="Mobile navigation"><div className="mobile-drawer-header"><div><strong>Menu</strong><small>Public Online Service Provider</small></div><button type="button" onClick={()=>setOpen(false)} aria-label="Close navigation menu">×</button></div><div className="mobile-drawer-inner">
+        <section className="mobile-drawer-section"><strong>Account</strong><div className="mobile-drawer-links">{authenticated ? (admin ? <><Link to="/admin/dashboard">Dashboard</Link><Link to="/admin/orders">Requests</Link><Link to="/admin/services">Services</Link><Link to="/admin/users">Clients</Link><button type="button" onClick={doLogout}>Logout</button></> : <><Link to="/my-orders">Dashboard</Link><Link to="/my-orders#applications">My Applications</Link><Link to="/account-settings">My Account</Link><button type="button" onClick={doLogout}>Logout</button></>) : <><Link className="drawer-primary-action" to="/login">Client Login</Link><Link className="drawer-register-action" to="/register">Create Account</Link><Link to="/admin/login">Admin Login</Link></>}</div></section>
+        <section className="mobile-drawer-section"><strong>Find a service</strong><div className="mobile-drawer-links"><Link to="/#service-search">Search Services</Link><Link to="/jobs">Jobs</Link><Link to="/scholarships">Scholarships</Link><Link to="/meeseva">MeeSeva</Link><Link to="/certificates">Certificates</Link><Link to="/schemes">Schemes</Link></div></section>
+        <section className="mobile-drawer-section"><strong>Information & support</strong><div className="mobile-drawer-links"><Link to="/about">About</Link><Link to="/contact">Contact</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link></div></section>
+      </div></nav></>}
     </header>
   )
 }
