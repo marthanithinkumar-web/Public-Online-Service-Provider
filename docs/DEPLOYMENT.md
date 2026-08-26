@@ -24,7 +24,10 @@ Option B: Serve static via Nginx or a CDN
 - Install Python deps: pip install -r backend/requirements.txt
 - Initialize migrations (if not yet done): flask db init --directory migrations_alembic
 - Generate migration: flask db migrate -m "initial" --directory migrations_alembic
-- Apply migration: flask db upgrade --directory migrations_alembic
+- Apply migration without running model-dependent seed/bootstrap queries first:
+  - Linux/macOS: SKIP_DATABASE_BOOTSTRAP=1 flask db upgrade --directory migrations_alembic
+  - PowerShell: $env:SKIP_DATABASE_BOOTSTRAP='1'; flask db upgrade --directory migrations_alembic; Remove-Item Env:SKIP_DATABASE_BOOTSTRAP
+- Run the normal application startup or seed command after the upgrade succeeds.
 
 5) Run backend with Gunicorn + Nginx (example)
 - Install Gunicorn: pip install gunicorn
@@ -50,4 +53,3 @@ Troubleshooting
 
 Contact
 - Provider contact is visible in the site header and footer; update frontend/src/services/config.ts to change contact details.
-

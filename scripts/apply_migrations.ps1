@@ -8,6 +8,18 @@ pip install -r backend/requirements.txt
 
 Write-Output "Running migrations (migrations_alembic)..."
 cd backend
-flask db migrate -m "autogen" --directory migrations_alembic
-flask db upgrade --directory migrations_alembic
+$previousBootstrapSetting = $env:SKIP_DATABASE_BOOTSTRAP
+$env:SKIP_DATABASE_BOOTSTRAP = "1"
+try {
+    flask db migrate -m "autogen" --directory migrations_alembic
+    flask db upgrade --directory migrations_alembic
+}
+finally {
+    if ($null -eq $previousBootstrapSetting) {
+        Remove-Item Env:SKIP_DATABASE_BOOTSTRAP -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:SKIP_DATABASE_BOOTSTRAP = $previousBootstrapSetting
+    }
+}
 Write-Output "Migrations complete."

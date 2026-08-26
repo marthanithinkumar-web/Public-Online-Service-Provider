@@ -14,7 +14,7 @@ services:
     # Seed the idempotent public service catalog before starting the API.
     # This ensures newly added services appear after each deployment without
     # creating duplicates in the production database.
-    startCommand: flask --app app.main:create_app db upgrade --directory migrations_alembic && python seed.py && gunicorn -w 2 -b 0.0.0.0:$PORT wsgi:app
+    startCommand: SKIP_DATABASE_BOOTSTRAP=1 flask --app app.main:create_app db upgrade --directory migrations_alembic && python seed.py && gunicorn -w 2 -b 0.0.0.0:$PORT wsgi:app
     healthCheckPath: /
     envVars:
       - key: PYTHON_VERSION
