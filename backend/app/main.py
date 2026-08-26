@@ -42,7 +42,15 @@ def create_app():
     CORS(app,resources={r'/api/*':{'origins':allowed_origins}},supports_credentials=True,allow_headers=['Content-Type','Authorization'],methods=['GET','POST','PUT','PATCH','DELETE','OPTIONS']);Migrate(app,db)
     from .utils.limiter import limiter
     limiter._default_limits=['2000 per day','500 per hour'];limiter.init_app(app);Mail(app);app.config.setdefault('MAX_CONTENT_LENGTH',int(os.getenv('MAX_UPLOAD_MB','5'))*1024*1024)
-    with app.app_context():db.create_all();ensure_user_schema(db);ensure_default_services();ensure_admin_user()
+    with app.app_context():
+        db.create_all()
+        ensure_user_schema(db)
+        # Migration commands must be able to construct the app before newly
+        # added model columns exist. Production sets this flag only for
+        # `flask db upgrade`; normal startup and tests still run bootstrap.
+        if os.getenv('SKIP_DATABASE_BOOTSTRAP') != '1':
+            ensure_default_services()
+            ensure_admin_user()
     app.register_blueprint(auth.bp,url_prefix='/api/auth');app.register_blueprint(services.bp,url_prefix='/api/services');app.register_blueprint(orders.bp,url_prefix='/api/orders');app.register_blueprint(admin.bp,url_prefix='/api/admin');app.register_blueprint(client_actions.bp,url_prefix='/api');app.register_blueprint(reviews.bp,url_prefix='/api/reviews');app.register_blueprint(grievances.bp,url_prefix='/api/grievances');app.register_blueprint(categories.bp,url_prefix='/api/categories');app.register_blueprint(notifications.bp,url_prefix='/api/notifications');app.register_blueprint(__import__('app.routes.uploads',fromlist=['bp']).bp,url_prefix='/api/uploads')
     @app.get('/')
     def index():return jsonify({'message':'Public Online Service Provider API'})
