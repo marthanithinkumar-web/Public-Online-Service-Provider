@@ -12,7 +12,7 @@ export default function Home(){
       <section className="hero">
         <div className="hero-copy">
           <span className="eyebrow">Trusted public support platform</span>
-          <h1>Public Services, Made Simple.</h1>
+          <h1>Public Services, Made Easier for You</h1>
           <p>Get reliable assistance with government jobs, scholarships, certificates, public services and government schemes — all in one place.</p>
           <div className="cta-row"><Link className="btn btn-primary" to="/jobs">Explore Services</Link><Link className="btn btn-secondary" to="/register">Get Started</Link></div>
           <div className="hero-stats"><div><strong>20+</strong><span>Services</span></div><div><strong>6</strong><span>Categories</span></div><div><strong>24/7</strong><span>Online Access</span></div><div><strong>Citizen First</strong><span>Approach</span></div></div>
