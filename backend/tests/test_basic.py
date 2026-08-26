@@ -31,3 +31,9 @@ def test_migration_mode_skips_model_dependent_bootstrap(monkeypatch, tmp_path):
 
     app = main_module.create_app()
     assert app is not None
+
+
+def test_default_upload_limit_matches_client_ten_megabyte_message(monkeypatch):
+    monkeypatch.delenv('MAX_UPLOAD_MB', raising=False)
+    app = create_app()
+    assert app.config['MAX_CONTENT_LENGTH'] == 11 * 1024 * 1024
