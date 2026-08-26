@@ -31,6 +31,8 @@ Last updated: 2026-08-26
    - Replace typed internal IDs with choices from the signed-in client's own requests.
    - Allow an honest general-support grievance without a linked request, preserve ownership checks for linked requests, and use non-sequential unique grievance references.
    - Offer reviews only for completed requests owned by the signed-in client.
+   - Next confirmed gap: the application wizard displayed editable contact fields even though the secure backend correctly uses the client's account profile. Make the source of truth explicit and direct edits through Account Settings so changes are never silently ignored.
+   - Confirmed upload gap: client screens and route-level validation allow 10 MB documents, while the global server default allowed only 5 MB. Align local, documented, and Render limits with the visible 10 MB rule.
 
 ## Preserved fee rule
 
