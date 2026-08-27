@@ -14,7 +14,13 @@ export default function ServicesSection(){
   const popular=useMemo(()=>{
     const available=services.filter(service=>service.is_active!==false)
     const chosen:any[]=[]
-    preferred.forEach(term=>{const match=available.find(service=>!chosen.includes(service)&&`${service.name} ${service.keywords||''}`.toLowerCase().includes(term));if(match)chosen.push(match)})
+    preferred.forEach(term=>{
+      const remaining=available.filter(service=>!chosen.includes(service))
+      const nameMatch=remaining.find(service=>String(service.name||'').toLowerCase().includes(term))
+      const keywordMatch=remaining.find(service=>String(service.keywords||'').toLowerCase().includes(term))
+      const match=nameMatch||keywordMatch
+      if(match)chosen.push(match)
+    })
     available.forEach(service=>{if(chosen.length<6&&!chosen.includes(service))chosen.push(service)})
     return chosen.slice(0,6)
   },[services])
