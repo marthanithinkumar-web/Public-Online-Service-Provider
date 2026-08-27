@@ -25,6 +25,10 @@ def test_health_route_checks_database(monkeypatch, tmp_path):
     response = app.test_client().get('/health')
     assert response.status_code == 200
     assert response.get_json() == {'status': 'ok'}
+    assert response.headers['X-Content-Type-Options'] == 'nosniff'
+    assert response.headers['X-Frame-Options'] == 'SAMEORIGIN'
+    assert "default-src 'none'" in response.headers['Content-Security-Policy']
+    assert response.headers['Referrer-Policy'] == 'no-referrer'
 
 
 def test_migration_mode_skips_model_dependent_bootstrap(monkeypatch, tmp_path):

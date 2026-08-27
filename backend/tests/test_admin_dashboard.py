@@ -128,6 +128,30 @@ def test_admin_system_readiness_reports_missing_and_configured_controls(client, 
     assert configured['ready'] is True
 
 
+def test_database_manifest_is_admin_only_and_contains_no_row_data(client):
+    client_token, admin_token, order = _setup_flow(client)
+    assert client.get('/api/admin/database-manifest').status_code == 401
+    assert client.get(
+        '/api/admin/database-manifest',
+        headers={'Authorization': f'Bearer {client_token}'},
+    ).status_code == 401
+
+    response = client.get(
+        '/api/admin/database-manifest',
+        headers={'Authorization': f'Bearer {admin_token}'},
+    )
+    assert response.status_code == 200
+    manifest = response.get_json()
+    assert manifest['provider']['name'] == 'sqlite'
+    assert manifest['counts']['orders'] == 1
+    assert manifest['counts']['users'] == 2
+    assert manifest['schema_sha256']
+    assert manifest['content_hashes']['orders']
+    serialized = response.get_data(as_text=True)
+    assert order['order_code'] not in serialized
+    assert 'dashboard-client@example.com' not in serialized
+
+
 def test_admin_can_suspend_client_and_invalidate_existing_token(client):
     client_token, admin_token, _ = _setup_flow(client)
     admin_headers = {'Authorization': f'Bearer {admin_token}'}

@@ -18,6 +18,7 @@ from ..utils.database import db
 from ..utils.jwt_handler import create_token, decode_token
 from ..utils.password import hash_password, verify_password
 from ..utils.email import send_email
+from ..utils.database_manifest import build_database_manifest
 
 bp = Blueprint('admin', __name__)
 
@@ -399,6 +400,14 @@ def system_readiness():
         {'key':'https','label':'HTTPS enforcement','ready':os.getenv('FORCE_HTTPS') == '1','guidance':'Keep FORCE_HTTPS=1 in production.'},
     ]
     return jsonify({'ready': all(item['ready'] for item in checks), 'checks': checks, 'manual_checks': ['Confirm automated database backups and restore instructions.', 'Complete a real password-reset email test.', 'Complete client/admin production journey tests.']})
+
+
+@bp.route('/database-manifest', methods=['GET'])
+def database_manifest():
+    """Return an admin-only, credential-free migration verification manifest."""
+    if not _require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    return jsonify(build_database_manifest())
 
 
 @bp.route('/reports/requests.csv', methods=['GET'])

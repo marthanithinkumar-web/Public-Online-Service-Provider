@@ -22,6 +22,12 @@ def database_engine_options(uri):
             pool_size=max(1,int(os.getenv('DB_POOL_SIZE','5'))),
             max_overflow=max(0,int(os.getenv('DB_MAX_OVERFLOW','5'))),
             pool_timeout=max(5,int(os.getenv('DB_POOL_TIMEOUT','20'))),
+            connect_args={
+                'connect_timeout': max(3,int(os.getenv('DB_CONNECT_TIMEOUT','10'))),
+                'options': '-c statement_timeout=' + str(
+                    max(1000,int(os.getenv('DB_STATEMENT_TIMEOUT_MS','20000')))
+                ),
+            },
         )
     return options
 
@@ -48,7 +54,16 @@ def ensure_default_services():
 def create_app():
     database_uri=os.getenv('DATABASE_URL','sqlite:///psp.db')
     app=Flask(__name__);app.config.from_mapping(SECRET_KEY=os.getenv('SECRET_KEY','dev-key'),SQLALCHEMY_DATABASE_URI=database_uri,SQLALCHEMY_TRACK_MODIFICATIONS=False,SQLALCHEMY_ENGINE_OPTIONS=database_engine_options(database_uri),MAIL_SERVER=os.getenv('SMTP_HOST',''),MAIL_PORT=int(os.getenv('SMTP_PORT') or 0),MAIL_USERNAME=os.getenv('SMTP_USER'),MAIL_PASSWORD=os.getenv('SMTP_PASS'),MAIL_USE_TLS=True,MAIL_USE_SSL=False)
-    Talisman(app,content_security_policy=None,force_https=os.getenv('FORCE_HTTPS','0')=='1');db.init_app(app)
+    Talisman(
+        app,
+        content_security_policy={
+            'default-src': "'none'",
+            'base-uri': "'none'",
+            'frame-ancestors': "'none'",
+        },
+        force_https=os.getenv('FORCE_HTTPS','0')=='1',
+        referrer_policy='no-referrer',
+    );db.init_app(app)
     configured_origins=os.getenv('CORS_ORIGINS');frontends=configured_origins or os.getenv('FRONTEND_URL','http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173');allowed_origins=[o.strip().rstrip('/') for o in frontends.split(',') if o.strip()];render_ui='https://public-online-service-provider-ui.onrender.com'
     if render_ui not in allowed_origins:allowed_origins.append(render_ui)
     CORS(app,resources={r'/api/*':{'origins':allowed_origins}},supports_credentials=True,allow_headers=['Content-Type','Authorization'],methods=['GET','POST','PUT','PATCH','DELETE','OPTIONS']);Migrate(app,db)
