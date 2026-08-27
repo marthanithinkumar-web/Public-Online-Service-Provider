@@ -12,7 +12,6 @@ from datetime import datetime, timedelta, timezone
 from secrets import token_hex
 from ..schemas.order_schema import OrderCreateSchema, OrderSchema
 from ..utils.jwt_handler import get_request_user
-from ..utils.service_requirements import validate_service_application
 import json
 
 bp = Blueprint('orders', __name__)
@@ -85,15 +84,16 @@ def create_order():
         return jsonify({'error': 'Invalid contact method.'}), 400
 
     try:
-        application_data = _normalise_application(data.get('application_data'))
+        application_data = _normalise_application(data.get('application_data') or {})
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
-    if not isinstance(application_data, dict) or not application_data:
-        return jsonify({'error': 'Please complete the service application before submitting.'}), 400
-
-    _, missing = validate_service_application(service, application_data)
-    if missing:
-        return jsonify({'error': 'Please complete the required application fields.', 'missing_fields': missing}), 400
+    if not isinstance(application_data, dict):
+        return jsonify({'error': 'Application information must use named fields.'}), 400
+    # Express requests are allowed with account contact details only. The
+    # provider can request missing service-specific information securely after
+    # reviewing the request.
+    application_data.setdefault('service_name', service.name)
+    application_data.setdefault('request_mode', 'express' if len(application_data) == 1 else 'guided')
 
     description = json.dumps({'application_data': application_data}, ensure_ascii=False, separators=(',', ':'))
     if len(description.encode('utf-8')) > MAX_APPLICATION_BYTES:
@@ -144,7 +144,7 @@ def get_order(order_id):
     return jsonify({
         'order': dump_schema.dump(order),
         'history': [h.to_dict() if user.is_admin else _client_history_dict(h) for h in history],
-        'attachments': [a.to_dict() for a in attachments],
+        'attachments': [a.to_dict('client' if a.uploaded_by == order.user_id else 'admin') for a in attachments],
         'grievances': [g.to_dict() for g in grievances],
         'reviews': [r.to_dict() for r in reviews],
         'notifications': [n.to_dict() for n in notifications],

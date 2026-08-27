@@ -12,12 +12,12 @@ class Attachment(db.Model):
     uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=utc_now)
 
-    def to_dict(self):
+    def to_dict(self, uploaded_by_role=None):
         # Never expose filesystem paths, S3 bucket names, or storage keys to clients.
         return {
             'id': self.id,
             'order_id': self.order_id,
             'filename': self.filename,
-            'uploaded_by': self.uploaded_by,
+            'uploaded_by_role': uploaded_by_role,
             'created_at': self.created_at.isoformat()
         }

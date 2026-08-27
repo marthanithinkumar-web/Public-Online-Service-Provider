@@ -6,6 +6,7 @@ const links=[
   ['/my-orders#service-search','Find Services'],
   ['/my-orders#applications','My Applications'],
   ['/my-orders#notifications','Notifications'],
+  ['/messages','Message Admin'],
   ['/account-settings','Profile & Security'],
   ['/grievances','Help & Grievances'],
 ] as const

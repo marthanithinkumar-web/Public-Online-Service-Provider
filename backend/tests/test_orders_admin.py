@@ -2,6 +2,8 @@ from app.utils.password import hash_password
 from app.utils.database import db
 from app.models.user import User
 from app.models.service import Category, Service
+from io import BytesIO
+import os
 
 
 def test_order_lifecycle_and_admin_controls(client):
@@ -63,6 +65,28 @@ def test_order_lifecycle_and_admin_controls(client):
     assert r.status_code == 200
     r = client.post(f'/api/admin/orders/{order_id}/status', json={'status': 'In Progress', 'note': 'Started processing.'}, headers=admin_headers)
     assert r.status_code == 200
+
+    delivered = client.post(
+        '/api/uploads/',
+        data={'order_id': str(order_id), 'file': (BytesIO(b'%PDF-1.4\n%%EOF'), 'official-document.pdf')},
+        headers=admin_headers,
+        content_type='multipart/form-data',
+    )
+    assert delivered.status_code == 201
+    assert 'delivered to the client' in delivered.get_json()['message']
+    attachment_id = delivered.get_json()['attachment']['id']
+    client_detail = client.get(f'/api/orders/{order_id}', headers=headers1).get_json()
+    attachment = next(item for item in client_detail['attachments'] if item['id'] == attachment_id)
+    assert attachment['uploaded_by_role'] == 'admin'
+    assert 'uploaded_by' not in attachment
+    assert any(item['title'] == 'New document from the service team' for item in client_detail['notifications'])
+    assert client.get(f'/api/uploads/{attachment_id}/download', headers=headers1).status_code == 200
+    assert client.get(f'/api/uploads/{attachment_id}/download', headers=headers2).status_code == 403
+    with client.application.app_context():
+        from app.models.attachment import Attachment
+        stored_path = db.session.get(Attachment, attachment_id).stored_path
+        if os.path.exists(stored_path):
+            os.remove(stored_path)
 
     r = client.post(f'/api/admin/orders/{order_id}/status', json={'status': 'New'}, headers=admin_headers)
     assert r.status_code == 409

@@ -41,6 +41,21 @@ def test_catalog_summary_is_cacheable_and_omits_form_definitions(client):
     assert all('requirements' not in service for service in response.get_json())
 
 
+def test_document_pdf_service_is_searchable_five_rupees_and_has_document_options(client):
+    response = client.get('/api/services/search?q=apaar pdf')
+    assert response.status_code == 200
+    service = next(item for item in response.get_json() if item['name'] == 'Official Document PDF Access Assistance')
+    assert service['price_inr'] == 5.0
+    assert service['is_active'] is True
+
+    detail = client.get(f"/api/services/{service['id']}")
+    assert detail.status_code == 200
+    data = detail.get_json()
+    document_field = next(field for field in data['requirements']['fields'] if field['key'] == 'document_type')
+    assert {'Aadhaar / e-Aadhaar', 'Voter ID / e-EPIC', 'PAN / e-PAN', 'ABHA Health ID', 'APAAR ID'} <= set(document_field['options'])
+    assert 'do not create or alter official documents' in data['requirements']['safety_note'].lower()
+
+
 def test_service_search_matches_partial_words_categories_and_keywords(client):
     from app.models.service import Category, Service
     from app.utils.database import db

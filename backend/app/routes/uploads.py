@@ -6,6 +6,7 @@ from ..models.attachment import Attachment
 from ..models.order import Order
 from ..models.user import User
 from ..models.order_history import OrderStatusHistory
+from ..models.notification import Notification
 from ..utils.database import db
 from ..utils.jwt_handler import get_request_user
 from datetime import datetime, timezone
@@ -124,6 +125,13 @@ def upload_file():
             changed_by=user.email,
             note=(f'Document uploaded: {filename}' if previous_status == order.status else f'Document uploaded: {filename}. Request returned to Under Review.'),
         ))
+        if user.is_admin and order.user_id:
+            db.session.add(Notification(
+                user_id=order.user_id,
+                order_id=order.id,
+                title='New document from the service team',
+                message=f'A document is available for request {order.order_code}. Sign in to view or download it securely.',
+            ))
         db.session.commit()
     except Exception:
         db.session.rollback()
@@ -134,7 +142,8 @@ def upload_file():
                 pass
         raise
 
-    return jsonify({'message': 'Document uploaded successfully.', 'attachment': {'id': a.id, 'order_id': a.order_id, 'filename': a.filename}}), 201
+    message = 'Document delivered to the client successfully.' if user.is_admin else 'Document uploaded successfully.'
+    return jsonify({'message': message, 'attachment': {'id': a.id, 'order_id': a.order_id, 'filename': a.filename}}), 201
 
 
 @bp.route('/<int:attachment_id>/download', methods=['GET'])

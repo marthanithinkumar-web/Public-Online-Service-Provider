@@ -6,6 +6,7 @@ from ..models.attachment import Attachment
 from ..models.grievance import Grievance, GrievanceHistory
 from ..models.review import Review
 from ..models.notification import Notification
+from ..models.support_message import SupportMessage
 from ..utils.database import db
 from ..utils.password import hash_password, verify_password
 from ..utils.jwt_handler import create_token, decode_token
@@ -218,6 +219,9 @@ def delete_account():
         }), 409
     order_ids = [order.id for order in orders]
     Notification.query.filter_by(user_id=user.id).delete(synchronize_session=False)
+    SupportMessage.query.filter(
+        (SupportMessage.user_id == user.id) | (SupportMessage.sender_user_id == user.id)
+    ).delete(synchronize_session=False)
 
     grievance_ids = [item.id for item in Grievance.query.filter_by(user_id=user.id).all()]
     if grievance_ids:

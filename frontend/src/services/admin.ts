@@ -126,3 +126,19 @@ export async function publishReview(id:number, isPublic=true){
   const res = await api.post(`/reviews/admin/${id}/publish`, { public: isPublic }, { headers: authHeader() })
   return res.data
 }
+
+export async function fetchAdminMessageThreads(){
+  return (await api.get('/messages/admin', {headers:authHeader()})).data
+}
+
+export async function fetchAdminMessageThread(userId:number){
+  return (await api.get(`/messages/admin/${userId}`, {headers:authHeader()})).data
+}
+
+export async function markAdminMessageThreadRead(userId:number){
+  return (await api.post(`/messages/admin/${userId}/read`, {}, {headers:authHeader()})).data
+}
+
+export async function sendAdminSupportMessage(userId:number, message:string){
+  return (await api.post(`/messages/admin/${userId}`, {message}, {headers:authHeader()})).data
+}

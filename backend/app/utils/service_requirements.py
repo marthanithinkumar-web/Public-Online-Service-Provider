@@ -8,7 +8,28 @@ collect OTPs, passwords, PINs, bank credentials, or other authentication secrets
 def get_service_requirements(service):
     text = f"{service.name or ''} {service.keywords or ''} {service.category.name if getattr(service, 'category', None) else ''}".lower()
 
-    if any(x in text for x in ('railway ticket', 'bus ticket')):
+    if 'official document pdf access' in text:
+        fields = [
+            {
+                'key': 'document_type',
+                'label': 'Document PDF needed',
+                'type': 'select',
+                'options': [
+                    'Aadhaar / e-Aadhaar', 'Voter ID / e-EPIC', 'PAN / e-PAN',
+                    'ABHA Health ID', 'APAAR ID', 'DigiLocker document',
+                    'Ration card', 'Driving licence', 'Vehicle RC',
+                    'Income certificate', 'Caste / community certificate',
+                    'Residence / domicile certificate', 'Birth certificate',
+                    'Death certificate', 'Marriage certificate',
+                    'Academic marksheet / certificate', 'Other official document',
+                ],
+                'required': True,
+            },
+            {'key': 'document_details', 'label': 'Document details or issuing portal (if known)', 'required': False},
+            {'key': 'deadline', 'label': 'Deadline (if any)', 'type': 'date', 'required': False},
+        ]
+        documents = []
+    elif any(x in text for x in ('railway ticket', 'bus ticket')):
         fields = [
             {'key': 'journey_from', 'label': 'Travelling from', 'required': True},
             {'key': 'journey_to', 'label': 'Travelling to', 'required': True},
@@ -101,10 +122,14 @@ def get_service_requirements(service):
         ]
         documents = []
 
+    safety_note = 'Never provide OTPs, passwords, PINs, CVV, banking credentials, or account recovery codes.'
+    if 'official document pdf access' in text:
+        safety_note += ' Complete any identity verification or OTP yourself on the official portal. We do not create or alter official documents.'
+
     return {
         'fields': fields,
         'documents': documents,
-        'safety_note': 'Never provide OTPs, passwords, PINs, CVV, banking credentials, or account recovery codes.',
+        'safety_note': safety_note,
     }
 
 

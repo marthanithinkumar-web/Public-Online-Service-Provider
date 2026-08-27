@@ -21,6 +21,7 @@ SERVICE_CATALOG = {
         ('RC / Vehicle Service Assistance', 'Assistance with eligible vehicle-registration related online services.', 'rc, vehicle registration, transport, rto, vehicle service'),
         ('Aadhaar PVC Card Order Guidance', 'Guidance for ordering an Aadhaar PVC card through the official UIDAI process. Clients complete OTP and payment directly with UIDAI.', 'aadhaar pvc, aadhar pvc, uidai, pvc card, aadhaar card order'),
         ('DigiLocker Document Access Assistance', 'Guidance for finding and accessing eligible issued documents through DigiLocker. Clients sign in and complete OTP themselves.', 'digilocker, digital locker, issued documents, digital certificate, document access'),
+        ('Official Document PDF Access Assistance', 'Help clients access an available official PDF or digital copy through the relevant official portal. This service does not create, alter or replace an identity document; clients complete any OTP or portal authentication themselves.', 'pdf, document pdf, digital copy, download, aadhaar, aadhar, e-aadhaar, voter id, e-epic, pan, e-pan, abha, apaar, digilocker, ration card, driving licence, rc, certificate, marksheet', 5.0),
     ],
     'Scholarships & Student Welfare': [
         ('ePASS - Fresh Scholarship Application', 'Assistance with eligible ePASS fresh scholarship applications.', 'epass, e-pass, scholarship, fresh, post matric, pre matric, telangana'),
@@ -168,10 +169,12 @@ with app.app_context():
             category = Category(name=category_name)
             db.session.add(category)
             db.session.flush()
-        for name, description, keywords in services:
+        for service_definition in services:
+            name, description, keywords = service_definition[:3]
+            initial_fee = service_definition[3] if len(service_definition) > 3 else catalog_fee
             service = Service.query.filter_by(name=name).first()
             if not service:
-                service = Service(name=name, description=description, price_inr=catalog_fee, keywords=keywords, category_id=category.id, is_active=True)
+                service = Service(name=name, description=description, price_inr=initial_fee, keywords=keywords, category_id=category.id, is_active=True)
                 db.session.add(service)
             else:
                 service.description = description
