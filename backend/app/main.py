@@ -1,5 +1,6 @@
 import os
 from flask import Flask, jsonify
+from sqlalchemy import text
 from dotenv import load_dotenv
 from .utils.database import db
 from .utils.schema_compat import ensure_user_schema
@@ -70,4 +71,12 @@ def create_app():
     app.register_blueprint(auth.bp,url_prefix='/api/auth');app.register_blueprint(services.bp,url_prefix='/api/services');app.register_blueprint(orders.bp,url_prefix='/api/orders');app.register_blueprint(admin.bp,url_prefix='/api/admin');app.register_blueprint(reviews.bp,url_prefix='/api/reviews');app.register_blueprint(grievances.bp,url_prefix='/api/grievances');app.register_blueprint(categories.bp,url_prefix='/api/categories');app.register_blueprint(notifications.bp,url_prefix='/api/notifications');app.register_blueprint(messages.bp,url_prefix='/api/messages');app.register_blueprint(__import__('app.routes.uploads',fromlist=['bp']).bp,url_prefix='/api/uploads')
     @app.get('/')
     def index():return jsonify({'message':'Public Online Service Provider API'})
+    @app.get('/health')
+    def health():
+        try:
+            db.session.execute(text('SELECT 1'))
+        except Exception:
+            app.logger.exception('Database health check failed')
+            return jsonify({'status':'unavailable'}), 503
+        return jsonify({'status':'ok'}), 200
     return app

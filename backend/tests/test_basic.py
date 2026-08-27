@@ -19,6 +19,14 @@ def test_index_route(monkeypatch, tmp_path):
     assert 'Public Online Service Provider API' in data.get('message', '')
 
 
+def test_health_route_checks_database(monkeypatch, tmp_path):
+    monkeypatch.setenv('DATABASE_URL', f"sqlite:///{tmp_path / 'health.db'}")
+    app = create_app()
+    response = app.test_client().get('/health')
+    assert response.status_code == 200
+    assert response.get_json() == {'status': 'ok'}
+
+
 def test_migration_mode_skips_model_dependent_bootstrap(monkeypatch, tmp_path):
     import app.main as main_module
 

@@ -1,3 +1,4 @@
+from app.main import ensure_default_services
 from app.models.service import Service, PlatformSetting
 from app.models.user import User
 from app.utils.database import db
@@ -160,6 +161,31 @@ def test_admin_changes_fee_across_catalog_without_repricing_existing_requests(cl
     assert item['details']['new_fee_inr'] == 75
 
 
+def test_admin_can_set_one_service_and_the_whole_catalog_to_zero(client):
+    headers = _admin_headers(client)
+    catalog = client.get('/api/services/').get_json()
+    service_id = catalog[0]['id']
+
+    single = client.put(
+        f'/api/services/{service_id}',
+        json={'price_inr': 0},
+        headers=headers,
+    )
+    assert single.status_code == 200
+    assert single.get_json()['service']['price_inr'] == 0
+
+    global_update = client.put(
+        '/api/admin/services/assistance-fee',
+        json={'price_inr': 0, 'confirm': True},
+        headers=headers,
+    )
+    assert global_update.status_code == 200
+    assert global_update.get_json()['price_inr'] == 0
+    assert all(service['price_inr'] == 0 for service in client.get('/api/services/').get_json())
+    with client.application.app_context():
+        assert db.session.get(PlatformSetting, 'assistance_fee_inr').value == '0.00'
+
+
 def test_new_services_inherit_the_persisted_website_wide_fee(client):
     headers = _admin_headers(client)
     changed = client.put(
@@ -192,4 +218,11 @@ def test_admin_can_change_and_disable_document_pdf_service(client):
     disabled = client.post(f"/api/services/{service['id']}/active", json={'active': False}, headers=headers)
     assert disabled.status_code == 200
     assert disabled.get_json()['service']['is_active'] is False
+    assert all(item['id'] != service['id'] for item in client.get('/api/services/search?q=document pdf').get_json())
+
+    # The normal application-startup catalog bootstrap must preserve an
+    # administrator's explicit disabled state.
+    with client.application.app_context():
+        ensure_default_services()
+        assert db.session.get(Service, service['id']).is_active is False
     assert all(item['id'] != service['id'] for item in client.get('/api/services/search?q=document pdf').get_json())
