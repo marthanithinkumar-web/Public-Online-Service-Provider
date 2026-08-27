@@ -387,12 +387,14 @@ def system_readiness():
         return jsonify({'error': 'Unauthorized'}), 401
     secret = os.getenv('SECRET_KEY') or ''
     rate_store = os.getenv('RATELIMIT_STORAGE_URI') or 'memory://'
+    email_ready = bool(os.getenv('SMTP_HOST') and os.getenv('SMTP_PORT'))
+    admin_2fa_enabled = os.getenv('ADMIN_2FA_ENABLED') == '1'
     checks = [
         {'key':'database','label':'Database connection','ready':True,'guidance':'Production database is reachable.'},
         {'key':'secret_key','label':'Secure application secret','ready':len(secret) >= 32 and secret not in {'dev-key','change-me-to-a-secure-random-string'},'guidance':'Set a unique SECRET_KEY of at least 32 characters in Render.'},
         {'key':'document_storage','label':'Persistent document storage','ready':bool(os.getenv('S3_BUCKET')),'guidance':'Configure S3_BUCKET and its credentials so uploads survive deployments.'},
-        {'key':'email','label':'Password-reset email delivery','ready':bool(os.getenv('SMTP_HOST') and os.getenv('SMTP_PORT')),'guidance':'Configure SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASS.'},
-        {'key':'admin_2fa','label':'Admin two-factor authentication','ready':os.getenv('ADMIN_2FA_ENABLED') == '1','guidance':'Set ADMIN_2FA_ENABLED=1 after SMTP is confirmed.'},
+        {'key':'email','label':'Password-reset email delivery','ready':email_ready,'guidance':'Configure SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASS.'},
+        {'key':'admin_2fa','label':'Admin two-factor authentication','ready':admin_2fa_enabled and email_ready,'guidance':'Configure SMTP, then set ADMIN_2FA_ENABLED=1.'},
         {'key':'shared_rate_limits','label':'Shared rate-limit storage','ready':bool(rate_store and rate_store != 'memory://'),'guidance':'Configure RATELIMIT_STORAGE_URI with a shared Redis-compatible store for multiple workers.'},
         {'key':'https','label':'HTTPS enforcement','ready':os.getenv('FORCE_HTTPS') == '1','guidance':'Keep FORCE_HTTPS=1 in production.'},
     ]

@@ -121,3 +121,23 @@ After the items above are complete and tested, continue the existing full improv
    - Production migration/deployment verification for this batch.
    - Confirm persistent S3-compatible document storage, shared rate-limit storage, SMTP delivery, admin 2FA and database backups in Render.
    - Complete keyboard/mobile/browser/accessibility, slow-network, load/concurrency and recovery testing.
+
+## Zero-fee and deployment-readiness checkpoint (2026-08-27)
+
+19. Completed locally: protected free-service pricing and service availability.
+   - An admin may set one service's private assistance fee to ₹0.
+   - The confirmed website-wide fee action also accepts ₹0 and persists it for newly created services.
+   - Existing submitted requests retain their original fee snapshot.
+   - Official Document PDF Access Assistance remains an ordinary catalog service and can be disabled or re-enabled through Admin → Services & Fees.
+   - An explicit disabled state survives application bootstrap and production catalog reseeding.
+
+20. Completed locally: strengthened deployment health and readiness reporting.
+   - Added a database-backed `/health` endpoint and configured Render to use it.
+   - Admin 2FA is no longer reported ready unless both the feature flag and SMTP delivery are configured.
+   - Verified 49 backend tests, frontend TypeScript/build, clean migrations through `20260826_10`, a 123-service seed, and disable-state persistence across reseeding.
+
+21. Still required before claiming 100% public-launch readiness:
+   - Publish and verify this checkpoint on Render.
+   - Complete isolated authenticated client/admin browser E2E tests.
+   - Confirm production S3-compatible storage, SMTP, Redis-backed rate limits, admin 2FA, and database backup/restore.
+   - Complete keyboard, screen-reader, mobile/browser, slow-network, load, concurrency, cold-start and recovery testing.
