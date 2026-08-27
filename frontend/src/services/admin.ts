@@ -51,6 +51,10 @@ export async function fetchSystemReadiness(){
   return (await api.get('/admin/system-readiness', {headers:authHeader()})).data
 }
 
+export async function fetchDatabaseManifest(){
+  return (await api.get('/admin/database-manifest', {headers:authHeader()})).data
+}
+
 export function requestReportUrl(filters:Record<string,string>={}){
   const params = new URLSearchParams(Object.entries(filters).filter(([,value])=>value))
   return `${apiBase}/admin/reports/requests.csv${params.size?`?${params}`:''}`
