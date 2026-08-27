@@ -3,6 +3,7 @@ Allow: /
 Disallow: /admin/
 Disallow: /my-orders
 Disallow: /account-settings
+Disallow: /messages
 Disallow: /grievances
 Disallow: /submit-grievance
 Disallow: /submit-review

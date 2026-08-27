@@ -190,7 +190,7 @@ def order_detail(order_id):
     return jsonify({
         'order': o.to_dict(),
         'history': [h.to_dict() for h in history],
-        'attachments': [a.to_dict() for a in attachments],
+        'attachments': [a.to_dict('client' if a.uploaded_by == o.user_id else 'admin') for a in attachments],
         'grievances': [g.to_dict() for g in grievances],
         'reviews': [r.to_dict() for r in reviews],
         'allowed_next_statuses': sorted(TRANSITIONS.get(o.status, set()))

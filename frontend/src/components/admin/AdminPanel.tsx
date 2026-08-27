@@ -11,6 +11,7 @@ import DocumentManagement from './DocumentManagement'
 import NotificationManagement from './NotificationManagement'
 import ActivityReports from './ActivityReports'
 import AdminSettings from './AdminSettings'
+import MessageManagement from './MessageManagement'
 
 const links=[
   ['/admin/dashboard','Dashboard'],
@@ -19,6 +20,7 @@ const links=[
   ['/admin/services','Services & Fees'],
   ['/admin/documents','Documents'],
   ['/admin/notifications','Notifications'],
+  ['/admin/messages','Client Messages'],
   ['/admin/grievances','Grievances'],
   ['/admin/reviews','Reviews'],
   ['/admin/reports','Activity & Reports'],
@@ -45,6 +47,7 @@ export default function AdminPanel(){
         <Route path="/users" element={<UserManagement/>}/>
         <Route path="/documents" element={<DocumentManagement/>}/>
         <Route path="/notifications" element={<NotificationManagement/>}/>
+        <Route path="/messages" element={<MessageManagement/>}/>
         <Route path="/reports" element={<ActivityReports/>}/>
         <Route path="/settings" element={<AdminSettings/>}/>
         <Route path="*" element={<Navigate to="/admin/dashboard" replace/>}/>

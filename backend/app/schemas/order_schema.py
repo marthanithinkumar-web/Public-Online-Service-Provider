@@ -4,7 +4,7 @@ from marshmallow import Schema, fields, validate
 class OrderCreateSchema(Schema):
     contact_method = fields.Str(allow_none=True)
     service_id = fields.Int(required=True)
-    application_data = fields.Dict(required=True, allow_none=False)
+    application_data = fields.Dict(load_default=dict, allow_none=True)
 
 
 class OrderSchema(Schema):

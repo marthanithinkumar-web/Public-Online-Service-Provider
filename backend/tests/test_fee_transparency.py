@@ -177,3 +177,19 @@ def test_new_services_inherit_the_persisted_website_wide_fee(client):
     assert created.get_json()['service']['price_inr'] == 65
     with client.application.app_context():
         assert db.session.get(PlatformSetting, 'assistance_fee_inr').value == '65.00'
+
+
+def test_admin_can_change_and_disable_document_pdf_service(client):
+    headers = _admin_headers(client)
+    catalog = client.get('/api/services/search?q=document pdf').get_json()
+    service = next(item for item in catalog if item['name'] == 'Official Document PDF Access Assistance')
+
+    changed = client.put(f"/api/services/{service['id']}", json={'price_inr': 8}, headers=headers)
+    assert changed.status_code == 200
+    assert changed.get_json()['service']['price_inr'] == 8
+    assert next(item for item in client.get('/api/services/search?q=document pdf').get_json() if item['id'] == service['id'])['price_inr'] == 8
+
+    disabled = client.post(f"/api/services/{service['id']}/active", json={'active': False}, headers=headers)
+    assert disabled.status_code == 200
+    assert disabled.get_json()['service']['is_active'] is False
+    assert all(item['id'] != service['id'] for item in client.get('/api/services/search?q=document pdf').get_json())
