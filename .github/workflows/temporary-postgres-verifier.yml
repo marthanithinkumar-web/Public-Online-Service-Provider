@@ -35,4 +35,43 @@ jobs:
           test -n "$SOURCE_DATABASE_URL"
           test -n "$TARGET_DATABASE_URL"
       - name: Compare databases read-only
+        id: compare
+        continue-on-error: true
         run: python scripts/verify_postgres_migration.py
+      - name: Diagnose constraint metadata difference
+        if: steps.compare.outcome == 'failure'
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import psycopg2
+
+          query = """
+          SELECT c.conname, c.contype, c.conrelid::regclass::text,
+                 pg_get_constraintdef(c.oid, true)
+          FROM pg_catalog.pg_constraint AS c
+          JOIN pg_catalog.pg_namespace AS n ON n.oid = c.connamespace
+          WHERE n.nspname = 'public'
+          ORDER BY c.conrelid::regclass::text, c.conname
+          """
+
+          def constraints(url):
+              with psycopg2.connect(url, connect_timeout=15) as connection:
+                  connection.set_session(readonly=True, autocommit=False)
+                  with connection.cursor() as cursor:
+                      cursor.execute(query)
+                      return cursor.fetchall()
+
+          source = set(constraints(os.environ["SOURCE_DATABASE_URL"]))
+          target = set(constraints(os.environ["TARGET_DATABASE_URL"]))
+          print(json.dumps({
+              "source_only": sorted(source - target),
+              "target_only": sorted(target - source),
+          }, indent=2))
+          PY
+      - name: Enforce comparison result
+        if: always()
+        env:
+          COMPARE_OUTCOME: ${{ steps.compare.outcome }}
+        run: test "$COMPARE_OUTCOME" = success
