@@ -37,15 +37,6 @@ def stable_digest(items: object) -> str:
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
-def stable_rows_digest(rows: Iterable[tuple]) -> str:
-    """Hash metadata rows independently of the database's collation order."""
-    normalized = sorted(
-        (list(row) for row in rows),
-        key=lambda row: json.dumps(row, separators=(",", ":"), default=str),
-    )
-    return stable_digest(normalized)
-
-
 def inspect_database(database_url: str) -> dict[str, object]:
     result: dict[str, object] = {}
     with psycopg2.connect(database_url, connect_timeout=15) as connection:
@@ -145,12 +136,12 @@ def inspect_database(database_url: str) -> dict[str, object]:
         tables=tables,
         counts=counts,
         content_hashes=content_hashes,
-        columns_digest=stable_rows_digest(columns),
-        constraints_digest=stable_rows_digest(constraints),
-        indexes_digest=stable_rows_digest(indexes),
-        sequences_digest=stable_rows_digest(sequences),
+        columns_digest=stable_digest(columns),
+        constraints_digest=stable_digest(constraints),
+        indexes_digest=stable_digest(indexes),
+        sequences_digest=stable_digest(sequences),
         extensions=extensions,
-        extensions_digest=stable_rows_digest(extensions),
+        extensions_digest=stable_digest(extensions),
         alembic_version=alembic_version,
         known_pre_migration_record={
             "order_count": marker_order_count,
