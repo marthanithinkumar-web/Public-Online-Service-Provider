@@ -13,6 +13,9 @@ def ensure_user_schema(db):
     additions = {
         "name": "VARCHAR(200)", "phone": "VARCHAR(50)",
         "is_active": "BOOLEAN NOT NULL DEFAULT TRUE",
+        # Accounts created before email verification was introduced are
+        # trusted so the rollout does not lock existing clients out.
+        "email_verified": "BOOLEAN NOT NULL DEFAULT TRUE",
         "token_version": "INTEGER NOT NULL DEFAULT 0",
     }
     missing = [(name, sql_type) for name, sql_type in additions.items() if name not in columns]

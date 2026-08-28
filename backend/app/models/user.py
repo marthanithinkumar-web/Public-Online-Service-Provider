@@ -12,6 +12,7 @@ class User(db.Model):
     phone = db.Column(db.String(50), nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
+    email_verified = db.Column(db.Boolean, nullable=False, default=False)
     token_version = db.Column(db.Integer, nullable=False, default=0)
     created_at = db.Column(db.DateTime, default=utc_now)
 
@@ -23,5 +24,6 @@ class User(db.Model):
             'phone': self.phone,
             'is_admin': self.is_admin,
             'is_active': bool(self.is_active),
+            'email_verified': bool(self.email_verified),
             'created_at': self.created_at.isoformat()
         }

@@ -40,6 +40,52 @@ def test_registration_rejects_weak_password_and_invalid_email(monkeypatch, tmp_p
     assert invalid_email.status_code == 400
 
 
+@pytest.mark.parametrize('email', [
+    'missing-at.example.com',
+    'person@localhost',
+    '.person@example.com',
+    'person..name@example.com',
+    'person@example',
+    'person@example..com',
+])
+def test_registration_rejects_malformed_email_addresses(client, email):
+    response = client.post('/api/auth/register', json={
+        'name': 'Invalid Email', 'phone': '9990001111',
+        'email': email, 'password': 'strong-pass',
+    })
+    assert response.status_code == 400
+    assert response.get_json()['error'] == 'Enter a valid email address.'
+
+
+@pytest.mark.parametrize('phone', [
+    '1234567890',
+    '5990001111',
+    '999000111',
+    '99900011111',
+    '+1 999 000 1111',
+    '99900abc11',
+])
+def test_registration_rejects_invalid_indian_mobile_numbers(client, phone):
+    response = client.post('/api/auth/register', json={
+        'name': 'Invalid Phone', 'phone': phone,
+        'email': f'phone-{phone.replace(" ", "").replace("+", "")[:12]}@example.com',
+        'password': 'strong-pass',
+    })
+    assert response.status_code == 400
+    assert response.get_json()['error'] == 'Enter a valid Indian mobile number.'
+
+
+@pytest.mark.parametrize('phone', ['9990001111', '09990001111', '91 99900 01111', '+91-99900-01111'])
+def test_registration_normalizes_valid_indian_mobile_numbers(client, phone):
+    response = client.post('/api/auth/register', json={
+        'name': 'Normalized Phone', 'phone': phone,
+        'email': f'normalized-{phone[-4:]}-{len(phone)}@example.com',
+        'password': 'strong-pass',
+    })
+    assert response.status_code == 200
+    assert response.get_json()['user']['phone'] == '+919990001111'
+
+
 def test_authenticated_client_can_load_dashboard_profile(client):
     registered = client.post('/api/auth/register', json={
         'name': 'Dashboard Client', 'phone': '9990002222',

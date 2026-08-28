@@ -19,3 +19,4 @@
 @media (max-width:720px){.auth-screen{margin-top:-12px}.auth-banner{min-height:190px;padding:34px 18px 48px}.auth-banner h1{font-size:2.25rem;margin-bottom:18px}.auth-page-centered{padding:0 12px 48px}.auth-card-modern{padding:25px 22px;margin-top:-28px;border-radius:16px}.auth-bottom{align-items:flex-start;flex-direction:column;gap:10px}}
 @media (max-width:420px){.auth-banner h1{font-size:1.9rem}.auth-card-modern{padding:21px 17px}.btn-block{padding:12px}}
 @media (prefers-reduced-motion:reduce){.auth-form input,.form-input{transition:none}}
+.field-hint{display:block;margin-top:.45rem;color:var(--muted);font-size:.78rem;line-height:1.45}

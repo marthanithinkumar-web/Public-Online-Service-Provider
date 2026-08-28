@@ -11,7 +11,7 @@ from flask_cors import CORS
 from flask_migrate import Migrate
 from flask_talisman import Talisman
 from flask_mail import Mail
-from .utils.password import hash_password, verify_password
+from .utils.password import hash_password
 
 load_dotenv()
 
@@ -36,9 +36,11 @@ def ensure_admin_user():
     if not admin_email or not admin_password:return
     user=User.query.filter_by(email=admin_email).first()
     if user is None:db.session.add(User(email=admin_email,password_hash=hash_password(admin_password),is_admin=True));db.session.commit();return
+    # ADMIN_PASSWORD bootstraps a missing administrator; it must not become a
+    # permanent override. Otherwise an administrator's recovered or changed
+    # password would silently revert whenever the service restarts.
     changed=False
     if not user.is_admin:user.is_admin=True;changed=True
-    if not verify_password(admin_password,user.password_hash):user.password_hash=hash_password(admin_password);changed=True
     if changed:db.session.commit()
 
 def ensure_default_services():

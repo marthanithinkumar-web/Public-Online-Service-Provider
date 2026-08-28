@@ -8,7 +8,7 @@ const TIMEOUT_MS=15000
 export default function ClientSupportChat(){
  const [items,setItems]=useState<any[]>([]);const [message,setMessage]=useState('');const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const [error,setError]=useState('');const endRef=useRef<HTMLDivElement|null>(null)
  const load=async()=>{setError('');try{const response=await axios.get(`${apiBase}/messages/mine`,{headers:authHeader(),timeout:TIMEOUT_MS});setItems(response.data.items||[]);if(response.data.unread)await axios.post(`${apiBase}/messages/mine/read`,{}, {headers:authHeader(),timeout:TIMEOUT_MS})}catch{setError('Private messages are temporarily unavailable. Please try again.')}finally{setLoading(false)}}
- useEffect(()=>{load()},[])
+ useEffect(()=>{load();const timer=window.setInterval(load,10000);return()=>window.clearInterval(timer)},[])
  useEffect(()=>{endRef.current?.scrollIntoView({behavior:'smooth',block:'nearest'})},[items.length])
  const send=async(event:React.FormEvent)=>{event.preventDefault();const text=message.trim();if(!text||busy)return;setBusy(true);setError('');try{const response=await axios.post(`${apiBase}/messages/mine`,{message:text},{headers:authHeader(),timeout:TIMEOUT_MS});setItems(current=>[...current,response.data.item]);setMessage('')}catch(err:any){setError(err?.response?.data?.error||'Your message could not be sent. Please try again.')}finally{setBusy(false)}}
  return <section className="dashboard-section support-chat" id="support-messages" aria-labelledby="support-chat-title">

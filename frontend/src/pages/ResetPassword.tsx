@@ -7,6 +7,7 @@ import AuthLayout from '../components/ui/AuthLayout'
 export default function ResetPassword(){
   const [params]=useSearchParams()
   const token=params.get('token')||''
+  const requestedAccount=params.get('account')==='admin'?'admin':'client'
   const [newPassword, setNewPassword] = useState('')
   const [confirm,setConfirm]=useState('')
   const [message, setMessage] = useState('')
@@ -23,7 +24,7 @@ export default function ResetPassword(){
       const res = await axios.post(`${apiBase}/auth/reset-password`, { token, new_password: newPassword })
       setMessage(res.data.message)
       if(res.data.message?.toLowerCase().includes('successful')){
-        setTimeout(()=>nav('/login'), 1200)
+        setTimeout(()=>nav(res.data.login_path||(requestedAccount==='admin'?'/admin/login':'/login')), 1200)
       }
     }catch(err:any){
       setError(err?.response?.data?.error || 'Unable to reset your password. Request a new link and try again.')
@@ -31,6 +32,6 @@ export default function ResetPassword(){
   }
 
   return (
-    <AuthLayout title="Choose New Password" eyebrow="Account recovery"><div className="auth-card auth-card-modern"><div className="auth-intro"><h2>Choose a new password</h2><p>Your new password must contain at least eight characters.</p></div>{!token?<div className="dashboard-state error-state"><p>This reset link is incomplete or invalid.</p><Link className="btn btn-primary" to="/request-reset">Request a new link</Link></div>:<form onSubmit={submit} className="auth-form"><label className="form-label">New password<input className="form-input" type="password" minLength={8} autoComplete="new-password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} required /></label><label className="form-label">Confirm new password<input className="form-input" type="password" minLength={8} autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)} required /></label>{error&&<p className="info" role="alert">{error}</p>}{message&&<p className="success-message" role="status">{message}</p>}<button className="btn btn-primary btn-block" type="submit" disabled={busy}>{busy?'Updating…':'Set new password'}</button></form>}</div></AuthLayout>
+    <AuthLayout title="Choose New Password" eyebrow="Account recovery"><div className="auth-card auth-card-modern"><div className="auth-intro"><h2>Choose a new password</h2><p>Your new password must contain at least eight characters. This link can be used only once.</p></div>{!token?<div className="dashboard-state error-state"><p>This reset link is incomplete or invalid.</p><Link className="btn btn-primary" to={requestedAccount==='admin'?'/admin/request-reset':'/request-reset'}>Request a new link</Link></div>:<form onSubmit={submit} className="auth-form"><label className="form-label">New password<input className="form-input" type="password" minLength={8} autoComplete="new-password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} required /></label><label className="form-label">Confirm new password<input className="form-input" type="password" minLength={8} autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)} required /></label>{error&&<p className="info" role="alert">{error}</p>}{message&&<p className="success-message" role="status">{message}</p>}<button className="btn btn-primary btn-block" type="submit" disabled={busy}>{busy?'Updating…':'Set new password'}</button></form>}</div></AuthLayout>
   )
 }

@@ -38,6 +38,8 @@ services:
         sync: false
       - key: ADMIN_2FA_ENABLED
         sync: false
+      - key: REQUIRE_EMAIL_VERIFICATION
+        value: "1"
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT

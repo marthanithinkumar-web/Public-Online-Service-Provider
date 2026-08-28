@@ -8,6 +8,7 @@ from ..models.support_message import SupportMessage
 from ..models.user import User
 from ..utils.database import db
 from ..utils.jwt_handler import get_request_user
+from ..utils.limiter import limiter
 
 
 bp = Blueprint('messages', __name__)
@@ -39,6 +40,7 @@ def client_messages():
 
 
 @bp.post('/mine')
+@limiter.limit('12 per minute')
 def send_client_message():
     user = _client_user()
     if not user:
@@ -109,6 +111,7 @@ def admin_thread(user_id):
 
 @bp.post('/admin/<int:user_id>')
 @require_admin
+@limiter.limit('30 per minute')
 def send_admin_message(user_id):
     admin = get_request_user()
     user = User.query.filter_by(id=user_id, is_admin=False, is_active=True).first_or_404()
