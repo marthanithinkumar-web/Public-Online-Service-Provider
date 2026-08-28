@@ -12,6 +12,7 @@ from ..utils.password import hash_password, verify_password
 from ..utils.jwt_handler import create_token, decode_token
 from ..utils.limiter import limiter
 from ..utils.email import send_email
+from ..utils.validation import normalize_email, normalize_indian_mobile
 import os
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
@@ -45,12 +46,16 @@ def client_profile():
         return jsonify({'user': user.to_dict()})
     data = request.json or {}
     name = (data.get('name') or '').strip()[:200]
-    phone = (data.get('phone') or '').strip()[:50]
-    email = (data.get('email') or '').strip().lower()[:200]
+    phone = normalize_indian_mobile(data.get('phone'))
+    email = normalize_email(data.get('email'))
     current_password = data.get('current_password')
     new_password = data.get('new_password')
-    if len(name) < 2 or len(''.join(c for c in phone if c.isdigit())) < 10 or '@' not in email:
-        return jsonify({'error': 'Enter a valid name, email and phone number.'}), 400
+    if len(name) < 2:
+        return jsonify({'error': 'Enter a valid name.'}), 400
+    if not phone:
+        return jsonify({'error': 'Enter a valid Indian mobile number.'}), 400
+    if not email:
+        return jsonify({'error': 'Enter a valid email address.'}), 400
     sensitive_change = email != user.email or bool(new_password)
     if sensitive_change and (not current_password or not verify_password(current_password, user.password_hash)):
         return jsonify({'error': 'Your current password is required to change email or password.'}), 400
@@ -160,20 +165,17 @@ def register():
     # Public client registration (email/password)
     data = request.json or {}
     name = (data.get('name') or '').strip()
-    phone = (data.get('phone') or '').strip()
-    email = (data.get('email') or '').strip().lower()
+    phone = normalize_indian_mobile(data.get('phone'))
+    email = normalize_email(data.get('email'))
     password = data.get('password')
-    if not name or not phone or not email or not password:
+    if not name or not data.get('phone') or not data.get('email') or not password:
         return jsonify({'error': 'Name, phone, email and password are required'}), 400
     if len(password) < 8:
         return jsonify({'error': 'Password must be at least 8 characters.'}), 400
-    if len(email) > 200 or '@' not in email or email.startswith('@') or email.endswith('@'):
+    if not email:
         return jsonify({'error': 'Enter a valid email address.'}), 400
-
-    # basic phone validation
-    cleaned_phone = ''.join([c for c in phone if c.isdigit()])
-    if len(cleaned_phone) < 10:
-        return jsonify({'error': 'Invalid phone number'}), 400
+    if not phone:
+        return jsonify({'error': 'Enter a valid Indian mobile number.'}), 400
 
     if User.query.filter_by(email=email).first():
         return jsonify({'error': 'An account already exists for this email address.'}), 409

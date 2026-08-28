@@ -25,6 +25,7 @@ import Footer from './components/ui/Footer'
 import {getSession} from './services/session'
 import NotFound from './pages/NotFound'
 import SupportMessages from './pages/SupportMessages'
+import SupportChatLauncher from './components/ui/SupportChatLauncher'
 
 const PUBLIC_TITLES:Record<string,string>={
   '/':'Public Online Service Provider — Public-Service Application Assistance',
@@ -71,4 +72,4 @@ export default function App(){return <div className="app-shell"><RouteMetadata/>
  <Route path="/" element={<Home/>}/><Route path="/service/:id" element={<ServiceDetail/>}/><Route path="/jobs" element={<Category/>}/><Route path="/scholarships" element={<Category/>}/><Route path="/meeseva" element={<Category/>}/><Route path="/certificates" element={<Category/>}/><Route path="/schemes" element={<Category/>}/><Route path="/about" element={<About/>}/><Route path="/contact" element={<Contact/>}/><Route path="/privacy" element={<PrivacyPolicy/>}/><Route path="/terms" element={<Terms/>}/><Route path="/disclaimer" element={<Disclaimer/>}/>
  <Route path="/login" element={<AuthRedirect><Login/></AuthRedirect>}/><Route path="/register" element={<AuthRedirect><Register/></AuthRedirect>}/><Route path="/admin/login" element={<AuthRedirect><AdminLogin/></AuthRedirect>}/><Route path="/request-reset" element={<RequestReset/>}/><Route path="/reset-password" element={<ResetPassword/>}/>
  <Route path="/my-orders" element={<ClientRoute><MyOrders/></ClientRoute>}/><Route path="/my-orders/:id" element={<ClientRoute><OrderDetail/></ClientRoute>}/><Route path="/account-settings" element={<ClientRoute><AccountSettings/></ClientRoute>}/><Route path="/messages" element={<ClientRoute><SupportMessages/></ClientRoute>}/><Route path="/grievances" element={<ClientRoute><MyGrievances/></ClientRoute>}/><Route path="/submit-grievance" element={<ClientRoute><SubmitGrievance/></ClientRoute>}/><Route path="/submit-review" element={<ClientRoute><SubmitReview/></ClientRoute>}/><Route path="/admin/*" element={<AdminRoute><AdminPanel/></AdminRoute>}/><Route path="*" element={<NotFound/>}/>
- </Routes></main><Footer/></div>}
+ </Routes></main><SupportChatLauncher/><Footer/></div>}
