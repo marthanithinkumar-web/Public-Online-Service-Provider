@@ -42,6 +42,8 @@ def upload_file():
     user = _auth()
     if not user:
         return jsonify({'error': 'Please log in to upload a document.'}), 401
+    if (os.getenv('FLASK_ENV') == 'production' or os.getenv('FORCE_HTTPS') == '1') and not os.getenv('S3_BUCKET'):
+        return jsonify({'error': 'Persistent document storage is not configured. Uploads are temporarily unavailable.'}), 503
     if 'file' not in request.files:
         return jsonify({'error': 'File is required.'}), 400
 

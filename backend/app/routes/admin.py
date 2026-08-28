@@ -388,7 +388,7 @@ def system_readiness():
         return jsonify({'error': 'Unauthorized'}), 401
     secret = os.getenv('SECRET_KEY') or ''
     rate_store = os.getenv('RATELIMIT_STORAGE_URI') or 'memory://'
-    email_ready = bool(os.getenv('SMTP_HOST') and os.getenv('SMTP_PORT'))
+    email_ready = all(os.getenv(key) for key in ('SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'))
     admin_2fa_enabled = os.getenv('ADMIN_2FA_ENABLED') == '1'
     checks = [
         {'key':'database','label':'Database connection','ready':True,'guidance':'Production database is reachable.'},

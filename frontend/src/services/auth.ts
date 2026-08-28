@@ -35,6 +35,7 @@ export async function fetchClientProfile(){
 
 export async function updateClientProfile(payload:any){
   const result=(await api.put('/auth/profile',payload,{headers:authHeader()})).data
+  if(result.verification_required)clearToken()
   if(result.token)saveToken(result.token)
   if(result.user)saveUser(result.user)
   return result

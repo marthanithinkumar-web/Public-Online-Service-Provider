@@ -121,6 +121,8 @@ def test_admin_system_readiness_reports_missing_and_configured_controls(client, 
     monkeypatch.setenv('S3_BUCKET', 'documents')
     monkeypatch.setenv('SMTP_HOST', 'smtp.example.com')
     monkeypatch.setenv('SMTP_PORT', '587')
+    monkeypatch.setenv('SMTP_USER', 'mailer@example.com')
+    monkeypatch.setenv('SMTP_PASS', 'smtp-password')
     monkeypatch.setenv('ADMIN_2FA_ENABLED', '1')
     monkeypatch.setenv('RATELIMIT_STORAGE_URI', 'redis://cache.example.com/0')
     monkeypatch.setenv('FORCE_HTTPS', '1')

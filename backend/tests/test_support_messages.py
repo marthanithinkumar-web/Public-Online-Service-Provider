@@ -6,7 +6,7 @@ from app.utils.password import hash_password
 def _register(client, email, name):
     response = client.post('/api/auth/register', json={
         'name': name,
-        'phone': '9000000000',
+        'phone': '9000000002' if 'two' in email else '9000000001',
         'email': email,
         'password': 'strong-pass',
     })

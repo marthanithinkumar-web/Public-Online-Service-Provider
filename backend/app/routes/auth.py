@@ -22,6 +22,25 @@ from ..models.security import AdminLoginChallenge, RevokedToken
 bp = Blueprint('auth', __name__)
 
 
+def _email_verification_required():
+    return os.getenv('REQUIRE_EMAIL_VERIFICATION', '0') == '1'
+
+
+def _send_verification_email(user):
+    token = create_token({
+        'action': 'verify',
+        'user_id': user.id,
+        'token_version': user.token_version,
+    }, expires_hours=24)
+    frontend = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+    verify_link = f"{frontend.rstrip('/')}/verify?token={token}"
+    return send_email(
+        user.email,
+        'Public Online Service Provider - Verify your account',
+        f"Hello,\n\nVerify your email address using this one-time link:\n\n{verify_link}\n\nThe link expires in 24 hours. If you did not create or update an account, ignore this email.\n\n-- Public Online Service Provider",
+    )
+
+
 def _current_user_from_request():
     auth = request.headers.get('Authorization', '')
     if not auth.startswith('Bearer '):
@@ -33,6 +52,8 @@ def _current_user_from_request():
         return None
     user = db.session.get(User, payload.get('user_id'))
     if not user or not user.is_active or payload.get('token_version', 0) != user.token_version:
+        return None
+    if _email_verification_required() and not user.is_admin and not user.email_verified:
         return None
     return user
 
@@ -62,12 +83,33 @@ def client_profile():
     existing = User.query.filter(User.email == email, User.id != user.id).first()
     if existing:
         return jsonify({'error': 'That email address is already in use.'}), 409
+    existing_phone = User.query.filter(User.phone == phone, User.id != user.id).first()
+    if existing_phone:
+        return jsonify({'error': 'That mobile number is already in use.'}), 409
     if new_password and len(new_password) < 8:
         return jsonify({'error': 'New password must be at least 8 characters.'}), 400
+    email_changed = email != user.email
     user.name = name;user.phone = phone;user.email = email
     if new_password:
         user.password_hash = hash_password(new_password)
         user.token_version = (user.token_version or 0) + 1
+    if email_changed and _email_verification_required():
+        user.email_verified = False
+        user.token_version = (user.token_version or 0) + 1
+        try:
+            if not _send_verification_email(user):
+                db.session.rollback()
+                return jsonify({'error': 'Unable to deliver the verification email. Your profile was not changed.'}), 503
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('Error sending profile verification email')
+            return jsonify({'error': 'Unable to deliver the verification email. Your profile was not changed.'}), 503
+        db.session.commit()
+        return jsonify({
+            'message': 'Profile updated. Verify your new email address before signing in again.',
+            'user': user.to_dict(),
+            'verification_required': True,
+        })
     db.session.commit()
     token = create_token({'user_id': user.id, 'is_admin': False, 'token_version': user.token_version})
     return jsonify({'message': 'Profile updated successfully.', 'user': user.to_dict(), 'token': token})
@@ -91,6 +133,9 @@ def login():
 
     if not verify_password(password, user.password_hash):
         return jsonify({'error': 'Invalid credentials'}), 401
+
+    if _email_verification_required() and not user.is_admin and not user.email_verified:
+        return jsonify({'error': 'Verify your email address before signing in. You can request a new verification link.'}), 403
 
     if user.is_admin and os.getenv('ADMIN_2FA_ENABLED', '0') == '1':
         code = f'{randbelow(1000000):06d}'
@@ -170,6 +215,8 @@ def register():
     password = data.get('password')
     if not name or not data.get('phone') or not data.get('email') or not password:
         return jsonify({'error': 'Name, phone, email and password are required'}), 400
+    if len(name) < 2 or len(name) > 200:
+        return jsonify({'error': 'Name must be between 2 and 200 characters.'}), 400
     if len(password) < 8:
         return jsonify({'error': 'Password must be at least 8 characters.'}), 400
     if not email:
@@ -179,9 +226,27 @@ def register():
 
     if User.query.filter_by(email=email).first():
         return jsonify({'error': 'An account already exists for this email address.'}), 409
+    if User.query.filter_by(phone=phone).first():
+        return jsonify({'error': 'An account already exists for this mobile number.'}), 409
 
-    u = User(name=name, phone=phone, email=email, password_hash=hash_password(password), is_admin=False)
+    verification_required = _email_verification_required()
+    u = User(name=name, phone=phone, email=email, password_hash=hash_password(password), is_admin=False, email_verified=not verification_required)
     db.session.add(u)
+    if verification_required:
+        db.session.flush()
+        try:
+            if not _send_verification_email(u):
+                db.session.rollback()
+                return jsonify({'error': 'Unable to deliver the verification email. Your account was not created.'}), 503
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('Error sending registration verification email')
+            return jsonify({'error': 'Unable to deliver the verification email. Your account was not created.'}), 503
+        db.session.commit()
+        return jsonify({
+            'message': 'Check your email and open the verification link to activate your account.',
+            'verification_required': True,
+        }), 201
     db.session.commit()
     token = create_token({'user_id': u.id, 'is_admin': u.is_admin, 'token_version': u.token_version})
     return jsonify({'message': 'User registered', 'token': token, 'user': u.to_dict()})
@@ -263,39 +328,50 @@ def delete_account():
     return jsonify({'message': 'Account and associated client data deleted successfully'}), 200
 
 
-# Password reset & verification scaffolding
+# Password reset and account verification
 @bp.route('/request-password-reset', methods=['POST'])
 @limiter.limit("3 per minute")
 def request_password_reset():
     data = request.json or {}
-    email = data.get('email')
+    email = normalize_email(data.get('email'))
+    account_type = 'admin' if data.get('account_type') == 'admin' else 'client'
+    generic_message = 'If that account exists, a reset link will be sent.'
     if not email:
-        return jsonify({'message': 'If that email exists, a reset link will be sent.'}), 200
+        return jsonify({'message': generic_message}), 200
 
-    user = User.query.filter_by(email=email).first()
+    user = User.query.filter_by(email=email, is_admin=(account_type == 'admin')).first()
     # Always return success to avoid user enumeration
     if not user:
-        return jsonify({'message': 'If that email exists, a reset link will be sent.'}), 200
+        return jsonify({'message': generic_message}), 200
 
     # create a short-lived token for password reset
-    token = create_token({'action': 'password_reset', 'user_id': user.id}, expires_hours=1)
+    token = create_token({
+        'action': 'password_reset',
+        'user_id': user.id,
+        'token_version': user.token_version,
+        'account_type': account_type,
+    }, expires_hours=1)
 
     # build reset link using FRONTEND_URL or localhost
     frontend = os.getenv('FRONTEND_URL', 'http://localhost:3000')
-    reset_link = f"{frontend.rstrip('/')}/reset-password?token={token}"
+    reset_link = f"{frontend.rstrip('/')}/reset-password?token={token}&account={account_type}"
     subject = 'Public Online Service Provider - Password reset'
     body = f"Hello,\n\nA request to reset your password was received. If you made this request, click the link below to reset your password:\n\n{reset_link}\n\nIf you did not request a reset, simply ignore this message.\n\n-- Public Online Service Provider"
 
     # send email (function handles console fallback if SMTP not configured)
+    delivered = False
     try:
-        send_email(user.email, subject, body)
+        delivered = send_email(user.email, subject, body)
     except Exception as e:
         current_app.logger.exception('Error sending reset email: %s', e)
+    if not delivered:
+        current_app.logger.error('Password-reset email delivery failed for account type %s', account_type)
 
-    return jsonify({'message': 'If that email exists, a reset link will be sent.'}), 200
+    return jsonify({'message': generic_message}), 200
 
 
 @bp.route('/reset-password', methods=['POST'])
+@limiter.limit('6 per hour')
 def reset_password():
     data = request.json or {}
     token = data.get('token')
@@ -311,36 +387,36 @@ def reset_password():
     if payload.get('action') != 'password_reset':
         return jsonify({'error': 'Invalid token action'}), 400
     user = db.session.get(User, payload.get('user_id'))
-    if not user:
+    if not user or payload.get('token_version') != user.token_version:
+        return jsonify({'error': 'Invalid token'}), 400
+    account_type = 'admin' if user.is_admin else 'client'
+    if payload.get('account_type') != account_type:
         return jsonify({'error': 'Invalid token'}), 400
     user.password_hash = hash_password(new_password)
     user.token_version = (user.token_version or 0) + 1
     db.session.commit()
-    return jsonify({'message': 'Password reset successful'}), 200
+    return jsonify({
+        'message': 'Password reset successful',
+        'login_path': '/admin/login' if user.is_admin else '/login',
+    }), 200
 
 
 @bp.route('/request-verify', methods=['POST'])
 def request_verify():
     data = request.json or {}
-    email = data.get('email')
+    email = normalize_email(data.get('email'))
+    generic_message = 'If that unverified account exists, a verification link will be sent.'
     if not email:
-        return jsonify({'message': 'If that email exists, a verification link will be sent.'}), 200
-    user = User.query.filter_by(email=email).first()
-    if not user:
-        return jsonify({'message': 'If that email exists, a verification link will be sent.'}), 200
-    token = create_token({'action': 'verify', 'user_id': user.id}, expires_hours=24)
-
-    frontend = os.getenv('FRONTEND_URL', 'http://localhost:3000')
-    verify_link = f"{frontend.rstrip('/')}/verify?token={token}"
-    subject = 'Public Online Service Provider - Verify your account'
-    body = f"Hello,\n\nPlease verify your account by clicking the link below:\n\n{verify_link}\n\nIf you did not create an account, ignore this email.\n\n-- Public Online Service Provider"
-
+        return jsonify({'message': generic_message}), 200
+    user = User.query.filter_by(email=email, is_admin=False).first()
+    if not user or user.email_verified:
+        return jsonify({'message': generic_message}), 200
     try:
-        send_email(user.email, subject, body)
+        if not _send_verification_email(user):
+            current_app.logger.error('Verification email delivery failed')
     except Exception as e:
         current_app.logger.exception('Error sending verify email: %s', e)
-
-    return jsonify({'message': 'If that email exists, a verification link will be sent.'}), 200
+    return jsonify({'message': generic_message}), 200
 
 
 @bp.route('/verify', methods=['POST'])
@@ -356,7 +432,9 @@ def verify_account():
     if payload.get('action') != 'verify':
         return jsonify({'error': 'Invalid token action'}), 400
     user = db.session.get(User, payload.get('user_id'))
-    if not user:
+    if not user or user.is_admin or user.email_verified or payload.get('token_version') != user.token_version:
         return jsonify({'error': 'Invalid token'}), 400
-    # placeholder: mark email verified. Add field if needed. For now, return success
+    user.email_verified = True
+    user.token_version = (user.token_version or 0) + 1
+    db.session.commit()
     return jsonify({'message': 'Account verified.'}), 200
