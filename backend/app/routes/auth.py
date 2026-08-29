@@ -22,25 +22,6 @@ from ..models.security import AdminLoginChallenge, RevokedToken
 bp = Blueprint('auth', __name__)
 
 
-def _email_verification_required():
-    return os.getenv('REQUIRE_EMAIL_VERIFICATION', '0') == '1'
-
-
-def _send_verification_email(user):
-    token = create_token({
-        'action': 'verify',
-        'user_id': user.id,
-        'token_version': user.token_version,
-    }, expires_hours=24)
-    frontend = os.getenv('FRONTEND_URL', 'http://localhost:3000')
-    verify_link = f"{frontend.rstrip('/')}/verify?token={token}"
-    return send_email(
-        user.email,
-        'Public Online Service Provider - Verify your account',
-        f"Hello,\n\nVerify your email address using this one-time link:\n\n{verify_link}\n\nThe link expires in 24 hours. If you did not create or update an account, ignore this email.\n\n-- Public Online Service Provider",
-    )
-
-
 def _current_user_from_request():
     auth = request.headers.get('Authorization', '')
     if not auth.startswith('Bearer '):
@@ -52,8 +33,6 @@ def _current_user_from_request():
         return None
     user = db.session.get(User, payload.get('user_id'))
     if not user or not user.is_active or payload.get('token_version', 0) != user.token_version:
-        return None
-    if _email_verification_required() and not user.is_admin and not user.email_verified:
         return None
     return user
 
@@ -92,24 +71,11 @@ def client_profile():
     user.name = name;user.phone = phone;user.email = email
     if new_password:
         user.password_hash = hash_password(new_password)
+    if email_changed or new_password:
         user.token_version = (user.token_version or 0) + 1
-    if email_changed and _email_verification_required():
-        user.email_verified = False
-        user.token_version = (user.token_version or 0) + 1
-        try:
-            if not _send_verification_email(user):
-                db.session.rollback()
-                return jsonify({'error': 'Unable to deliver the verification email. Your profile was not changed.'}), 503
-        except Exception:
-            db.session.rollback()
-            current_app.logger.exception('Error sending profile verification email')
-            return jsonify({'error': 'Unable to deliver the verification email. Your profile was not changed.'}), 503
-        db.session.commit()
-        return jsonify({
-            'message': 'Profile updated. Verify your new email address before signing in again.',
-            'user': user.to_dict(),
-            'verification_required': True,
-        })
+    # Client email activation has been removed. Keep the legacy column true so
+    # the deployed schema remains backwards compatible without a data migration.
+    user.email_verified = True
     db.session.commit()
     token = create_token({'user_id': user.id, 'is_admin': False, 'token_version': user.token_version})
     return jsonify({'message': 'Profile updated successfully.', 'user': user.to_dict(), 'token': token})
@@ -133,9 +99,6 @@ def login():
 
     if not verify_password(password, user.password_hash):
         return jsonify({'error': 'Invalid credentials'}), 401
-
-    if _email_verification_required() and not user.is_admin and not user.email_verified:
-        return jsonify({'error': 'Verify your email address before signing in. You can request a new verification link.'}), 403
 
     if user.is_admin and os.getenv('ADMIN_2FA_ENABLED', '0') == '1':
         code = f'{randbelow(1000000):06d}'
@@ -229,24 +192,8 @@ def register():
     if User.query.filter_by(phone=phone).first():
         return jsonify({'error': 'An account already exists for this mobile number.'}), 409
 
-    verification_required = _email_verification_required()
-    u = User(name=name, phone=phone, email=email, password_hash=hash_password(password), is_admin=False, email_verified=not verification_required)
+    u = User(name=name, phone=phone, email=email, password_hash=hash_password(password), is_admin=False, email_verified=True)
     db.session.add(u)
-    if verification_required:
-        db.session.flush()
-        try:
-            if not _send_verification_email(u):
-                db.session.rollback()
-                return jsonify({'error': 'Unable to deliver the verification email. Your account was not created.'}), 503
-        except Exception:
-            db.session.rollback()
-            current_app.logger.exception('Error sending registration verification email')
-            return jsonify({'error': 'Unable to deliver the verification email. Your account was not created.'}), 503
-        db.session.commit()
-        return jsonify({
-            'message': 'Check your email and open the verification link to activate your account.',
-            'verification_required': True,
-        }), 201
     db.session.commit()
     token = create_token({'user_id': u.id, 'is_admin': u.is_admin, 'token_version': u.token_version})
     return jsonify({'message': 'User registered', 'token': token, 'user': u.to_dict()})
@@ -399,42 +346,3 @@ def reset_password():
         'message': 'Password reset successful',
         'login_path': '/admin/login' if user.is_admin else '/login',
     }), 200
-
-
-@bp.route('/request-verify', methods=['POST'])
-def request_verify():
-    data = request.json or {}
-    email = normalize_email(data.get('email'))
-    generic_message = 'If that unverified account exists, a verification link will be sent.'
-    if not email:
-        return jsonify({'message': generic_message}), 200
-    user = User.query.filter_by(email=email, is_admin=False).first()
-    if not user or user.email_verified:
-        return jsonify({'message': generic_message}), 200
-    try:
-        if not _send_verification_email(user):
-            current_app.logger.error('Verification email delivery failed')
-    except Exception as e:
-        current_app.logger.exception('Error sending verify email: %s', e)
-    return jsonify({'message': generic_message}), 200
-
-
-@bp.route('/verify', methods=['POST'])
-def verify_account():
-    data = request.json or {}
-    token = data.get('token')
-    if not token:
-        return jsonify({'error': 'token required'}), 400
-    try:
-        payload = decode_token(token)
-    except Exception:
-        return jsonify({'error': 'Invalid or expired token'}), 400
-    if payload.get('action') != 'verify':
-        return jsonify({'error': 'Invalid token action'}), 400
-    user = db.session.get(User, payload.get('user_id'))
-    if not user or user.is_admin or user.email_verified or payload.get('token_version') != user.token_version:
-        return jsonify({'error': 'Invalid token'}), 400
-    user.email_verified = True
-    user.token_version = (user.token_version or 0) + 1
-    db.session.commit()
-    return jsonify({'message': 'Account verified.'}), 200
