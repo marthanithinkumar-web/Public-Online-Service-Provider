@@ -39,6 +39,19 @@ def test_catalog_summary_is_cacheable_and_omits_form_definitions(client):
     assert 'max-age=60' in response.headers['Cache-Control']
     assert response.get_json()
     assert all('requirements' not in service for service in response.get_json())
+    assert all(service.get('slug') for service in response.get_json())
+
+
+def test_public_service_detail_has_stable_descriptive_slug_route(client):
+    catalog = client.get('/api/services').get_json()
+    service = next(item for item in catalog if item['name'] == 'Government Job Application')
+
+    response = client.get(f"/api/services/by-slug/{service['slug']}")
+
+    assert response.status_code == 200
+    assert response.get_json()['id'] == service['id']
+    assert response.get_json()['slug'] == 'government-job-application'
+    assert 'max-age=300' in response.headers['Cache-Control']
 
 
 def test_document_pdf_service_is_searchable_five_rupees_and_has_document_options(client):

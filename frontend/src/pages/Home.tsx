@@ -25,8 +25,8 @@ export default function Home(){
       <section className="hero">
         <div className="hero-copy">
           <span className="eyebrow">Trusted public support platform</span>
-          <h1>Public Services, Made Easier for You</h1>
-          <p>Find trusted assistance for jobs, scholarships, certificates, MeeSeva services, online applications and government schemes—all in one place.</p>
+          <h1>Public Online Service Provider</h1>
+          <p><strong>Public services, made easier for you.</strong> Find independent assistance for PAN cards, government jobs, scholarships, certificates, MeeSeva services, online applications and government schemes—all in one place.</p>
           <SearchPanel variant="hero" />
           <div className="hero-links"><Link className="hero-link-primary" to="/register">Create your account</Link><Link className="hero-link-track" to="/login?returnTo=%2Fmy-orders">Track My Request</Link></div>
         </div>

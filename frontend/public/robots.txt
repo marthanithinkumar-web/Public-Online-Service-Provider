@@ -8,5 +8,10 @@ Disallow: /grievances
 Disallow: /submit-grievance
 Disallow: /submit-review
 Disallow: /reset-password
+Disallow: /login
+Disallow: /register
+Disallow: /request-reset
+Disallow: /request-verification
+Disallow: /verify
 
 Sitemap: https://public-online-service-provider-ui.onrender.com/sitemap.xml

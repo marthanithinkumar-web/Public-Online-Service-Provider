@@ -32,8 +32,10 @@ class Service(db.Model):
     created_at = db.Column(db.DateTime, default=utc_now)
 
     def to_dict(self):
+        from ..utils.seo import slugify
         return {
             'id': self.id,
+            'slug': slugify(self.name),
             'name': self.name,
             'description': self.description,
             'price_inr': float(self.price_inr or 0.0),
