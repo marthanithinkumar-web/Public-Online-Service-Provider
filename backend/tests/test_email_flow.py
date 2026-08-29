@@ -206,3 +206,41 @@ def test_production_email_does_not_print_security_tokens(monkeypatch, capsys):
     delivered = send_email('client@example.com', 'Password reset', 'sensitive-reset-token')
     assert delivered is False
     assert 'sensitive-reset-token' not in capsys.readouterr().out
+
+
+def test_brevo_uses_port_2525_tls_and_separate_verified_sender(monkeypatch):
+    from app.utils.email import send_email
+    captured = {}
+
+    class FakeSMTP:
+        def __init__(self, host, port, timeout):
+            captured.update(host=host, port=port, timeout=timeout)
+        def __enter__(self):
+            return self
+        def __exit__(self, *_):
+            return False
+        def ehlo(self):
+            captured['ehlo_count'] = captured.get('ehlo_count', 0) + 1
+        def starttls(self, context):
+            captured['tls'] = context is not None
+        def login(self, username, password):
+            captured.update(username=username, password=password)
+        def send_message(self, message):
+            captured['message'] = message
+
+    monkeypatch.setenv('SMTP_HOST', 'smtp-relay.brevo.com')
+    monkeypatch.setenv('SMTP_PORT', '2525')
+    monkeypatch.setenv('SMTP_USER', 'brevo-login@example.com')
+    monkeypatch.setenv('SMTP_PASS', 'smtp-key')
+    monkeypatch.setenv('SMTP_FROM_EMAIL', 'verified-sender@example.com')
+    monkeypatch.setenv('SMTP_FROM_NAME', 'Public Online Service Provider')
+    monkeypatch.setattr('app.utils.email.smtplib.SMTP', FakeSMTP)
+
+    assert send_email('client@example.com', 'Account email', 'one-time-link') is True
+    assert captured['host'] == 'smtp-relay.brevo.com'
+    assert captured['port'] == 2525
+    assert captured['tls'] is True
+    assert captured['ehlo_count'] == 2
+    assert captured['username'] == 'brevo-login@example.com'
+    assert captured['message']['From'] == 'Public Online Service Provider <verified-sender@example.com>'
+    assert captured['message']['To'] == 'client@example.com'

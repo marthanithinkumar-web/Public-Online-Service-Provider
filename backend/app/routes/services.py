@@ -5,6 +5,7 @@ from ..middleware.auth import require_admin
 from ..schemas.service_schema import ServiceSchema
 from ..utils.service_requirements import get_service_requirements
 from sqlalchemy import or_
+from ..utils.seo import slugify
 
 bp = Blueprint('services', __name__)
 schema = ServiceSchema()
@@ -63,6 +64,20 @@ def list_services():
 def service_detail(service_id):
     s = Service.query.filter_by(id=service_id, is_active=True).first_or_404()
     return jsonify(_service_dict(s))
+
+
+@bp.route('/by-slug/<string:service_slug>', methods=['GET'])
+def service_detail_by_slug(service_slug):
+    normalized = slugify(service_slug)
+    service = next(
+        (item for item in Service.query.filter_by(is_active=True).all() if slugify(item.name) == normalized),
+        None,
+    )
+    if service is None:
+        return jsonify({'error': 'Service not found'}), 404
+    response = jsonify(_service_dict(service))
+    response.headers['Cache-Control'] = 'public, max-age=300, stale-while-revalidate=3600'
+    return response
 
 
 @bp.route('/search', methods=['GET'])

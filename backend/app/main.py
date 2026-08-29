@@ -10,7 +10,6 @@ from .routes import auth, services, orders, admin, reviews, grievances, categori
 from flask_cors import CORS
 from flask_migrate import Migrate
 from flask_talisman import Talisman
-from flask_mail import Mail
 from .utils.password import hash_password
 
 load_dotenv()
@@ -74,7 +73,7 @@ def create_app():
     # document itself, so allow one megabyte of transport overhead while the
     # upload route still enforces the advertised 10 MB file limit.
     upload_limit_mb=int(os.getenv('MAX_UPLOAD_MB','10'));app.config['MAX_CONTENT_LENGTH']=(upload_limit_mb+1)*1024*1024
-    limiter._default_limits=['2000 per day','500 per hour'];limiter.init_app(app);Mail(app)
+    limiter._default_limits=['2000 per day','500 per hour'];limiter.init_app(app)
     with app.app_context():
         # Migration commands must be able to construct the app before newly
         # added model columns exist. They must not be masked by create_all().

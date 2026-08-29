@@ -25,3 +25,11 @@ export async function fetchServiceCatalog(force=false):Promise<any[]>{
 }
 
 export function clearServiceCatalog(){try{localStorage.removeItem(CACHE_KEY)}catch{}}
+
+export function slugifyServiceName(value:string){
+  return String(value||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'service'
+}
+
+export function servicePath(service:any){
+  return `/services/${service?.slug||slugifyServiceName(service?.name)}`
+}

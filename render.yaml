@@ -43,11 +43,17 @@ services:
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
-        value: "587"
+        value: "2525"
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASS
         sync: false
+      - key: SMTP_FROM_EMAIL
+        sync: false
+      - key: SMTP_FROM_NAME
+        value: "Public Online Service Provider"
+      - key: SMTP_USE_TLS
+        value: "1"
       - key: CORS_ORIGINS
         sync: false
       - key: MAX_UPLOAD_MB
@@ -105,6 +111,39 @@ services:
       - path: /assets/*
         name: Cache-Control
         value: public, max-age=31536000, immutable
+      - path: /admin/*
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /my-orders/*
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /account-settings
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /messages
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /grievances
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /submit-*
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /login
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /register
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /request-*
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /reset-password
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
+      - path: /verify
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
     routes:
       - type: rewrite
         source: /*
