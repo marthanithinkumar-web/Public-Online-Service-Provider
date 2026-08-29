@@ -26,8 +26,6 @@ import {getSession} from './services/session'
 import NotFound from './pages/NotFound'
 import SupportMessages from './pages/SupportMessages'
 import SupportChatLauncher from './components/ui/SupportChatLauncher'
-import VerifyEmail from './pages/VerifyEmail'
-import RequestVerification from './pages/RequestVerification'
 import Seo,{SITE} from './components/ui/Seo'
 
 const PUBLIC_METADATA:Record<string,{title:string;description:string}>={
@@ -77,6 +75,6 @@ function AdminRoute({children}:{children:React.ReactNode}){const session=getSess
 
 export default function App(){return <div className="app-shell"><RouteMetadata/><a className="skip-link" href="#main-content">Skip to main content</a><NavBar/><main id="main-content" tabIndex={-1} className="container page-content"><Routes>
  <Route path="/" element={<Home/>}/><Route path="/services/:slug" element={<ServiceDetail/>}/><Route path="/service/:id" element={<ServiceDetail/>}/><Route path="/jobs" element={<Category/>}/><Route path="/scholarships" element={<Category/>}/><Route path="/meeseva" element={<Category/>}/><Route path="/certificates" element={<Category/>}/><Route path="/schemes" element={<Category/>}/><Route path="/about" element={<About/>}/><Route path="/contact" element={<Contact/>}/><Route path="/privacy" element={<PrivacyPolicy/>}/><Route path="/terms" element={<Terms/>}/><Route path="/disclaimer" element={<Disclaimer/>}/>
- <Route path="/login" element={<AuthRedirect><Login/></AuthRedirect>}/><Route path="/register" element={<AuthRedirect><Register/></AuthRedirect>}/><Route path="/admin/login" element={<AuthRedirect><AdminLogin/></AuthRedirect>}/><Route path="/request-reset" element={<RequestReset/>}/><Route path="/admin/request-reset" element={<RequestReset accountType="admin"/>}/><Route path="/reset-password" element={<ResetPassword/>}/><Route path="/verify" element={<VerifyEmail/>}/><Route path="/request-verification" element={<RequestVerification/>}/>
+ <Route path="/login" element={<AuthRedirect><Login/></AuthRedirect>}/><Route path="/register" element={<AuthRedirect><Register/></AuthRedirect>}/><Route path="/admin/login" element={<AuthRedirect><AdminLogin/></AuthRedirect>}/><Route path="/request-reset" element={<RequestReset/>}/><Route path="/admin/request-reset" element={<RequestReset accountType="admin"/>}/><Route path="/reset-password" element={<ResetPassword/>}/>
  <Route path="/my-orders" element={<ClientRoute><MyOrders/></ClientRoute>}/><Route path="/my-orders/:id" element={<ClientRoute><OrderDetail/></ClientRoute>}/><Route path="/account-settings" element={<ClientRoute><AccountSettings/></ClientRoute>}/><Route path="/messages" element={<ClientRoute><SupportMessages/></ClientRoute>}/><Route path="/grievances" element={<ClientRoute><MyGrievances/></ClientRoute>}/><Route path="/submit-grievance" element={<ClientRoute><SubmitGrievance/></ClientRoute>}/><Route path="/submit-review" element={<ClientRoute><SubmitReview/></ClientRoute>}/><Route path="/admin/*" element={<AdminRoute><AdminPanel/></AdminRoute>}/><Route path="*" element={<NotFound/>}/>
  </Routes></main><SupportChatLauncher/><Footer/></div>}

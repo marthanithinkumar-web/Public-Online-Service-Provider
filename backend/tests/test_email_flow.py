@@ -132,62 +132,27 @@ def test_password_reset_reports_email_delivery_failure(client, monkeypatch):
     assert response.get_json()['message'] == 'If that account exists, a reset link will be sent.'
 
 
-def test_client_registration_requires_one_time_email_verification(client, monkeypatch):
-    captured = {}
-
-    def capture_email(address, subject, body):
-        captured.update(address=address, subject=subject, body=body)
-        return True
-
+def test_client_registration_does_not_require_email_delivery(client, monkeypatch):
+    """Client activation is immediate; only password recovery uses email."""
     monkeypatch.setenv('REQUIRE_EMAIL_VERIFICATION', '1')
-    monkeypatch.setattr('app.routes.auth.send_email', capture_email)
+    monkeypatch.setattr('app.routes.auth.send_email', lambda *_: False)
     registered = client.post('/api/auth/register', json={
-        'name': 'Verified Client', 'phone': '9876543210',
-        'email': 'verified-client@example.com', 'password': 'secure-password',
+        'name': 'Direct Client', 'phone': '9876543210',
+        'email': 'direct-client@example.com', 'password': 'secure-password',
     })
-    assert registered.status_code == 201
-    assert registered.get_json()['verification_required'] is True
-    assert 'token' not in registered.get_json()
+    assert registered.status_code == 200
+    assert registered.get_json()['token']
+    assert 'verification_required' not in registered.get_json()
     assert client.post('/api/auth/login', json={
-        'email': 'verified-client@example.com', 'password': 'secure-password',
-    }).status_code == 403
-
-    token = captured['body'].split('/verify?token=', 1)[1].splitlines()[0]
-    verified = client.post('/api/auth/verify', json={'token': token})
-    assert verified.status_code == 200
-    assert client.post('/api/auth/verify', json={'token': token}).status_code == 400
-    assert client.post('/api/auth/login', json={
-        'email': 'verified-client@example.com', 'password': 'secure-password',
+        'email': 'direct-client@example.com', 'password': 'secure-password',
     }).status_code == 200
 
 
-def test_registration_rolls_back_when_verification_email_cannot_be_sent(client, monkeypatch):
-    from app.models.user import User
-    monkeypatch.setenv('REQUIRE_EMAIL_VERIFICATION', '1')
-    monkeypatch.setattr('app.routes.auth.send_email', lambda *_: False)
-    response = client.post('/api/auth/register', json={
-        'name': 'Delivery Failure', 'phone': '9765432109',
-        'email': 'not-created@example.com', 'password': 'secure-password',
-    })
-    assert response.status_code == 503
-    with client.application.app_context():
-        assert User.query.filter_by(email='not-created@example.com').first() is None
-
-
-def test_request_verify_console_fallback(client, monkeypatch):
-    monkeypatch.delenv('SMTP_HOST', raising=False)
-    from app.models.user import User
-    from app.utils.password import hash_password
-    with client.application.app_context():
-        u = User(email='verify@example.com', password_hash=hash_password('password'), is_admin=False)
-        db.session.add(u)
-        db.session.commit()
-
-    resp = client.post('/api/auth/request-verify', json={'email': 'verify@example.com'})
-    assert resp.status_code == 200
-    data = resp.get_json()
-    assert 'verify_token' not in data
-    assert 'message' in data
+def test_client_verification_endpoints_are_removed(client):
+    assert client.post('/api/auth/request-verify', json={
+        'email': 'client@example.com',
+    }).status_code == 404
+    assert client.post('/api/auth/verify', json={'token': 'unused'}).status_code == 404
 
 
 def test_password_reset_rejects_short_password_before_token_processing(client):
