@@ -6,6 +6,7 @@ from ..schemas.review_schema import ReviewCreateSchema, ReviewSchema
 from ..middleware.auth import require_admin
 from ..models.user import User
 from ..utils.jwt_handler import get_request_user
+from ..utils.seo import application_service_name
 
 bp = Blueprint('reviews', __name__)
 
@@ -34,10 +35,8 @@ def create_review():
         return jsonify({'error': 'Invalid order_id'}), 400
     if order.user_id != user.id:
         return jsonify({'error': 'You can only review your own request.'}), 403
-    if order.status != 'Completed':
-        return jsonify({'error': 'Reviews can be submitted after the request is completed.'}), 409
     if Review.query.filter_by(order_id=order.id).first():
-        return jsonify({'error': 'A review has already been submitted for this request.'}), 409
+        return jsonify({'error': 'Feedback has already been submitted for this request.'}), 409
 
     r = Review(
         order_id=order_id,
@@ -48,7 +47,17 @@ def create_review():
     )
     db.session.add(r)
     db.session.commit()
-    return jsonify({'message': 'Review submitted', 'review': dump_schema.dump(r)}), 201
+    return jsonify({'message': 'Thank you for your feedback.', 'review': dump_schema.dump(r)}), 201
+
+
+@bp.route('/mine', methods=['GET'])
+def my_reviews():
+    user = _authenticated_user()
+    if not user or user.is_admin:
+        return jsonify({'error': 'Please log in with a client account.'}), 401
+    reviews = (Review.query.join(Order, Review.order_id == Order.id)
+               .filter(Order.user_id == user.id).order_by(Review.created_at.desc()).all())
+    return jsonify({'items': dump_schema.dump(reviews, many=True)})
 
 
 @bp.route('/public', methods=['GET'])
@@ -63,7 +72,7 @@ def public_reviews():
             'id': review.id,
             'rating': review.rating,
             'comment': review.comment,
-            'service': order.service.name if order and order.service else None,
+            'service': application_service_name(order.service.name) if order and order.service else None,
             'reviewer': 'Verified client',
             'created_at': review.created_at.isoformat(),
         })
@@ -80,7 +89,13 @@ def admin_list_reviews():
     q = Review.query.order_by(Review.created_at.desc())
     from ..utils.pagination import paginate_query
     res = paginate_query(q, page, per_page)
-    items = dump_schema.dump(res['items'], many=True)
+    items = []
+    for review in res['items']:
+        item = dump_schema.dump(review)
+        order = db.session.get(Order, review.order_id) if review.order_id else None
+        item['order_code'] = order.order_code if order else None
+        item['service'] = application_service_name(order.service.name) if order and order.service else None
+        items.append(item)
     return jsonify({'items': items, 'meta': res['meta']})
 
 

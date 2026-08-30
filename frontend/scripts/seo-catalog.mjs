@@ -12,6 +12,12 @@ export function slugify(value){
   return String(value||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'service'
 }
 
+export function applicationServiceName(value){
+  const name=String(value||'').trim()
+  for(const suffix of [' Application Assistance',' Service Assistance',' Assistance'])if(name.endsWith(suffix))return `${name.slice(0,-suffix.length).trim()} Apply`
+  return name
+}
+
 export function readCatalog(){
   const source=fs.readFileSync(seedPath,'utf8')
   const services=[]
@@ -20,13 +26,13 @@ export function readCatalog(){
     const categoryMatch=line.match(/^\s{4}'([^']+)': \[$/)
     if(categoryMatch){category=categoryMatch[1];continue}
     const tuple=line.match(/^\s*\('((?:\\'|[^'])*)',\s*'((?:\\'|[^'])*)',\s*'((?:\\'|[^'])*)'(?:,\s*([0-9.]+))?\),?$/)
-    if(tuple&&category)services.push({
-      name:tuple[1].replace(/\\'/g,"'"),
+    if(tuple&&category){const name=applicationServiceName(tuple[1].replace(/\\'/g,"'"));services.push({
+      name,
       description:tuple[2].replace(/\\'/g,"'"),
       keywords:tuple[3].replace(/\\'/g,"'"),
       category,
-      slug:slugify(tuple[1].replace(/\\'/g,"'")),
-    })
+      slug:slugify(name),
+    })}
   }
   if(services.length<80)throw new Error(`SEO catalog parser found only ${services.length} services; expected at least 80.`)
   const slugs=new Set()

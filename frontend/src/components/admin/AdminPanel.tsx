@@ -35,7 +35,7 @@ export default function AdminPanel(){
     <aside className="admin-sidebar"><div className="admin-sidebar-title"><strong>Administration</strong><small>Authorized provider workspace</small></div><nav aria-label="Admin navigation"><AdminLinks pathname={location.pathname}/></nav><div className="admin-sidebar-notice">Only authorized admins can view client records and documents.</div></aside>
     <details className="admin-mobile-menu"><summary>Administration menu</summary><nav><AdminLinks pathname={location.pathname}/></nav></details>
     <main className="admin-panel">
-      <div className="section-header admin-page-heading"><div><span className="eyebrow">Management workspace</span><h1>Admin Dashboard</h1><p>Manage applications, services, clients and updates from one secure place.</p></div><Link className="btn btn-secondary" to="/">View public site</Link></div>
+      <div className="section-header admin-page-heading"><div><h1>Admin Dashboard</h1></div><Link className="btn btn-secondary" to="/">Public site</Link></div>
       <Routes>
         <Route index element={<Navigate to="/admin/dashboard" replace/>}/>
         <Route path="/dashboard" element={<AdminDashboard/>}/>

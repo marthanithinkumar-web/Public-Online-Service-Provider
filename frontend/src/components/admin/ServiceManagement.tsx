@@ -131,18 +131,17 @@ export default function ServiceManagement(){
   }
 
   return <div>
-    <div className="section-header"><div><span className="eyebrow">Catalog pricing</span><h2>Service Management</h2><p>Manage service descriptions, categories, search keywords and private assistance fees without editing source code.</p></div></div>
+    <div className="section-header"><div><h2>Services & fees</h2></div></div>
     {error&&<p className="info" role="alert">{error}</p>}
     {message&&<p className="success-message" role="status">{message}</p>}
 
     <section className="dashboard-section global-fee-card" aria-labelledby="homepage-fee-title">
       <div>
         <span className="eyebrow">Homepage pricing display</span>
-        <h3 id="homepage-fee-title">Homepage Assistance Fee</h3>
-        <p>Choose the standard assistance fee shown in the homepage fee-transparency card. This display does not change any individual service fee or an existing request.</p>
+        <h3 id="homepage-fee-title">Homepage Application Assistance Fee</h3>
       </div>
       <div className="global-fee-controls">
-        <label>Homepage assistance fee (₹)<input type="number" min="0" max="100000" step="0.01" value={homepageFee} onChange={e=>setHomepageFee(e.target.value===''?'':Number(e.target.value))}/><small>Clients will see this amount on the homepage. Each service continues to show its own actual fee.</small></label>
+        <label>Application Assistance Fee (₹)<input type="number" min="0" max="100000" step="0.01" value={homepageFee} onChange={e=>setHomepageFee(e.target.value===''?'':Number(e.target.value))}/></label>
         <button type="button" disabled={busy||homepageFee===''} onClick={saveHomepageFee}>{busy?'Saving…':'Save homepage fee'}</button>
       </div>
     </section>
@@ -150,12 +149,11 @@ export default function ServiceManagement(){
     <section className="dashboard-section global-fee-card" aria-labelledby="global-fee-title">
       <div>
         <span className="eyebrow">Website-wide pricing</span>
-        <h3 id="global-fee-title">Change the current assistance fee everywhere</h3>
-        <p>Use this when every service should have the same new assistance fee. This updates public service cards, search results, service details and all future requests.</p>
+        <h3 id="global-fee-title">All service fees</h3>
         <p className="global-fee-current"><strong>Current catalog:</strong> {currentFeeText}</p>
       </div>
       <div className="global-fee-controls">
-        <label>New assistance fee (₹)<input type="number" min="0" max="100000" step="0.01" value={globalFee} onChange={e=>setGlobalFee(e.target.value===''?'':Number(e.target.value))}/><small>Enter ₹0 when you want to provide every service free of assistance charges.</small></label>
+        <label>Application Assistance Fee (₹)<input type="number" min="0" max="100000" step="0.01" value={globalFee} onChange={e=>setGlobalFee(e.target.value===''?'':Number(e.target.value))}/></label>
         <label className="fee-acknowledgement"><input type="checkbox" checked={globalConfirmed} onChange={e=>setGlobalConfirmed(e.target.checked)}/> I understand this replaces the current assistance fee on every service. Existing submitted requests keep their original agreed fee.</label>
         <button type="button" disabled={busy||!globalConfirmed||globalFee===''} onClick={updateWebsiteFee}>{busy?'Updating fees…':'Update fee across website'}</button>
         <small>This is your private assistance charge. It is never presented as a government or official fee.</small>
@@ -168,7 +166,7 @@ export default function ServiceManagement(){
       <label>Category<select value={categoryId} onChange={e=>setCategoryId(e.target.value)}><option value="">Select category</option>{categories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
       <div className="inline-admin-field"><label>New category<input placeholder="Add a category" value={newCategory} onChange={e=>setNewCategory(e.target.value)}/></label><button type="button" className="btn-secondary" disabled={busy||newCategory.trim().length<2} onClick={addCategory}>Add category</button></div>
       <label>Search keywords / tags<textarea rows={3} placeholder="Comma-separated terms clients may search" value={keywords} onChange={e=>setKeywords(e.target.value)}/><small>Include useful variations only. Example: income, residence, certificate, application.</small></label>
-      <label>Our assistance fee (₹)<input type="number" min="0" step="0.01" value={price} onChange={e=>setPrice(Number(e.target.value))}/><small>This is your editable private assistance charge, not a government fee. ₹0 is allowed for a free service.</small></label>
+      <label>Application Assistance Fee (₹)<input type="number" min="0" step="0.01" value={price} onChange={e=>setPrice(Number(e.target.value))}/></label>
       <label>Government / official fee status<select value={officialStatus} onChange={e=>setOfficialStatus(e.target.value as OfficialStatus)}><option value="unconfirmed">To be confirmed</option><option value="none">No official fee</option><option value="known">Known exact amount</option></select></label>
       {officialStatus==='known'&&<label>Government / official fee (₹)<input type="number" min="0" step="0.01" value={officialFee} onChange={e=>setOfficialFee(e.target.value===''?'':Number(e.target.value))}/></label>}
       <FeeSummary data={{price_inr:price,official_fee_status:officialStatus,official_fee_inr:officialStatus==='known'?Number(officialFee):officialStatus==='none'?0:null}} compact/>

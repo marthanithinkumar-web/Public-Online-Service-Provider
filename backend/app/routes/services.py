@@ -5,7 +5,7 @@ from ..middleware.auth import require_admin
 from ..schemas.service_schema import ServiceSchema
 from ..utils.service_requirements import get_service_requirements
 from sqlalchemy import or_
-from ..utils.seo import slugify
+from ..utils.seo import application_service_name, slugify
 
 bp = Blueprint('services', __name__)
 schema = ServiceSchema()
@@ -89,7 +89,7 @@ def service_detail(service_id):
 def service_detail_by_slug(service_slug):
     normalized = slugify(service_slug)
     service = next(
-        (item for item in Service.query.filter_by(is_active=True).all() if slugify(item.name) == normalized),
+        (item for item in Service.query.filter_by(is_active=True).all() if normalized in {slugify(item.name), slugify(application_service_name(item.name))}),
         None,
     )
     if service is None:

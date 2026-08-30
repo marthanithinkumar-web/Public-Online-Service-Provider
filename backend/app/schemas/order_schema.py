@@ -1,4 +1,5 @@
 from marshmallow import Schema, fields, validate
+from ..utils.seo import application_service_name
 
 
 class OrderCreateSchema(Schema):
@@ -14,7 +15,7 @@ class OrderSchema(Schema):
     phone = fields.Str()
     email = fields.Str(allow_none=True)
     contact_method = fields.Str(allow_none=True)
-    service = fields.Function(lambda order: order.service.name if order.service else None)
+    service = fields.Function(lambda order: application_service_name(order.service.name) if order.service else None)
     service_id = fields.Int()
     user_id = fields.Int(dump_only=True)
     fee_inr = fields.Float()

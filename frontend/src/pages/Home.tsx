@@ -2,8 +2,6 @@ import React,{useEffect,useMemo,useState} from 'react'
 import { Link } from 'react-router-dom'
 import SearchPanel from '../components/ui/SearchPanel'
 import ServicesSection from '../components/ui/ServicesSection'
-import WhyChoose from '../components/ui/WhyChoose'
-import HowItWorks from '../components/ui/HowItWorks'
 import CategoriesSection from '../components/ui/CategoriesSection'
 import {fetchServiceCatalog,readCachedServices} from '../services/serviceCatalog'
 import axios from 'axios'
@@ -23,7 +21,7 @@ export default function Home(){
         <div className="hero-copy">
           <span className="eyebrow">Trusted public support platform</span>
           <h1>Public Online Service Provider</h1>
-          <p><strong>Public services, made easier for you.</strong> Find independent assistance for PAN cards, government jobs, scholarships, certificates, MeeSeva services, online applications and government schemes—all in one place.</p>
+          <p>Find a service, submit your request and track it online.</p>
           <SearchPanel variant="hero" />
           <div className="hero-links"><Link className="hero-link-primary" to="/register">Create your account</Link><Link className="hero-link-track" to="/login?returnTo=%2Fmy-orders">Track My Request</Link></div>
         </div>
@@ -35,16 +33,14 @@ export default function Home(){
 
       <CategoriesSection />
       <ServicesSection />
-      <HowItWorks />
-      <WhyChoose />
 
-      {reviews.length>0&&<section className="content-section" aria-labelledby="client-reviews-title"><div className="section-header"><div><span className="eyebrow">Verified feedback</span><h2 id="client-reviews-title">What clients say</h2><p className="section-intro">Only moderated reviews from completed service requests are displayed. Client identities remain private.</p></div></div><div className="review-grid">{reviews.map(review=><article className="review-card" key={review.id}><div className="review-stars" aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}{'☆'.repeat(5-review.rating)}</div><p>{review.comment||'Service completed successfully.'}</p><footer><strong>{review.reviewer}</strong>{review.service&&<span>{review.service}</span>}</footer></article>)}</div></section>}
+      {reviews.length>0&&<section className="content-section" aria-labelledby="client-reviews-title"><div className="section-header"><div><span className="eyebrow">Client feedback</span><h2 id="client-reviews-title">Ratings & suggestions</h2></div></div><div className="review-grid">{reviews.map(review=><article className="review-card" key={review.id}><div className="review-stars" aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}{'☆'.repeat(5-review.rating)}</div><p>{review.comment||'Thank you.'}</p><footer><strong>{review.reviewer}</strong>{review.service&&<span>{review.service}</span>}</footer></article>)}</div></section>}
 
-      <section className="content-section privacy-block" id="help">
-        <div className="privacy-copy"><span className="eyebrow">Your trust, our priority</span><h2>Clear fees. Safe assistance. No confusion.</h2><p>We are an independent private assistance provider—not a government department or official government portal. We only request information necessary for your selected service.</p><ul className="safety-list"><li>Never share OTPs, passwords, PINs or banking-login details.</li><li>Your assistance fee is separate from government or official charges.</li><li>Every submitted request receives a trackable reference ID.</li></ul></div>
-        <div className="home-fee-card"><span>Fee transparency</span><dl><div><dt>Our Assistance Fee</dt><dd>₹{homepageFee}</dd></div><div><dt>Government / Official Fee</dt><dd>As applicable</dd></div></dl><p>This homepage fee is the provider’s standard displayed assistance fee. Some services may have a different assistance fee, which is always shown on that service before a request is submitted. Official charges vary by service and are shown separately.</p></div>
+      <section className="content-section privacy-block simplified-home-fee" id="help">
+        <div className="privacy-copy"><span className="eyebrow">Fees</span><h2>Application Assistance Fee</h2><p>Shown before you submit. Government or official fees are separate.</p></div>
+        <div className="home-fee-card"><span>Application Assistance Fee</span><dl><div><dt>Standard fee</dt><dd>₹{homepageFee}</dd></div><div><dt>Government / Official Fee</dt><dd>As applicable</dd></div></dl></div>
       </section>
-      <section className="home-cta"><div><span className="eyebrow light">Need help now?</span><h2>Find your service and submit a secure request.</h2></div><Link className="btn btn-primary light-btn" to="/#service-search">Search Services</Link></section>
+      <section className="home-cta"><div><h2>Ready to apply?</h2></div><Link className="btn btn-primary light-btn" to="/#service-search">Find service</Link></section>
     </div>
   )
 }

@@ -23,7 +23,7 @@ def test_default_services_include_editable_thirty_rupee_railway_booking(client):
 
     assert response.status_code == 200
     services = response.get_json()
-    railway = next(service for service in services if service['name'] == 'Railway Ticket Booking Assistance')
+    railway = next(service for service in services if service['name'] == 'Railway Ticket Booking Apply')
     assert railway['price_inr'] == 30.0
     assert railway['category'] == 'Travel & Ticketing Assistance'
     assert 'OTP' in railway['description']
@@ -57,7 +57,7 @@ def test_public_service_detail_has_stable_descriptive_slug_route(client):
 def test_document_pdf_service_is_searchable_five_rupees_and_has_document_options(client):
     response = client.get('/api/services/search?q=apaar pdf')
     assert response.status_code == 200
-    service = next(item for item in response.get_json() if item['name'] == 'Official Document PDF Access Assistance')
+    service = next(item for item in response.get_json() if item['name'] == 'Official Document PDF Access Apply')
     assert service['price_inr'] == 5.0
     assert service['is_active'] is True
 
@@ -93,6 +93,6 @@ def test_service_search_matches_partial_words_categories_and_keywords(client):
     assert partial.status_code == 200
     assert category.status_code == 200
     assert keyword.status_code == 200
-    assert any(service['name'] == 'Identity Document Assistance' for service in partial.get_json())
-    assert any(service['name'] == 'Identity Document Assistance' for service in category.get_json())
-    assert any(service['name'] == 'Identity Document Assistance' for service in keyword.get_json())
+    assert any(service['name'] == 'Identity Document Apply' for service in partial.get_json())
+    assert any(service['name'] == 'Identity Document Apply' for service in category.get_json())
+    assert any(service['name'] == 'Identity Document Apply' for service in keyword.get_json())

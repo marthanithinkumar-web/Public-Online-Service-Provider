@@ -32,11 +32,12 @@ class Service(db.Model):
     created_at = db.Column(db.DateTime, default=utc_now)
 
     def to_dict(self):
-        from ..utils.seo import slugify
+        from ..utils.seo import application_service_name, slugify
+        display_name = application_service_name(self.name)
         return {
             'id': self.id,
-            'slug': slugify(self.name),
-            'name': self.name,
+            'slug': slugify(display_name),
+            'name': display_name,
             'description': self.description,
             'price_inr': float(self.price_inr or 0.0),
             'official_fee_inr': float(self.official_fee_inr) if self.official_fee_inr is not None else None,

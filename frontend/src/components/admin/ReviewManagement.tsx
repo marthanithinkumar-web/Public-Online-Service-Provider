@@ -25,13 +25,13 @@ export default function ReviewManagement(){
 
   return (
     <div className="admin-record-page">
-      <div className="section-header"><div><span className="eyebrow">Client feedback</span><h2>Reviews</h2><p>Moderate verified feedback before it appears publicly.</p></div></div>
+      <div className="section-header"><div><span className="eyebrow">Client feedback</span><h2>Ratings & suggestions</h2></div></div>
       {error&&<div className="dashboard-state error-state"><p>{error}</p><button onClick={()=>load(page)}>Try again</button></div>}
       {loading?<div className="dashboard-state"><div className="loading-dot"/><p>Loading reviews...</p></div>:!items.length&&!error?<div className="dashboard-state"><p>No reviews found.</p></div>:<ul className="admin-record-list stacked">
         {items.map(r=> (
           <li key={r.id}>
-            <div>Rating: {r.rating} — {r.comment}</div>
-            <div>Public: {String(r.is_public)}</div>
+            <div><strong>{r.rating}/5 ★</strong>{r.comment&&<p>{r.comment}</p>}<small>{r.client_name||'Client'} · {r.service||'Service'} · {r.order_code||'Request'} · {new Date(r.created_at).toLocaleString()}</small></div>
+            <div>{r.is_public?'Shown on homepage':'Private'}</div>
             <div><button disabled={busyId===r.id} onClick={()=>toggle(r.id, r.is_public)}>{busyId===r.id?'Updating…':r.is_public ? 'Hide' : 'Make public'}</button></div>
           </li>
         ))}
