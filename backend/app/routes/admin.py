@@ -224,7 +224,7 @@ def user_detail(user_id):
         return jsonify({'error': 'Unauthorized'}), 401
     target = User.query.filter_by(id=user_id, is_admin=False).first_or_404()
     orders = Order.query.filter_by(user_id=target.id).order_by(Order.created_at.desc()).all()
-    return jsonify({'user': target.to_dict(), 'orders': [order.to_dict() for order in orders]})
+    return jsonify({'user': target.to_dict(include_service_profile=True), 'orders': [order.to_dict() for order in orders]})
 
 
 @bp.route('/users/<int:user_id>/active', methods=['POST'])

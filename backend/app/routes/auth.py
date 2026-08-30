@@ -14,12 +14,61 @@ from ..utils.limiter import limiter
 from ..utils.email import send_email
 from ..utils.validation import normalize_email, normalize_indian_mobile
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from hashlib import sha256
 from secrets import randbelow
 from ..models.security import AdminLoginChallenge, RevokedToken
 
 bp = Blueprint('auth', __name__)
+
+
+def _optional_text(data, key, limit):
+    value = str(data.get(key) or '').strip()
+    return value[:limit] or None
+
+
+def _update_optional_service_profile(user, data):
+    raw_dob = str(data.get('date_of_birth') or '').strip()
+    if raw_dob:
+        try:
+            parsed_dob = date.fromisoformat(raw_dob)
+        except ValueError:
+            raise ValueError('Date of birth must use YYYY-MM-DD format.')
+        if parsed_dob > date.today() or parsed_dob.year < 1900:
+            raise ValueError('Enter a valid date of birth.')
+        user.date_of_birth = parsed_dob
+    else:
+        user.date_of_birth = None
+
+    raw_postal_code = str(data.get('postal_code') or '').strip()
+    if raw_postal_code and (len(raw_postal_code) != 6 or not raw_postal_code.isdigit()):
+        raise ValueError('PIN code must contain exactly 6 digits.')
+
+    raw_alternate_phone = str(data.get('alternate_phone') or '').strip()
+    alternate_phone = normalize_indian_mobile(raw_alternate_phone) if raw_alternate_phone else None
+    if raw_alternate_phone and not alternate_phone:
+        raise ValueError('Enter a valid alternate Indian mobile number.')
+
+    raw_alternate_email = str(data.get('alternate_email') or '').strip()
+    alternate_email = normalize_email(raw_alternate_email) if raw_alternate_email else None
+    if raw_alternate_email and not alternate_email:
+        raise ValueError('Enter a valid alternate email address.')
+
+    user.gender = _optional_text(data, 'gender', 50)
+    user.guardian_name = _optional_text(data, 'guardian_name', 200)
+    user.preferred_language = _optional_text(data, 'preferred_language', 50)
+    user.occupation = _optional_text(data, 'occupation', 120)
+    user.education_qualification = _optional_text(data, 'education_qualification', 150)
+    user.address_line = _optional_text(data, 'address_line', 300)
+    user.city = _optional_text(data, 'city', 120)
+    user.district = _optional_text(data, 'district', 120)
+    user.state = _optional_text(data, 'state', 120)
+    user.postal_code = raw_postal_code or None
+    user.alternate_phone = alternate_phone
+    user.alternate_email = alternate_email
+    user.accessibility_needs = _optional_text(data, 'accessibility_needs', 500)
+    user.service_notes = _optional_text(data, 'service_notes', 1000)
+    user.profile_updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _current_user_from_request():
@@ -43,7 +92,7 @@ def client_profile():
     if not user or user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 401
     if request.method == 'GET':
-        return jsonify({'user': user.to_dict()})
+        return jsonify({'user': user.to_dict(include_service_profile=True)})
     data = request.json or {}
     name = (data.get('name') or '').strip()[:200]
     phone = normalize_indian_mobile(data.get('phone'))
@@ -67,6 +116,12 @@ def client_profile():
         return jsonify({'error': 'That mobile number is already in use.'}), 409
     if new_password and len(new_password) < 8:
         return jsonify({'error': 'New password must be at least 8 characters.'}), 400
+    if 'service_profile' in data:
+        try:
+            _update_optional_service_profile(user, data.get('service_profile') or {})
+        except ValueError as exc:
+            db.session.rollback()
+            return jsonify({'error': str(exc)}), 400
     email_changed = email != user.email
     user.name = name;user.phone = phone;user.email = email
     if new_password:
@@ -78,7 +133,7 @@ def client_profile():
     user.email_verified = True
     db.session.commit()
     token = create_token({'user_id': user.id, 'is_admin': False, 'token_version': user.token_version})
-    return jsonify({'message': 'Profile updated successfully.', 'user': user.to_dict(), 'token': token})
+    return jsonify({'message': 'Profile updated successfully.', 'user': user.to_dict(include_service_profile=True), 'token': token})
 
 
 @bp.route('/login', methods=['POST'])

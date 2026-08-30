@@ -108,3 +108,45 @@ def test_authenticated_client_can_load_dashboard_profile(client):
     replacement = updated.get_json()['token']
     assert client.get('/api/auth/profile', headers={'Authorization': f'Bearer {replacement}'}).status_code == 200
     assert client.post('/api/auth/login', json={'email': 'updated-profile@example.com', 'password': 'newsecret123'}).status_code == 200
+
+
+def test_optional_service_profile_is_client_controlled_and_validated(client):
+    registered = client.post('/api/auth/register', json={
+        'name': 'Profile Client', 'phone': '9990004444',
+        'email': 'optional-profile@example.com', 'password': 'secret123',
+    })
+    token = registered.get_json()['token']
+    headers = {'Authorization': f'Bearer {token}'}
+    saved = client.put('/api/auth/profile', headers=headers, json={
+        'name': 'Profile Client', 'phone': '9990004444', 'email': 'optional-profile@example.com',
+        'service_profile': {
+            'date_of_birth': '2000-01-02', 'gender': 'Female',
+            'guardian_name': 'Parent Name', 'preferred_language': 'Telugu',
+            'occupation': 'Student', 'education_qualification': 'Degree',
+            'address_line': 'Example locality', 'city': 'Hyderabad',
+            'district': 'Hyderabad', 'state': 'Telangana', 'postal_code': '500001',
+            'alternate_phone': '9888800000', 'alternate_email': 'alternate@example.com',
+            'accessibility_needs': 'Please communicate by text.',
+            'service_notes': 'Available on weekday evenings.',
+        },
+    })
+    assert saved.status_code == 200
+    service_profile = saved.get_json()['user']['service_profile']
+    assert service_profile['date_of_birth'] == '2000-01-02'
+    assert service_profile['alternate_phone'] == '+919888800000'
+    assert service_profile['postal_code'] == '500001'
+    assert service_profile['profile_updated_at']
+
+    invalid = client.put('/api/auth/profile', headers=headers, json={
+        'name': 'Profile Client', 'phone': '9990004444', 'email': 'optional-profile@example.com',
+        'service_profile': {'postal_code': '1234', 'alternate_email': 'invalid'},
+    })
+    assert invalid.status_code == 400
+
+    cleared = client.put('/api/auth/profile', headers=headers, json={
+        'name': 'Profile Client', 'phone': '9990004444', 'email': 'optional-profile@example.com',
+        'service_profile': {},
+    })
+    assert cleared.status_code == 200
+    assert cleared.get_json()['user']['service_profile']['date_of_birth'] is None
+    assert cleared.get_json()['user']['service_profile']['service_notes'] is None

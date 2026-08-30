@@ -43,6 +43,23 @@ def test_admin_client_management_does_not_expose_destructive_delete(client):
     assert response.status_code == 405
 
 
+def test_admin_can_view_but_not_edit_optional_client_service_profile(client):
+    client_token, admin_token, _ = _setup_flow(client)
+    with client.application.app_context():
+        target_id = User.query.filter_by(email='dashboard-client@example.com').first().id
+    client_update = client.put('/api/auth/profile', headers={'Authorization': f'Bearer {client_token}'}, json={
+        'name': 'Dashboard Client', 'phone': '9111111111', 'email': 'dashboard-client@example.com',
+        'service_profile': {'preferred_language': 'Telugu', 'district': 'Hyderabad', 'postal_code': '500001'},
+    })
+    assert client_update.status_code == 200
+    admin_headers = {'Authorization': f'Bearer {admin_token}'}
+    detail = client.get(f'/api/admin/users/{target_id}', headers=admin_headers)
+    assert detail.status_code == 200
+    assert detail.get_json()['user']['service_profile']['preferred_language'] == 'Telugu'
+    assert detail.get_json()['user']['service_profile']['postal_code'] == '500001'
+    assert client.put(f'/api/admin/users/{target_id}', headers=admin_headers, json={'service_profile': {}}).status_code == 405
+
+
 def test_admin_status_update_reaches_client_notifications(client):
     client_token, admin_token, order = _setup_flow(client)
     admin_headers = {'Authorization': f'Bearer {admin_token}'}

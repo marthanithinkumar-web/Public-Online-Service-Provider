@@ -7,6 +7,7 @@ export default function UserManagement(){
   const [err,setErr] = useState('')
   const [loading,setLoading] = useState(true); const [q,setQ]=useState(''); const [page,setPage]=useState(1); const [meta,setMeta]=useState<any>({})
   const [selected,setSelected]=useState<any>(null)
+  const profileLabels:Record<string,string>={date_of_birth:'Date of birth',gender:'Gender',guardian_name:'Parent or guardian',preferred_language:'Preferred language',occupation:'Occupation / employment',education_qualification:'Education qualification',address_line:'House / street / locality',city:'Village / town / city',district:'District',state:'State',postal_code:'PIN code',alternate_phone:'Alternate phone',alternate_email:'Alternate email',accessibility_needs:'Accessibility / communication assistance',service_notes:'General service notes'}
 
   useEffect(()=>{
     let cancelled = false
@@ -52,7 +53,7 @@ export default function UserManagement(){
           ))}
         </tbody>
       </table></div>
-      {selected&&<section className="dashboard-section client-detail"><div className="section-header"><div><span className="eyebrow">Client record</span><h3>{selected.user.name}</h3><p>{selected.user.email} · {selected.user.phone||'No phone'} · {selected.user.is_active?'Active':'Suspended'}</p></div><button className="btn-secondary" onClick={()=>setSelected(null)}>Close</button></div><h4>Applications</h4>{selected.orders.length?<div className="card-list">{selected.orders.map((order:any)=><Link className="action-card" to={`/admin/orders/${order.id}`} key={order.id}><strong>{order.order_code} · {order.service}</strong><small>{order.status} · {new Date(order.created_at).toLocaleString()}</small></Link>)}</div>:<p>No applications submitted.</p>}</section>}
+      {selected&&<section className="dashboard-section client-detail"><div className="section-header"><div><span className="eyebrow">Client record</span><h3>{selected.user.name}</h3><p>{selected.user.email} · {selected.user.phone||'No phone'} · {selected.user.is_active?'Active':'Suspended'}</p></div><button className="btn-secondary" onClick={()=>setSelected(null)}>Close</button></div><h4>Optional service profile</h4><p className="auth-hint">Client-provided information for service assistance. Empty fields are shown as not provided.</p><dl className="admin-profile-grid">{Object.entries(profileLabels).map(([key,label])=><div key={key}><dt>{label}</dt><dd>{selected.user.service_profile?.[key]||'Not provided'}</dd></div>)}</dl>{selected.user.service_profile?.profile_updated_at&&<p className="auth-hint">Last updated: {new Date(selected.user.service_profile.profile_updated_at).toLocaleString()}</p>}<h4>Applications</h4>{selected.orders.length?<div className="card-list">{selected.orders.map((order:any)=><Link className="action-card" to={`/admin/orders/${order.id}`} key={order.id}><strong>{order.order_code} · {order.service}</strong><small>{order.status} · {new Date(order.created_at).toLocaleString()}</small></Link>)}</div>:<p>No applications submitted.</p>}</section>}
       <div className="pagination"><button disabled={page<=1} onClick={()=>setPage(p=>p-1)}>Previous</button><span>Page {meta.page||1} of {meta.pages||1}</span><button disabled={page>=(meta.pages||1)} onClick={()=>setPage(p=>p+1)}>Next</button></div>
     </div>
   )
