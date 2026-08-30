@@ -149,8 +149,18 @@ def test_client_can_send_feedback_immediately_after_submission(client):
     registered = client.post('/api/auth/register', json={'name':'Feedback User','phone':'8999999999','email':'feedback@example.com','password':'strong-pass'})
     headers = {'Authorization': f"Bearer {registered.get_json()['token']}"}
     order = client.post('/api/orders/', json={'service_id':service_id,'application_data':{}}, headers=headers).get_json()['order']
+    assert order['can_submit_feedback'] is True
     submitted = client.post('/api/reviews/', json={'order_id':order['id'],'rating':4,'comment':'Please make document upload clearer.'}, headers=headers)
     assert submitted.status_code == 201
     mine = client.get('/api/reviews/mine', headers=headers)
     assert mine.status_code == 200
     assert mine.get_json()['items'][0]['order_id'] == order['id']
+    with client.application.app_context():
+        second_service = Service(name='Second Sample Service', description='Test', price_inr=50.0, category=Category.query.filter_by(name='General').first())
+        db.session.add(second_service)
+        db.session.commit()
+        second_service_id = second_service.id
+    second = client.post('/api/orders/', json={'service_id':second_service_id,'application_data':{}}, headers=headers).get_json()['order']
+    assert second['can_submit_feedback'] is False
+    rejected = client.post('/api/reviews/', json={'order_id':second['id'],'rating':5,'comment':'Second feedback'}, headers=headers)
+    assert rejected.status_code == 409
