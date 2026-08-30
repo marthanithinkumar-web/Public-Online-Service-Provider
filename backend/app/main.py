@@ -14,6 +14,14 @@ from .utils.password import hash_password
 
 load_dotenv()
 
+def validate_runtime_security():
+    """Fail closed when production is started with an unsafe signing key."""
+    if os.getenv('FLASK_ENV') != 'production':
+        return
+    secret = (os.getenv('SECRET_KEY') or '').strip()
+    if len(secret) < 32 or secret in {'dev-key', 'change-me-to-a-secure-random-string'}:
+        raise RuntimeError('Production requires a unique SECRET_KEY of at least 32 characters.')
+
 def database_engine_options(uri):
     options={'pool_pre_ping':True,'pool_recycle':280}
     if uri.startswith(('postgresql://','postgres://')):
@@ -53,6 +61,7 @@ def ensure_default_services():
     db.session.commit()
 
 def create_app():
+    validate_runtime_security()
     database_uri=os.getenv('DATABASE_URL','sqlite:///psp.db')
     app=Flask(__name__);app.config.from_mapping(SECRET_KEY=os.getenv('SECRET_KEY','dev-key'),SQLALCHEMY_DATABASE_URI=database_uri,SQLALCHEMY_TRACK_MODIFICATIONS=False,SQLALCHEMY_ENGINE_OPTIONS=database_engine_options(database_uri),MAIL_SERVER=os.getenv('SMTP_HOST',''),MAIL_PORT=int(os.getenv('SMTP_PORT') or 0),MAIL_USERNAME=os.getenv('SMTP_USER'),MAIL_PASSWORD=os.getenv('SMTP_PASS'),MAIL_USE_TLS=True,MAIL_USE_SSL=False)
     Talisman(
