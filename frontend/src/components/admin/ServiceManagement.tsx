@@ -1,7 +1,7 @@
 import React,{useEffect,useMemo,useState} from 'react'
 import {
   createCategory,createService,fetchCategories,fetchServices,setServiceActive,
-  updateAllAssistanceFees,updateService,
+  fetchHomepageAssistanceFee,updateAllAssistanceFees,updateHomepageAssistanceFee,updateService,
 } from '../../services/admin'
 import FeeSummary from '../ui/FeeSummary'
 
@@ -21,6 +21,7 @@ export default function ServiceManagement(){
   const [editing,setEditing]=useState<number|null>(null)
   const [globalFee,setGlobalFee]=useState<number|''>(30)
   const [globalConfirmed,setGlobalConfirmed]=useState(false)
+  const [homepageFee,setHomepageFee]=useState<number|''>(30)
   const [error,setError]=useState('')
   const [message,setMessage]=useState('')
   const [busy,setBusy]=useState(false)
@@ -28,9 +29,10 @@ export default function ServiceManagement(){
   const load=async()=>{
     try{
       setError('')
-      const [serviceItems,categoryItems]=await Promise.all([fetchServices(),fetchCategories()])
+      const [serviceItems,categoryItems,homepageFeeResult]=await Promise.all([fetchServices(),fetchCategories(),fetchHomepageAssistanceFee()])
       setServices(serviceItems)
       setCategories(categoryItems)
+      setHomepageFee(Number(homepageFeeResult.price_inr))
       const feeValues=Array.from(new Set(serviceItems.map((service:any)=>Number(service.price_inr||0))))
       if(feeValues.length===1){
         setGlobalFee(feeValues[0] as number)
@@ -91,6 +93,17 @@ export default function ServiceManagement(){
     }finally{setBusy(false)}
   }
 
+  const saveHomepageFee=async()=>{
+    const value=Number(homepageFee)
+    if(homepageFee===''||!Number.isFinite(value)||value<0){setError('Enter a valid homepage assistance fee.');return}
+    try{
+      setBusy(true);setError('');setMessage('')
+      const result=await updateHomepageAssistanceFee(value)
+      setMessage(`${result.message} Individual service fees were not changed.`)
+    }catch(err:any){setError(err?.response?.data?.error||'Unable to update the homepage assistance fee.')}
+    finally{setBusy(false)}
+  }
+
   const addCategory=async()=>{
     const value=newCategory.trim();if(value.length<2)return
     try{
@@ -121,6 +134,18 @@ export default function ServiceManagement(){
     <div className="section-header"><div><span className="eyebrow">Catalog pricing</span><h2>Service Management</h2><p>Manage service descriptions, categories, search keywords and private assistance fees without editing source code.</p></div></div>
     {error&&<p className="info" role="alert">{error}</p>}
     {message&&<p className="success-message" role="status">{message}</p>}
+
+    <section className="dashboard-section global-fee-card" aria-labelledby="homepage-fee-title">
+      <div>
+        <span className="eyebrow">Homepage pricing display</span>
+        <h3 id="homepage-fee-title">Homepage Assistance Fee</h3>
+        <p>Choose the standard assistance fee shown in the homepage fee-transparency card. This display does not change any individual service fee or an existing request.</p>
+      </div>
+      <div className="global-fee-controls">
+        <label>Homepage assistance fee (₹)<input type="number" min="0" max="100000" step="0.01" value={homepageFee} onChange={e=>setHomepageFee(e.target.value===''?'':Number(e.target.value))}/><small>Clients will see this amount on the homepage. Each service continues to show its own actual fee.</small></label>
+        <button type="button" disabled={busy||homepageFee===''} onClick={saveHomepageFee}>{busy?'Saving…':'Save homepage fee'}</button>
+      </div>
+    </section>
 
     <section className="dashboard-section global-fee-card" aria-labelledby="global-fee-title">
       <div>
