@@ -23,7 +23,7 @@ export default function Home(){
           <h1>Public Online Service Provider</h1>
           <p>Find a service, submit your request and track it online.</p>
           <SearchPanel variant="hero" />
-          <div className="hero-links"><Link className="hero-link-primary" to="/register">Create your account</Link><Link className="hero-link-track" to="/login?returnTo=%2Fmy-orders">Track My Request</Link></div>
+          <div className="hero-links"><Link className="hero-link-primary" to="/register">Create your account</Link><Link className="hero-link-track" to="/login">Client login</Link></div>
         </div>
         <aside className="hero-panel" aria-label="Platform highlights">
           <div className="hero-highlight-grid"><div><strong>{catalog.length||'100+'}</strong><span>Service options</span></div><div><strong>{categoryCount||'10+'}</strong><span>Categories</span></div><div><strong>24/7</strong><span>Online access</span></div><div><strong>Private</strong><span>Citizen-first support</span></div></div>

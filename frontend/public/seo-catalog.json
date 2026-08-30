@@ -812,10 +812,17 @@
     "slug": "government-bus-ticket-booking-apply"
   },
   {
-    "name": "Student / Concession Bus Pass Apply",
-    "description": "Assistance with eligible student or concession bus-pass applications and renewals.",
-    "keywords": "bus pass, student bus pass, concession pass, tsrtc, apsrtc, renewal",
+    "name": "Student Bus Pass Apply",
+    "description": "Help with a student bus-pass application or renewal.",
+    "keywords": "bus pass, student bus pass, concession pass, tgsrtc, tsrtc, apsrtc, renewal",
     "category": "Travel & Ticketing Assistance",
-    "slug": "student-concession-bus-pass-apply"
+    "slug": "student-bus-pass-apply"
+  },
+  {
+    "name": "General Bus Pass Apply",
+    "description": "Help with a general commuter bus-pass application or renewal.",
+    "keywords": "bus pass, general bus pass, commuter pass, tgsrtc, tsrtc, apsrtc, renewal",
+    "category": "Travel & Ticketing Assistance",
+    "slug": "general-bus-pass-apply"
   }
 ]

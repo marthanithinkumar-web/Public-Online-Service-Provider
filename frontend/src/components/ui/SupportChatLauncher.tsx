@@ -14,13 +14,13 @@ export default function SupportChatLauncher(){
   if(session?.is_admin||path.startsWith('/admin')||path.startsWith('/messages'))return null
 
   if(!session){
-    return <Link className="support-chat-launcher" to="/login?returnTo=%2Fmessages" aria-label="Sign in to use Chat for Support"><span aria-hidden="true">●</span> Chat for Support</Link>
+    return <Link className="support-chat-launcher" to="/login?returnTo=%2Fmessages" aria-label="Sign in to chat with admin"><span aria-hidden="true">●</span> Chat with Admin</Link>
   }
 
   return <>
-    <button className="support-chat-launcher" type="button" aria-expanded={open} aria-controls="floating-support-chat" onClick={()=>setOpen(value=>!value)}><span aria-hidden="true">●</span> {open?'Close chat':'Chat for Support'}</button>
+    <button className="support-chat-launcher" type="button" aria-expanded={open} aria-controls="floating-support-chat" onClick={()=>setOpen(value=>!value)}><span aria-hidden="true">●</span> {open?'Close chat':'Chat with Admin'}</button>
     {open&&<aside className="support-chat-panel" id="floating-support-chat" aria-label="Private support chat">
-      <div className="support-chat-panel-header"><div><strong>Private support</strong><small>Messages go to the service administrator.</small></div><button type="button" aria-label="Close support chat" onClick={()=>setOpen(false)}>×</button></div>
+      <div className="support-chat-panel-header"><div><strong>Chat with Admin</strong><small>Private messages to the administrator.</small></div><button type="button" aria-label="Close chat" onClick={()=>setOpen(false)}>×</button></div>
       <ClientSupportChat/>
     </aside>}
   </>

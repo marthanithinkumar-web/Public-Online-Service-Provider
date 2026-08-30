@@ -52,12 +52,19 @@ def ensure_admin_user():
 
 def ensure_default_services():
     defaults=[('Certificates','Residence Certificate','Assistance to apply for residence/domicile certificate',30.0,'residence,domicile,address,certificate'),('Certificates','Ration Card Services','Help with Ration Card related applications',30.0,'ration,card,food,subsidy'),('Government Jobs','Government Job Application','Assistance to apply for government job openings',30.0,'job,application,recruitment,jobs'),('Scholarships','Scholarship Application Assistance','Guidance and application support for eligible scholarships',30.0,'scholarship,education,student,financial aid'),('MeeSeva / Public Services','MeeSeva Service Assistance','Assistance with common MeeSeva and public service applications',30.0,'meeseva,public service,government,application'),('Government Schemes','Government Scheme Application Support','Eligibility guidance and application assistance for government schemes',30.0,'scheme,government scheme,benefit,eligibility'),('Travel & Ticketing Assistance','Railway Ticket Booking Assistance','Guidance for railway ticket search and booking through the official railway process. Clients complete OTP and payment directly on the official portal.',30.0,'railway,train,ticket,tickets,booking,irctc,travel'),('Identity & Citizen Documents','Official Document PDF Access Assistance','Help clients access an available official PDF or digital copy through the relevant official portal. This service does not create, alter or replace an identity document; clients complete any OTP or portal authentication themselves.',5.0,'pdf,document pdf,digital copy,download,aadhaar,aadhar,e-aadhaar,voter id,e-epic,pan,e-pan,abha,apaar,digilocker,ration card,driving licence,rc,certificate,marksheet')]
+    defaults.extend([
+        ('Travel & Ticketing Assistance','Student Bus Pass Assistance','Help with a student bus-pass application or renewal.',30.0,'bus pass,student bus pass,concession pass,tgsrtc,tsrtc,apsrtc,renewal'),
+        ('Travel & Ticketing Assistance','General Bus Pass Assistance','Help with a general commuter bus-pass application or renewal.',30.0,'bus pass,general bus pass,commuter pass,tgsrtc,tsrtc,apsrtc,renewal'),
+    ])
     for cat_name,name,desc,price,keywords in defaults:
         cat=Category.query.filter_by(name=cat_name).first()
         if cat is None:cat=Category(name=cat_name);db.session.add(cat);db.session.flush()
         service=Service.query.filter_by(name=name).first()
         if service is None:db.session.add(Service(name=name,description=desc,price_inr=price,keywords=keywords,category_id=cat.id,is_active=True))
         else:service.category_id=service.category_id or cat.id
+    residence=Service.query.filter_by(name='Residence Certificate').first()
+    if residence:
+        residence.official_fee_status='known';residence.official_fee_inr=80.0
     db.session.commit()
 
 def create_app():

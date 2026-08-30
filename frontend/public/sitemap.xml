@@ -127,5 +127,6 @@
   <url><loc>https://public-online-service-provider-ui.onrender.com/services/lpg-connection-subsidy-status-apply</loc></url>
   <url><loc>https://public-online-service-provider-ui.onrender.com/services/railway-ticket-booking-apply</loc></url>
   <url><loc>https://public-online-service-provider-ui.onrender.com/services/government-bus-ticket-booking-apply</loc></url>
-  <url><loc>https://public-online-service-provider-ui.onrender.com/services/student-concession-bus-pass-apply</loc></url>
+  <url><loc>https://public-online-service-provider-ui.onrender.com/services/student-bus-pass-apply</loc></url>
+  <url><loc>https://public-online-service-provider-ui.onrender.com/services/general-bus-pass-apply</loc></url>
 </urlset>

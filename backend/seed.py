@@ -146,7 +146,8 @@ SERVICE_CATALOG = {
     'Travel & Ticketing Assistance': [
         ('Railway Ticket Booking Assistance', 'Guidance for railway ticket search and booking through the official railway process. Clients complete OTP and payment directly on the official portal.', 'railway, train, ticket, tickets, booking, irctc, travel'),
         ('Government Bus Ticket Booking Assistance', 'Guidance for bus search and booking through the relevant official transport portal. Clients complete OTP and payment themselves.', 'bus ticket, government bus, tsrtc, apsrtc, ticket booking, travel'),
-        ('Student / Concession Bus Pass Assistance', 'Assistance with eligible student or concession bus-pass applications and renewals.', 'bus pass, student bus pass, concession pass, tsrtc, apsrtc, renewal'),
+        ('Student Bus Pass Assistance', 'Help with a student bus-pass application or renewal.', 'bus pass, student bus pass, concession pass, tgsrtc, tsrtc, apsrtc, renewal'),
+        ('General Bus Pass Assistance', 'Help with a general commuter bus-pass application or renewal.', 'bus pass, general bus pass, commuter pass, tgsrtc, tsrtc, apsrtc, renewal'),
     ],
 }
 
@@ -182,6 +183,26 @@ with app.app_context():
                 service.category_id = category.id
                 if service.is_active is None:
                     service.is_active = True
+    # Keep user-confirmed official charges clear and separate from assistance fees.
+    official_fees = {
+        'Income Certificate Assistance': 80.0,
+        'Caste / Community Certificate Assistance': 80.0,
+        'Residence / Domicile Certificate Assistance': 80.0,
+        'PAN Card - New Application': 107.0,
+        'PAN Card - Correction / Update': 107.0,
+        'PAN Card - Reprint': 107.0,
+    }
+    for service_name, official_fee in official_fees.items():
+        service = Service.query.filter_by(name=service_name).first()
+        if service:
+            service.official_fee_status = 'known'
+            service.official_fee_inr = official_fee
+
+    # Replace the older combined bus-pass listing without creating a duplicate.
+    old_bus_pass = Service.query.filter_by(name='Student / Concession Bus Pass Assistance').first()
+    new_student_pass = Service.query.filter_by(name='Student Bus Pass Assistance').first()
+    if old_bus_pass and new_student_pass and old_bus_pass.id != new_student_pass.id:
+        old_bus_pass.is_active = False
     db.session.commit()
 
     admin_email = os.getenv('ADMIN_EMAIL')

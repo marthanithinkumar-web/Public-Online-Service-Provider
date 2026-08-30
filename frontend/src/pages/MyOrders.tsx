@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from 'react'
-import {Link} from 'react-router-dom'
+import {Link,useLocation} from 'react-router-dom'
 import axios from 'axios'
 import {authHeader, fetchClientProfile} from '../services/auth'
 import {apiBase} from '../services/apiBase'
@@ -13,6 +13,7 @@ const CLOSED = ['Completed','Cancelled','Rejected']
 const FILTERS = ['All','Pending','Under Review','In Progress','Completed','Rejected']
 
 export default function MyOrders(){
+  const location=useLocation()
   const [orders,setOrders]=useState<any[]>([])
   const [notifications,setNotifications]=useState<any[]>([])
   const [unread,setUnread]=useState(0)
@@ -43,7 +44,6 @@ export default function MyOrders(){
 
   useEffect(()=>{load()},[])
   const summary=useMemo(()=>({total:orders.length,active:orders.filter(o=>!CLOSED.includes(o.status)).length}),[orders])
-  const recentServices=useMemo(()=>Array.from(new Map(orders.filter(o=>o.service_id).map(o=>[o.service_id,o])).values()).slice(0,4),[orders])
   const filteredOrders=useMemo(()=>orders.filter(order=>{
     const statusMatches=filter==='All'||(filter==='Pending'?['New','Submitted','Pending','Documents Required'].includes(order.status):order.status===filter)
     const term=query.trim().toLowerCase()
@@ -51,23 +51,22 @@ export default function MyOrders(){
     return statusMatches&&searchMatches
   }),[orders,filter,query])
 
+  const view=location.hash.replace('#','')
+  const applications=<section className="dashboard-section" id="applications"><div className="section-header inline"><div><h2>{view==='track'?'Track My Request':'My Applications'}</h2></div></div>
+    <div className="application-toolbar"><label>Search applications<input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Order number or service"/></label><div className="filter-tabs" role="group" aria-label="Filter applications">{FILTERS.map(item=><button type="button" className={filter===item?'active':''} aria-pressed={filter===item} onClick={()=>setFilter(item)} key={item}>{item}</button>)}</div></div>
+    {orders.length===0?<div className="empty-dashboard"><h3>No applications yet</h3></div>:filteredOrders.length===0?<div className="empty-dashboard"><h3>No matching applications</h3></div>:<div className="request-list">{filteredOrders.map(order=><article key={order.id} className="request-card"><div className="request-card-main"><div className="request-icon">A</div><div><div className="request-code">{order.order_code}</div><h3>{order.service}</h3><p>{new Date(order.created_at).toLocaleString()}</p></div></div><div className="request-card-side"><span className={`status-pill status-${String(order.status||'').toLowerCase().replace(/\s+/g,'-')}`}>{order.status}</span><span className="request-fee-mini"><strong>Application Assistance Fee ₹{order.fee_inr}</strong><small>Official fee: {order.official_fee_status==='unconfirmed'?'To be confirmed':`₹${order.official_fee_inr||0}`}</small></span></div><div className="request-card-actions"><Link to={`/my-orders/${order.id}`}>View application</Link>{!CLOSED.includes(order.status)&&<Link to={`/submit-grievance?order_id=${order.id}`}>Get help</Link>}</div></article>)}</div>}
+  </section>
+  const notificationSection=<>{notificationError&&<p className="info" role="alert">{notificationError}</p>}{notifications.length?<section className="dashboard-section" id="notifications"><div className="section-header inline"><h2>Notifications</h2>{unread>0&&<button disabled={markingRead} onClick={markAllRead}>{markingRead?'Updating…':'Mark all read'}</button>}</div><div className="notification-list">{notifications.map(item=><article key={item.id} className={item.is_read?'notification-card':'notification-card unread'}><strong>{item.title}</strong><p>{item.message}</p><small>{new Date(item.created_at).toLocaleString()}</small>{item.order_id&&<Link to={`/my-orders/${item.order_id}`}>View application</Link>}</article>)}</div></section>:<section className="dashboard-section"><h2>Notifications</h2><p>No notifications.</p></section>}</>
+
   return <div className="client-workspace-shell"><ClientWorkspaceNav/><div className="client-dashboard">
-    <section className="dashboard-hero"><div><span className="eyebrow">Client dashboard</span><h1>Welcome{profile?.name?`, ${profile.name}`:''}</h1><p>Find and track your requests.</p></div><div className="button-row"><a className="btn btn-primary" href="#service-search">Find service</a><Link className="btn btn-secondary" to="/account-settings">Profile</Link></div></section>
-    <SearchPanel context="dashboard"/>
-    {loading&&<div className="dashboard-state" role="status"><div className="loading-dot"/><p>Loading your applications and updates… Service search is ready to use above.</p></div>}
+    <section className="dashboard-hero"><div><span className="eyebrow">Client dashboard</span><h1>{view==='applications'?'My Applications':view==='track'?'Track My Request':view==='service-search'?'Find Services':view==='notifications'?'Notifications':`Welcome${profile?.name?`, ${profile.name}`:''}`}</h1></div></section>
+    {loading&&<div className="dashboard-state" role="status"><div className="loading-dot"/><p>Loading…</p></div>}
     {error&&<div className="dashboard-state error-state" role="alert"><h2>Applications could not be loaded</h2><p>{error}</p><button onClick={load}>Try loading applications again</button></div>}
     {!loading&&!error&&<>
-    <section className="dashboard-stat-grid"><div className="dashboard-stat"><span>Total applications</span><strong>{summary.total}</strong><small>Submitted requests</small></div><div className="dashboard-stat"><span>Active applications</span><strong>{summary.active}</strong><small>Being handled</small></div><div className="dashboard-stat"><span>Notifications</span><strong>{unread}</strong><small>Unread updates</small></div></section>
-    <section className="dashboard-section"><div className="section-header inline"><div><h2>Quick actions</h2></div></div><div className="dashboard-action-grid"><a className="action-card" href="#service-search"><strong>Find service</strong></a><a className="action-card" href="#applications"><strong>Track requests</strong></a><Link className="action-card" to="/messages"><strong>Message admin</strong></Link><Link className="action-card" to="/grievances"><strong>Get help</strong></Link><Link className="action-card" to="/account-settings"><strong>Profile</strong></Link></div></section>
-    <CategoriesSection/>
-    {recentServices.length>0&&<section className="dashboard-section"><div className="section-header inline"><div><span className="eyebrow">Recently used</span><h2>Your services</h2></div></div><div className="dashboard-action-grid">{recentServices.map((order:any)=><Link className="action-card" to={`/service/${order.service_id}`} key={order.service_id}><strong>{order.service}</strong><small>Start another application</small></Link>)}</div></section>}
-    {notificationError&&<p className="info" role="alert">{notificationError}</p>}
-    {notifications.length>0&&<section className="dashboard-section" id="notifications"><div className="section-header inline"><div><span className="eyebrow">Updates</span><h2>Recent notifications</h2></div>{unread>0&&<button disabled={markingRead} onClick={markAllRead}>{markingRead?'Updating…':'Mark all read'}</button>}</div><div className="notification-list">{notifications.slice(0,5).map(item=><article key={item.id} className={item.is_read?'notification-card':'notification-card unread'}><strong>{item.title}</strong><p>{item.message}</p><small>{new Date(item.created_at).toLocaleString()}</small>{item.order_id&&<Link to={`/my-orders/${item.order_id}`}>View application</Link>}</article>)}</div></section>}
-    {orders.length>0&&<section className="dashboard-section" id="feedback"><RequestFeedback orders={orders}/></section>}
-    <section className="dashboard-section" id="applications"><div className="section-header inline"><div><h2>My requests</h2></div></div>
-      <div className="application-toolbar"><label>Search applications<input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Application ID or service"/></label><div className="filter-tabs" role="group" aria-label="Filter applications">{FILTERS.map(item=><button type="button" className={filter===item?'active':''} aria-pressed={filter===item} onClick={()=>setFilter(item)} key={item}>{item}</button>)}</div></div>
-      {orders.length===0?<div className="empty-dashboard"><div className="empty-icon">✓</div><h3>No requests yet</h3><a className="btn btn-primary" href="#service-search">Find service</a></div>:filteredOrders.length===0?<div className="empty-dashboard"><h3>No matching requests</h3></div>:<div className="request-list">{filteredOrders.map(order=><article key={order.id} className="request-card"><div className="request-card-main"><div className="request-icon">P</div><div><div className="request-code">{order.order_code}</div><h3>{order.service}</h3><p>{new Date(order.created_at).toLocaleString()}</p></div></div><div className="request-card-side"><span className={`status-pill status-${String(order.status||'').toLowerCase().replace(/\s+/g,'-')}`}>{order.status}</span><span className="request-fee-mini"><strong>Application Assistance Fee ₹{order.fee_inr}</strong><small>Official fee: {order.official_fee_status==='unconfirmed'?'To be confirmed':`₹${order.official_fee_inr||0}`}</small></span></div><div className="request-card-actions"><Link to={`/my-orders/${order.id}`}>View request</Link>{!CLOSED.includes(order.status)&&<Link to={`/submit-grievance?order_id=${order.id}`}>Get help</Link>}</div></article>)}</div>}
-    </section>
+    {(view==='applications'||view==='track')&&applications}
+    {view==='service-search'&&<><SearchPanel context="dashboard"/><CategoriesSection/></>}
+    {view==='notifications'&&notificationSection}
+    {!view&&<><section className="dashboard-stat-grid"><div className="dashboard-stat"><span>Applications</span><strong>{summary.total}</strong></div><div className="dashboard-stat"><span>Active</span><strong>{summary.active}</strong></div><div className="dashboard-stat"><span>Unread</span><strong>{unread}</strong></div></section><section className="dashboard-section"><div className="dashboard-action-grid"><Link className="action-card" to="/my-orders#service-search"><strong>Find Services</strong></Link><Link className="action-card" to="/my-orders#applications"><strong>My Applications</strong></Link><Link className="action-card" to="/grievances"><strong>Help & Grievances</strong></Link></div></section>{orders.length>0&&applications}{orders.length>0&&<section className="dashboard-section" id="feedback"><RequestFeedback orders={orders}/></section>}</>}
     </>}
   </div></div>
 }

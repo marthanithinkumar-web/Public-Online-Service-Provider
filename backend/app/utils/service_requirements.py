@@ -29,6 +29,19 @@ def get_service_requirements(service):
             {'key': 'deadline', 'label': 'Deadline (if any)', 'type': 'date', 'required': False},
         ]
         documents = []
+    elif 'student bus pass' in text or 'concession bus pass' in text:
+        fields = [
+            {'key': 'institution', 'label': 'School / college', 'required': True},
+            {'key': 'course_class', 'label': 'Course / class', 'required': True},
+            {'key': 'route', 'label': 'Travel route', 'placeholder': 'From and to', 'required': True},
+        ]
+        documents = ['Recent passport-size photo', 'Aadhaar or other identity proof', 'Institution ID, admission receipt or bonafide certificate', 'Date-of-birth proof', 'Current address proof']
+    elif 'general bus pass' in text:
+        fields = [
+            {'key': 'pass_type', 'label': 'Pass type', 'required': True},
+            {'key': 'route', 'label': 'Travel route', 'placeholder': 'From and to', 'required': True},
+        ]
+        documents = ['Recent passport-size photo', 'Aadhaar or other identity proof', 'Current address proof']
     elif any(x in text for x in ('railway ticket', 'bus ticket')):
         fields = [
             {'key': 'journey_from', 'label': 'Travelling from', 'required': True},
@@ -93,7 +106,7 @@ def get_service_requirements(service):
             {'key': 'application_type', 'label': 'PAN assistance type', 'placeholder': 'New / correction / reprint', 'required': True},
             {'key': 'correction_needed', 'label': 'Correction/details needed', 'required': False},
         ]
-        documents = ['Identity/address document as applicable']
+        documents = ['Aadhaar or other identity proof', 'Date-of-birth proof', 'Current address proof', 'Recent photo and signature, when applicable']
     elif 'voter' in text:
         fields = [
             {'key': 'application_type', 'label': 'Voter service type', 'placeholder': 'New registration / correction / address change', 'required': True},
@@ -108,13 +121,31 @@ def get_service_requirements(service):
             {'key': 'deadline', 'label': 'Application deadline (if known)', 'type': 'date', 'required': False},
         ]
         documents = ['Student identity/previous academic record as applicable']
+    elif 'income certificate' in text:
+        fields = [
+            {'key': 'purpose', 'label': 'Purpose', 'required': True},
+            {'key': 'district', 'label': 'District', 'required': True},
+        ]
+        documents = ['Aadhaar', 'Ration card or voter ID', 'Income proof or self-declaration', 'Completed application form, if available']
+    elif any(x in text for x in ('caste certificate', 'community certificate')):
+        fields = [
+            {'key': 'community', 'label': 'Community / caste', 'required': True},
+            {'key': 'district', 'label': 'District', 'required': True},
+        ]
+        documents = ['Aadhaar, ration card or voter ID', 'Family caste certificate, if available', 'SSC memo, date-of-birth certificate or transfer certificate', 'Study certificates', 'Required caste declaration forms, when applicable']
+    elif any(x in text for x in ('residence certificate', 'domicile certificate', 'nativity')):
+        fields = [
+            {'key': 'purpose', 'label': 'Purpose', 'required': True},
+            {'key': 'district', 'label': 'District', 'required': True},
+        ]
+        documents = ['Aadhaar', 'Current residence proof: ration card, voter ID, utility bill, property document or registered rent agreement', 'Study certificate or other local-residence proof, when required']
     elif 'certificate' in text:
         fields = [
             {'key': 'certificate_type', 'label': 'Certificate type', 'required': True},
             {'key': 'purpose', 'label': 'Purpose of certificate', 'required': True},
             {'key': 'deadline', 'label': 'Deadline (if any)', 'type': 'date', 'required': False},
         ]
-        documents = ['Identity/address document as applicable']
+        documents = ['Identity proof', 'Address proof', 'Supporting certificate or record relevant to this application']
     else:
         fields = [
             {'key': 'assistance_type', 'label': 'What assistance do you need?', 'required': True},
