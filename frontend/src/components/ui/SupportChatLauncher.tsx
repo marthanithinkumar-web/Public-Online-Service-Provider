@@ -11,7 +11,7 @@ export default function SupportChatLauncher(){
   useEffect(()=>setOpen(false),[location.pathname])
 
   const path=location.pathname
-  if(session?.is_admin||path.startsWith('/admin')||path.startsWith('/messages')||path.startsWith('/my-orders'))return null
+  if(session?.is_admin||path.startsWith('/admin')||path.startsWith('/messages'))return null
 
   if(!session){
     return <Link className="support-chat-launcher" to="/login?returnTo=%2Fmessages" aria-label="Sign in to chat privately with support"><span aria-hidden="true">●</span> Chat with support</Link>
