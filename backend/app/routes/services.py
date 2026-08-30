@@ -22,6 +22,18 @@ def current_assistance_fee():
     return float(first.price_inr) if first else 30.0
 
 
+def homepage_assistance_fee():
+    setting = db.session.get(PlatformSetting, 'homepage_assistance_fee_inr')
+    if setting:
+        try:
+            value = float(setting.value)
+            if value >= 0:
+                return value
+        except (TypeError, ValueError):
+            pass
+    return 30.0
+
+
 def _fee_values(data, current=None):
     status = data.get('official_fee_status', getattr(current, 'official_fee_status', 'unconfirmed') or 'unconfirmed')
     amount = data.get('official_fee_inr', getattr(current, 'official_fee_inr', None))
@@ -58,6 +70,13 @@ def list_services():
             return jsonify({'error': 'Invalid category_id'}), 400
     services = q.order_by(Service.created_at.desc(), Service.name.asc()).all()
     return _catalog_response(services)
+
+
+@bp.route('/homepage-assistance-fee', methods=['GET'])
+def public_homepage_assistance_fee():
+    response = jsonify({'price_inr': homepage_assistance_fee()})
+    response.headers['Cache-Control'] = 'public, max-age=60, stale-while-revalidate=300'
+    return response
 
 
 @bp.route('/<int:service_id>', methods=['GET'])
