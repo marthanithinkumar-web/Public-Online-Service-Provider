@@ -125,3 +125,13 @@ button:disabled,.btn:disabled{cursor:not-allowed;opacity:.62;transform:none;box-
 @media(max-width:600px){.support-chat-launcher{max-width:calc(100vw - 28px)}.support-chat-panel{left:14px;right:14px;width:auto}.support-chat-panel-header button{min-width:44px;min-height:44px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.btn:hover,.category-card:hover,.support-chat-launcher:hover{transform:none}}
 @media(forced-colors:active){.btn,.support-chat-launcher,.site-header a{border:1px solid ButtonText}.info,.chat-safety-note{border:1px solid CanvasText}}
+
+/* Short, focused request submission */
+.request-steps.simplified{grid-template-columns:repeat(3,minmax(0,1fr))}
+.simplified-request-form,.simplified-review,.simplified-confirmation{max-width:780px;margin-inline:auto}
+.request-contact-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:8px 0 20px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--brand-light)}
+.request-contact-summary strong,.request-contact-summary span{display:block}.request-contact-summary span{margin-top:4px;color:var(--muted);font-size:.86rem;overflow-wrap:anywhere}.request-contact-summary a{flex:0 0 auto;color:var(--brand-blue);font-weight:800}
+.simplified-request-form h3{margin:20px 0 4px;color:var(--brand-dark)}.request-short-hint{margin:0 0 12px;color:var(--muted)}
+.request-safety-line{margin:6px 0 0;padding:10px 12px;border-radius:9px;background:#fff8e8;color:#624700;font-size:.82rem;line-height:1.5}
+.simplified-request-form .cta-row,.simplified-review .cta-row{justify-content:flex-end}.simplified-confirmation .upload-card{margin-top:18px}
+@media(max-width:600px){.request-steps.simplified span{font-size:.72rem}.request-contact-summary{align-items:flex-start;flex-direction:column}.request-contact-summary a{min-height:44px;display:inline-flex;align-items:center}.simplified-request-form .cta-row,.simplified-review .cta-row{justify-content:stretch}}
