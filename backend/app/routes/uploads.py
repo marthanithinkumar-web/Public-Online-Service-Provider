@@ -18,6 +18,14 @@ MAX_ATTACHMENTS_PER_REQUEST = 20
 OPEN_UPLOAD_STATUSES = {'New', 'Submitted', 'Pending', 'Under Review', 'Documents Required', 'In Progress'}
 
 
+def _remove_local_file(path):
+    try:
+        if path and os.path.exists(path):
+            os.remove(path)
+    except OSError:
+        current_app.logger.warning('Unable to remove temporary upload file.')
+
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXT
 
@@ -87,13 +95,18 @@ def upload_file():
     upload_folder = os.path.join(current_app.root_path, '..', '..', 'uploads')
     os.makedirs(upload_folder, exist_ok=True)
     local_path = os.path.join(upload_folder, stored_name)
-    f.save(local_path)
+    try:
+        f.save(local_path)
+    except OSError:
+        _remove_local_file(local_path)
+        return jsonify({'error': 'Unable to store the uploaded file.'}), 500
 
     try:
         if os.path.getsize(local_path) > MAX_FILE_SIZE:
-            os.remove(local_path)
+            _remove_local_file(local_path)
             return jsonify({'error': 'File is too large. Maximum size is 10 MB.'}), 413
     except OSError:
+        _remove_local_file(local_path)
         return jsonify({'error': 'Unable to verify the uploaded file.'}), 500
 
     stored_path_value = local_path
@@ -102,14 +115,13 @@ def upload_file():
         s3_key = f"attachments/{stored_name}"
         try:
             if not upload_file_to_s3(local_path, s3_bucket, s3_key):
-                os.remove(local_path)
+                _remove_local_file(local_path)
                 return jsonify({'error': 'Persistent document storage is temporarily unavailable.'}), 503
             stored_path_value = f"s3://{s3_bucket}/{s3_key}"
-            os.remove(local_path)
+            _remove_local_file(local_path)
         except Exception:
             current_app.logger.exception('S3 upload failed')
-            if os.path.exists(local_path):
-                os.remove(local_path)
+            _remove_local_file(local_path)
             return jsonify({'error': 'Persistent document storage is temporarily unavailable.'}), 503
 
     try:
@@ -138,10 +150,7 @@ def upload_file():
     except Exception:
         db.session.rollback()
         if stored_path_value == local_path:
-            try:
-                os.remove(local_path)
-            except OSError:
-                pass
+            _remove_local_file(local_path)
         raise
 
     message = 'Document delivered to the client successfully.' if user.is_admin else 'Document uploaded successfully.'
