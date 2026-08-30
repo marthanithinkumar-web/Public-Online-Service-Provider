@@ -37,8 +37,8 @@ export default function Home(){
       {reviews.length>0&&<section className="content-section" aria-labelledby="client-reviews-title"><div className="section-header"><div><span className="eyebrow">Client feedback</span><h2 id="client-reviews-title">Ratings & suggestions</h2></div></div><div className="review-grid">{reviews.map(review=><article className="review-card" key={review.id}><div className="review-stars" aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}{'☆'.repeat(5-review.rating)}</div><p>{review.comment||'Thank you.'}</p><footer><strong>{review.reviewer}</strong>{review.service&&<span>{review.service}</span>}</footer></article>)}</div></section>}
 
       <section className="content-section privacy-block simplified-home-fee" id="help">
-        <div className="privacy-copy"><span className="eyebrow">Fees</span><h2>Application Assistance Fee</h2><p>Shown before you submit. Government or official fees are separate.</p></div>
-        <div className="home-fee-card"><span>Application Assistance Fee</span><dl><div><dt>Standard fee</dt><dd>₹{homepageFee}</dd></div><div><dt>Government / Official Fee</dt><dd>As applicable</dd></div></dl></div>
+        <div className="privacy-copy"><span className="eyebrow">Fees</span><h2>Applicable Assistance Fee</h2><p>Shown before submission. Official fees are separate.</p></div>
+        <div className="home-fee-card"><span>Applicable Assistance Fee</span><dl><div><dt>Standard fee</dt><dd>₹{homepageFee}</dd></div><div><dt>Government / Official Fee</dt><dd>As applicable</dd></div></dl></div>
       </section>
       <section className="home-cta"><div><h2>Ready to apply?</h2></div><Link className="btn btn-primary light-btn" to="/#service-search">Find service</Link></section>
     </div>

@@ -11,7 +11,7 @@ export default function FeeSummary({data,compact=false}:{data:FeeData;compact?:b
   const total=data.total_fee_inr??(exact?assistance+official:null)
   return <section className={`fee-summary ${compact?'compact':''}`} aria-label="Fee summary">
     <div className="fee-summary-title"><h3>Fees</h3></div>
-    <dl><div><dt>Application Assistance Fee</dt><dd>{money(assistance)}</dd></div><div><dt>Government / Official Fee</dt><dd>{exact?money(official):'To be confirmed'}</dd></div><div className="fee-total"><dt>Total</dt><dd>{total===null?'Confirmed later':money(Number(total))}</dd></div></dl>
+    <dl><div><dt>Applicable Assistance Fee</dt><dd>{money(assistance)}</dd></div><div><dt>Government / Official Fee</dt><dd>{exact?money(official):'To be confirmed'}</dd></div><div className="fee-total"><dt>Total</dt><dd>{total===null?'Confirmed later':money(Number(total))}</dd></div></dl>
     {exact&&<p className="fee-equation">{money(official)} + {money(assistance)} = <strong>{money(Number(total))}</strong></p>}
     {!compact&&<p className="fee-clarification">Government or official fees are separate.</p>}
   </section>

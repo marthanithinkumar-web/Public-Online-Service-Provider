@@ -138,10 +138,10 @@ export default function ServiceManagement(){
     <section className="dashboard-section global-fee-card" aria-labelledby="homepage-fee-title">
       <div>
         <span className="eyebrow">Homepage pricing display</span>
-        <h3 id="homepage-fee-title">Homepage Application Assistance Fee</h3>
+        <h3 id="homepage-fee-title">Homepage Applicable Assistance Fee</h3>
       </div>
       <div className="global-fee-controls">
-        <label>Application Assistance Fee (₹)<input type="number" min="0" max="100000" step="0.01" value={homepageFee} onChange={e=>setHomepageFee(e.target.value===''?'':Number(e.target.value))}/></label>
+        <label>Applicable Assistance Fee (₹)<input type="number" min="0" max="100000" step="0.01" value={homepageFee} onChange={e=>setHomepageFee(e.target.value===''?'':Number(e.target.value))}/></label>
         <button type="button" disabled={busy||homepageFee===''} onClick={saveHomepageFee}>{busy?'Saving…':'Save homepage fee'}</button>
       </div>
     </section>
@@ -153,7 +153,7 @@ export default function ServiceManagement(){
         <p className="global-fee-current"><strong>Current catalog:</strong> {currentFeeText}</p>
       </div>
       <div className="global-fee-controls">
-        <label>Application Assistance Fee (₹)<input type="number" min="0" max="100000" step="0.01" value={globalFee} onChange={e=>setGlobalFee(e.target.value===''?'':Number(e.target.value))}/></label>
+        <label>Applicable Assistance Fee (₹)<input type="number" min="0" max="100000" step="0.01" value={globalFee} onChange={e=>setGlobalFee(e.target.value===''?'':Number(e.target.value))}/></label>
         <label className="fee-acknowledgement"><input type="checkbox" checked={globalConfirmed} onChange={e=>setGlobalConfirmed(e.target.checked)}/> I understand this replaces the current assistance fee on every service. Existing submitted requests keep their original agreed fee.</label>
         <button type="button" disabled={busy||!globalConfirmed||globalFee===''} onClick={updateWebsiteFee}>{busy?'Updating fees…':'Update fee across website'}</button>
         <small>This is your private assistance charge. It is never presented as a government or official fee.</small>
@@ -166,7 +166,7 @@ export default function ServiceManagement(){
       <label>Category<select value={categoryId} onChange={e=>setCategoryId(e.target.value)}><option value="">Select category</option>{categories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
       <div className="inline-admin-field"><label>New category<input placeholder="Add a category" value={newCategory} onChange={e=>setNewCategory(e.target.value)}/></label><button type="button" className="btn-secondary" disabled={busy||newCategory.trim().length<2} onClick={addCategory}>Add category</button></div>
       <label>Search keywords / tags<textarea rows={3} placeholder="Comma-separated terms clients may search" value={keywords} onChange={e=>setKeywords(e.target.value)}/><small>Include useful variations only. Example: income, residence, certificate, application.</small></label>
-      <label>Application Assistance Fee (₹)<input type="number" min="0" step="0.01" value={price} onChange={e=>setPrice(Number(e.target.value))}/></label>
+      <label>Applicable Assistance Fee (₹)<input type="number" min="0" step="0.01" value={price} onChange={e=>setPrice(Number(e.target.value))}/></label>
       <label>Government / official fee status<select value={officialStatus} onChange={e=>setOfficialStatus(e.target.value as OfficialStatus)}><option value="unconfirmed">To be confirmed</option><option value="none">No official fee</option><option value="known">Known exact amount</option></select></label>
       {officialStatus==='known'&&<label>Government / official fee (₹)<input type="number" min="0" step="0.01" value={officialFee} onChange={e=>setOfficialFee(e.target.value===''?'':Number(e.target.value))}/></label>}
       <FeeSummary data={{price_inr:price,official_fee_status:officialStatus,official_fee_inr:officialStatus==='known'?Number(officialFee):officialStatus==='none'?0:null}} compact/>

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import logo from '../../assets/logo.svg'
-import { PROVIDER } from '../../services/config'
 import { getSession } from '../../services/session'
 import { logout } from '../../services/auth'
 
@@ -52,8 +51,6 @@ export default function NavBar(){
         <nav className="main-nav" aria-label="Primary navigation">
           <Link className={loc.pathname==='/'&&!loc.hash? 'active':''} to="/">Home</Link>
           <Link to="/#services">Services</Link>
-          <Link to="/login?returnTo=%2Fmy-orders">Track Request</Link>
-          <Link to="/#how-it-works">How It Works</Link>
           <Link to="/#help">Help</Link>
           <Link className={isActive('/contact')? 'active':''} to="/contact">Contact</Link>
         </nav>
@@ -78,7 +75,6 @@ export default function NavBar(){
           <button className="mobile-menu-btn" type="button" onClick={()=>setOpen(true)} aria-label="Open navigation menu" aria-expanded={open} aria-controls="mobile-navigation"><span aria-hidden="true">☰</span></button>
         </div>
       </div>
-      <div className="container provider-strip"><span>{PROVIDER.name}</span><span><a href={`tel:${PROVIDER.phone}`}>{PROVIDER.phone}</a> · <a href={`tel:${PROVIDER.phone2}`}>{PROVIDER.phone2}</a> · <a href={`mailto:${PROVIDER.email}`}>{PROVIDER.email}</a></span></div>
       {open&&<><button className="mobile-drawer-backdrop" type="button" onClick={()=>setOpen(false)} aria-label="Close navigation menu"/><nav id="mobile-navigation" className="mobile-drawer" aria-label="Mobile navigation"><div className="mobile-drawer-header"><div><strong>Menu</strong><small>Public Online Service Provider</small></div><button type="button" onClick={()=>setOpen(false)} aria-label="Close navigation menu">×</button></div><div className="mobile-drawer-inner">
         <section className="mobile-drawer-section"><strong>Account</strong><div className="mobile-drawer-links">{authenticated ? (admin ? <><Link to="/admin/dashboard">Dashboard</Link><Link to="/admin/orders">Requests</Link><Link to="/admin/messages">Client Messages</Link><Link to="/admin/services">Services</Link><Link to="/admin/users">Clients</Link><button type="button" onClick={doLogout}>Logout</button></> : <><Link to="/my-orders">Dashboard</Link><Link to="/my-orders#applications">My Applications</Link><Link to="/my-orders#track">Track My Request</Link><Link to="/account-settings">My Account</Link><button type="button" onClick={doLogout}>Logout</button></>) : <><Link className="drawer-primary-action" to="/login">Client Login</Link><Link className="drawer-register-action" to="/register">Create Account</Link><Link to="/admin/login">Admin Login</Link></>}</div></section>
         <section className="mobile-drawer-section"><strong>Find a service</strong><div className="mobile-drawer-links"><Link to="/#service-search">Search Services</Link><Link to="/jobs">Jobs</Link><Link to="/scholarships">Scholarships</Link><Link to="/meeseva">MeeSeva</Link><Link to="/certificates">Certificates</Link><Link to="/schemes">Schemes</Link></div></section>
