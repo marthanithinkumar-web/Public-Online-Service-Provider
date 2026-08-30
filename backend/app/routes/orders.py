@@ -108,10 +108,13 @@ def create_order():
         Order.created_at >= recent_cutoff,
     ).order_by(Order.created_at.desc()).first())
     if duplicate:
+        first_order = Order.query.filter_by(user_id=user.id).order_by(Order.created_at.asc(), Order.id.asc()).first()
+        order_data = dump_schema.dump(duplicate)
+        order_data['can_submit_feedback'] = bool(first_order and first_order.id == duplicate.id and not Review.query.join(Order, Review.order_id == Order.id).filter(Order.user_id == user.id).first())
         return jsonify({
             'message': 'This request was already submitted recently.',
             'duplicate': True,
-            'order': dump_schema.dump(duplicate),
+            'order': order_data,
         }), 200
 
     order = Order(
@@ -125,7 +128,9 @@ def create_order():
     db.session.flush()
     db.session.add(OrderStatusHistory(order_id=order.id, previous_status=None, new_status='Submitted', changed_by=user.email, note='Application submitted by client.'))
     db.session.commit()
-    return jsonify({'message': 'Your service request has been submitted successfully.', 'order': dump_schema.dump(order)}), 201
+    order_data = dump_schema.dump(order)
+    order_data['can_submit_feedback'] = Order.query.filter_by(user_id=user.id).count() == 1
+    return jsonify({'message': 'Your service request has been submitted successfully.', 'order': order_data}), 201
 
 
 @bp.route('/<int:order_id>', methods=['GET'])
