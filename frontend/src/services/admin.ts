@@ -107,6 +107,14 @@ export async function updateAllAssistanceFees(price_inr:number){
   return res.data
 }
 
+export async function fetchHomepageAssistanceFee(){
+  return (await api.get('/admin/services/homepage-assistance-fee',{headers:authHeader()})).data
+}
+
+export async function updateHomepageAssistanceFee(price_inr:number){
+  return (await api.put('/admin/services/homepage-assistance-fee',{price_inr},{headers:authHeader()})).data
+}
+
 export async function fetchAdminAudit(page=1){
   return (await api.get('/admin/audit', { params:{page, per_page:20}, headers:authHeader() })).data
 }
