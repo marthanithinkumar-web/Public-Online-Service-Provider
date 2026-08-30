@@ -13,4 +13,4 @@ Disallow: /register
 Disallow: /request-reset
 Disallow: /verify
 
-Sitemap: https://public-online-service-provider-ui.onrender.com/sitemap.xml
+Sitemap: https://public-online-service-provider-india.onrender.com/sitemap.xml

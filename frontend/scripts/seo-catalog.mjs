@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url'
 const scriptDir=path.dirname(fileURLToPath(import.meta.url))
 const seedPath=path.resolve(scriptDir,'../../backend/seed.py')
 
-export const siteUrl='https://public-online-service-provider-ui.onrender.com'
+export const siteUrl='https://public-online-service-provider-india.onrender.com'
 export const publicRoutes=['/','/jobs','/scholarships','/meeseva','/certificates','/schemes','/about','/contact','/privacy','/terms','/disclaimer']
 
 export function slugify(value){
