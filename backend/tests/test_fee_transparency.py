@@ -116,6 +116,45 @@ def test_global_assistance_fee_update_is_admin_only_and_requires_confirmation(cl
     assert invalid.status_code == 400
 
 
+def test_homepage_fee_is_admin_controlled_without_changing_service_fees(client):
+    public_default = client.get('/api/services/homepage-assistance-fee')
+    assert public_default.status_code == 200
+    assert public_default.get_json()['price_inr'] == 30
+
+    unauthorized = client.put('/api/admin/services/homepage-assistance-fee', json={'price_inr': 45})
+    assert unauthorized.status_code == 401
+
+    headers = _admin_headers(client)
+    with client.application.app_context():
+        pdf_service = Service(name='PDF Fee Exception', price_inr=5, is_active=True)
+        standard_service = Service(name='Standard Fee Service', price_inr=30, is_active=True)
+        db.session.add_all([pdf_service, standard_service])
+        db.session.commit()
+        service_fees = {pdf_service.id: pdf_service.price_inr, standard_service.id: standard_service.price_inr}
+
+    changed = client.put(
+        '/api/admin/services/homepage-assistance-fee',
+        json={'price_inr': 30},
+        headers=headers,
+    )
+    assert changed.status_code == 200
+    assert changed.get_json()['price_inr'] == 30
+    assert changed.get_json()['service_fees_changed'] is False
+    assert client.get('/api/services/homepage-assistance-fee').get_json()['price_inr'] == 30
+
+    with client.application.app_context():
+        assert db.session.get(PlatformSetting, 'homepage_assistance_fee_inr').value == '30.00'
+        for service_id, expected_fee in service_fees.items():
+            assert db.session.get(Service, service_id).price_inr == expected_fee
+
+    invalid = client.put(
+        '/api/admin/services/homepage-assistance-fee',
+        json={'price_inr': 'NaN'},
+        headers=headers,
+    )
+    assert invalid.status_code == 400
+
+
 def test_admin_changes_fee_across_catalog_without_repricing_existing_requests(client):
     admin_headers = _admin_headers(client)
     created = client.post(
