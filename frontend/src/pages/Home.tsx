@@ -12,13 +12,10 @@ import {apiBase} from '../services/apiBase'
 export default function Home(){
   const [catalog,setCatalog]=useState<any[]>(()=>readCachedServices(true))
   const [reviews,setReviews]=useState<any[]>([])
+  const [homepageFee,setHomepageFee]=useState<number>(30)
   useEffect(()=>{let active=true;fetchServiceCatalog(true).then(items=>{if(active)setCatalog(items)}).catch(()=>{});return()=>{active=false}},[])
   useEffect(()=>{let active=true;axios.get(`${apiBase}/reviews/public`,{timeout:12000}).then(response=>{if(active)setReviews((response.data||[]).slice(0,6))}).catch(()=>{});return()=>{active=false}},[])
-  const assistanceFeeLabel=useMemo(()=>{
-    const fees=Array.from(new Set(catalog.map(service=>Number(service.price_inr)).filter(Number.isFinite))).sort((a,b)=>a-b)
-    if(!fees.length)return 'Shown per service'
-    return fees.length===1?`₹${fees[0]}`:`From ₹${fees[0]}`
-  },[catalog])
+  useEffect(()=>{let active=true;axios.get(`${apiBase}/services/homepage-assistance-fee`,{timeout:12000}).then(response=>{const value=Number(response.data?.price_inr);if(active&&Number.isFinite(value)&&value>=0)setHomepageFee(value)}).catch(()=>{});return()=>{active=false}},[])
   const categoryCount=useMemo(()=>new Set(catalog.map(service=>service.category).filter(Boolean)).size,[catalog])
   return (
     <div className="home-page">
@@ -45,7 +42,7 @@ export default function Home(){
 
       <section className="content-section privacy-block" id="help">
         <div className="privacy-copy"><span className="eyebrow">Your trust, our priority</span><h2>Clear fees. Safe assistance. No confusion.</h2><p>We are an independent private assistance provider—not a government department or official government portal. We only request information necessary for your selected service.</p><ul className="safety-list"><li>Never share OTPs, passwords, PINs or banking-login details.</li><li>Your assistance fee is separate from government or official charges.</li><li>Every submitted request receives a trackable reference ID.</li></ul></div>
-        <div className="home-fee-card"><span>Fee transparency</span><dl><div><dt>Our Assistance Fee</dt><dd>{assistanceFeeLabel}</dd></div><div><dt>Government / Official Fee</dt><dd>As applicable</dd></div></dl><p>Assistance fees are set by the provider. Official charges vary by service and are always shown separately.</p></div>
+        <div className="home-fee-card"><span>Fee transparency</span><dl><div><dt>Our Assistance Fee</dt><dd>₹{homepageFee}</dd></div><div><dt>Government / Official Fee</dt><dd>As applicable</dd></div></dl><p>This homepage fee is the provider’s standard displayed assistance fee. Some services may have a different assistance fee, which is always shown on that service before a request is submitted. Official charges vary by service and are shown separately.</p></div>
       </section>
       <section className="home-cta"><div><span className="eyebrow light">Need help now?</span><h2>Find your service and submit a secure request.</h2></div><Link className="btn btn-primary light-btn" to="/#service-search">Search Services</Link></section>
     </div>
