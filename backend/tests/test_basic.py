@@ -52,3 +52,19 @@ def test_default_upload_limit_matches_client_ten_megabyte_message(monkeypatch, t
     monkeypatch.setenv('DATABASE_URL', f'sqlite:///{tmp_path / "upload-limit.db"}')
     app = create_app()
     assert app.config['MAX_CONTENT_LENGTH'] == 11 * 1024 * 1024
+import pytest
+
+from app.main import validate_runtime_security
+
+
+def test_production_rejects_unsafe_secret(monkeypatch):
+    monkeypatch.setenv('FLASK_ENV', 'production')
+    monkeypatch.setenv('SECRET_KEY', 'dev-key')
+    with pytest.raises(RuntimeError, match='unique SECRET_KEY'):
+        validate_runtime_security()
+
+
+def test_production_accepts_strong_secret(monkeypatch):
+    monkeypatch.setenv('FLASK_ENV', 'production')
+    monkeypatch.setenv('SECRET_KEY', 'a-unique-production-secret-that-is-long-enough')
+    validate_runtime_security()
