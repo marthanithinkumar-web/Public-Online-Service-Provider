@@ -103,7 +103,6 @@ button:disabled,.btn:disabled{opacity:.68;cursor:not-allowed;transform:none}
 .service-profile-grid label{display:grid;gap:6px}
 .service-profile-grid input,.service-profile-grid select,.service-profile-grid textarea{width:100%}
 .profile-span-two{grid-column:1/-1}
-.optional-label{color:var(--muted);font-size:.72rem;font-weight:600}
 .admin-profile-grid{margin:12px 0 20px}
 .admin-profile-grid>div{padding:12px;border:1px solid var(--line);border-radius:10px;background:#f8fbff}
 .admin-profile-grid dt{color:var(--muted);font-size:.75rem;font-weight:800}
