@@ -299,6 +299,51 @@ def update_all_assistance_fees():
     })
 
 
+@bp.route('/services/homepage-assistance-fee', methods=['GET', 'PUT'])
+def homepage_assistance_fee_setting():
+    admin = _require_admin()
+    if not admin:
+        return jsonify({'error': 'Unauthorized'}), 401
+    setting = db.session.get(PlatformSetting, 'homepage_assistance_fee_inr')
+    if request.method == 'GET':
+        try:
+            value = float(setting.value) if setting else 30.0
+        except (TypeError, ValueError):
+            value = 30.0
+        return jsonify({'price_inr': max(0.0, value)})
+
+    data = request.json or {}
+    try:
+        new_fee = round(float(data.get('price_inr')), 2)
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Enter a valid homepage assistance fee.'}), 400
+    if not math.isfinite(new_fee) or new_fee < 0 or new_fee > 100000:
+        return jsonify({'error': 'Homepage assistance fee must be between ₹0 and ₹1,00,000.'}), 400
+    previous_fee = setting.value if setting else None
+    if setting:
+        setting.value = f'{new_fee:.2f}'
+    else:
+        db.session.add(PlatformSetting(key='homepage_assistance_fee_inr', value=f'{new_fee:.2f}'))
+    db.session.add(AdminAuditLog(
+        admin_id=admin.id,
+        action='homepage_assistance_fee_update',
+        summary=f'Changed the homepage assistance fee display to ₹{new_fee:.2f}.',
+        details={
+            'new_fee_inr': new_fee,
+            'previous_fee_inr': previous_fee,
+            'service_fees_changed': False,
+            'existing_requests_repriced': False,
+        },
+    ))
+    db.session.commit()
+    return jsonify({
+        'message': f'Homepage assistance fee display updated to ₹{new_fee:g}.',
+        'price_inr': new_fee,
+        'service_fees_changed': False,
+        'existing_requests_repriced': False,
+    })
+
+
 @bp.route('/audit', methods=['GET'])
 def audit_log():
     if not _require_admin():
