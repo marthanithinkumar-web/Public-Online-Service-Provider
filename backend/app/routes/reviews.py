@@ -35,8 +35,13 @@ def create_review():
         return jsonify({'error': 'Invalid order_id'}), 400
     if order.user_id != user.id:
         return jsonify({'error': 'You can only review your own request.'}), 403
-    if Review.query.filter_by(order_id=order.id).first():
-        return jsonify({'error': 'Feedback has already been submitted for this request.'}), 409
+    first_order = Order.query.filter_by(user_id=user.id).order_by(Order.created_at.asc(), Order.id.asc()).first()
+    if not first_order or first_order.id != order.id:
+        return jsonify({'error': 'Feedback is available only for your first request.'}), 409
+    existing = (Review.query.join(Order, Review.order_id == Order.id)
+                .filter(Order.user_id == user.id).first())
+    if existing:
+        return jsonify({'error': 'Feedback has already been submitted.'}), 409
 
     r = Review(
         order_id=order_id,
