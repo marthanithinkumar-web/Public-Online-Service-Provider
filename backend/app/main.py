@@ -81,7 +81,7 @@ def create_app():
         force_https=os.getenv('FORCE_HTTPS','0')=='1',
         referrer_policy='no-referrer',
     );db.init_app(app)
-    configured_origins=os.getenv('CORS_ORIGINS');frontends=configured_origins or os.getenv('FRONTEND_URL','http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173');allowed_origins=[o.strip().rstrip('/') for o in frontends.split(',') if o.strip()];render_ui='https://public-online-service-provider.onrender.com'
+    configured_origins=os.getenv('CORS_ORIGINS');frontends=configured_origins or os.getenv('FRONTEND_URL','http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173');allowed_origins=[o.strip().rstrip('/') for o in frontends.split(',') if o.strip()];render_ui='https://public-online-service-provider-ui.onrender.com'
     if render_ui not in allowed_origins:allowed_origins.append(render_ui)
     CORS(app,resources={r'/api/*':{'origins':allowed_origins}},supports_credentials=True,allow_headers=['Content-Type','Authorization'],methods=['GET','POST','PUT','PATCH','DELETE','OPTIONS']);Migrate(app,db)
     from .utils.limiter import limiter

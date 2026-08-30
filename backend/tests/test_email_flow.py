@@ -42,7 +42,7 @@ def test_password_reset_email_contains_correct_one_time_client_link(client, monk
         captured.update(address=address, subject=subject, body=body)
         return True
 
-        monkeypatch.setenv('FRONTEND_URL', 'https://public-online-service-provider.onrender.com')
+        monkeypatch.setenv('FRONTEND_URL', 'https://public-online-service-provider-ui.onrender.com')
     monkeypatch.setattr('app.routes.auth.send_email', capture_email)
     with client.application.app_context():
         db.session.add(User(email='client-reset@example.com', password_hash=hash_password('old-password'), is_admin=False))
