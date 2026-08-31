@@ -41,7 +41,7 @@ Option B: Serve static via Nginx or a CDN
 7) Secrets and credentials
 - Do NOT store secrets in the repository. Use environment variables or a secret manager.
 - Provide SMTP credentials in backend/.env for password reset and verify emails.
-- Configure a private S3-compatible bucket for file attachments. For Cloudflare R2, use `S3_BUCKET=posp-private-documents`, the account S3 endpoint in `S3_ENDPOINT_URL`, a bucket-scoped Object Read & Write access key and secret, and `AWS_REGION=auto`. Never make the bucket public or commit credentials.
+- Configure the private Backblaze B2 bucket for file attachments. Use `S3_BUCKET=posp-private-documents-2026`, `S3_ENDPOINT_URL=https://s3.us-east-005.backblazeb2.com`, a bucket-scoped Read and Write application key, and `AWS_REGION=us-east-005`. Map Backblaze `keyID` to `AWS_ACCESS_KEY_ID` and `applicationKey` to `AWS_SECRET_ACCESS_KEY`. Never make the bucket public or commit credentials.
 
 8) Monitoring and backups
 - Configure a logging/monitoring solution (CloudWatch, Datadog)
