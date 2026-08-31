@@ -3,7 +3,6 @@ from app.utils.database import db
 from app.models.user import User
 from app.models.service import Category, Service
 from io import BytesIO
-import os
 
 
 def test_order_lifecycle_and_admin_controls(client):
@@ -47,6 +46,19 @@ def test_order_lifecycle_and_admin_controls(client):
     assert r.get_json()['duplicate'] is True
     assert r.get_json()['order']['id'] == order_id
 
+    client_upload = client.post(
+        '/api/uploads/',
+        data={'order_id': str(order_id), 'file': (BytesIO(b'\x89PNG\r\n\x1a\nclient-test'), 'client-document.png')},
+        headers=headers1,
+        content_type='multipart/form-data',
+    )
+    assert client_upload.status_code == 201
+    client_attachment_id = client_upload.get_json()['attachment']['id']
+    assert client.delete(f'/api/uploads/{client_attachment_id}', headers=headers2).status_code == 403
+    removed = client.delete(f'/api/uploads/{client_attachment_id}', headers=headers1)
+    assert removed.status_code == 200
+    assert client.get(f'/api/uploads/{client_attachment_id}/download', headers=headers1).status_code == 404
+
     with client.application.app_context():
         admin = User(email='admin@example.com', password_hash=hash_password('adminpass'), is_admin=True)
         db.session.add(admin)
@@ -82,11 +94,9 @@ def test_order_lifecycle_and_admin_controls(client):
     assert any(item['title'] == 'New document from the service team' for item in client_detail['notifications'])
     assert client.get(f'/api/uploads/{attachment_id}/download', headers=headers1).status_code == 200
     assert client.get(f'/api/uploads/{attachment_id}/download', headers=headers2).status_code == 403
-    with client.application.app_context():
-        from app.models.attachment import Attachment
-        stored_path = db.session.get(Attachment, attachment_id).stored_path
-        if os.path.exists(stored_path):
-            os.remove(stored_path)
+    assert client.delete(f'/api/uploads/{attachment_id}', headers=headers1).status_code == 403
+    assert client.delete(f'/api/uploads/{attachment_id}', headers=admin_headers).status_code == 200
+    assert client.get(f'/api/uploads/{attachment_id}/download', headers=headers1).status_code == 404
 
     r = client.post(f'/api/admin/orders/{order_id}/status', json={'status': 'New'}, headers=admin_headers)
     assert r.status_code == 409
