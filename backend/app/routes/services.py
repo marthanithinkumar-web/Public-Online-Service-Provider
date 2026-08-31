@@ -88,6 +88,8 @@ def service_detail(service_id):
 @bp.route('/by-slug/<string:service_slug>', methods=['GET'])
 def service_detail_by_slug(service_slug):
     normalized = slugify(service_slug)
+    legacy_slugs = {'aadhaar-pvc-card-order-guidance': 'aadhaar-pvc-card-order'}
+    normalized = legacy_slugs.get(normalized, normalized)
     service = next(
         (item for item in Service.query.filter_by(is_active=True).all() if normalized in {slugify(item.name), slugify(application_service_name(item.name))}),
         None,

@@ -69,6 +69,53 @@ def test_document_pdf_service_is_searchable_five_rupees_and_has_document_options
     assert 'do not create or alter official documents' in data['requirements']['safety_note'].lower()
 
 
+def test_aadhaar_pvc_order_has_clean_name_and_specific_required_fields(client):
+    from app.models.service import Category, Service
+    from app.utils.database import db
+
+    with client.application.app_context():
+        category = Category.query.filter_by(name='Identity & Citizen Documents').first()
+        if category is None:
+            category = Category(name='Identity & Citizen Documents')
+            db.session.add(category)
+            db.session.flush()
+        if Service.query.filter_by(name='Aadhaar PVC Card Order').first() is None:
+            db.session.add(Service(
+                name='Aadhaar PVC Card Order',
+                description='Help with ordering an Aadhaar PVC card through UIDAI.',
+                keywords='aadhaar pvc aadhar pvc uidai pvc card order',
+                category_id=category.id,
+                is_active=True,
+            ))
+            db.session.commit()
+
+    response = client.get('/api/services/search?q=aadhaar pvc')
+
+    assert response.status_code == 200
+    service = next(item for item in response.get_json() if item['name'] == 'Aadhaar PVC Card Order')
+    assert 'Guidance' not in service['name']
+    assert not service['name'].endswith('Order Apply')
+    assert service['slug'] == 'aadhaar-pvc-card-order'
+
+    detail = client.get(f"/api/services/{service['id']}").get_json()
+    fields = {field['key']: field for field in detail['requirements']['fields']}
+    assert {'order_type', 'linked_mobile_access', 'delivery_state', 'delivery_district', 'delivery_pincode'} <= set(fields)
+    assert all(fields[key]['required'] for key in ('order_type', 'linked_mobile_access', 'delivery_state', 'delivery_district', 'delivery_pincode'))
+    assert 'OTP' in detail['requirements']['safety_note']
+
+
+def test_default_catalog_services_expose_required_application_details(client):
+    services = client.get('/api/services').get_json()
+
+    assert services
+    for service in services:
+        detail = client.get(f"/api/services/{service['id']}")
+        assert detail.status_code == 200
+        fields = detail.get_json()['requirements']['fields']
+        assert fields, service['name']
+        assert any(field.get('required') for field in fields), service['name']
+
+
 def test_service_search_matches_partial_words_categories_and_keywords(client):
     from app.models.service import Category, Service
     from app.utils.database import db

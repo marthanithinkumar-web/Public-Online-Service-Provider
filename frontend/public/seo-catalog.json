@@ -77,11 +77,11 @@
     "slug": "rc-vehicle-apply"
   },
   {
-    "name": "Aadhaar PVC Card Order Guidance",
-    "description": "Guidance for ordering an Aadhaar PVC card through the official UIDAI process. Clients complete OTP and payment directly with UIDAI.",
+    "name": "Aadhaar PVC Card Order",
+    "description": "Help with ordering an Aadhaar PVC card through the official UIDAI process. Clients complete OTP and payment directly with UIDAI.",
     "keywords": "aadhaar pvc, aadhar pvc, uidai, pvc card, aadhaar card order",
     "category": "Identity & Citizen Documents",
-    "slug": "aadhaar-pvc-card-order-guidance"
+    "slug": "aadhaar-pvc-card-order"
   },
   {
     "name": "DigiLocker Document Access Apply",

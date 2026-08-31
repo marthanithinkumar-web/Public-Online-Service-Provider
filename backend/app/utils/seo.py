@@ -12,7 +12,10 @@ def slugify(value: str) -> str:
 def application_service_name(value: str) -> str:
     """Use a short action title without changing stored catalog records."""
     name = (value or '').strip()
-    for suffix in (' Application Assistance', ' Service Assistance', ' Assistance'):
+    for suffix in (' Application Assistance', ' Service Assistance', ' Assistance', ' Guidance'):
         if name.endswith(suffix):
-            return name[:-len(suffix)].rstrip() + ' Apply'
+            base = name[:-len(suffix)].rstrip()
+            return base if base.lower().endswith(' order') else base + ' Apply'
+    if name.lower().endswith(' order apply'):
+        return name[:-len(' Apply')]
     return name

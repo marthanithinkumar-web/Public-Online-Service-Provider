@@ -19,7 +19,7 @@ SERVICE_CATALOG = {
         ('Passport - Renewal / Reissue', 'Assistance with eligible passport renewal/reissue applications.', 'passport, renewal, reissue, passport renewal'),
         ('Driving Licence / Learner Licence Assistance', 'Assistance with eligible learner and driving licence application processes.', 'driving licence, driving license, dl, learner licence, llr, rto'),
         ('RC / Vehicle Service Assistance', 'Assistance with eligible vehicle-registration related online services.', 'rc, vehicle registration, transport, rto, vehicle service'),
-        ('Aadhaar PVC Card Order Guidance', 'Guidance for ordering an Aadhaar PVC card through the official UIDAI process. Clients complete OTP and payment directly with UIDAI.', 'aadhaar pvc, aadhar pvc, uidai, pvc card, aadhaar card order'),
+        ('Aadhaar PVC Card Order', 'Help with ordering an Aadhaar PVC card through the official UIDAI process. Clients complete OTP and payment directly with UIDAI.', 'aadhaar pvc, aadhar pvc, uidai, pvc card, aadhaar card order'),
         ('DigiLocker Document Access Assistance', 'Guidance for finding and accessing eligible issued documents through DigiLocker. Clients sign in and complete OTP themselves.', 'digilocker, digital locker, issued documents, digital certificate, document access'),
         ('Official Document PDF Access Assistance', 'Help clients access an available official PDF or digital copy through the relevant official portal. This service does not create, alter or replace an identity document; clients complete any OTP or portal authentication themselves.', 'pdf, document pdf, digital copy, download, aadhaar, aadhar, e-aadhaar, voter id, e-epic, pan, e-pan, abha, apaar, digilocker, ration card, driving licence, rc, certificate, marksheet', 5.0),
     ],
@@ -174,6 +174,12 @@ with app.app_context():
             name, description, keywords = service_definition[:3]
             initial_fee = service_definition[3] if len(service_definition) > 3 else catalog_fee
             service = Service.query.filter_by(name=name).first()
+            # Preserve the existing record, fee, request relationships and ID
+            # when improving a public-facing service label.
+            if not service and name == 'Aadhaar PVC Card Order':
+                service = Service.query.filter_by(name='Aadhaar PVC Card Order Guidance').first()
+                if service:
+                    service.name = name
             if not service:
                 service = Service(name=name, description=description, price_inr=initial_fee, keywords=keywords, category_id=category.id, is_active=True)
                 db.session.add(service)

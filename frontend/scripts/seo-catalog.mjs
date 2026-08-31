@@ -14,7 +14,11 @@ export function slugify(value){
 
 export function applicationServiceName(value){
   const name=String(value||'').trim()
-  for(const suffix of [' Application Assistance',' Service Assistance',' Assistance'])if(name.endsWith(suffix))return `${name.slice(0,-suffix.length).trim()} Apply`
+  for(const suffix of [' Application Assistance',' Service Assistance',' Assistance',' Guidance'])if(name.endsWith(suffix)){
+    const base=name.slice(0,-suffix.length).trim()
+    return base.toLowerCase().endsWith(' order')?base:`${base} Apply`
+  }
+  if(name.toLowerCase().endsWith(' order apply'))return name.slice(0,-' Apply'.length)
   return name
 }
 
