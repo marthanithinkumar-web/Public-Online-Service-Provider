@@ -1,6 +1,6 @@
 # Public Online Service Provider — Active Work Queue
 
-Last updated: 2026-08-26
+Last updated: 2026-08-31
 
 ## Completed production checkpoint
 
@@ -141,3 +141,11 @@ After the items above are complete and tested, continue the existing full improv
    - Complete isolated authenticated client/admin browser E2E tests.
    - Confirm production S3-compatible storage, SMTP, Redis-backed rate limits, admin 2FA, and database backup/restore.
    - Complete keyboard, screen-reader, mobile/browser, slow-network, load, concurrency, cold-start and recovery testing.
+
+## Encrypted backup checkpoint (2026-08-31)
+
+22. Implemented in the repository: independent encrypted database backup and guarded recovery tooling.
+   - A daily GitHub Actions workflow creates a PostgreSQL custom archive, encrypts it with AES-256 before upload, verifies checksum/decryption/archive structure, and uploads only encrypted material to a separate private B2 bucket.
+   - Exact B2 object-version cleanup keeps 14 daily backup sets without hidden versions silently consuming the free allowance.
+   - Restore verification is non-mutating by default. A real restore refuses the production Neon branch host and requires an exact expected temporary host plus explicit confirmation.
+   - Still required: add the seven GitHub Actions secrets, complete the first green manual backup, and complete one restore drill on a temporary Neon branch before marking database recovery ready.

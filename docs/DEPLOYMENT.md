@@ -45,7 +45,11 @@ Option B: Serve static via Nginx or a CDN
 
 8) Monitoring and backups
 - Configure a logging/monitoring solution (CloudWatch, Datadog)
-- Schedule database backups
+- Activate the encrypted daily Neon backup workflow described in
+  `docs/DATABASE_BACKUP_RECOVERY.md`. It stores 14 verified daily backups in a
+  separate private Backblaze B2 bucket and never writes to production.
+- Run and record a restore drill against a temporary Neon branch before calling
+  database recovery production-ready.
 
 Troubleshooting
 - If flask db migrate reports "No changes in schema detected", your models likely match the database â€” proceed to upgrade anyway.
