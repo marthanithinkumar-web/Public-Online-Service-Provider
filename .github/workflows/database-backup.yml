@@ -1,0 +1,73 @@
+name: Encrypted production database backup
+
+on:
+  schedule:
+    # 02:00 Asia/Kolkata (20:30 UTC on the previous day).
+    - cron: '30 20 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-database-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Neon to private Backblaze B2
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BACKUP_DATABASE_URL: ${{ secrets.NEON_BACKUP_DATABASE_URL }}
+      BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+      B2_BACKUP_BUCKET: ${{ secrets.B2_BACKUP_BUCKET }}
+      B2_BACKUP_ENDPOINT_URL: ${{ secrets.B2_BACKUP_ENDPOINT_URL }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.B2_BACKUP_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_BACKUP_APPLICATION_KEY }}
+      AWS_REGION: ${{ secrets.B2_BACKUP_REGION }}
+      AWS_DEFAULT_REGION: ${{ secrets.B2_BACKUP_REGION }}
+      BACKUP_PREFIX: postgres/
+      BACKUP_RETENTION_COUNT: '14'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify backup configuration
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          missing=0
+          for variable in \
+            BACKUP_DATABASE_URL BACKUP_ENCRYPTION_PASSPHRASE \
+            B2_BACKUP_BUCKET B2_BACKUP_ENDPOINT_URL \
+            AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_REGION; do
+            if [[ -z "${!variable:-}" ]]; then
+              echo "::error::Required GitHub Actions secret is missing for ${variable}."
+              missing=1
+            fi
+          done
+          exit "${missing}"
+
+      - name: Install AWS command-line client
+        run: python -m pip install --disable-pip-version-check --quiet awscli
+
+      - name: Select a PostgreSQL client matching Neon
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          server_version_num="$(docker run --rm \
+            -e BACKUP_DATABASE_URL \
+            postgres:18-alpine \
+            sh -ceu 'psql "$BACKUP_DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atqc "SHOW server_version_num"')"
+          server_major=$((server_version_num / 10000))
+          if (( server_major < 13 || server_major > 20 )); then
+            echo "::error::Unsupported PostgreSQL server major: ${server_major}"
+            exit 1
+          fi
+          echo "POSTGRES_DOCKER_IMAGE=postgres:${server_major}-alpine" >> "${GITHUB_ENV}"
+          echo "Using a PostgreSQL ${server_major} client for the backup."
+
+      - name: Create, encrypt, verify, upload, and rotate backup
+        id: backup
+        shell: bash
+        run: bash scripts/backup_postgres_to_b2.sh
