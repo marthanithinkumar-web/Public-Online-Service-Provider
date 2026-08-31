@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, Response
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, update as sql_update
 from datetime import datetime, time, timezone
 import math
 import os
@@ -85,20 +85,22 @@ def _filtered_orders(args):
 def overview():
     if not _require_admin():
         return jsonify({'error': 'Unauthorized'}), 401
-    counts = dict(db.session.query(Order.status, func.count(Order.id)).group_by(Order.status).all())
+    operational_orders = Order.query.filter(Order.admin_archived_at.is_(None))
+    counts = dict(operational_orders.with_entities(Order.status, func.count(Order.id)).group_by(Order.status).all())
     fee_total = db.session.query(func.coalesce(func.sum(Order.fee_inr), 0)).filter(Order.status == 'Completed').scalar()
     average_rating = db.session.query(func.avg(Review.rating)).scalar()
     recent_history = OrderStatusHistory.query.order_by(OrderStatusHistory.created_at.desc()).limit(12).all()
-    recent_orders = Order.query.order_by(Order.created_at.desc()).limit(8).all()
+    recent_orders = operational_orders.order_by(Order.created_at.desc()).limit(8).all()
     return jsonify({
         'counts': {status: int(counts.get(status, 0)) for status in ALLOWED_STATUSES},
         'total_requests': int(sum(counts.values())),
+        'archived_requests': Order.query.filter(Order.admin_archived_at.isnot(None)).count(),
         'completed_fee_total': float(fee_total or 0),
         'open_grievances': Grievance.query.filter(Grievance.status.notin_(['Resolved', 'Closed'])).count(),
         'average_rating': round(float(average_rating or 0), 1),
         'client_count': User.query.filter_by(is_admin=False).count(),
         'service_count': Service.query.count(),
-        'recent_orders': [order.to_dict() for order in recent_orders],
+        'recent_orders': [order.to_dict(include_admin=True) for order in recent_orders],
         'activity': [item.to_dict() for item in recent_history],
     })
 
@@ -111,7 +113,14 @@ def list_orders():
     status = args.get('status')
     page = args.get('page', 1)
     per_page = args.get('per_page', 20)
+    archive_view = (args.get('archive') or 'active').strip().lower()
+    if archive_view not in {'active', 'archived', 'all'}:
+        return jsonify({'error': 'Invalid archive filter.'}), 400
     q = Order.query
+    if archive_view == 'active':
+        q = q.filter(Order.admin_archived_at.is_(None))
+    elif archive_view == 'archived':
+        q = q.filter(Order.admin_archived_at.isnot(None))
     if status:
         if status not in ALLOWED_STATUSES:
             return jsonify({'error': 'Invalid status filter.'}), 400
@@ -135,7 +144,7 @@ def list_orders():
     q = q.order_by(Order.created_at.desc())
     from ..utils.pagination import paginate_query
     res = paginate_query(q, page, per_page)
-    return jsonify({'items': [o.to_dict() for o in res['items']], 'meta': res['meta']})
+    return jsonify({'items': [o.to_dict(include_admin=True) for o in res['items']], 'meta': res['meta']})
 
 
 @bp.route('/orders/<int:order_id>/status', methods=['POST'])
@@ -175,7 +184,52 @@ def update_status(order_id):
             message += f' {note}'
         db.session.add(Notification(user_id=o.user_id, order_id=o.id, title='Request status updated', message=message[:4000]))
     db.session.commit()
-    return jsonify({'message': 'Status updated', 'order': o.to_dict(), 'history': history.to_dict()})
+    return jsonify({'message': 'Status updated', 'order': o.to_dict(include_admin=True), 'history': history.to_dict()})
+
+
+@bp.route('/orders/<int:order_id>/archive', methods=['POST'])
+def set_order_archived(order_id):
+    admin = _require_admin()
+    if not admin:
+        return jsonify({'error': 'Unauthorized'}), 401
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data.get('archived'), bool):
+        return jsonify({'error': 'archived must be true or false.'}), 400
+
+    order = Order.query.filter_by(id=order_id).with_for_update().first_or_404()
+    archived = data['archived']
+    if archived and order.status not in CLOSED_STATUSES:
+        return jsonify({'error': 'Only completed, rejected, or cancelled applications can be archived.'}), 409
+    if archived == (order.admin_archived_at is not None):
+        state = 'archived' if archived else 'active'
+        return jsonify({
+            'message': f'This application is already {state}.',
+            'order': order.to_dict(include_admin=True),
+        })
+
+    archived_at = datetime.now(timezone.utc).replace(tzinfo=None) if archived else None
+    # Archiving is an admin filing action only. Preserve updated_at so the
+    # client application timeline is not changed by this internal operation.
+    db.session.execute(
+        sql_update(Order).where(Order.id == order.id).values(
+            admin_archived_at=archived_at,
+            updated_at=Order.updated_at,
+        ).execution_options(synchronize_session=False)
+    )
+    action = 'application_archived' if archived else 'application_restored'
+    verb = 'Archived' if archived else 'Restored'
+    db.session.add(AdminAuditLog(
+        admin_id=admin.id,
+        action=action,
+        summary=f'{verb} application {order.order_code} in the admin workspace.',
+        details={'order_id': order.id, 'order_code': order.order_code, 'status': order.status},
+    ))
+    db.session.commit()
+    db.session.refresh(order)
+    return jsonify({
+        'message': 'Application archived from the admin queue.' if archived else 'Application restored to the admin queue.',
+        'order': order.to_dict(include_admin=True),
+    })
 
 
 @bp.route('/orders/<int:order_id>', methods=['GET'])
@@ -189,7 +243,7 @@ def order_detail(order_id):
     grievances = Grievance.query.filter_by(order_id=o.id).order_by(Grievance.id.desc()).all()
     reviews = Review.query.filter_by(order_id=o.id).order_by(Review.id.desc()).all()
     return jsonify({
-        'order': o.to_dict(),
+        'order': o.to_dict(include_admin=True),
         'history': [h.to_dict() for h in history],
         'attachments': [a.to_dict('client' if a.uploaded_by == o.user_id else 'admin') for a in attachments],
         'grievances': [g.to_dict() for g in grievances],
@@ -224,7 +278,7 @@ def user_detail(user_id):
         return jsonify({'error': 'Unauthorized'}), 401
     target = User.query.filter_by(id=user_id, is_admin=False).first_or_404()
     orders = Order.query.filter_by(user_id=target.id).order_by(Order.created_at.desc()).all()
-    return jsonify({'user': target.to_dict(include_service_profile=True), 'orders': [order.to_dict() for order in orders]})
+    return jsonify({'user': target.to_dict(include_service_profile=True), 'orders': [order.to_dict(include_admin=True) for order in orders]})
 
 
 @bp.route('/users/<int:user_id>/active', methods=['POST'])
