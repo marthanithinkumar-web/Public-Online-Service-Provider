@@ -4,12 +4,116 @@ These definitions intentionally describe assistance requirements only. They do n
 collect OTPs, passwords, PINs, bank credentials, or other authentication secrets.
 """
 
+# Every seeded service is deliberately assigned to a reviewed application-form
+# profile.  Keep this registry explicit: adding a catalog service without choosing
+# a suitable profile must fail the catalog coverage test.
+SERVICE_REQUIREMENT_PROFILE_BY_NAME = {}
+
+
+def _register(profile, names):
+    for name in names:
+        SERVICE_REQUIREMENT_PROFILE_BY_NAME[name] = profile
+
+
+_register('identity', (
+    'PAN Card - New Application', 'PAN Card - Correction / Update', 'PAN Card - Reprint',
+    'Voter ID - New Registration', 'Voter ID - Correction / Update', 'Voter ID - Address / Constituency Change',
+    'Aadhaar - Update Assistance', 'Passport - New Application', 'Passport - Renewal / Reissue',
+    'Driving Licence / Learner Licence Assistance', 'RC / Vehicle Service Assistance', 'Aadhaar PVC Card Order',
+    'DigiLocker Document Access Assistance', 'Official Document PDF Access Assistance',
+))
+_register('scholarship', (
+    'ePASS - Fresh Scholarship Application', 'ePASS - Scholarship Renewal', 'National Scholarship Portal (NSP) Assistance',
+    'Pre-Matric Scholarship Assistance', 'Post-Matric Scholarship Assistance', 'BC Welfare Scholarship Assistance',
+    'SC Welfare Scholarship Assistance', 'ST Welfare Scholarship Assistance', 'Minority Scholarship Assistance',
+    'EWS / Student Welfare Scholarship Assistance', 'Scholarship Application Status Assistance',
+))
+_register('exam', (
+    'POLYCET Application Assistance', 'TG EAPCET / TS EAMCET Application Assistance',
+    'AP EAPCET / AP EAMCET Application Assistance', 'ECET Application Assistance', 'ICET Application Assistance',
+    'PGECET Application Assistance', 'EdCET Application Assistance', 'LAWCET Application Assistance',
+    'CPGET Application Assistance', 'NEET Application Assistance', 'JEE Main Application Assistance',
+    'CUET Application Assistance', 'UGC NET Application Assistance', 'SSC Examination Application Assistance',
+    'UPSC Examination Application Assistance', 'Railway Examination Application Assistance',
+    'Banking Examination Application Assistance', 'TET Examination Application Assistance', 'SET Examination Application Assistance',
+))
+_register('school_admission', (
+    'BC Welfare Gurukulam Admission', 'SC Welfare Gurukulam Admission', 'ST Welfare Gurukulam Admission',
+    'Minority Residential School Admission', 'Sainik School Application Assistance',
+    'Jawahar Navodaya Vidyalaya Application Assistance', 'Residential School Application Status Assistance',
+))
+_register('admission', (
+    'IIIT Basara / RGUKT Admission Assistance', 'Polytechnic Admission Assistance', 'ITI Admission Assistance',
+    'Degree Admission Assistance', 'Engineering Admission Assistance', 'Medical Admission Assistance',
+    'Skill Development Admission Assistance', 'University / College Admission Form Assistance',
+    'DOST Telangana Degree Admission Assistance', 'Open School Admission / Examination Assistance',
+))
+_register('certificate', (
+    'Income Certificate Assistance', 'Caste / Community Certificate Assistance',
+    'Residence / Domicile Certificate Assistance', 'EWS Certificate Assistance', 'Birth Certificate Assistance',
+    'Death Certificate Assistance', 'Marriage Certificate Assistance', 'Family / Legal Heir Certificate Assistance',
+    'Disability Certificate Assistance', 'Non-Creamy Layer Certificate Assistance',
+    'Police Clearance Certificate Assistance', 'Encumbrance Certificate Assistance',
+    'Land Record / Pahani / Adangal Assistance',
+))
+_register('employment', (
+    'Government Job Application Assistance', 'State Government Job Application Assistance',
+    'Police / Defence Recruitment Application Assistance', 'Employment Registration Assistance',
+    'Job Application Correction / Status Assistance', 'Apprenticeship Application Assistance',
+    'EPFO UAN Activation Assistance', 'EPF Claim / Transfer / Status Assistance',
+    'e-Shram Registration / Update Assistance', 'National Career Service Registration Assistance',
+    'ESIC e-Pehchan / Benefit Assistance',
+))
+_register('scheme', (
+    'Government Scheme Application Assistance', 'Pension Application Assistance', 'Farmer Scheme Application Assistance',
+    'Senior Citizen Service Assistance', 'Women & Child Welfare Scheme Assistance',
+    'Disability Welfare Scheme Assistance', 'Housing Scheme Application Assistance',
+    'PM-KISAN Registration / Status Assistance', 'Ayushman Bharat / PM-JAY Eligibility Assistance',
+    'ABHA Health ID Assistance', 'Ration Card - New / Member Update Assistance',
+    'Widow / Single Women Pension Assistance', 'Labour Welfare Board Service Assistance',
+))
+_register('public_portal', (
+    'MeeSeva / Public Service Application Assistance', 'Government Application Status Assistance',
+    'Government Form Filling Assistance', 'Government Appointment Booking Assistance',
+    'Online Document Upload Assistance', 'Government Portal Account Assistance',
+))
+_register('business', (
+    'Udyam MSME Registration Assistance', 'GST Registration Application Assistance',
+    'FSSAI Registration / Licence Assistance', 'Shop & Establishment Registration Assistance',
+    'Municipal Trade Licence Assistance',
+))
+_register('utility', (
+    'Electricity New Connection / Name Change Assistance', 'Electricity Bill Payment Assistance',
+    'Water Connection / Bill Assistance', 'Property Tax Payment / Assessment Assistance',
+    'LPG Connection / Subsidy Status Assistance',
+))
+_register('travel', (
+    'Railway Ticket Booking Assistance', 'Government Bus Ticket Booking Assistance',
+    'Student Bus Pass Assistance', 'General Bus Pass Assistance',
+))
+# Startup-safe defaults retained for existing installations. Two other startup
+# defaults already use catalog names and are registered above.
+_register('certificate', ('Residence Certificate',))
+_register('scheme', ('Ration Card Services', 'Government Scheme Application Support'))
+_register('employment', ('Government Job Application',))
+_register('scholarship', ('Scholarship Application Assistance',))
+_register('public_portal', ('MeeSeva Service Assistance',))
+
 
 def get_service_requirements(service):
+    service_name = service.name or ''
     service_text = f"{service.name or ''} {service.keywords or ''}".lower()
     text = f"{service_text} {service.category.name if getattr(service, 'category', None) else ''}".lower()
 
-    if 'official document pdf access' in text:
+    if service_name == 'DigiLocker Document Access Assistance':
+        fields = [
+            {'key': 'document_needed', 'label': 'Issued document needed', 'required': True},
+            {'key': 'issuing_authority', 'label': 'Issuing board / department (if known)', 'required': False},
+            {'key': 'document_year', 'label': 'Document year', 'required': False},
+            {'key': 'access_issue', 'label': 'Access help needed', 'type': 'select', 'options': ['Find an issued document', 'Download an issued document', 'Document is not visible', 'Account access information'], 'required': True},
+        ]
+        documents = []
+    elif 'official document pdf access' in text:
         fields = [
             {
                 'key': 'document_type',
@@ -108,6 +212,61 @@ def get_service_requirements(service):
             {'key': 'travel_preference', 'label': 'Class / travel preference', 'placeholder': 'Preferred class or service type', 'required': False},
         ]
         documents = []
+    elif service_name in ('Scholarship Application Status Assistance', 'Residential School Application Status Assistance', 'Government Application Status Assistance', 'Job Application Correction / Status Assistance'):
+        fields = [
+            {'key': 'application_name', 'label': 'Application / notification name', 'required': True},
+            {'key': 'application_reference', 'label': 'Application or reference number', 'required': True},
+            {'key': 'application_year', 'label': 'Application / academic year', 'required': True},
+            {'key': 'status_help', 'label': 'Help required', 'type': 'select', 'options': ['Check current status', 'Understand a status message', 'Correction information', 'Next-step information'], 'required': True},
+        ]
+        documents = ['Application acknowledgement or status screenshot, with unrelated personal information hidden']
+    elif service_name == 'Employment Registration Assistance':
+        fields = [
+            {'key': 'registration_type', 'label': 'Employment registration type', 'type': 'select', 'options': ['New job-seeker registration', 'Registration renewal', 'Profile update', 'Status check'], 'required': True},
+            {'key': 'state_district', 'label': 'State / district employment office', 'required': True},
+            {'key': 'highest_qualification', 'label': 'Highest qualification', 'required': True},
+            {'key': 'employment_status', 'label': 'Current employment status', 'required': True},
+        ]
+        documents = ['Identity and address proof', 'Qualification certificates', 'Existing employment-registration card for renewal/update']
+    elif service_name == 'MeeSeva / Public Service Application Assistance' or 'meeseva' in text or 'mee seva' in text:
+        fields = [
+            {'key': 'requested_service', 'label': 'MeeSeva / public service required', 'required': True},
+            {'key': 'state_district', 'label': 'State / district', 'required': True},
+            {'key': 'application_stage', 'label': 'Application stage', 'type': 'select', 'options': ['New application', 'Correction', 'Status check', 'Certificate download'], 'required': True},
+            {'key': 'deadline', 'label': 'Deadline (if any)', 'type': 'date', 'required': False},
+        ]
+        documents = ['Documents listed by the selected official service; upload only those needed for assistance']
+    elif service_name == 'Government Form Filling Assistance':
+        fields = [
+            {'key': 'form_name', 'label': 'Government form / department name', 'required': True},
+            {'key': 'form_purpose', 'label': 'Purpose of the application', 'required': True},
+            {'key': 'state_district', 'label': 'Applicable state / district', 'required': True},
+            {'key': 'deadline', 'label': 'Submission deadline', 'type': 'date', 'required': False},
+        ]
+        documents = ['Blank form, notice or official requirements list, if available', 'Supporting documents required by that form']
+    elif service_name == 'Government Appointment Booking Assistance':
+        fields = [
+            {'key': 'department_service', 'label': 'Department and appointment service', 'required': True},
+            {'key': 'appointment_location', 'label': 'Preferred office / city', 'required': True},
+            {'key': 'preferred_date_range', 'label': 'Preferred date range', 'required': True},
+            {'key': 'existing_reference', 'label': 'Application reference (if required)', 'required': False},
+        ]
+        documents = ['Application acknowledgement or identity document only when the official booking process requires it']
+    elif service_name == 'Online Document Upload Assistance':
+        fields = [
+            {'key': 'portal_department', 'label': 'Portal / department name', 'required': True},
+            {'key': 'application_reference', 'label': 'Application reference number', 'required': True},
+            {'key': 'document_types', 'label': 'Documents to prepare or upload', 'required': True},
+            {'key': 'upload_issue', 'label': 'Upload issue (if any)', 'required': False},
+        ]
+        documents = ['The documents to be resized, converted or uploaded; remove unrelated sensitive information']
+    elif service_name == 'Government Portal Account Assistance':
+        fields = [
+            {'key': 'portal_name', 'label': 'Government portal name', 'required': True},
+            {'key': 'account_help', 'label': 'Account help required', 'type': 'select', 'options': ['New registration guidance', 'Profile update guidance', 'Account recovery information', 'Login problem information'], 'required': True},
+            {'key': 'state_district', 'label': 'Applicable state / district', 'required': False},
+        ]
+        documents = []
     elif any(x in service_text for x in ('government job', 'state government job', 'police / defence', 'recruitment application', 'apprenticeship')):
         fields = [
             {'key': 'recruitment_name', 'label': 'Recruitment / notification name', 'required': True},
@@ -147,7 +306,7 @@ def get_service_requirements(service):
             {'key': 'account_reference', 'label': 'Consumer or property reference (if available)', 'required': False},
         ]
         documents = ['Relevant account/property document if required; never share payment PINs or OTPs']
-    elif any(x in text for x in ('pm-kisan', 'pm kisan', 'ayushman', 'abha', 'pension', 'welfare', 'ration card', 'labour')):
+    elif any(x in text for x in ('government scheme', 'farmer scheme', 'housing scheme', 'senior citizen', 'pm-kisan', 'pm kisan', 'ayushman', 'abha', 'pension', 'welfare', 'ration card', 'labour')):
         fields = [
             {'key': 'scheme_service', 'label': 'Scheme / welfare assistance needed', 'required': True},
             {'key': 'state_district', 'label': 'State / district', 'required': True},
