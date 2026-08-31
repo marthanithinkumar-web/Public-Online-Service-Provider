@@ -134,6 +134,7 @@ button:disabled,.btn:disabled{cursor:not-allowed;opacity:.62;transform:none;box-
 .simplified-request-form h3{margin:20px 0 4px;color:var(--brand-dark)}.request-short-hint{margin:0 0 12px;color:var(--muted)}
 .request-safety-line{margin:6px 0 0;padding:10px 12px;border-radius:9px;background:#fff8e8;color:#624700;font-size:.82rem;line-height:1.5}
 .simplified-request-form .cta-row,.simplified-review .cta-row{justify-content:flex-end}.simplified-confirmation .upload-card{margin-top:18px}
+.selected-file-count{margin:12px 0 6px;font-weight:700}.selected-documents li{display:flex;align-items:center;justify-content:space-between;gap:12px}.selected-documents li span{min-width:0;overflow-wrap:anywhere}.selected-documents button{flex:0 0 auto;padding:7px 12px}
 @media(max-width:600px){.request-steps.simplified span{font-size:.72rem}.request-contact-summary{align-items:flex-start;flex-direction:column}.request-contact-summary a{min-height:44px;display:inline-flex;align-items:center}.simplified-request-form .cta-row,.simplified-review .cta-row{justify-content:stretch}}
 
 /* Compact client feedback */
