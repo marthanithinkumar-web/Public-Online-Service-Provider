@@ -75,8 +75,8 @@ services:
       - key: S3_ENDPOINT_URL
         sync: false
       - key: AWS_REGION
-        # Cloudflare R2's S3-compatible API uses the `auto` region.
-        value: "auto"
+        # Backblaze B2 region from the bucket's S3 endpoint.
+        value: "us-east-005"
       - key: AWS_ACCESS_KEY_ID
         sync: false
       - key: AWS_SECRET_ACCESS_KEY
