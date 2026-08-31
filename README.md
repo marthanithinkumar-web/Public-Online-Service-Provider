@@ -83,5 +83,10 @@ Recommended production targets
 - Redis for rate-limiter state and future session storage
 - SMTP provider like SendGrid / SES / Mailgun for transactional mail
 
-License: MIT
+Database backup and recovery
+- The repository includes an encrypted daily Neon-to-private-B2 workflow with
+  14-backup retention and a production-refusing restore guard.
+- Follow `docs/DATABASE_BACKUP_RECOVERY.md` to activate and test it. Never commit
+  the Neon URL, B2 application key, or backup encryption passphrase.
 
+License: MIT
