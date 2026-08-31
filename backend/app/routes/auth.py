@@ -17,10 +17,20 @@ from ..utils.s3 import delete_stored_file
 import os
 from datetime import date, datetime, timedelta, timezone
 from hashlib import sha256
+from hmac import compare_digest, new as hmac_new
 from secrets import randbelow
 from ..models.security import AdminLoginChallenge, RevokedToken
 
 bp = Blueprint('auth', __name__)
+
+
+def _admin_2fa_code_hash(challenge, code):
+    """Key the short OTP digest so a database copy cannot be brute-forced offline."""
+    if challenge.id is None:
+        raise ValueError('Admin login challenge must be persisted before hashing.')
+    secret = current_app.config['SECRET_KEY'].encode('utf-8')
+    message = f'admin-2fa:{challenge.user_id}:{challenge.id}:{code}'.encode('utf-8')
+    return hmac_new(secret, message, sha256).hexdigest()
 
 
 def _optional_text(data, key, limit):
@@ -157,18 +167,36 @@ def login():
         return jsonify({'error': 'Invalid credentials'}), 401
 
     if user.is_admin and os.getenv('ADMIN_2FA_ENABLED', '0') == '1':
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         code = f'{randbelow(1000000):06d}'
+        # Starting a new sign-in invalidates every previous outstanding code for
+        # this administrator. Also keep the challenge table from growing forever.
+        AdminLoginChallenge.query.filter(
+            AdminLoginChallenge.user_id == user.id,
+            AdminLoginChallenge.used_at.is_(None),
+        ).update({AdminLoginChallenge.used_at: now}, synchronize_session=False)
+        AdminLoginChallenge.query.filter(
+            AdminLoginChallenge.expires_at < now - timedelta(days=1)
+        ).delete(synchronize_session=False)
         challenge = AdminLoginChallenge(
-            user_id=user.id, code_hash=sha256(code.encode()).hexdigest(),
-            expires_at=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=10),
+            user_id=user.id,
+            code_hash='',
+            expires_at=now + timedelta(minutes=10),
         )
         db.session.add(challenge)
+        db.session.flush()
+        challenge.code_hash = _admin_2fa_code_hash(challenge, code)
         db.session.commit()
         delivered = send_email(user.email, 'Public Online Service Provider — admin verification code', f'Your administrator verification code is {code}. It expires in 10 minutes.')
         if not delivered:
             db.session.delete(challenge);db.session.commit()
             return jsonify({'error': 'Unable to deliver the administrator verification code.'}), 503
-        challenge_token = create_token({'action': 'admin_2fa', 'challenge_id': challenge.id, 'user_id': user.id}, expires_hours=1)
+        challenge_token = create_token({
+            'action': 'admin_2fa',
+            'challenge_id': challenge.id,
+            'user_id': user.id,
+            'token_version': user.token_version,
+        }, expires_minutes=10)
         return jsonify({'requires_2fa': True, 'challenge_token': challenge_token}), 202
 
     token = create_token({'user_id': user.id, 'is_admin': user.is_admin, 'token_version': user.token_version})
@@ -187,14 +215,44 @@ def verify_admin_2fa():
         return jsonify({'error': 'Invalid verification session.'}), 401
     challenge = db.session.get(AdminLoginChallenge, payload.get('challenge_id'))
     user = db.session.get(User, payload.get('user_id'))
-    if not challenge or not user or not user.is_admin or challenge.used_at or challenge.expires_at < datetime.now(timezone.utc).replace(tzinfo=None) or challenge.attempts >= 5:
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    if (
+        not challenge
+        or not user
+        or not user.is_admin
+        or not user.is_active
+        or challenge.user_id != user.id
+        or payload.get('token_version') != (user.token_version or 0)
+        or challenge.used_at
+        or challenge.expires_at < now
+        or challenge.attempts >= 5
+    ):
         return jsonify({'error': 'Verification session expired. Sign in again.'}), 401
-    challenge.attempts += 1
-    if sha256(str(data.get('code') or '').encode()).hexdigest() != challenge.code_hash:
+
+    supplied_hash = _admin_2fa_code_hash(challenge, str(data.get('code') or ''))
+    eligible = AdminLoginChallenge.query.filter(
+        AdminLoginChallenge.id == challenge.id,
+        AdminLoginChallenge.used_at.is_(None),
+        AdminLoginChallenge.expires_at >= now,
+        AdminLoginChallenge.attempts < 5,
+    )
+    if not compare_digest(supplied_hash, challenge.code_hash):
+        updated = eligible.update(
+            {AdminLoginChallenge.attempts: AdminLoginChallenge.attempts + 1},
+            synchronize_session=False,
+        )
         db.session.commit()
+        if updated != 1:
+            return jsonify({'error': 'Verification session expired. Sign in again.'}), 401
         return jsonify({'error': 'Incorrect verification code.'}), 401
-    challenge.used_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    updated = eligible.update({
+        AdminLoginChallenge.attempts: AdminLoginChallenge.attempts + 1,
+        AdminLoginChallenge.used_at: now,
+    }, synchronize_session=False)
     db.session.commit()
+    if updated != 1:
+        return jsonify({'error': 'Verification session expired. Sign in again.'}), 401
     token = create_token({'user_id': user.id, 'is_admin': True, 'token_version': user.token_version})
     return jsonify({'token': token, 'user': user.to_dict()})
 
