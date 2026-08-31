@@ -100,11 +100,11 @@ def test_aadhaar_pvc_order_has_clean_name_and_specific_required_fields(client):
     detail = client.get(f"/api/services/{service['id']}").get_json()
     fields = {field['key']: field for field in detail['requirements']['fields']}
     assert {'order_type', 'linked_mobile_access', 'delivery_state', 'delivery_district', 'delivery_pincode'} <= set(fields)
-    assert all(fields[key]['required'] for key in ('order_type', 'linked_mobile_access', 'delivery_state', 'delivery_district', 'delivery_pincode'))
+    assert not any(fields[key]['required'] for key in ('order_type', 'linked_mobile_access', 'delivery_state', 'delivery_district', 'delivery_pincode'))
     assert 'OTP' in detail['requirements']['safety_note']
 
 
-def test_default_catalog_services_expose_required_application_details(client):
+def test_default_catalog_services_expose_optional_application_details(client):
     services = client.get('/api/services').get_json()
 
     assert services
@@ -113,7 +113,7 @@ def test_default_catalog_services_expose_required_application_details(client):
         assert detail.status_code == 200
         fields = detail.get_json()['requirements']['fields']
         assert fields, service['name']
-        assert any(field.get('required') for field in fields), service['name']
+        assert not any(field.get('required') for field in fields), service['name']
         assert [field['key'] for field in fields] != ['assistance_type', 'deadline'], service['name']
 
 
