@@ -1,5 +1,5 @@
 import os
-from ..utils.s3 import presigned_download, upload_file_to_s3
+from ..utils.s3 import delete_stored_file, presigned_download, upload_file_to_s3
 from flask import Blueprint, request, jsonify, current_app, send_file
 from werkzeug.utils import secure_filename
 from ..models.attachment import Attachment
@@ -149,12 +149,51 @@ def upload_file():
         db.session.commit()
     except Exception:
         db.session.rollback()
-        if stored_path_value == local_path:
-            _remove_local_file(local_path)
+        try:
+            delete_stored_file(stored_path_value)
+        except Exception:
+            current_app.logger.exception('Unable to clean up attachment after database failure: %s', stored_path_value)
         raise
 
     message = 'Document delivered to the client successfully.' if user.is_admin else 'Document uploaded successfully.'
     return jsonify({'message': message, 'attachment': {'id': a.id, 'order_id': a.order_id, 'filename': a.filename}}), 201
+
+
+@bp.route('/<int:attachment_id>', methods=['DELETE'])
+def delete_attachment(attachment_id):
+    user = _auth()
+    if not user:
+        return jsonify({'error': 'Unauthorized'}), 401
+    attachment = db.session.get(Attachment, attachment_id)
+    if not attachment:
+        return jsonify({'error': 'Document not found'}), 404
+    order = db.session.get(Order, attachment.order_id) if attachment.order_id else None
+    if not order:
+        return jsonify({'error': 'Document request not found'}), 404
+    if not user.is_admin:
+        if order.user_id != user.id or attachment.uploaded_by != user.id:
+            return jsonify({'error': 'You can remove only documents that you uploaded.'}), 403
+        if order.status not in OPEN_UPLOAD_STATUSES:
+            return jsonify({'error': 'Documents cannot be removed after the request is closed.'}), 409
+
+    try:
+        delete_stored_file(attachment.stored_path)
+    except Exception:
+        current_app.logger.exception('Unable to remove stored attachment: %s', attachment.stored_path)
+        return jsonify({'error': 'Document storage is temporarily unavailable. The document was not removed.'}), 503
+
+    filename = attachment.filename
+    db.session.delete(attachment)
+    order.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    db.session.add(OrderStatusHistory(
+        order_id=order.id,
+        previous_status=order.status,
+        new_status=order.status,
+        changed_by=user.email,
+        note=f'Document removed by {"admin" if user.is_admin else "client"}: {filename}',
+    ))
+    db.session.commit()
+    return jsonify({'message': 'Document removed permanently.'}), 200
 
 
 @bp.route('/<int:attachment_id>/download', methods=['GET'])
