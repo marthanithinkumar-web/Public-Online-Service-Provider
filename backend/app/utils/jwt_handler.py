@@ -9,10 +9,15 @@ def _secret_key():
     return current_app.config['SECRET_KEY'] if has_app_context() else os.getenv('SECRET_KEY', 'dev-key')
 
 
-def create_token(payload: dict, expires_hours: int = 12) -> str:
+def create_token(payload: dict, expires_hours: int = 12, expires_minutes: int | None = None) -> str:
     data = payload.copy()
+    lifetime = (
+        timedelta(minutes=expires_minutes)
+        if expires_minutes is not None
+        else timedelta(hours=expires_hours)
+    )
     data.update({
-        'exp': datetime.now(timezone.utc) + timedelta(hours=expires_hours),
+        'exp': datetime.now(timezone.utc) + lifetime,
         'jti': token_hex(16),
     })
     return jwt.encode(data, _secret_key(), algorithm='HS256')

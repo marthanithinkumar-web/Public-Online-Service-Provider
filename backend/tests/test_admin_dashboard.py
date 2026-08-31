@@ -1,7 +1,11 @@
+from hashlib import sha256
+
 from app.models.notification import Notification
+from app.models.security import AdminLoginChallenge
 from app.models.service import Category, Service
 from app.models.user import User
 from app.utils.database import db
+from app.utils.jwt_handler import create_token
 from app.utils.password import hash_password
 
 
@@ -215,6 +219,9 @@ def test_optional_admin_two_factor_login(client, monkeypatch):
     assert login.status_code == 202
     assert login.get_json()['requires_2fa'] is True
     assert delivered['address'] == 'dashboard-admin@example.com'
+    with client.application.app_context():
+        challenge = AdminLoginChallenge.query.one()
+        assert challenge.code_hash != sha256(delivered['code'].encode()).hexdigest()
 
     verified = client.post('/api/auth/verify-admin-2fa', json={
         'challenge_token': login.get_json()['challenge_token'],
@@ -222,3 +229,149 @@ def test_optional_admin_two_factor_login(client, monkeypatch):
     })
     assert verified.status_code == 200
     assert verified.get_json()['user']['is_admin'] is True
+    reused = client.post('/api/auth/verify-admin-2fa', json={
+        'challenge_token': login.get_json()['challenge_token'],
+        'code': delivered['code'],
+    })
+    assert reused.status_code == 401
+
+
+def test_new_admin_two_factor_login_invalidates_previous_code(client, monkeypatch):
+    _setup_flow(client)
+    codes = []
+    monkeypatch.setenv('ADMIN_2FA_ENABLED', '1')
+
+    def capture_email(_address, _subject, body):
+        codes.append(body.split(' is ', 1)[1].split('.', 1)[0])
+        return True
+
+    monkeypatch.setattr('app.routes.auth.send_email', capture_email)
+    first = client.post('/api/auth/login', json={
+        'email': 'dashboard-admin@example.com', 'password': 'adminpass',
+    })
+    second = client.post('/api/auth/login', json={
+        'email': 'dashboard-admin@example.com', 'password': 'adminpass',
+    })
+    assert first.status_code == second.status_code == 202
+
+    old_code = client.post('/api/auth/verify-admin-2fa', json={
+        'challenge_token': first.get_json()['challenge_token'], 'code': codes[0],
+    })
+    assert old_code.status_code == 401
+    current_code = client.post('/api/auth/verify-admin-2fa', json={
+        'challenge_token': second.get_json()['challenge_token'], 'code': codes[1],
+    })
+    assert current_code.status_code == 200
+
+
+def test_admin_two_factor_rechecks_active_account_and_token_version(client, monkeypatch):
+    _setup_flow(client)
+    codes = []
+    monkeypatch.setenv('ADMIN_2FA_ENABLED', '1')
+
+    def capture_email(_address, _subject, body):
+        codes.append(body.split(' is ', 1)[1].split('.', 1)[0])
+        return True
+
+    monkeypatch.setattr('app.routes.auth.send_email', capture_email)
+    suspended_login = client.post('/api/auth/login', json={
+        'email': 'dashboard-admin@example.com', 'password': 'adminpass',
+    })
+    with client.application.app_context():
+        admin = User.query.filter_by(email='dashboard-admin@example.com').one()
+        admin.is_active = False
+        db.session.commit()
+    assert client.post('/api/auth/verify-admin-2fa', json={
+        'challenge_token': suspended_login.get_json()['challenge_token'], 'code': codes[-1],
+    }).status_code == 401
+
+    with client.application.app_context():
+        admin = User.query.filter_by(email='dashboard-admin@example.com').one()
+        admin.is_active = True
+        db.session.commit()
+    changed_login = client.post('/api/auth/login', json={
+        'email': 'dashboard-admin@example.com', 'password': 'adminpass',
+    })
+    with client.application.app_context():
+        admin = User.query.filter_by(email='dashboard-admin@example.com').one()
+        admin.token_version += 1
+        db.session.commit()
+    assert client.post('/api/auth/verify-admin-2fa', json={
+        'challenge_token': changed_login.get_json()['challenge_token'], 'code': codes[-1],
+    }).status_code == 401
+
+
+def test_admin_two_factor_challenge_is_bound_to_issuing_admin(client, monkeypatch):
+    _setup_flow(client)
+    delivered = {}
+    monkeypatch.setenv('ADMIN_2FA_ENABLED', '1')
+
+    def capture_email(_address, _subject, body):
+        delivered['code'] = body.split(' is ', 1)[1].split('.', 1)[0]
+        return True
+
+    monkeypatch.setattr('app.routes.auth.send_email', capture_email)
+    login = client.post('/api/auth/login', json={
+        'email': 'dashboard-admin@example.com', 'password': 'adminpass',
+    })
+    with client.application.app_context():
+        challenge = AdminLoginChallenge.query.filter_by(used_at=None).one()
+        second = User(
+            name='Second Admin', email='second-admin@example.com', phone='9333333333',
+            password_hash=hash_password('secondpass'), is_admin=True,
+        )
+        db.session.add(second)
+        db.session.commit()
+        mismatched_token = create_token({
+            'action': 'admin_2fa',
+            'challenge_id': challenge.id,
+            'user_id': second.id,
+            'token_version': second.token_version,
+        }, expires_minutes=10)
+
+    response = client.post('/api/auth/verify-admin-2fa', json={
+        'challenge_token': mismatched_token, 'code': delivered['code'],
+    })
+    assert response.status_code == 401
+
+
+def test_admin_two_factor_locks_challenge_after_five_wrong_codes(client, monkeypatch):
+    _setup_flow(client)
+    delivered = {}
+    monkeypatch.setenv('ADMIN_2FA_ENABLED', '1')
+
+    def capture_email(_address, _subject, body):
+        delivered['code'] = body.split(' is ', 1)[1].split('.', 1)[0]
+        return True
+
+    monkeypatch.setattr('app.routes.auth.send_email', capture_email)
+    login = client.post('/api/auth/login', json={
+        'email': 'dashboard-admin@example.com', 'password': 'adminpass',
+    })
+    token = login.get_json()['challenge_token']
+    wrong_code = '000000' if delivered['code'] != '000000' else '111111'
+    for _ in range(5):
+        assert client.post('/api/auth/verify-admin-2fa', json={
+            'challenge_token': token, 'code': wrong_code,
+        }).status_code == 401
+
+    locked = client.post('/api/auth/verify-admin-2fa', json={
+        'challenge_token': token, 'code': delivered['code'],
+    })
+    assert locked.status_code == 401
+    with client.application.app_context():
+        assert AdminLoginChallenge.query.one().attempts == 5
+
+
+def test_admin_two_factor_email_failure_leaves_no_active_code(client, monkeypatch):
+    _setup_flow(client)
+    monkeypatch.setenv('ADMIN_2FA_ENABLED', '1')
+    monkeypatch.setattr('app.routes.auth.send_email', lambda *_args: False)
+
+    login = client.post('/api/auth/login', json={
+        'email': 'dashboard-admin@example.com', 'password': 'adminpass',
+    })
+
+    assert login.status_code == 503
+    with client.application.app_context():
+        assert AdminLoginChallenge.query.filter_by(used_at=None).count() == 0
