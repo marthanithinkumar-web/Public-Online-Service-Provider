@@ -41,7 +41,12 @@ This checklist collects the important production steps and minimal code/config c
 - Use multiple instances behind a load balancer and a shared database and Redis for rate-limiter state and sessions (if used).
 
 9) Backups & recovery
-- Schedule DB backups and test restores regularly.
+- The repository includes an encrypted daily Neon-to-B2 backup workflow with
+  14-backup exact-version retention. Complete the one-time GitHub secret setup
+  and first green run in `docs/DATABASE_BACKUP_RECOVERY.md`.
+- Test restores only on a separately identified temporary Neon branch. The
+  guarded restore script refuses the production branch host and does not
+  perform an automatic cutover.
 - Keep a retention policy for attachments stored in S3.
 
 10) Optional hardening
@@ -62,4 +67,3 @@ Helpful commands (run where appropriate)
   Copy frontend/dist -> backend/static or deploy dist to CDN.
 
 If you want, I can apply small, targeted code changes to improve CSP or swap the limiter config to use Redis â€” confirm and provide Redis connection if you want me to edit code and add docker-compose entries for Redis.
-
