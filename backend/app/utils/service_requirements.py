@@ -492,6 +492,11 @@ def get_service_requirements(service):
     if 'official document pdf access' in text:
         safety_note += ' Complete any identity verification or OTP yourself on the official portal. We do not create or alter official documents.'
 
+    # Service-specific details help the admin prepare the request, but clients may
+    # submit without them and provide missing information later through chat.
+    for field in fields:
+        field['required'] = False
+
     return {
         'fields': fields,
         'documents': documents,
