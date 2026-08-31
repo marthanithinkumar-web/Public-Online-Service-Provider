@@ -1,5 +1,7 @@
 from app.models.user import User
 from app.models.service import Service
+from app.models.attachment import Attachment
+from app.models.order import Order
 from app.utils.database import db
 
 
@@ -129,3 +131,44 @@ def test_client_cannot_directly_cancel_request_after_processing_starts(client):
     response = client.post(f'/api/orders/{order_id}/cancel', headers=headers)
     assert response.status_code == 409
     assert response.get_json()['status'] == 'In Progress'
+
+
+def test_account_deletion_preserves_records_when_private_storage_cleanup_fails(client, monkeypatch):
+    with client.application.app_context():
+        service = Service(name='Storage Cleanup Test Assistance', price_inr=30, is_active=True)
+        db.session.add(service)
+        db.session.commit()
+        service_id = service.id
+
+    registered = client.post('/api/auth/register', json={
+        'name':'Storage Cleanup Client','phone':'9991116666',
+        'email':'storage-cleanup@example.com','password':'secret123',
+    })
+    headers = {'Authorization': f"Bearer {registered.get_json()['token']}"}
+    submitted = client.post('/api/orders/', json={'service_id':service_id, 'application_data':{}}, headers=headers)
+    order_id = submitted.get_json()['order']['id']
+    assert client.post(f'/api/orders/{order_id}/cancel', headers=headers).status_code == 200
+
+    with client.application.app_context():
+        user = User.query.filter_by(email='storage-cleanup@example.com').first()
+        db.session.add(Attachment(
+            order_id=order_id,
+            filename='private-document.pdf',
+            stored_path='s3://private-bucket/attachments/private-document.pdf',
+            uploaded_by=user.id,
+        ))
+        db.session.commit()
+
+    def fail_cleanup(_stored_path):
+        raise RuntimeError('storage unavailable')
+
+    monkeypatch.setattr('app.routes.auth.delete_stored_file', fail_cleanup)
+    failed = client.delete('/api/auth/delete-account', json={'current_password':'secret123'}, headers=headers)
+    assert failed.status_code == 503
+    with client.application.app_context():
+        assert User.query.filter_by(email='storage-cleanup@example.com').first() is not None
+        assert Attachment.query.filter_by(order_id=order_id).first() is not None
+        assert db.session.get(Order, order_id) is not None
+
+    monkeypatch.setattr('app.routes.auth.delete_stored_file', lambda _stored_path: None)
+    assert client.delete('/api/auth/delete-account', json={'current_password':'secret123'}, headers=headers).status_code == 200
