@@ -114,6 +114,35 @@ def test_default_catalog_services_expose_required_application_details(client):
         fields = detail.get_json()['requirements']['fields']
         assert fields, service['name']
         assert any(field.get('required') for field in fields), service['name']
+        assert [field['key'] for field in fields] != ['assistance_type', 'deadline'], service['name']
+
+
+def test_seed_catalog_and_explicit_requirement_registry_match():
+    import ast
+    from pathlib import Path
+    from app.utils.service_requirements import SERVICE_REQUIREMENT_PROFILE_BY_NAME
+
+    seed_path = Path(__file__).resolve().parents[1] / 'seed.py'
+    module = ast.parse(seed_path.read_text(encoding='utf-8'))
+    catalog = None
+    for node in ast.walk(module):
+        if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == 'SERVICE_CATALOG' for target in node.targets):
+            catalog = ast.literal_eval(node.value)
+            break
+
+    main_path = Path(__file__).resolve().parents[1] / 'app' / 'main.py'
+    main_module = ast.parse(main_path.read_text(encoding='utf-8'))
+    startup_defaults = None
+    for node in ast.walk(main_module):
+        if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == 'defaults' for target in node.targets):
+            startup_defaults = ast.literal_eval(node.value)
+            break
+
+    assert catalog is not None
+    assert startup_defaults is not None
+    catalog_names = {item[0] for items in catalog.values() for item in items}
+    startup_names = {item[1] for item in startup_defaults}
+    assert set(SERVICE_REQUIREMENT_PROFILE_BY_NAME) == catalog_names | startup_names
 
 
 def test_service_search_matches_partial_words_categories_and_keywords(client):
