@@ -15,6 +15,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  operational-safety:
+    name: Operational script safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check backup and restore shell syntax
+        run: bash -n scripts/backup_postgres_to_b2.sh scripts/restore_postgres_from_b2.sh
+      - name: Compile backup safety helpers
+        run: python -m py_compile scripts/b2_backup_catalog.py scripts/check_restore_target.py
+
   backend:
     name: Backend tests
     runs-on: ubuntu-latest
