@@ -149,3 +149,13 @@ After the items above are complete and tested, continue the existing full improv
    - Exact B2 object-version cleanup keeps 14 daily backup sets without hidden versions silently consuming the free allowance.
    - Restore verification is non-mutating by default. A real restore refuses the production Neon branch host and requires an exact expected temporary host plus explicit confirmation.
    - Still required: add the seven GitHub Actions secrets, complete the first green manual backup, and complete one restore drill on a temporary Neon branch before marking database recovery ready.
+
+## Admin application archive checkpoint (2026-08-31)
+
+23. Completed locally: added a safe admin-only archive for closed applications.
+   - Only completed, rejected, or cancelled applications can be archived; active applications remain visible in the operational queue.
+   - The default admin list and dashboard pipeline exclude archived applications, with dedicated Archived and All filters plus restore controls.
+   - Archiving never deletes the request, documents, status history, grievances, reviews, payment/fee records, reports, or audit evidence.
+   - Client APIs, the client dashboard, and the client's complete application history are unchanged and do not expose admin filing state.
+   - Archive and restore actions require an active administrator account and create admin audit-log records.
+   - Still required: publish only after the current Render deployment is stable, run the migration, and complete production admin/client isolation checks.

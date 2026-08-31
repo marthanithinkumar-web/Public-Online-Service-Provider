@@ -2,6 +2,7 @@ from app.utils.password import hash_password
 from app.utils.database import db
 from app.models.user import User
 from app.models.service import Category, Service
+from app.models.admin_audit import AdminAuditLog
 from io import BytesIO
 
 
@@ -78,6 +79,11 @@ def test_order_lifecycle_and_admin_controls(client):
     r = client.post(f'/api/admin/orders/{order_id}/status', json={'status': 'In Progress', 'note': 'Started processing.'}, headers=admin_headers)
     assert r.status_code == 200
 
+    # Admins may not hide an application that still needs attention.
+    assert client.post(
+        f'/api/admin/orders/{order_id}/archive', json={'archived': True}, headers=admin_headers
+    ).status_code == 409
+
     delivered = client.post(
         '/api/uploads/',
         data={'order_id': str(order_id), 'file': (BytesIO(b'%PDF-1.4\n%%EOF'), 'official-document.pdf')},
@@ -116,3 +122,55 @@ def test_order_lifecycle_and_admin_controls(client):
     assert detail['order']['status'] == 'Completed'
     assert detail['allowed_next_statuses'] == []
     assert len(detail['history']) >= 4
+
+    original_updated_at = detail['order']['updated_at']
+    assert client.post(
+        f'/api/admin/orders/{order_id}/archive', json={'archived': True}, headers=headers1
+    ).status_code == 401
+    assert client.post(
+        f'/api/admin/orders/{order_id}/archive', json={'archived': 'yes'}, headers=admin_headers
+    ).status_code == 400
+    assert client.get('/api/admin/orders?archive=invalid', headers=admin_headers).status_code == 400
+    client_history_before = client.get('/api/orders/mine', headers=headers1).get_json()
+    client_order_before = next(item for item in client_history_before if item['id'] == order_id)
+    assert 'is_archived' not in client_order_before
+    assert 'archived_at' not in client_order_before
+
+    admin_archive = client.post(
+        f'/api/admin/orders/{order_id}/archive', json={'archived': True}, headers=admin_headers
+    )
+    assert admin_archive.status_code == 200
+    assert admin_archive.get_json()['order']['is_archived'] is True
+    assert admin_archive.get_json()['order']['updated_at'] == original_updated_at
+    assert not any(
+        item['id'] == order_id
+        for item in client.get('/api/admin/orders', headers=admin_headers).get_json()['items']
+    )
+    assert any(
+        item['id'] == order_id
+        for item in client.get('/api/admin/orders?archive=archived', headers=admin_headers).get_json()['items']
+    )
+    overview = client.get('/api/admin/overview', headers=admin_headers).get_json()
+    assert overview['archived_requests'] == 1
+    assert overview['total_requests'] == 0
+    # Admin filing never removes or changes the client's application history.
+    client_history_after = client.get('/api/orders/mine', headers=headers1).get_json()
+    client_order_after = next(item for item in client_history_after if item['id'] == order_id)
+    assert client_order_after == client_order_before
+    assert client.get(f'/api/orders/{order_id}', headers=headers1).status_code == 200
+
+    assert client.post(
+        f'/api/admin/orders/{order_id}/archive', json={'archived': False}, headers=admin_headers
+    ).status_code == 200
+    assert any(
+        item['id'] == order_id
+        for item in client.get('/api/admin/orders', headers=admin_headers).get_json()['items']
+    )
+    overview = client.get('/api/admin/overview', headers=admin_headers).get_json()
+    assert overview['archived_requests'] == 0
+    assert overview['total_requests'] == 1
+    assert client.get('/api/orders/mine', headers=headers1).get_json() == client_history_before
+    with client.application.app_context():
+        actions = [item.action for item in AdminAuditLog.query.order_by(AdminAuditLog.id).all()]
+        assert 'application_archived' in actions
+        assert 'application_restored' in actions

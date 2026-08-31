@@ -5,14 +5,19 @@ import { clearServiceCatalog } from './serviceCatalog'
 
 const api = axios.create({ baseURL: apiBase, timeout: 15000 })
 
-export async function fetchAdminOrders(page=1, per_page=20, status='', q='', date_from='', date_to=''){
+export async function fetchAdminOrders(page=1, per_page=20, status='', q='', date_from='', date_to='', archive='active'){
   const params:any = { page, per_page }
   if(status) params.status = status
   if(q) params.q = q
   if(date_from) params.date_from = date_from
   if(date_to) params.date_to = date_to
+  params.archive = archive
   const res = await api.get('/admin/orders', { params, headers: authHeader() })
   return res.data
+}
+
+export async function setOrderArchived(orderId:number, archived:boolean){
+  return (await api.post(`/admin/orders/${orderId}/archive`, {archived}, {headers:authHeader()})).data
 }
 
 export async function fetchAdminOverview(){
