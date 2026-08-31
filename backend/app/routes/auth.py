@@ -13,6 +13,7 @@ from ..utils.jwt_handler import create_token, decode_token
 from ..utils.limiter import limiter
 from ..utils.email import send_email
 from ..utils.validation import normalize_email, normalize_indian_mobile
+from ..utils.s3 import delete_stored_file
 import os
 from datetime import date, datetime, timedelta, timezone
 from hashlib import sha256
@@ -297,23 +298,20 @@ def delete_account():
         GrievanceHistory.query.filter(GrievanceHistory.grievance_id.in_(grievance_ids)).delete(synchronize_session=False)
         Grievance.query.filter(Grievance.id.in_(grievance_ids)).delete(synchronize_session=False)
 
-    # Remove uploaded files before deleting their attachment records.
+    # Remove stored objects first. If private storage is unavailable, retain all
+    # database records so cleanup can be retried instead of orphaning documents.
     attachments = Attachment.query.filter(
         (Attachment.uploaded_by == user.id) |
         (Attachment.order_id.in_(order_ids) if order_ids else False)
     ).all()
+    try:
+        for attachment in attachments:
+            delete_stored_file(attachment.stored_path)
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Unable to remove attachment during account deletion: %s', attachment.stored_path)
+        return jsonify({'error': 'Document storage is temporarily unavailable. Your account and records were not deleted; please try again.'}), 503
     for attachment in attachments:
-        stored_path = attachment.stored_path or ''
-        try:
-            if stored_path.startswith('s3://'):
-                from ..utils.s3 import s3_client
-                parts = stored_path.replace('s3://', '', 1).split('/', 1)
-                if len(parts) == 2:
-                    s3_client().delete_object(Bucket=parts[0], Key=parts[1])
-            elif stored_path and os.path.exists(stored_path):
-                os.remove(stored_path)
-        except Exception:
-            current_app.logger.exception('Unable to remove attachment during account deletion: %s', stored_path)
         db.session.delete(attachment)
 
     if order_ids:
