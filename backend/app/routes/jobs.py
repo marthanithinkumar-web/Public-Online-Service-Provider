@@ -1,6 +1,6 @@
 from datetime import date
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy import or_
 
 from ..models.job import JobNotification, JobSource
@@ -18,6 +18,8 @@ def _public_query():
 
 @bp.get('/')
 def list_jobs():
+    from ..jobs.sync import trigger_background_sync
+    trigger_background_sync(current_app._get_current_object())
     query = _public_query()
     term = (request.args.get('q') or '').strip()
     job_type = (request.args.get('type') or '').strip().lower()
@@ -50,6 +52,8 @@ def list_jobs():
 
 @bp.get('/sources')
 def list_sources():
+    from ..jobs.sync import trigger_background_sync
+    trigger_background_sync(current_app._get_current_object())
     items = []
     for source in JobSource.query.filter_by(enabled=True).order_by(JobSource.name).all():
         data = source.to_dict()

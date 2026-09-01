@@ -1,7 +1,7 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from app.jobs.sources import JobItem, SourceDefinition, parse_employment_news, parse_upsc
-from app.jobs.sync import fetch_official_page, sync_source, upsert_item
+from app.jobs.sync import fetch_official_page, sync_is_due, sync_source, trigger_background_sync, upsert_item
 from app.models.job import JobNotification, JobSource
 from app.models.user import User
 from app.utils.database import db
@@ -129,3 +129,18 @@ def test_cross_source_duplicate_is_blocked(client):
         assert is_new is False
         assert blocked is True
         assert JobNotification.query.count() == 1
+
+
+def test_refresh_is_due_only_without_a_recent_success(client):
+    with client.application.app_context():
+        assert sync_is_due() is True
+        source = JobSource.query.filter_by(key='employment_news').one()
+        source.last_sync_status = 'success'
+        source.last_sync_completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        db.session.commit()
+        assert sync_is_due() is False
+
+
+def test_background_refresh_is_disabled_during_tests(client):
+    with client.application.app_context():
+        assert trigger_background_sync(client.application) is False

@@ -1,10 +1,12 @@
 import hashlib
 import re
 import sys
-from datetime import date, datetime, timezone
+import threading
+from datetime import date, datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 import requests
+from sqlalchemy import func, text
 
 from ..models.job import JobNotification, JobSource
 from ..utils.database import db
@@ -17,6 +19,8 @@ ALLOWED_HOSTS = {
     'ncs.gov.in', 'www.ncs.gov.in',
 }
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
+JOB_SYNC_LOCK_ID = 20260831
+_background_lock = threading.Lock()
 
 
 def utc_now():
@@ -204,6 +208,61 @@ def sync_all_sources(session=None):
             results.append(sync_source(source, session=session))
     expired = expire_old_jobs()
     return {'results': results, 'expired': expired, 'successful_sources': sum(item['status'] == 'success' for item in results)}
+
+
+def sync_is_due(hours=20):
+    """Return true when a refresh is due and no recent refresh is running."""
+    running_cutoff = utc_now() - timedelta(hours=1)
+    if JobSource.query.filter(
+        JobSource.enabled.is_(True),
+        JobSource.last_sync_status == 'running',
+        JobSource.last_sync_started_at >= running_cutoff,
+    ).count():
+        return False
+    last_success = db.session.query(func.max(JobSource.last_sync_completed_at)).filter(
+        JobSource.enabled.is_(True), JobSource.last_sync_status == 'success',
+    ).scalar()
+    return last_success is None or last_success < utc_now() - timedelta(hours=hours)
+
+
+def trigger_background_sync(app):
+    """Refresh in a daemon thread; PostgreSQL advisory locking prevents duplicate workers."""
+    # Test requests must stay deterministic and must never contact live sources.
+    if app.config.get('TESTING'):
+        return False
+    if not sync_is_due() or not _background_lock.acquire(blocking=False):
+        return False
+
+    def run():
+        lock_connection = None
+        database_lock_acquired = True
+        try:
+            with app.app_context():
+                if db.engine.dialect.name == 'postgresql':
+                    lock_connection = db.engine.connect()
+                    database_lock_acquired = bool(lock_connection.execute(
+                        text('SELECT pg_try_advisory_lock(:lock_id)'), {'lock_id': JOB_SYNC_LOCK_ID},
+                    ).scalar())
+                if database_lock_acquired and sync_is_due():
+                    result = sync_all_sources()
+                    app.logger.info('Scheduled job-source refresh completed: %s', result)
+        except Exception:
+            app.logger.exception('Scheduled job-source refresh failed')
+        finally:
+            if lock_connection is not None:
+                try:
+                    if database_lock_acquired:
+                        lock_connection.execute(
+                            text('SELECT pg_advisory_unlock(:lock_id)'), {'lock_id': JOB_SYNC_LOCK_ID},
+                        )
+                finally:
+                    lock_connection.close()
+            with app.app_context():
+                db.session.remove()
+            _background_lock.release()
+
+    threading.Thread(target=run, name='official-job-refresh', daemon=True).start()
+    return True
 
 
 def main():
