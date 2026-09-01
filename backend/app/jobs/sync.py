@@ -1,90 +1,22 @@
-import hashlib
-import re
 import sys
 import threading
 from datetime import date, datetime, timedelta, timezone
-from urllib.parse import urlparse
 
-import requests
 from sqlalchemy import func, text
 
 from ..models.job import JobNotification, JobSource
 from ..utils.database import db
+from .official_fetch import fetch_official_page, validate_official_url
+from .rules import item_hash, target_status, unique_slug
 from .sources import SOURCE_BY_KEY, SOURCE_DEFINITIONS, JobItem
 
 
-ALLOWED_HOSTS = {
-    'employmentnews.gov.in', 'www.employmentnews.gov.in',
-    'upsc.gov.in', 'www.upsc.gov.in', 'upsconline.nic.in', 'www.upsconline.nic.in',
-    'ncs.gov.in', 'www.ncs.gov.in',
-}
-MAX_RESPONSE_BYTES = 4 * 1024 * 1024
 JOB_SYNC_LOCK_ID = 20260831
 _background_lock = threading.Lock()
 
 
 def utc_now():
     return datetime.now(timezone.utc).replace(tzinfo=None)
-
-
-def validate_official_url(url):
-    parsed = urlparse(str(url or ''))
-    if parsed.scheme != 'https' or parsed.hostname not in ALLOWED_HOSTS or parsed.username or parsed.password:
-        raise ValueError('Job source URL is not on the approved official HTTPS allowlist.')
-    return url
-
-
-def fetch_official_page(url, session=None):
-    validate_official_url(url)
-    client = session or requests.Session()
-    response = client.get(
-        url,
-        timeout=(8, 25),
-        allow_redirects=True,
-        stream=True,
-        headers={'User-Agent': 'PublicOnlineServiceProvider/1.0 (+independent job-notice index)'},
-    )
-    response.raise_for_status()
-    validate_official_url(response.url)
-    content_type = (response.headers.get('Content-Type') or '').lower()
-    if content_type and not any(kind in content_type for kind in ('text/html', 'application/xhtml+xml')):
-        raise ValueError('Official source returned an unsupported content type.')
-    chunks = []
-    size = 0
-    for chunk in response.iter_content(chunk_size=65536):
-        if not chunk:
-            continue
-        size += len(chunk)
-        if size > MAX_RESPONSE_BYTES:
-            raise ValueError('Official source response exceeded the safe size limit.')
-        chunks.append(chunk)
-    encoding = response.encoding or 'utf-8'
-    return b''.join(chunks).decode(encoding, errors='replace')
-
-
-def slugify(value):
-    value = re.sub(r'[^a-z0-9]+', '-', str(value or '').lower()).strip('-')
-    return value[:250] or 'job-notice'
-
-
-def item_hash(item):
-    normalized = '|'.join(
-        re.sub(r'\s+', ' ', str(value or '')).strip().lower()
-        for value in (item.title, item.organization, item.deadline, item.location)
-    )
-    return hashlib.sha256(normalized.encode('utf-8')).hexdigest()
-
-
-def target_status(item):
-    if item.deadline and item.deadline < date.today():
-        return 'expired'
-    complete = bool(item.title and item.organization and item.official_notice_url and item.deadline)
-    return 'published' if complete and item.confidence >= 0.8 else 'needs_review'
-
-
-def unique_slug(item, content_hash):
-    base = slugify(f'{item.organization}-{item.title}')
-    return f'{base[:245]}-{content_hash[:8]}'
 
 
 def ensure_job_sources():

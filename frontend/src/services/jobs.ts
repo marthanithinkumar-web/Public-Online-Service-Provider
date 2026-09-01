@@ -8,20 +8,61 @@ export type JobNotification={
   salary?:string|null;summary?:string|null;issue_date?:string|null;application_start_date?:string|null;deadline?:string|null;
   official_notice_url:string;application_url?:string|null;status:string;verification_status:string;is_featured:boolean;
   source?:JobSource|null;first_seen_at?:string|null;last_seen_at?:string|null;published_at?:string|null;confidence?:number;
+  content_hash?:string;
 }
 
-const api=axios.create({baseURL:apiBase,timeout:15000})
+export type JobFeedData={items:JobNotification[];count:number;sources?:JobSource[];generated_at?:string|null;successful_sources?:number;review_count?:number}
+
+const api=axios.create({baseURL:apiBase,timeout:8000})
+
+async function fetchSnapshot(){
+  const response=await fetch(`/data/jobs.json?refresh=${Date.now()}`,{cache:'no-store',headers:{Accept:'application/json'}})
+  if(!response.ok)throw new Error('Verified job snapshot is unavailable.')
+  return await response.json() as JobFeedData
+}
+
+function filterSnapshot(data:JobFeedData,params:Record<string,string|number|boolean>){
+  const term=String(params.q||'').trim().toLowerCase()
+  const type=String(params.type||'').trim().toLowerCase()
+  const featured=['1','true','yes'].includes(String(params.featured||'').toLowerCase())
+  const requested=Number(params.limit||30)
+  const limit=Number.isFinite(requested)?Math.min(100,Math.max(1,requested)):30
+  const items=(data.items||[]).filter(job=>{
+    if(type&&job.job_type!==type)return false
+    if(featured&&!job.is_featured)return false
+    if(!term)return true
+    return [job.title,job.organization,job.qualification,job.location]
+      .some(value=>String(value||'').toLowerCase().includes(term))
+  }).slice(0,limit)
+  return {...data,items,count:items.length}
+}
 
 export async function fetchJobs(params:Record<string,string|number|boolean>={}){
-  return (await api.get('/jobs/',{params})).data as {items:JobNotification[];count:number}
+  try{
+    return (await api.get('/jobs/',{params})).data as JobFeedData
+  }catch{
+    return filterSnapshot(await fetchSnapshot(),params)
+  }
 }
 
 export async function fetchJob(slug:string){
-  return (await api.get(`/jobs/${encodeURIComponent(slug)}`)).data as {job:JobNotification}
+  try{
+    return (await api.get(`/jobs/${encodeURIComponent(slug)}`)).data as {job:JobNotification}
+  }catch{
+    const data=await fetchSnapshot()
+    const job=(data.items||[]).find(item=>item.slug===slug)
+    if(!job)throw new Error('Verified job notice was not found.')
+    return {job}
+  }
 }
 
 export async function fetchJobSources(){
-  return (await api.get('/jobs/sources')).data as {items:JobSource[]}
+  try{
+    return (await api.get('/jobs/sources')).data as {items:JobSource[]}
+  }catch{
+    const data=await fetchSnapshot()
+    return {items:data.sources||[]}
+  }
 }
 
 export const jobPath=(job:Pick<JobNotification,'slug'>)=>`/jobs/${job.slug}`

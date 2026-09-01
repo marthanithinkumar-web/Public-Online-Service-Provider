@@ -11,10 +11,10 @@ services:
     rootDir: backend
     plan: free
     buildCommand: pip install -r requirements.txt
-    # Seed the idempotent public service catalog before starting the API.
-    # This ensures newly added services appear after each deployment without
-    # creating duplicates in the production database.
-    startCommand: SKIP_DATABASE_BOOTSTRAP=1 flask --app app.main:create_app db upgrade --directory migrations_alembic && python seed.py && gunicorn -c gunicorn.conf.py wsgi:app
+    # Prepare only the additive job tables when upgrading the known production
+    # revision, then run the full migration chain and idempotent catalog seed.
+    # Fresh databases still use Alembic first. Existing rows are never reset.
+    startCommand: python pre_migrate.py && SKIP_DATABASE_BOOTSTRAP=1 flask --app app.main:create_app db upgrade --directory migrations_alembic && python seed.py && gunicorn -c gunicorn.conf.py wsgi:app
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
