@@ -43,20 +43,31 @@ jobs:
         run: python -m app.jobs.snapshot --output frontend/public/data/jobs.json
 
       - name: Validate snapshot structure
+        env:
+          PYTHONPATH: backend
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
+          from app.jobs.sources import SOURCE_BY_KEY
 
           data = json.loads(Path('frontend/public/data/jobs.json').read_text(encoding='utf-8'))
           assert data['schema_version'] == 1
           assert isinstance(data['items'], list)
           assert isinstance(data['sources'], list) and data['sources']
+          undated = 0
           for item in data['items']:
               assert item['status'] == 'published'
-              assert item['deadline']
               assert item['official_notice_url'].startswith('https://')
-          print(f"Validated {len(data['items'])} published notice(s) from {len(data['sources'])} configured source(s).")
+              source_key = (item.get('source') or {}).get('key')
+              assert source_key in SOURCE_BY_KEY
+              if not item.get('deadline'):
+                  definition = SOURCE_BY_KEY[source_key]
+                  assert definition.allow_missing_deadline
+                  assert float(item.get('confidence') or 0) >= 0.8
+                  assert item.get('last_seen_at')
+                  undated += 1
+          print(f"Validated {len(data['items'])} published notice(s), including {undated} active undated notice(s), from {len(data['sources'])} configured source(s).")
           PY
 
       - name: Publish snapshot when it changed
