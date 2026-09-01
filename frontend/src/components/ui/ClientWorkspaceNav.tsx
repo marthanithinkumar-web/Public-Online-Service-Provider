@@ -4,6 +4,7 @@ import {Link} from 'react-router-dom'
 const links=[
   ['/my-orders','Dashboard'],
   ['/my-orders#service-search','Find Services'],
+  ['/jobs','Job Opportunities'],
   ['/my-orders#applications','My Applications'],
   ['/my-orders#track','Track My Request'],
   ['/my-orders#notifications','Notifications'],

@@ -14,6 +14,7 @@ from ..models.review import Review
 from ..models.notification import Notification
 from ..models.service import Service, PlatformSetting
 from ..models.admin_audit import AdminAuditLog
+from ..models.job import JobNotification, JobSource
 from ..utils.database import db
 from ..utils.jwt_handler import create_token, decode_token
 from ..utils.password import hash_password, verify_password
@@ -100,9 +101,103 @@ def overview():
         'average_rating': round(float(average_rating or 0), 1),
         'client_count': User.query.filter_by(is_admin=False).count(),
         'service_count': Service.query.count(),
+        'published_job_count': JobNotification.query.filter_by(status='published').count(),
+        'job_review_count': JobNotification.query.filter_by(status='needs_review').count(),
         'recent_orders': [order.to_dict(include_admin=True) for order in recent_orders],
         'activity': [item.to_dict() for item in recent_history],
     })
+
+
+@bp.route('/jobs', methods=['GET'])
+def list_job_notifications():
+    if not _require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    query = JobNotification.query
+    status = (request.args.get('status') or '').strip()
+    job_type = (request.args.get('type') or '').strip().lower()
+    term = (request.args.get('q') or '').strip()
+    if status:
+        if status not in {'published', 'needs_review', 'expired', 'hidden'}:
+            return jsonify({'error': 'Invalid job status.'}), 400
+        query = query.filter(JobNotification.status == status)
+    if job_type in {'government', 'private'}:
+        query = query.filter(JobNotification.job_type == job_type)
+    if term:
+        pattern = f'%{term[:120]}%'
+        query = query.filter(or_(
+            JobNotification.title.ilike(pattern),
+            JobNotification.organization.ilike(pattern),
+            JobNotification.qualification.ilike(pattern),
+        ))
+    from ..utils.pagination import paginate_query
+    result = paginate_query(
+        query.order_by(JobNotification.updated_at.desc()),
+        request.args.get('page', 1),
+        request.args.get('per_page', 25),
+    )
+    counts = dict(db.session.query(JobNotification.status, func.count(JobNotification.id)).group_by(JobNotification.status).all())
+    return jsonify({
+        'items': [item.to_dict(include_admin=True) for item in result['items']],
+        'meta': result['meta'],
+        'counts': {key: int(counts.get(key, 0)) for key in ('published', 'needs_review', 'expired', 'hidden')},
+    })
+
+
+@bp.route('/job-sources', methods=['GET'])
+def list_job_sources():
+    if not _require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    return jsonify({'items': [source.to_dict() for source in JobSource.query.order_by(JobSource.name).all()]})
+
+
+@bp.route('/jobs/<int:job_id>', methods=['PATCH'])
+def update_job_notification(job_id):
+    admin = _require_admin()
+    if not admin:
+        return jsonify({'error': 'Unauthorized'}), 401
+    job = db.get_or_404(JobNotification, job_id)
+    data = request.json or {}
+    if 'status' in data:
+        status = str(data.get('status') or '').strip()
+        if status not in {'published', 'needs_review', 'expired', 'hidden'}:
+            return jsonify({'error': 'Invalid job status.'}), 400
+        if status == 'published' and job.deadline and job.deadline < datetime.now(timezone.utc).date():
+            return jsonify({'error': 'An expired job notice cannot be published.'}), 409
+        job.status = status
+        if status == 'published' and not job.published_at:
+            job.published_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    if 'is_featured' in data:
+        job.is_featured = bool(data.get('is_featured'))
+    db.session.add(AdminAuditLog(
+        admin_id=admin.id,
+        action='job_notification_updated',
+        summary=f'Updated job notice {job.id}: {job.title}'[:500],
+        details={'job_id': job.id, 'status': job.status, 'is_featured': bool(job.is_featured)},
+    ))
+    db.session.commit()
+    return jsonify({'message': 'Job notice updated.', 'job': job.to_dict(include_admin=True)})
+
+
+@bp.route('/jobs/synchronize', methods=['POST'])
+def synchronize_job_notifications():
+    admin = _require_admin()
+    if not admin:
+        return jsonify({'error': 'Unauthorized'}), 401
+    from ..jobs.sync import sync_all_sources
+    result = sync_all_sources()
+    db.session.add(AdminAuditLog(
+        admin_id=admin.id,
+        action='job_sources_synchronized',
+        summary='Ran the approved official job-source synchronization.',
+        details={
+            'successful_sources': result['successful_sources'],
+            'expired': result['expired'],
+            'results': [{key: value for key, value in item.items() if key != 'error'} for item in result['results']],
+        },
+    ))
+    db.session.commit()
+    status = 200 if result['successful_sources'] else 502
+    return jsonify(result), status
 
 @bp.route('/orders', methods=['GET'])
 def list_orders():

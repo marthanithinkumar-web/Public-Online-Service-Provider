@@ -1,0 +1,59 @@
+name: Refresh official job notifications
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/job-notifications.yml'
+      - 'backend/app/jobs/**'
+      - 'backend/app/models/job.py'
+      - 'backend/migrations_alembic/versions/20260831_14_job_notifications.py'
+  schedule:
+    # 07:45 Asia/Kolkata every day (02:15 UTC).
+    - cron: '15 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: official-job-notification-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Verify and refresh official notices
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.NEON_BACKUP_DATABASE_URL }}
+      SKIP_DATABASE_BOOTSTRAP: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Verify database configuration
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ -z "${DATABASE_URL:-}" ]]; then
+            echo "::error::The existing NEON_BACKUP_DATABASE_URL GitHub secret is required."
+            exit 1
+          fi
+          case "${DATABASE_URL}" in
+            postgresql://*|postgres://*) ;;
+            *) echo "::error::NEON_BACKUP_DATABASE_URL must be a PostgreSQL connection URL."; exit 1 ;;
+          esac
+
+      - name: Install application dependencies
+        working-directory: backend
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Refresh allowlisted official sources
+        working-directory: backend
+        run: python -m app.jobs.sync

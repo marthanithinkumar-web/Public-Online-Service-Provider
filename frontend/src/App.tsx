@@ -27,10 +27,12 @@ import NotFound from './pages/NotFound'
 import SupportMessages from './pages/SupportMessages'
 import SupportChatLauncher from './components/ui/SupportChatLauncher'
 import Seo,{SITE} from './components/ui/Seo'
+import Jobs from './pages/Jobs'
+import JobDetail from './pages/JobDetail'
 
 const PUBLIC_METADATA:Record<string,{title:string;description:string}>={
   '/':{title:'Public Online Service Provider — Application Assistance',description:'Find independent assistance for PAN cards, certificates, government jobs, scholarships, schemes, MeeSeva and other public-service applications.'},
-  '/jobs':{title:'Government Job Application Assistance',description:'Explore independent help with government job searches, recruitment applications, corrections and application-status processes.'},
+  '/jobs':{title:'Government Jobs & Recruitment Notices',description:'Review current government and private recruitment notices gathered from approved official sources, with deadlines and important details where available.'},
   '/scholarships':{title:'Scholarship Application Assistance',description:'Explore independent application help for eligible scholarships, renewals and scholarship status checks.'},
   '/meeseva':{title:'MeeSeva and Online Public Service Assistance',description:'Find independent assistance for eligible MeeSeva and other online public-service applications.'},
   '/certificates':{title:'Government Certificate Application Assistance',description:'Explore help with eligible income, caste, residence, birth, death and other certificate applications.'},
@@ -44,7 +46,7 @@ const PUBLIC_METADATA:Record<string,{title:string;description:string}>={
 function RouteMetadata(){
   const location=useLocation()
   const path=location.pathname.replace(/\/$/,'')||'/'
-  if(path.startsWith('/services/')||path.startsWith('/service/'))return null
+  if(path.startsWith('/services/')||path.startsWith('/service/')||path.startsWith('/jobs/'))return null
   const metadata=PUBLIC_METADATA[path]
   const index=Boolean(metadata)
   const schema=path==='/'?[
@@ -74,7 +76,7 @@ function ClientRoute({children}:{children:React.ReactNode}){const session=getSes
 function AdminRoute({children}:{children:React.ReactNode}){const session=getSession();const location=useLocation();if(!session){const returnTo=encodeURIComponent(`${location.pathname}${location.search}${location.hash}`);return <Navigate to={`/admin/login?returnTo=${returnTo}`} replace/>}if(!session.is_admin)return <Navigate to="/my-orders" replace/>;return <>{children}</>}
 
 export default function App(){return <div className="app-shell"><RouteMetadata/><a className="skip-link" href="#main-content">Skip to main content</a><NavBar/><main id="main-content" tabIndex={-1} className="container page-content"><Routes>
- <Route path="/" element={<Home/>}/><Route path="/services/:slug" element={<ServiceDetail/>}/><Route path="/service/:id" element={<ServiceDetail/>}/><Route path="/jobs" element={<Category/>}/><Route path="/scholarships" element={<Category/>}/><Route path="/meeseva" element={<Category/>}/><Route path="/certificates" element={<Category/>}/><Route path="/schemes" element={<Category/>}/><Route path="/about" element={<About/>}/><Route path="/contact" element={<Contact/>}/><Route path="/privacy" element={<PrivacyPolicy/>}/><Route path="/terms" element={<Terms/>}/><Route path="/disclaimer" element={<Disclaimer/>}/>
+ <Route path="/" element={<Home/>}/><Route path="/services/:slug" element={<ServiceDetail/>}/><Route path="/service/:id" element={<ServiceDetail/>}/><Route path="/jobs" element={<Jobs/>}/><Route path="/jobs/:slug" element={<JobDetail/>}/><Route path="/scholarships" element={<Category/>}/><Route path="/meeseva" element={<Category/>}/><Route path="/certificates" element={<Category/>}/><Route path="/schemes" element={<Category/>}/><Route path="/about" element={<About/>}/><Route path="/contact" element={<Contact/>}/><Route path="/privacy" element={<PrivacyPolicy/>}/><Route path="/terms" element={<Terms/>}/><Route path="/disclaimer" element={<Disclaimer/>}/>
  <Route path="/login" element={<AuthRedirect><Login/></AuthRedirect>}/><Route path="/register" element={<AuthRedirect><Register/></AuthRedirect>}/><Route path="/admin/login" element={<AuthRedirect><AdminLogin/></AuthRedirect>}/><Route path="/request-reset" element={<RequestReset/>}/><Route path="/admin/request-reset" element={<RequestReset accountType="admin"/>}/><Route path="/reset-password" element={<ResetPassword/>}/>
  <Route path="/my-orders" element={<ClientRoute><MyOrders/></ClientRoute>}/><Route path="/my-orders/:id" element={<ClientRoute><OrderDetail/></ClientRoute>}/><Route path="/account-settings" element={<ClientRoute><AccountSettings/></ClientRoute>}/><Route path="/messages" element={<ClientRoute><SupportMessages/></ClientRoute>}/><Route path="/grievances" element={<ClientRoute><MyGrievances/></ClientRoute>}/><Route path="/submit-grievance" element={<ClientRoute><SubmitGrievance/></ClientRoute>}/><Route path="/submit-review" element={<ClientRoute><SubmitReview/></ClientRoute>}/><Route path="/admin/*" element={<AdminRoute><AdminPanel/></AdminRoute>}/><Route path="*" element={<NotFound/>}/>
  </Routes></main><SupportChatLauncher/><Footer/></div>}

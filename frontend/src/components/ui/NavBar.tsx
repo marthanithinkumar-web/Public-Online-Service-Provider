@@ -51,6 +51,7 @@ export default function NavBar(){
         <nav className="main-nav" aria-label="Primary navigation">
           <Link className={loc.pathname==='/'&&!loc.hash? 'active':''} to="/">Home</Link>
           <Link to="/#services">Services</Link>
+          <Link className={isActive('/jobs')? 'active':''} to="/jobs">Jobs & Opportunities</Link>
           <Link to="/#help">Help</Link>
           <Link className={isActive('/contact')? 'active':''} to="/contact">Contact</Link>
         </nav>

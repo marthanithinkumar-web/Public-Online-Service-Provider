@@ -10,7 +10,7 @@ const services=JSON.parse(fs.readFileSync(path.join(distDir,'seo-catalog.json'),
 const escapeHtml=value=>String(value||'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]))
 
 const categoryPages={
-  '/jobs':{title:'Government Job Application Assistance',description:'Explore independent help with government job searches, recruitment applications, corrections and status processes.',match:value=>/job|employment|exam/i.test(value)},
+  '/jobs':{title:'Government Jobs & Recruitment Notices',description:'Review current government and private recruitment notices gathered from approved official sources, with deadlines and important details where available.',match:value=>/job|employment|exam/i.test(value)},
   '/scholarships':{title:'Scholarship Application Assistance',description:'Explore independent application help for eligible scholarships, renewals and scholarship status checks.',match:value=>/scholarship|student welfare/i.test(value)},
   '/meeseva':{title:'MeeSeva and Online Public Service Assistance',description:'Find independent assistance for eligible MeeSeva and other online public-service applications.',match:value=>/online public service|meeseva/i.test(value)},
   '/certificates':{title:'Government Certificate Application Assistance',description:'Explore help with eligible income, caste, residence, birth, death and other certificate applications.',match:value=>/certificate|public document/i.test(value)},
@@ -43,7 +43,8 @@ function pageHtml({route,title,description,body,schema}){
 
 for(const [route,page] of Object.entries(categoryPages)){
   const links=services.filter(service=>page.match(service.category)).map(service=>`<li><a href="/services/${service.slug}">${escapeHtml(service.name)}</a> — ${escapeHtml(service.description)}</li>`).join('')
-  const body=`<article><p>Independent private assistance platform — not a government department or official portal.</p><h1>${escapeHtml(page.title)}</h1><p>${escapeHtml(page.description)}</p><h2>Available assistance services</h2><ul>${links}</ul><p><a href="/">Search all public services</a></p></article>`
+  const sourceLinks=route==='/jobs'?`<h2>Approved official job sources</h2><ul><li><a href="https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All">Employment News</a></li><li><a href="https://www.upsc.gov.in/recruitment/recruitment-advertisement">Union Public Service Commission</a></li><li><a href="https://www.ncs.gov.in/job-listing">National Career Service</a></li></ul><p>Notices are checked daily. Incomplete or ambiguous records are held for administrator review instead of being published.</p>`:''
+  const body=`<article><p>Independent private assistance platform — not a government department or official portal.</p><h1>${escapeHtml(page.title)}</h1><p>${escapeHtml(page.description)}</p>${sourceLinks}<h2>Available assistance services</h2><ul>${links}</ul><p><a href="/">Search all public services</a></p></article>`
   const schema={'@context':'https://schema.org','@type':'CollectionPage',name:page.title,url:`${siteUrl}${route}`,description:page.description,isPartOf:{'@type':'WebSite',name:'Public Online Service Provider',url:siteUrl}}
   const target=path.join(distDir,route.slice(1),'index.html');fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,pageHtml({route,...page,body,schema}))
 }
