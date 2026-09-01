@@ -1,7 +1,7 @@
 from datetime import date
 
 from flask import Blueprint, current_app, jsonify, request
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 
 from ..models.job import JobNotification, JobSource
 
@@ -25,13 +25,19 @@ def list_jobs():
     job_type = (request.args.get('type') or '').strip().lower()
     featured = (request.args.get('featured') or '').strip().lower()
     if term:
-        pattern = f'%{term[:120]}%'
-        query = query.filter(or_(
-            JobNotification.title.ilike(pattern),
-            JobNotification.organization.ilike(pattern),
-            JobNotification.qualification.ilike(pattern),
-            JobNotification.location.ilike(pattern),
+        aliases = {'govt': 'government', 'railways': 'railway'}
+        tokens = list(dict.fromkeys(
+            aliases.get(token.lower(), token) for token in term[:120].replace('-', ' ').split() if token
         ))
+        query = query.filter(and_(*[
+            or_(
+                JobNotification.title.ilike(f'%{token}%'),
+                JobNotification.organization.ilike(f'%{token}%'),
+                JobNotification.qualification.ilike(f'%{token}%'),
+                JobNotification.location.ilike(f'%{token}%'),
+            )
+            for token in tokens
+        ]))
     if job_type in {'government', 'private'}:
         query = query.filter(JobNotification.job_type == job_type)
     if featured in {'1', 'true', 'yes'}:

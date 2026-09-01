@@ -23,10 +23,20 @@ def _iso(value):
     return value.isoformat() if value else None
 
 
-def _is_open(job, today):
+def _is_open(job, today, now=None):
     raw = job.get('deadline')
     if not raw:
-        return False
+        last_seen = job.get('last_seen_at')
+        if not last_seen:
+            return False
+        try:
+            seen = datetime.fromisoformat(last_seen.replace('Z', '+00:00'))
+            current = now or datetime.now(timezone.utc)
+            if seen.tzinfo is None:
+                seen = seen.replace(tzinfo=timezone.utc)
+            return (current - seen).days <= 3
+        except (TypeError, ValueError):
+            return False
     try:
         return date.fromisoformat(raw) >= today
     except (TypeError, ValueError):
@@ -116,7 +126,12 @@ def build_snapshot(existing=None, session=None, now=None):
             parsed = definition.parser(html, definition.listing_url)
             published_count = 0
             for item in parsed:
-                status = target_status(item, today=today)
+                status = target_status(
+                    item,
+                    today=today,
+                    allow_missing_deadline=definition.allow_missing_deadline,
+                    missing_deadline_max_age_days=definition.missing_deadline_max_age_days,
+                )
                 if status != 'published':
                     review_count += int(status == 'needs_review')
                     continue
@@ -133,7 +148,7 @@ def build_snapshot(existing=None, session=None, now=None):
             # date instead of making it disappear early.
             for old_job in previous_by_source.get(definition.key, []):
                 digest = old_job.get('content_hash')
-                if digest and digest not in seen_hashes and _is_open(old_job, today):
+                if digest and digest not in seen_hashes and _is_open(old_job, today, now=now):
                     carried = dict(old_job)
                     carried['last_seen_at'] = checked_at
                     source_data = dict(carried.get('source') or {})
@@ -163,7 +178,7 @@ def build_snapshot(existing=None, session=None, now=None):
             # verified, still-open notices from the public feed.
             for old_job in previous_by_source.get(definition.key, []):
                 digest = old_job.get('content_hash')
-                if digest and digest not in seen_hashes and _is_open(old_job, today):
+                if digest and digest not in seen_hashes and _is_open(old_job, today, now=now):
                     jobs.append(old_job)
                     seen_hashes.add(digest)
             sources.append({

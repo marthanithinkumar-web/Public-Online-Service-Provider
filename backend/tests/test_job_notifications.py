@@ -1,6 +1,19 @@
 from datetime import date, datetime, timedelta, timezone
 
-from app.jobs.sources import JobItem, SourceDefinition, parse_employment_news, parse_upsc
+from app.jobs.sources import (
+    SOURCE_BY_KEY,
+    JobItem,
+    SourceDefinition,
+    parse_employment_news,
+    parse_india_post_gds,
+    parse_india_post_vacancies,
+    parse_isro_opportunities,
+    parse_mha_ib,
+    parse_rrb,
+    parse_ssc,
+    parse_tgprb,
+    parse_upsc,
+)
 from app.jobs.snapshot import build_snapshot
 from app.jobs.sync import fetch_official_page, sync_is_due, sync_source, trigger_background_sync, upsert_item
 from app.models.job import JobNotification, JobSource
@@ -42,7 +55,7 @@ def test_employment_news_parser_extracts_only_present_details():
     assert items[0].application_fee is None
 
 
-def test_upsc_parser_holds_advertisement_without_deadline_for_review():
+def test_upsc_parser_marks_current_official_advertisement_as_confident():
     html = '''<ul><li>Advertisement No.52 - 2026 (Special)
     <a href="/sites/default/files/advt-52-2026.pdf">(1.49 MB)</a></li></ul>'''
     items = parse_upsc(html, 'https://www.upsc.gov.in/recruitment/recruitment-advertisement')
@@ -50,7 +63,88 @@ def test_upsc_parser_holds_advertisement_without_deadline_for_review():
     assert items[0].organization.startswith('Union Public Service Commission')
     assert items[0].official_notice_url == 'https://www.upsc.gov.in/sites/default/files/advt-52-2026.pdf'
     assert items[0].deadline is None
-    assert items[0].confidence < 0.8
+    assert items[0].confidence >= 0.8
+
+
+def test_ssc_parser_keeps_new_exam_notice_and_excludes_results():
+    html = '''{"data":[
+      {"id":42,"headline":"Notice of Combined Graduate Level Examination, 2099","createdAt":"2099-08-01T10:00:00Z","attachment":{"path":"/api/attachment/uploads/masterData/NoticeBoards/cgl-2099.pdf"}},
+      {"id":43,"headline":"Combined Graduate Level Examination, 2098: Declaration of Final Result","createdAt":"2099-08-02T10:00:00Z","attachment":{"path":"/api/attachment/uploads/masterData/NoticeBoards/result.pdf"}}
+    ]}'''
+    items = parse_ssc(html, SOURCE_BY_KEY['ssc'].listing_url)
+    assert len(items) == 1
+    assert items[0].organization == 'Staff Selection Commission (SSC)'
+    assert items[0].issue_date == date(2099, 8, 1)
+    assert items[0].official_notice_url.endswith('/cgl-2099.pdf')
+    assert items[0].deadline is None
+    assert items[0].confidence >= 0.8
+
+
+def test_rrb_parser_keeps_centralised_employment_notice_not_exam_updates():
+    html = '''<table><tr><th>Date</th><th>Latest notices</th></tr>
+    <tr><td>14-05-2099</td><td>CEN 01/2099 - Employment Notice: Detailed Centralised Employment Notice for Assistant Loco Pilot. Application Link (15-05-2099 to 14-06-2099) <a href="/2099-01-alp.php">Notice</a></td></tr>
+    <tr><td>20-06-2099</td><td>CEN 01/2099 - CBT exam schedule <a href="/schedule.pdf">Schedule</a></td></tr></table>'''
+    items = parse_rrb(html, 'https://www.rrbcdg.gov.in/')
+    assert len(items) == 1
+    assert items[0].deadline == date(2099, 6, 14)
+    assert items[0].organization == 'Railway Recruitment Board (RRB)'
+
+
+def test_mha_parser_keeps_only_intelligence_bureau_vacancy():
+    html = '''<table><tr><th>SR-No</th><th>Keyword</th><th>Download/Link</th></tr>
+    <tr><td>1</td><td>Intelligence Bureau recruitment notification, last date 30 September 2099</td><td><a href="/sites/default/files/ib.pdf">Download</a></td></tr>
+    <tr><td>2</td><td>Other Ministry vacancy</td><td><a href="/sites/default/files/other.pdf">Download</a></td></tr></table>'''
+    items = parse_mha_ib(html, 'https://www.mha.gov.in/en/notifications/vacancies')
+    assert len(items) == 1
+    assert items[0].deadline == date(2099, 9, 30)
+    assert 'Intelligence Bureau' in items[0].organization
+
+
+def test_tgprb_parser_uses_active_notification_heading():
+    html = '''<h2>Police Recruitment — 2099</h2><h3>SCT SI Civil and Equivalent</h3>
+    <a href="https://doc.tgprb.in/si-notification.pdf">Notification</a>
+    <a href="https://doc.tgprb.in/si-supplement.pdf">Supplementary Notification</a>'''
+    items = parse_tgprb(html, 'https://www.tgprb.in/')
+    assert len(items) == 1
+    assert items[0].title == 'SCT SI Civil and Equivalent Recruitment'
+    assert items[0].location == 'Telangana'
+    assert items[0].official_notice_url == 'https://doc.tgprb.in/si-notification.pdf'
+
+
+def test_india_post_vacancy_parser_keeps_recruitment_not_results():
+    html = '''<table><tr><th>S.No.</th><th>Title</th><th>Published Date</th><th>Action</th></tr>
+    <tr><td>1</td><td>Direct Recruitment for the post of Postal Assistant</td><td>31-08-2099</td><td><a href="/vacancies/postal-assistant.pdf">View English Version</a></td></tr>
+    <tr><td>2</td><td>Declaration of pending results</td><td>31-08-2099</td><td><a href="/vacancies/results.pdf">View</a></td></tr></table>'''
+    items = parse_india_post_vacancies(html, 'https://www.indiapost.gov.in/vacancies')
+    assert len(items) == 1
+    assert items[0].organization == 'Department of Posts (India Post)'
+    assert items[0].issue_date == date(2099, 8, 31)
+    assert items[0].official_notice_url == 'https://www.indiapost.gov.in/vacancies/postal-assistant.pdf'
+
+
+def test_india_post_gds_parser_extracts_active_application_window():
+    html = '''<h1>Gramin Dak Sevak (GDS) Online Engagement Schedule-II July-2099</h1>
+    <h2>Important Dates</h2><h3>Application Submission</h3>
+    <p>Start Date: 02-09-2099</p><p>End Date: 21-09-2099 17:00 HRS</p>
+    <h3>Edit/Correction Window</h3><a href="/gdsonlineengagement/pdf/descriptive-notification.pdf">Notification-English</a>
+    <a href="/gdsonlineengagement/register">Click Here to Register</a>'''
+    items = parse_india_post_gds(html, 'https://www.indiapost.gov.in/gdsonlineengagement')
+    assert len(items) == 1
+    assert items[0].deadline == date(2099, 9, 21)
+    assert items[0].application_start_date == date(2099, 9, 2)
+    assert items[0].official_notice_url.endswith('/pdf/descriptive-notification.pdf')
+
+
+def test_isro_parser_keeps_only_current_opportunities():
+    html = '''<table><tr><th>Location</th><th>Post</th><th>Advertisement Number</th><th>Opening Date</th><th>Last Date of Submission</th><th>More Details</th></tr>
+    <tr><td>Centralised Recruitment (ICRB)</td><td>Scientist/Engineer SC</td><td>ISRO:ICRB:03:2099</td><td>27 August 2099</td><td>16 September 2099</td><td><a href="/ICRB2099.html">More details</a></td></tr>
+    <tr><td>ISRO HQ</td><td>Expired Assistant Recruitment</td><td>OLD:01:2020</td><td>1 January 2020</td><td>2 February 2020</td><td><a href="/old.html">More details</a></td></tr></table>'''
+    items = parse_isro_opportunities(html, 'https://www.isro.gov.in/ViewAllOpportunities.html')
+    assert len(items) == 1
+    assert items[0].external_id == 'ISRO:ICRB:03:2099'
+    assert items[0].location == 'Centralised Recruitment (ICRB)'
+    assert items[0].deadline == date(2099, 9, 16)
+    assert items[0].official_notice_url == 'https://www.isro.gov.in/ICRB2099.html'
 
 
 def test_sync_publishes_complete_notice_and_queues_uncertain_notice(client, monkeypatch):
@@ -65,6 +159,20 @@ def test_sync_publishes_complete_notice_and_queues_uncertain_notice(client, monk
         assert result['status'] == 'success'
         assert JobNotification.query.filter_by(external_id='notice-1').one().status == 'published'
         assert JobNotification.query.filter_by(external_id='notice-2').one().status == 'needs_review'
+
+
+def test_active_official_source_can_publish_undated_notice(client, monkeypatch):
+    current = _item(external_id='active-undated', deadline=None, confidence=0.84)
+    definition = SourceDefinition(
+        'employment_news', 'Active Official Board', 'https://employmentnews.gov.in/jobs',
+        lambda *_: [current], allow_missing_deadline=True,
+    )
+    monkeypatch.setitem(__import__('app.jobs.sync', fromlist=['SOURCE_BY_KEY']).SOURCE_BY_KEY, 'employment_news', definition)
+    monkeypatch.setattr('app.jobs.sync.fetch_official_page', lambda *_args, **_kwargs: '<html/>')
+    with client.application.app_context():
+        source = JobSource.query.filter_by(key='employment_news').one()
+        assert sync_source(source)['status'] == 'success'
+        assert JobNotification.query.filter_by(external_id='active-undated').one().status == 'published'
 
 
 def test_public_job_feed_excludes_review_hidden_and_expired(client):
@@ -84,6 +192,18 @@ def test_public_job_feed_excludes_review_hidden_and_expired(client):
     assert [item['slug'] for item in response.get_json()['items']] == [visible_slug]
     assert client.get(f'/api/jobs/{visible_slug}').status_code == 200
     assert client.get(f'/api/jobs/{review.slug}').status_code == 404
+
+
+def test_public_job_search_matches_all_words(client):
+    with client.application.app_context():
+        source = JobSource.query.filter_by(key='employment_news').one()
+        match, *_ = upsert_item(source, _item(external_id='ssc-cgl', title='Combined Graduate Level', organization='Staff Selection Commission'))
+        upsert_item(source, _item(external_id='railway', title='Assistant Loco Pilot', organization='Railway Recruitment Board'))
+        db.session.commit()
+        match_slug = match.slug
+    response = client.get('/api/jobs/?q=staff+graduate')
+    assert response.status_code == 200
+    assert [item['slug'] for item in response.get_json()['items']] == [match_slug]
 
 
 def test_admin_can_review_and_feature_but_cannot_publish_expired(client):
@@ -147,7 +267,11 @@ def test_background_refresh_is_disabled_during_tests(client):
         assert trigger_background_sync(client.application) is False
 
 
-def test_public_snapshot_publishes_only_complete_official_notices():
+def test_public_snapshot_publishes_only_complete_official_notices(monkeypatch):
+    monkeypatch.setattr(
+        'app.jobs.snapshot.SOURCE_DEFINITIONS',
+        (SOURCE_BY_KEY['employment_news'], SOURCE_BY_KEY['upsc'], SOURCE_BY_KEY['ncs']),
+    )
     pages = {
         'employmentnews.gov.in': '''<table><tr><th>Advertisement No.</th><th>Organization</th><th>Post</th><th>Last Date</th></tr>
         <tr><td>EN-99</td><td>National Test Board</td><td>Assistant Posts</td><td>30 September 2099</td></tr></table>''',

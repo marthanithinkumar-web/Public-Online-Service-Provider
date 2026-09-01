@@ -2,7 +2,7 @@
 
 import hashlib
 import re
-from datetime import date
+from datetime import date, timedelta
 
 
 def slugify(value):
@@ -18,11 +18,21 @@ def item_hash(item):
     return hashlib.sha256(normalized.encode('utf-8')).hexdigest()
 
 
-def target_status(item, today=None):
+def target_status(item, today=None, allow_missing_deadline=False, missing_deadline_max_age_days=45):
     today = today or date.today()
     if item.deadline and item.deadline < today:
         return 'expired'
-    complete = bool(item.title and item.organization and item.official_notice_url and item.deadline)
+    if (
+        not item.deadline
+        and item.issue_date
+        and missing_deadline_max_age_days
+        and item.issue_date < today - timedelta(days=missing_deadline_max_age_days)
+    ):
+        return 'expired'
+    complete = bool(
+        item.title and item.organization and item.official_notice_url
+        and (item.deadline or allow_missing_deadline)
+    )
     return 'published' if complete and item.confidence >= 0.8 else 'needs_review'
 
 

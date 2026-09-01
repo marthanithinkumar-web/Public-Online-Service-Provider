@@ -23,7 +23,7 @@ def test_default_services_include_editable_thirty_rupee_railway_booking(client):
 
     assert response.status_code == 200
     services = response.get_json()
-    railway = next(service for service in services if service['name'] == 'Railway Ticket Booking Apply')
+    railway = next(service for service in services if service['name'] == 'Apply Railway Ticket Booking')
     assert railway['price_inr'] == 30.0
     assert railway['category'] == 'Travel & Ticketing Assistance'
     assert 'OTP' in railway['description']
@@ -57,7 +57,7 @@ def test_public_service_detail_has_stable_descriptive_slug_route(client):
 def test_document_pdf_service_is_searchable_five_rupees_and_has_document_options(client):
     response = client.get('/api/services/search?q=apaar pdf')
     assert response.status_code == 200
-    service = next(item for item in response.get_json() if item['name'] == 'Official Document PDF Access Apply')
+    service = next(item for item in response.get_json() if item['name'] == 'Apply Official Document PDF Access')
     assert service['price_inr'] == 5.0
     assert service['is_active'] is True
 
@@ -169,6 +169,30 @@ def test_service_search_matches_partial_words_categories_and_keywords(client):
     assert partial.status_code == 200
     assert category.status_code == 200
     assert keyword.status_code == 200
-    assert any(service['name'] == 'Identity Document Apply' for service in partial.get_json())
-    assert any(service['name'] == 'Identity Document Apply' for service in category.get_json())
-    assert any(service['name'] == 'Identity Document Apply' for service in keyword.get_json())
+    assert any(service['name'] == 'Apply Identity Document' for service in partial.get_json())
+    assert any(service['name'] == 'Apply Identity Document' for service in category.get_json())
+    assert any(service['name'] == 'Apply Identity Document' for service in keyword.get_json())
+
+
+def test_apply_prefix_search_and_legacy_trailing_slug_both_work(client):
+    from app.models.service import Category, Service
+    from app.utils.database import db
+
+    with client.application.app_context():
+        category = Category.query.filter_by(name='Certificates').one()
+        db.session.add(Service(
+            name='Income Certificate Assistance',
+            description='Assistance with an eligible income certificate application.',
+            keywords='income certificate',
+            category_id=category.id,
+            is_active=True,
+        ))
+        db.session.commit()
+
+    results = client.get('/api/services/search?q=Apply Income Certificate')
+
+    assert results.status_code == 200
+    service = next(item for item in results.get_json() if item['name'] == 'Apply Income Certificate')
+    assert service['slug'] == 'apply-income-certificate'
+    assert client.get('/api/services/by-slug/apply-income-certificate').status_code == 200
+    assert client.get('/api/services/by-slug/income-certificate-apply').status_code == 200

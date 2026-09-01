@@ -4,8 +4,8 @@ from ..utils.database import db
 from ..middleware.auth import require_admin
 from ..schemas.service_schema import ServiceSchema
 from ..utils.service_requirements import get_service_requirements
-from sqlalchemy import or_
-from ..utils.seo import application_service_name, slugify
+from sqlalchemy import and_, or_
+from ..utils.seo import application_service_name, legacy_application_service_name, slugify
 
 bp = Blueprint('services', __name__)
 schema = ServiceSchema()
@@ -91,7 +91,14 @@ def service_detail_by_slug(service_slug):
     legacy_slugs = {'aadhaar-pvc-card-order-guidance': 'aadhaar-pvc-card-order'}
     normalized = legacy_slugs.get(normalized, normalized)
     service = next(
-        (item for item in Service.query.filter_by(is_active=True).all() if normalized in {slugify(item.name), slugify(application_service_name(item.name))}),
+        (
+            item for item in Service.query.filter_by(is_active=True).all()
+            if normalized in {
+                slugify(item.name),
+                slugify(application_service_name(item.name)),
+                slugify(legacy_application_service_name(item.name)),
+            }
+        ),
         None,
     )
     if service is None:
@@ -108,22 +115,24 @@ def search():
         services = Service.query.filter_by(is_active=True).order_by(Service.name.asc()).all()
         return _catalog_response(services)
 
-    tokens = [t for t in raw.replace('-', ' ').replace('/', ' ').split() if t]
-    search_terms = list(dict.fromkeys([raw, *tokens]))
-    conditions = []
+    aliases = {'govt': 'government'}
+    action_words = {'apply', 'application', 'applications', 'assistance', 'service', 'services'}
+    tokens = [aliases.get(t.lower(), t) for t in raw.replace('-', ' ').replace('/', ' ').split() if t]
+    search_terms = list(dict.fromkeys(term for term in tokens if term.lower() not in action_words))
+    token_conditions = []
     for term in search_terms:
         pattern = f"%{term}%"
-        conditions.extend([
+        token_conditions.append(or_(
             Service.name.ilike(pattern),
             Service.keywords.ilike(pattern),
             Service.description.ilike(pattern),
             Service.category.has(Category.name.ilike(pattern)),
-        ])
+        ))
 
-    services = (
-        Service.query.filter(Service.is_active.is_(True), or_(*conditions))
-        .order_by(Service.name.asc()).limit(100).all()
-    )
+    query = Service.query.filter(Service.is_active.is_(True))
+    if token_conditions:
+        query = query.filter(and_(*token_conditions))
+    services = query.order_by(Service.name.asc()).limit(100).all()
     return _catalog_response(services)
 
 

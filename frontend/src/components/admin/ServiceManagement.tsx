@@ -117,7 +117,7 @@ export default function ServiceManagement(){
   }
 
   const edit=(service:any)=>{
-    setEditing(service.id);setName(service.name);setDesc(service.description||'')
+    setEditing(service.id);setName(service.catalog_name||service.name);setDesc(service.description||'')
     setKeywords(service.keywords||'');setCategoryId(service.category_id?String(service.category_id):'')
     setPrice(service.price_inr??0);setOfficialStatus(service.official_fee_status||'unconfirmed')
     setOfficialFee(service.official_fee_inr??'');window.scrollTo({top:0,behavior:'smooth'})

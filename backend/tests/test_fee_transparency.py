@@ -247,7 +247,7 @@ def test_new_services_inherit_the_persisted_website_wide_fee(client):
 def test_admin_can_change_and_disable_document_pdf_service(client):
     headers = _admin_headers(client)
     catalog = client.get('/api/services/search?q=document pdf').get_json()
-    service = next(item for item in catalog if item['name'] == 'Official Document PDF Access Apply')
+    service = next(item for item in catalog if item['name'] == 'Apply Official Document PDF Access')
 
     changed = client.put(f"/api/services/{service['id']}", json={'price_inr': 8}, headers=headers)
     assert changed.status_code == 200

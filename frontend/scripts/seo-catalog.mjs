@@ -14,11 +14,14 @@ export function slugify(value){
 
 export function applicationServiceName(value){
   const name=String(value||'').trim()
+  if(!name)return name
+  if(name.toLowerCase().startsWith('apply '))return `Apply ${name.slice(6).trim()}`
+  if(name.toLowerCase().endsWith(' order apply'))return name.slice(0,-' Apply'.length)
+  if(name.toLowerCase().endsWith(' apply'))return `Apply ${name.slice(0,-' Apply'.length).trim()}`
   for(const suffix of [' Application Assistance',' Service Assistance',' Assistance',' Guidance'])if(name.endsWith(suffix)){
     const base=name.slice(0,-suffix.length).trim()
-    return base.toLowerCase().endsWith(' order')?base:`${base} Apply`
+    return base.toLowerCase().endsWith(' order')?base:`Apply ${base}`
   }
-  if(name.toLowerCase().endsWith(' order apply'))return name.slice(0,-' Apply'.length)
   return name
 }
 
@@ -42,6 +45,7 @@ export function readCatalog(){
   const slugs=new Set()
   for(const service of services){
     if(slugs.has(service.slug))throw new Error(`Duplicate public service slug: ${service.slug}`)
+    if(/\sApply$/i.test(service.name))throw new Error(`Legacy trailing-Apply service title generated: ${service.name}`)
     slugs.add(service.slug)
   }
   return services

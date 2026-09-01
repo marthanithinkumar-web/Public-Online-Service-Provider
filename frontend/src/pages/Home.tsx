@@ -4,7 +4,7 @@ import SearchPanel from '../components/ui/SearchPanel'
 import ServicesSection from '../components/ui/ServicesSection'
 import CategoriesSection from '../components/ui/CategoriesSection'
 import LatestJobs from '../components/jobs/LatestJobs'
-import {fetchServiceCatalog,readCachedServices,servicePath} from '../services/serviceCatalog'
+import {fetchServiceCatalog,isHomepageHighlightEligible,readCachedServices,servicePath} from '../services/serviceCatalog'
 import axios from 'axios'
 import {apiBase} from '../services/apiBase'
 
@@ -17,7 +17,7 @@ export default function Home(){
   useEffect(()=>{let active=true;fetchServiceCatalog(true).then(items=>{if(active)setCatalog(items)}).catch(()=>{});return()=>{active=false}},[])
   useEffect(()=>{let active=true;axios.get(`${apiBase}/reviews/public`,{timeout:12000}).then(response=>{if(active)setReviews((response.data||[]).slice(0,6))}).catch(()=>{});return()=>{active=false}},[])
   useEffect(()=>{let active=true;axios.get(`${apiBase}/services/homepage-assistance-fee`,{timeout:12000}).then(response=>{const value=Number(response.data?.price_inr);if(active&&Number.isFinite(value)&&value>=0)setHomepageFee(value)}).catch(()=>{});return()=>{active=false}},[])
-  const crucial=useMemo(()=>{const selected:any[]=[];crucialTerms.forEach(term=>{const match=catalog.find(service=>!selected.includes(service)&&`${service.name} ${service.keywords||''}`.toLowerCase().includes(term));if(match)selected.push(match)});catalog.forEach(service=>{if(selected.length<3&&!selected.includes(service))selected.push(service)});return selected.slice(0,3)},[catalog])
+  const crucial=useMemo(()=>{const eligible=catalog.filter(isHomepageHighlightEligible);const selected:any[]=[];crucialTerms.forEach(term=>{const match=eligible.find(service=>!selected.includes(service)&&`${service.name} ${service.keywords||''}`.toLowerCase().includes(term));if(match)selected.push(match)});eligible.forEach(service=>{if(selected.length<3&&!selected.includes(service))selected.push(service)});return selected.slice(0,3)},[catalog])
   return <div className="home-page redesigned-home">
     <div className="independent-banner">Independent assistance platform — not a government department or official portal.</div>
     <section className="hero concept-hero"><div className="hero-copy"><span className="eyebrow light">Public services and opportunities</span><h1>Simplifying access to essential services and opportunities</h1><p>Find independent assistance for public-service applications, latest official-source job notices and important resources—all in one place.</p><SearchPanel variant="hero"/><div className="hero-links"><Link className="hero-link-primary" to="/#services">Explore services</Link><Link className="hero-link-track" to="/jobs">Browse latest jobs</Link></div></div><aside className="hero-panel" aria-label="Safety and account access"><div className="hero-safety-card"><span className="safety-shield">✓</span><div><strong>Your security matters</strong><p>Your OTP, PIN, CVV and passwords are never requested.</p></div></div><div className="hero-highlight-grid"><div><strong>{catalog.length||'100+'}</strong><span>Service options</span></div><div><strong>Daily</strong><span>Official job checks</span></div><div><strong>Private</strong><span>Account workspace</span></div><div><strong>24/7</strong><span>Online access</span></div></div><div className="hero-account-actions"><Link to="/register">Create account</Link><Link to="/login">Client login</Link></div></aside></section>

@@ -1,7 +1,7 @@
 import axios from 'axios'
 import {apiBase} from './apiBase'
 
-const CACHE_KEY='psp_service_catalog_v1'
+const CACHE_KEY='psp_service_catalog_v2'
 const MAX_AGE_MS=15*60*1000
 const STALE_MAX_AGE_MS=7*24*60*60*1000
 const REQUEST_TIMEOUT_MS=12000
@@ -32,4 +32,14 @@ export function slugifyServiceName(value:string){
 
 export function servicePath(service:any){
   return `/services/${service?.slug||slugifyServiceName(service?.name)}`
+}
+
+const ACTION_WORDS=new Set(['apply','application','applications','assistance','service','services'])
+export function serviceSearchTokens(value:string){
+  return String(value||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\bgovt\b/g,'government').split(' ').filter(token=>token&&!ACTION_WORDS.has(token))
+}
+
+export function isHomepageHighlightEligible(service:any){
+  const identity=`${service?.name||''} ${service?.catalog_name||''}`.toLowerCase()
+  return !identity.includes('official document pdf access')
 }

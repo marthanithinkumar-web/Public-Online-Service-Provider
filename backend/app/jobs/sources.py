@@ -37,6 +37,8 @@ class SourceDefinition:
     name: str
     listing_url: str
     parser: Callable[[str, str], list[JobItem]]
+    allow_missing_deadline: bool = False
+    missing_deadline_max_age_days: int = 45
 
 
 def clean(value):
@@ -48,6 +50,7 @@ def parse_date(value):
     if not text:
         return None
     for pattern in (
+        r'(?<!\d)(20\d{2})-(\d{1,2})-(\d{1,2})(?!\d)',
         r'\b(\d{1,2})[/-](\d{1,2})[/-](20\d{2})\b',
         r'\b(\d{1,2})\s+([A-Za-z]{3,9})\s+(20\d{2})\b',
         r'\b([A-Za-z]{3,9})\s+(\d{1,2})\s+(20\d{2})\b',
@@ -56,12 +59,23 @@ def parse_date(value):
         if not match:
             continue
         raw = ' '.join(match.groups())
-        for fmt in ('%d %m %Y', '%d %b %Y', '%d %B %Y', '%b %d %Y', '%B %d %Y'):
+        for fmt in ('%Y %m %d', '%d %m %Y', '%d %b %Y', '%d %B %Y', '%b %d %Y', '%B %d %Y'):
             try:
                 return datetime.strptime(raw, fmt).date()
             except ValueError:
                 pass
     return None
+
+
+def parse_all_dates(value):
+    text = clean(value).replace(',', ' ')
+    candidates = re.findall(
+        r'20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[/-]\d{1,2}[/-]20\d{2}|'
+        r'\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}|[A-Za-z]{3,9}\s+\d{1,2}\s+20\d{2}',
+        text,
+        re.I,
+    )
+    return [parsed for parsed in (parse_date(candidate) for candidate in candidates) if parsed]
 
 
 class OfficialHTMLParser(HTMLParser):
@@ -154,6 +168,13 @@ def parse_html(html):
     return parser
 
 
+def _visible_text(html):
+    """Return compact visible text for official pages without a data table."""
+    value = re.sub(r'<(?:script|style)\b[^>]*>.*?</(?:script|style)>', ' ', str(html or ''), flags=re.I | re.S)
+    value = re.sub(r'<[^>]+>', ' ', value)
+    return clean(unescape(value))
+
+
 def _table_records(document):
     for table in document.tables:
         rows = table
@@ -180,6 +201,373 @@ def _first(record, terms):
         if any(term in key for term in terms) and clean(value):
             return clean(value)
     return None
+
+
+def _row_url(record, base_url):
+    hrefs = [href for cell in record.get('_row', []) for href in cell.get('hrefs', []) if href]
+    if not hrefs:
+        return None
+    preferred = next((href for href in hrefs if re.search(r'\.pdf(?:$|\?)|attachment|notice|notification', href, re.I)), hrefs[0])
+    return urljoin(base_url, preferred)
+
+
+def _record_dates(record):
+    values = ' '.join(record.get('_values', []))
+    return parse_all_dates(values)
+
+
+def _deep_strings(value):
+    if isinstance(value, dict):
+        for child in value.values():
+            yield from _deep_strings(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _deep_strings(child)
+    elif isinstance(value, str):
+        yield clean(unescape(value))
+
+
+def _record_url(record, base_url, attachment_root=None):
+    candidates = []
+    for value in _deep_strings(record):
+        if re.search(r'https?://|^/|\.pdf(?:$|\?)|attachment', value, re.I):
+            candidates.append(value)
+    preferred = next((value for value in candidates if re.search(r'\.pdf(?:$|\?)|attachment', value, re.I)), None)
+    if not preferred:
+        preferred = next((value for value in candidates if value.startswith(('https://', '/'))), None)
+    if not preferred:
+        return None
+    if attachment_root and re.fullmatch(r'[^/]+\.pdf', preferred, re.I):
+        return urljoin(attachment_root, preferred)
+    return urljoin(base_url, preferred)
+
+
+def _looks_like_initial_recruitment(text):
+    lowered = clean(text).lower()
+    excluded = (
+        'result', 'answer key', 'admission certificate', 'admit card', 'exam city',
+        'city of examination', 'response sheet', 'marks of', 'allocation', 'schedule',
+        'corrigendum', 'addendum', 'cancellation', 'cancelled', 'shortlisted',
+        'physical test', 'document verification', 'typing test', 'skill test',
+    )
+    if any(term in lowered for term in excluded):
+        return False
+    return bool(re.search(
+        r'centralis(?:ed|zed) employment notice|detailed employment notice|'
+        r'^(?:notice (?:of|for) )?.+ examination,?\s*20\d{2}(?:\s*[-–—:].*)?$|'
+        r'notice of .+ examination|recruitment (?:notice|notification)|(?:direct )?recruitment for|'
+        r'notification for .*(?:post|recruitment)|advertisement for|filling up .+ post|'
+        r'vacanc(?:y|ies)|selection posts? examination',
+        lowered,
+    ))
+
+
+def parse_ssc(html, base_url):
+    """Read SSC's public notice-board JSON and keep recruitment openings only."""
+    try:
+        payload = json.loads(html)
+    except (TypeError, ValueError):
+        return []
+    items = []
+    seen = set()
+    for record in _walk_json(payload):
+        headline = _pick(record, 'headline', 'title', 'noticeTitle', 'subject')
+        if not headline or not _looks_like_initial_recruitment(headline):
+            continue
+        notice_url = _record_url(
+            record,
+            base_url,
+            attachment_root='https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/',
+        )
+        if not notice_url or notice_url in seen:
+            continue
+        seen.add(notice_url)
+        deadline_text = _pick(record, 'lastDate', 'closingDate', 'applicationEndDate', 'deadline')
+        deadline = parse_date(deadline_text)
+        issue_date = parse_date(_pick(record, 'createdAt', 'publishedAt', 'startDate', 'date'))
+        items.append(JobItem(
+            external_id=_pick(record, 'id', 'noticeId', 'examId') or notice_url,
+            title=headline,
+            organization='Staff Selection Commission (SSC)',
+            official_notice_url=notice_url,
+            location='India',
+            issue_date=issue_date,
+            deadline=deadline,
+            application_url='https://ssc.gov.in/login',
+            summary='Official SSC recruitment notice. Confirm post-wise qualifications, age limits, vacancies, fees and dates in the linked notice.',
+            confidence=0.92 if deadline else 0.84,
+            warnings=[] if deadline else ['The closing date must be confirmed in the official SSC notice.'],
+        ))
+    return items
+
+
+def parse_rrb(html, base_url):
+    """Read new Centralised Employment Notices from an official RRB board."""
+    document = parse_html(html)
+    items = []
+    seen = set()
+    for record in _table_records(document):
+        text = clean(' '.join(record.get('_values', [])))
+        if not re.search(r'\bCEN\s*\d{1,2}/20\d{2}\b', text, re.I):
+            continue
+        if not _looks_like_initial_recruitment(text):
+            continue
+        notice_url = _row_url(record, base_url)
+        if not notice_url or notice_url in seen:
+            continue
+        seen.add(notice_url)
+        cen = re.search(r'\bCEN\s*\d{1,2}/20\d{2}\b', text, re.I)
+        title_match = re.search(
+            r'(?:Employment Notice|Notice)\s*:\s*(.+?)(?:Application Link|Link\s*/|$)',
+            text,
+            re.I,
+        )
+        title = clean(title_match.group(1)) if title_match else f'{cen.group(0).upper()} Railway Recruitment'
+        dates = _record_dates(record)
+        issue_date = dates[0] if dates else None
+        deadline = dates[-1] if len(dates) > 1 and dates[-1] != issue_date else None
+        items.append(JobItem(
+            external_id=cen.group(0).upper().replace(' ', ''),
+            title=title[:500],
+            organization='Railway Recruitment Board (RRB)',
+            official_notice_url=notice_url,
+            location='India',
+            issue_date=issue_date,
+            deadline=deadline,
+            application_url=notice_url,
+            summary='Official Railway Recruitment Board employment notice. Confirm the participating RRB, posts, eligibility, fee and dates in the notice.',
+            confidence=0.92 if deadline else 0.84,
+            warnings=[] if deadline else ['The closing date must be confirmed in the official RRB notice.'],
+        ))
+    return items
+
+
+def parse_mha_ib(html, base_url):
+    """Read current Intelligence Bureau vacancies published by MHA."""
+    document = parse_html(html)
+    items = []
+    seen = set()
+    for index, record in enumerate(_table_records(document), start=1):
+        text = clean(' '.join(record.get('_values', [])))
+        if not re.search(r'intelligence bureau|\bIB\b', text, re.I):
+            continue
+        notice_url = _row_url(record, base_url)
+        if not notice_url or notice_url in seen:
+            continue
+        seen.add(notice_url)
+        title = _first(record, ('keyword', 'title', 'vacancy', 'subject')) or text
+        dates = _record_dates(record)
+        issue_date = dates[0] if dates else None
+        deadline = parse_date(_first(record, ('last date', 'closing date', 'deadline')))
+        if deadline is None and re.search(r'last date|closing date|deadline', text, re.I) and dates:
+            deadline = dates[-1]
+        items.append(JobItem(
+            external_id=f'mha-ib-{index}-{notice_url}',
+            title=title[:500],
+            organization='Intelligence Bureau / Ministry of Home Affairs',
+            official_notice_url=notice_url,
+            location='India',
+            issue_date=issue_date,
+            deadline=deadline,
+            application_url=notice_url,
+            summary='Official Intelligence Bureau or MHA vacancy circular. Confirm recruitment mode, eligibility and closing date in the linked document.',
+            confidence=0.9 if deadline else 0.83,
+            warnings=[] if deadline else ['The closing date must be confirmed in the official MHA notice.'],
+        ))
+    return items
+
+
+class ContextLinkParser(HTMLParser):
+    """Collect links with the latest visible heading at each heading level."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.links = []
+        self.headings = {}
+        self._heading = None
+        self._heading_text = []
+        self._link = None
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if tag in {'h1', 'h2', 'h3', 'h4'}:
+            self._heading = tag
+            self._heading_text = []
+        elif tag == 'a':
+            context = ' — '.join(self.headings[key] for key in ('h1', 'h2', 'h3', 'h4') if self.headings.get(key))
+            self._link = {'href': attributes.get('href', ''), 'text': [], 'context': context}
+
+    def handle_data(self, data):
+        if self._heading:
+            self._heading_text.append(data)
+        if self._link:
+            self._link['text'].append(data)
+
+    def handle_endtag(self, tag):
+        if tag == self._heading:
+            self.headings[tag] = clean(' '.join(self._heading_text))
+            level = int(tag[1])
+            for deeper in range(level + 1, 5):
+                self.headings.pop(f'h{deeper}', None)
+            self._heading = None
+            self._heading_text = []
+        elif tag == 'a' and self._link:
+            self._link['text'] = clean(' '.join(self._link['text']))
+            self.links.append(self._link)
+            self._link = None
+
+
+def parse_tgprb(html, base_url):
+    """Read active recruitment notification links from the TGPRB homepage."""
+    document = ContextLinkParser()
+    document.feed(html)
+    document.close()
+    items = []
+    seen = set()
+    for index, link in enumerate(document.links, start=1):
+        label = clean(link['text'])
+        context = clean(link['context'])
+        if not re.fullmatch(r'(?:recruitment\s+)?notification', label, re.I):
+            continue
+        if 'supplementary' in label.lower() or not context or 'recruitment' not in context.lower():
+            continue
+        notice_url = urljoin(base_url, link['href'])
+        if not link['href'] or notice_url in seen:
+            continue
+        seen.add(notice_url)
+        headings = [part.strip() for part in context.split(' — ') if part.strip()]
+        specific = next((part for part in reversed(headings) if not re.fullmatch(r'.*recruitment\s*[—-]?\s*20\d{2}', part, re.I)), headings[-1])
+        title = specific if 'recruitment' in specific.lower() else f'{specific} Recruitment'
+        items.append(JobItem(
+            external_id=f'tgprb-{index}-{notice_url}',
+            title=title[:500],
+            organization='Telangana Police Recruitment Board (TGPRB)',
+            official_notice_url=notice_url,
+            location='Telangana',
+            application_url=notice_url,
+            summary='Official Telangana Police recruitment notification. Confirm post codes, qualifications, age, fee, vacancies and dates in the linked notice.',
+            confidence=0.84,
+            warnings=['The closing date must be confirmed in the official TGPRB notification.'],
+        ))
+    return items
+
+
+def parse_india_post_vacancies(html, base_url):
+    """Read recent recruitment notices from India Post's official vacancy table."""
+    document = parse_html(html)
+    items = []
+    seen = set()
+    for index, record in enumerate(_table_records(document), start=1):
+        title = _first(record, ('title', 'vacancy', 'recruitment', 'subject'))
+        if not title:
+            values = record.get('_values', [])
+            title = values[1] if len(values) > 1 else None
+        if not title or not _looks_like_initial_recruitment(title):
+            continue
+        issue_date = parse_date(_first(record, ('published date', 'publication date', 'date')))
+        if issue_date is None:
+            dates = _record_dates(record)
+            issue_date = dates[-1] if dates else None
+        # An undated row cannot be safely treated as a current opening.
+        if issue_date is None:
+            continue
+        notice_url = _row_url(record, base_url)
+        if not notice_url or notice_url in seen:
+            continue
+        seen.add(notice_url)
+        items.append(JobItem(
+            external_id=f'india-post-{issue_date.isoformat()}-{index}-{title[:80]}',
+            title=title[:500],
+            organization='Department of Posts (India Post)',
+            official_notice_url=notice_url,
+            location='India',
+            issue_date=issue_date,
+            application_url=notice_url,
+            summary='Official India Post vacancy notice. Confirm post-wise eligibility, age, fee, vacancies, application method and closing date in the linked notice.',
+            confidence=0.84,
+            warnings=['The closing date must be confirmed in the official India Post vacancy notice.'],
+        ))
+    return items
+
+
+def parse_india_post_gds(html, base_url):
+    """Read the single active GDS engagement and its application dates."""
+    text = _visible_text(html)
+    title_match = re.search(
+        r'(Gramin Dak Sevak\s*\(GDS\)\s*Online Engagement.*?20\d{2})',
+        text,
+        re.I,
+    )
+    application_section = re.search(
+        r'Application Submission(.*?)(?:Edit\s*/?\s*Correction Window|Click Here|Important Notice|$)',
+        text,
+        re.I,
+    )
+    if not title_match or not application_section:
+        return []
+    application_dates = parse_all_dates(application_section.group(1))
+    if len(application_dates) < 2:
+        return []
+    start_date, deadline = application_dates[0], application_dates[-1]
+    if deadline < date.today():
+        return []
+
+    document = parse_html(html)
+    notice_url = next(
+        (urljoin(base_url, href) for href, label in document.links if href and re.search(r'notification|descriptive', label, re.I)),
+        base_url,
+    )
+    application_url = next(
+        (urljoin(base_url, href) for href, label in document.links if href and re.search(r'\b(?:register|apply)\b', label, re.I)),
+        base_url,
+    )
+    title = clean(title_match.group(1)).rstrip(' -–—:')
+    return [JobItem(
+        external_id=re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-'),
+        title=title[:500],
+        organization='Department of Posts (India Post)',
+        official_notice_url=notice_url,
+        location='India',
+        application_start_date=start_date,
+        deadline=deadline,
+        application_url=application_url,
+        summary='Active official India Post Gramin Dak Sevak engagement. Confirm circle-wise vacancies, eligibility, fee, reservation rules and documents on the official portal.',
+        confidence=0.96,
+    )]
+
+
+def parse_isro_opportunities(html, base_url):
+    """Read currently open recruitment rows from ISRO's consolidated official table."""
+    document = parse_html(html)
+    items = []
+    seen = set()
+    today = date.today()
+    for record in _table_records(document):
+        title = _first(record, ('post', 'position', 'recruitment'))
+        advert = _first(record, ('advertisement number', 'advertisement no', 'advt'))
+        deadline = parse_date(_first(record, ('last date', 'closing date', 'deadline')))
+        if not title or not advert or not deadline or deadline < today:
+            continue
+        notice_url = _row_url(record, base_url)
+        if not notice_url or notice_url in seen:
+            continue
+        seen.add(notice_url)
+        centre = _first(record, ('location', 'centre', 'center'))
+        opening_date = parse_date(_first(record, ('opening date', 'start date')))
+        items.append(JobItem(
+            external_id=advert,
+            title=title[:500],
+            organization='Indian Space Research Organisation (ISRO)',
+            official_notice_url=notice_url,
+            location=centre or 'India',
+            issue_date=opening_date,
+            application_start_date=opening_date,
+            deadline=deadline,
+            application_url=notice_url,
+            summary='Current opportunity listed by ISRO. Confirm the centre, qualifications, age, vacancies, fee and application instructions in the official notice.',
+            confidence=0.95,
+        ))
+    return items
 
 
 def parse_employment_news(html, base_url):
@@ -248,7 +636,7 @@ def parse_upsc(html, base_url):
             deadline=deadline,
             application_url='https://upsconline.nic.in/',
             summary='Official UPSC recruitment advertisement. Review the notice for post-specific eligibility, age limits, vacancies and fees.',
-            confidence=0.86 if deadline else 0.64,
+            confidence=0.9 if deadline else 0.84,
             warnings=[] if deadline else ['Post-specific deadline and eligibility require review of the official advertisement.'],
         ))
     return items
@@ -333,7 +721,20 @@ def parse_ncs(html, base_url):
 
 SOURCE_DEFINITIONS = (
     SourceDefinition('employment_news', 'Employment News', 'https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All', parse_employment_news),
-    SourceDefinition('upsc', 'Union Public Service Commission', 'https://www.upsc.gov.in/recruitment/recruitment-advertisement', parse_upsc),
+    SourceDefinition(
+        'ssc',
+        'Staff Selection Commission',
+        'https://ssc.gov.in/api/general-website/portal/notice-boards?page=1&limit=100&contentType=notice-boards&key=createdAt&order=DESC&isAttachment=true&language=english&attributes=id%2Cheadline%2CexamId%2CcontentType%2CredirectUrl%2CstartDate%2CendDate%2Clanguage%2CcreatedAt',
+        parse_ssc,
+        allow_missing_deadline=True,
+    ),
+    SourceDefinition('rrb', 'Railway Recruitment Board', 'https://www.rrbcdg.gov.in/', parse_rrb, allow_missing_deadline=True, missing_deadline_max_age_days=60),
+    SourceDefinition('upsc', 'Union Public Service Commission', 'https://www.upsc.gov.in/recruitment/recruitment-advertisement', parse_upsc, allow_missing_deadline=True),
+    SourceDefinition('mha_ib', 'Intelligence Bureau / Ministry of Home Affairs', 'https://www.mha.gov.in/en/notifications/vacancies?title=Intelligence%20Bureau', parse_mha_ib, allow_missing_deadline=True, missing_deadline_max_age_days=60),
+    SourceDefinition('tgprb', 'Telangana Police Recruitment Board', 'https://www.tgprb.in/', parse_tgprb, allow_missing_deadline=True, missing_deadline_max_age_days=60),
+    SourceDefinition('india_post_gds', 'India Post — GDS Online Engagement', 'https://www.indiapost.gov.in/gdsonlineengagement', parse_india_post_gds),
+    SourceDefinition('india_post', 'Department of Posts — Vacancies', 'https://www.indiapost.gov.in/vacancies', parse_india_post_vacancies, allow_missing_deadline=True, missing_deadline_max_age_days=45),
+    SourceDefinition('isro', 'Indian Space Research Organisation', 'https://www.isro.gov.in/ViewAllOpportunities.html', parse_isro_opportunities),
     SourceDefinition('ncs', 'National Career Service', 'https://www.ncs.gov.in/job-listing', parse_ncs),
 )
 

@@ -42,11 +42,11 @@
     "slug": "voter-id-address-constituency-change"
   },
   {
-    "name": "Aadhaar - Update Apply",
+    "name": "Apply Aadhaar - Update",
     "description": "Assistance for eligible Aadhaar demographic/document update processes; official rules apply.",
     "keywords": "aadhaar, aadhar, uidai, aadhaar update, aadhar update, demographic update",
     "category": "Identity & Citizen Documents",
-    "slug": "aadhaar-update-apply"
+    "slug": "apply-aadhaar-update"
   },
   {
     "name": "Passport - New Application",
@@ -63,18 +63,18 @@
     "slug": "passport-renewal-reissue"
   },
   {
-    "name": "Driving Licence / Learner Licence Apply",
+    "name": "Apply Driving Licence / Learner Licence",
     "description": "Assistance with eligible learner and driving licence application processes.",
     "keywords": "driving licence, driving license, dl, learner licence, llr, rto",
     "category": "Identity & Citizen Documents",
-    "slug": "driving-licence-learner-licence-apply"
+    "slug": "apply-driving-licence-learner-licence"
   },
   {
-    "name": "RC / Vehicle Apply",
+    "name": "Apply RC / Vehicle",
     "description": "Assistance with eligible vehicle-registration related online services.",
     "keywords": "rc, vehicle registration, transport, rto, vehicle service",
     "category": "Identity & Citizen Documents",
-    "slug": "rc-vehicle-apply"
+    "slug": "apply-rc-vehicle"
   },
   {
     "name": "Aadhaar PVC Card Order",
@@ -84,18 +84,18 @@
     "slug": "aadhaar-pvc-card-order"
   },
   {
-    "name": "DigiLocker Document Access Apply",
+    "name": "Apply DigiLocker Document Access",
     "description": "Guidance for finding and accessing eligible issued documents through DigiLocker. Clients sign in and complete OTP themselves.",
     "keywords": "digilocker, digital locker, issued documents, digital certificate, document access",
     "category": "Identity & Citizen Documents",
-    "slug": "digilocker-document-access-apply"
+    "slug": "apply-digilocker-document-access"
   },
   {
-    "name": "Official Document PDF Access Apply",
+    "name": "Apply Official Document PDF Access",
     "description": "Help clients access an available official PDF or digital copy through the relevant official portal. This service does not create, alter or replace an identity document; clients complete any OTP or portal authentication themselves.",
     "keywords": "pdf, document pdf, digital copy, download, aadhaar, aadhar, e-aadhaar, voter id, e-epic, pan, e-pan, abha, apaar, digilocker, ration card, driving licence, rc, certificate, marksheet",
     "category": "Identity & Citizen Documents",
-    "slug": "official-document-pdf-access-apply"
+    "slug": "apply-official-document-pdf-access"
   },
   {
     "name": "ePASS - Fresh Scholarship Application",
@@ -112,200 +112,200 @@
     "slug": "epass-scholarship-renewal"
   },
   {
-    "name": "National Scholarship Portal (NSP) Apply",
+    "name": "Apply National Scholarship Portal (NSP)",
     "description": "Assistance with eligible NSP scholarship applications and renewals.",
     "keywords": "nsp, national scholarship portal, scholarship, fresh, renewal",
     "category": "Scholarships & Student Welfare",
-    "slug": "national-scholarship-portal-nsp-apply"
+    "slug": "apply-national-scholarship-portal-nsp"
   },
   {
-    "name": "Pre-Matric Scholarship Apply",
+    "name": "Apply Pre-Matric Scholarship",
     "description": "Assistance with eligible pre-matric scholarship applications.",
     "keywords": "pre matric, scholarship, student, school",
     "category": "Scholarships & Student Welfare",
-    "slug": "pre-matric-scholarship-apply"
+    "slug": "apply-pre-matric-scholarship"
   },
   {
-    "name": "Post-Matric Scholarship Apply",
+    "name": "Apply Post-Matric Scholarship",
     "description": "Assistance with eligible post-matric scholarship applications.",
     "keywords": "post matric, scholarship, college, student",
     "category": "Scholarships & Student Welfare",
-    "slug": "post-matric-scholarship-apply"
+    "slug": "apply-post-matric-scholarship"
   },
   {
-    "name": "BC Welfare Scholarship Apply",
+    "name": "Apply BC Welfare Scholarship",
     "description": "Assistance with eligible BC welfare scholarship applications.",
     "keywords": "bc welfare, bc scholarship, backward classes, scholarship",
     "category": "Scholarships & Student Welfare",
-    "slug": "bc-welfare-scholarship-apply"
+    "slug": "apply-bc-welfare-scholarship"
   },
   {
-    "name": "SC Welfare Scholarship Apply",
+    "name": "Apply SC Welfare Scholarship",
     "description": "Assistance with eligible SC welfare scholarship applications.",
     "keywords": "sc welfare, sc scholarship, scheduled caste, scholarship",
     "category": "Scholarships & Student Welfare",
-    "slug": "sc-welfare-scholarship-apply"
+    "slug": "apply-sc-welfare-scholarship"
   },
   {
-    "name": "ST Welfare Scholarship Apply",
+    "name": "Apply ST Welfare Scholarship",
     "description": "Assistance with eligible ST welfare scholarship applications.",
     "keywords": "st welfare, st scholarship, scheduled tribe, scholarship",
     "category": "Scholarships & Student Welfare",
-    "slug": "st-welfare-scholarship-apply"
+    "slug": "apply-st-welfare-scholarship"
   },
   {
-    "name": "Minority Scholarship Apply",
+    "name": "Apply Minority Scholarship",
     "description": "Assistance with eligible minority scholarship applications.",
     "keywords": "minority scholarship, scholarship, student",
     "category": "Scholarships & Student Welfare",
-    "slug": "minority-scholarship-apply"
+    "slug": "apply-minority-scholarship"
   },
   {
-    "name": "EWS / Student Welfare Scholarship Apply",
+    "name": "Apply EWS / Student Welfare Scholarship",
     "description": "Assistance with eligible EWS and student welfare scholarship processes.",
     "keywords": "ews, scholarship, student welfare, education",
     "category": "Scholarships & Student Welfare",
-    "slug": "ews-student-welfare-scholarship-apply"
+    "slug": "apply-ews-student-welfare-scholarship"
   },
   {
-    "name": "Scholarship Application Status Apply",
+    "name": "Apply Scholarship Application Status",
     "description": "Assistance with checking eligible scholarship application status.",
     "keywords": "scholarship status, epass status, nsp status, application status",
     "category": "Scholarships & Student Welfare",
-    "slug": "scholarship-application-status-apply"
+    "slug": "apply-scholarship-application-status"
   },
   {
-    "name": "POLYCET Apply",
+    "name": "Apply POLYCET",
     "description": "Assistance with Polytechnic entrance application.",
     "keywords": "polycet, poly cet, polytechnic, diploma entrance, entrance exam",
     "category": "Entrance & Competitive Exams",
-    "slug": "polycet-apply"
+    "slug": "apply-polycet"
   },
   {
-    "name": "TG EAPCET / TS EAMCET Apply",
+    "name": "Apply TG EAPCET / TS EAMCET",
     "description": "Assistance with Telangana EAPCET application.",
     "keywords": "tg eapcet, ts eapcet, tseamcet, ts eamcet, eamcet, engineering, agriculture, pharmacy",
     "category": "Entrance & Competitive Exams",
-    "slug": "tg-eapcet-ts-eamcet-apply"
+    "slug": "apply-tg-eapcet-ts-eamcet"
   },
   {
-    "name": "AP EAPCET / AP EAMCET Apply",
+    "name": "Apply AP EAPCET / AP EAMCET",
     "description": "Assistance with Andhra Pradesh EAPCET application.",
     "keywords": "ap eapcet, ap eamcet, eamcet, engineering, agriculture, pharmacy",
     "category": "Entrance & Competitive Exams",
-    "slug": "ap-eapcet-ap-eamcet-apply"
+    "slug": "apply-ap-eapcet-ap-eamcet"
   },
   {
-    "name": "ECET Apply",
+    "name": "Apply ECET",
     "description": "Assistance with eligible engineering common entrance applications.",
     "keywords": "ecet, engineering common entrance, lateral entry",
     "category": "Entrance & Competitive Exams",
-    "slug": "ecet-apply"
+    "slug": "apply-ecet"
   },
   {
-    "name": "ICET Apply",
+    "name": "Apply ICET",
     "description": "Assistance with MBA/MCA entrance applications.",
     "keywords": "icet, mba, mca, entrance exam",
     "category": "Entrance & Competitive Exams",
-    "slug": "icet-apply"
+    "slug": "apply-icet"
   },
   {
-    "name": "PGECET Apply",
+    "name": "Apply PGECET",
     "description": "Assistance with postgraduate engineering entrance applications.",
     "keywords": "pgecet, pg ecet, mtech, engineering entrance",
     "category": "Entrance & Competitive Exams",
-    "slug": "pgecet-apply"
+    "slug": "apply-pgecet"
   },
   {
-    "name": "EdCET Apply",
+    "name": "Apply EdCET",
     "description": "Assistance with education entrance applications.",
     "keywords": "edcet, ed cet, bed, education entrance",
     "category": "Entrance & Competitive Exams",
-    "slug": "edcet-apply"
+    "slug": "apply-edcet"
   },
   {
-    "name": "LAWCET Apply",
+    "name": "Apply LAWCET",
     "description": "Assistance with law entrance applications.",
     "keywords": "lawcet, law cet, llb, llm, law entrance",
     "category": "Entrance & Competitive Exams",
-    "slug": "lawcet-apply"
+    "slug": "apply-lawcet"
   },
   {
-    "name": "CPGET Apply",
+    "name": "Apply CPGET",
     "description": "Assistance with postgraduate entrance applications.",
     "keywords": "cpget, pg entrance, osmania, postgraduate",
     "category": "Entrance & Competitive Exams",
-    "slug": "cpget-apply"
+    "slug": "apply-cpget"
   },
   {
-    "name": "NEET Apply",
+    "name": "Apply NEET",
     "description": "Assistance with NEET application preparation and official process.",
     "keywords": "neet, medical entrance, ug medical",
     "category": "Entrance & Competitive Exams",
-    "slug": "neet-apply"
+    "slug": "apply-neet"
   },
   {
-    "name": "JEE Main Apply",
+    "name": "Apply JEE Main",
     "description": "Assistance with JEE Main application preparation.",
     "keywords": "jee, jee main, engineering entrance, nta",
     "category": "Entrance & Competitive Exams",
-    "slug": "jee-main-apply"
+    "slug": "apply-jee-main"
   },
   {
-    "name": "CUET Apply",
+    "name": "Apply CUET",
     "description": "Assistance with CUET application preparation.",
     "keywords": "cuet, common university entrance, nta, university admission",
     "category": "Entrance & Competitive Exams",
-    "slug": "cuet-apply"
+    "slug": "apply-cuet"
   },
   {
-    "name": "UGC NET Apply",
+    "name": "Apply UGC NET",
     "description": "Assistance with UGC NET application preparation.",
     "keywords": "ugc net, net, nta, assistant professor, jrf",
     "category": "Entrance & Competitive Exams",
-    "slug": "ugc-net-apply"
+    "slug": "apply-ugc-net"
   },
   {
-    "name": "SSC Examination Apply",
+    "name": "Apply SSC Examination",
     "description": "Assistance with eligible SSC examination applications.",
     "keywords": "ssc, staff selection commission, cgl, chsl, mts, gd",
     "category": "Entrance & Competitive Exams",
-    "slug": "ssc-examination-apply"
+    "slug": "apply-ssc-examination"
   },
   {
-    "name": "UPSC Examination Apply",
+    "name": "Apply UPSC Examination",
     "description": "Assistance with eligible UPSC examination applications.",
     "keywords": "upsc, civil services, cds, nda, examination",
     "category": "Entrance & Competitive Exams",
-    "slug": "upsc-examination-apply"
+    "slug": "apply-upsc-examination"
   },
   {
-    "name": "Railway Examination Apply",
+    "name": "Apply Railway Examination",
     "description": "Assistance with eligible railway recruitment applications.",
     "keywords": "railway, rrb, rrc, ntpc, group d, technician",
     "category": "Entrance & Competitive Exams",
-    "slug": "railway-examination-apply"
+    "slug": "apply-railway-examination"
   },
   {
-    "name": "Banking Examination Apply",
+    "name": "Apply Banking Examination",
     "description": "Assistance with eligible banking recruitment applications.",
     "keywords": "bank, banking, ibps, sbi, clerk, po",
     "category": "Entrance & Competitive Exams",
-    "slug": "banking-examination-apply"
+    "slug": "apply-banking-examination"
   },
   {
-    "name": "TET Examination Apply",
+    "name": "Apply TET Examination",
     "description": "Assistance with eligible teacher eligibility test applications.",
     "keywords": "tet, tgt, teacher eligibility test, education, teacher",
     "category": "Entrance & Competitive Exams",
-    "slug": "tet-examination-apply"
+    "slug": "apply-tet-examination"
   },
   {
-    "name": "SET Examination Apply",
+    "name": "Apply SET Examination",
     "description": "Assistance with eligible state eligibility test applications.",
     "keywords": "set, state eligibility test, assistant professor",
     "category": "Entrance & Competitive Exams",
-    "slug": "set-examination-apply"
+    "slug": "apply-set-examination"
   },
   {
     "name": "BC Welfare Gurukulam Admission",
@@ -336,493 +336,493 @@
     "slug": "minority-residential-school-admission"
   },
   {
-    "name": "Sainik School Apply",
+    "name": "Apply Sainik School",
     "description": "Assistance with eligible Sainik School entrance applications.",
     "keywords": "sainik, sainik school, aissee, school admission",
     "category": "Gurukulam & Residential Schools",
-    "slug": "sainik-school-apply"
+    "slug": "apply-sainik-school"
   },
   {
-    "name": "Jawahar Navodaya Vidyalaya Apply",
+    "name": "Apply Jawahar Navodaya Vidyalaya",
     "description": "Assistance with eligible JNV/Navodaya applications.",
     "keywords": "navodaya, jawahar navodaya, jnv, class 6, class 9, admission",
     "category": "Gurukulam & Residential Schools",
-    "slug": "jawahar-navodaya-vidyalaya-apply"
+    "slug": "apply-jawahar-navodaya-vidyalaya"
   },
   {
-    "name": "Residential School Application Status Apply",
+    "name": "Apply Residential School Application Status",
     "description": "Assistance with checking eligible residential-school application status.",
     "keywords": "gurukulam status, residential school status, admission status",
     "category": "Gurukulam & Residential Schools",
-    "slug": "residential-school-application-status-apply"
+    "slug": "apply-residential-school-application-status"
   },
   {
-    "name": "IIIT Basara / RGUKT Admission Apply",
+    "name": "Apply IIIT Basara / RGUKT Admission",
     "description": "Assistance with eligible IIIT Basara/RGUKT admission applications.",
     "keywords": "iiit basara, rgukt, basara, iiit, btech admission, admission",
     "category": "Admissions",
-    "slug": "iiit-basara-rgukt-admission-apply"
+    "slug": "apply-iiit-basara-rgukt-admission"
   },
   {
-    "name": "Polytechnic Admission Apply",
+    "name": "Apply Polytechnic Admission",
     "description": "Assistance with eligible polytechnic counselling/admission processes.",
     "keywords": "polytechnic, diploma, admission, counselling",
     "category": "Admissions",
-    "slug": "polytechnic-admission-apply"
+    "slug": "apply-polytechnic-admission"
   },
   {
-    "name": "ITI Admission Apply",
+    "name": "Apply ITI Admission",
     "description": "Assistance with eligible ITI admission processes.",
     "keywords": "iti, industrial training institute, admission",
     "category": "Admissions",
-    "slug": "iti-admission-apply"
+    "slug": "apply-iti-admission"
   },
   {
-    "name": "Degree Admission Apply",
+    "name": "Apply Degree Admission",
     "description": "Assistance with eligible degree admission and counselling processes.",
     "keywords": "degree, ug, admission, counselling, college",
     "category": "Admissions",
-    "slug": "degree-admission-apply"
+    "slug": "apply-degree-admission"
   },
   {
-    "name": "Engineering Admission Apply",
+    "name": "Apply Engineering Admission",
     "description": "Assistance with eligible engineering admission/counselling processes.",
     "keywords": "engineering, btech, admission, counselling, eamcet",
     "category": "Admissions",
-    "slug": "engineering-admission-apply"
+    "slug": "apply-engineering-admission"
   },
   {
-    "name": "Medical Admission Apply",
+    "name": "Apply Medical Admission",
     "description": "Assistance with eligible medical admission processes.",
     "keywords": "medical, mbbs, bds, admission, neet, counselling",
     "category": "Admissions",
-    "slug": "medical-admission-apply"
+    "slug": "apply-medical-admission"
   },
   {
-    "name": "Skill Development Admission Apply",
+    "name": "Apply Skill Development Admission",
     "description": "Assistance with eligible government/approved skill-development applications.",
     "keywords": "skill development, training, vocational, admission",
     "category": "Admissions",
-    "slug": "skill-development-admission-apply"
+    "slug": "apply-skill-development-admission"
   },
   {
-    "name": "University / College Admission Form Apply",
+    "name": "Apply University / College Admission Form",
     "description": "Assistance with eligible online university and college admission forms.",
     "keywords": "college admission, university admission, application form",
     "category": "Admissions",
-    "slug": "university-college-admission-form-apply"
+    "slug": "apply-university-college-admission-form"
   },
   {
-    "name": "DOST Telangana Degree Admission Apply",
+    "name": "Apply DOST Telangana Degree Admission",
     "description": "Assistance with eligible Telangana DOST undergraduate admission applications and option entry.",
     "keywords": "dost, dost telangana, degree admission, undergraduate, option entry",
     "category": "Admissions",
-    "slug": "dost-telangana-degree-admission-apply"
+    "slug": "apply-dost-telangana-degree-admission"
   },
   {
-    "name": "Open School Admission / Examination Apply",
+    "name": "Apply Open School Admission / Examination",
     "description": "Assistance with eligible open-school admission, examination and status processes.",
     "keywords": "open school, nios, toss, admission, examination, distance education",
     "category": "Admissions",
-    "slug": "open-school-admission-examination-apply"
+    "slug": "apply-open-school-admission-examination"
   },
   {
-    "name": "Income Certificate Apply",
+    "name": "Apply Income Certificate",
     "description": "Assistance with eligible income certificate applications.",
     "keywords": "income certificate, income, certificate",
     "category": "Certificates & Public Documents",
-    "slug": "income-certificate-apply"
+    "slug": "apply-income-certificate"
   },
   {
-    "name": "Caste / Community Certificate Apply",
+    "name": "Apply Caste / Community Certificate",
     "description": "Assistance with eligible caste/community certificate applications.",
     "keywords": "caste certificate, community certificate, bc, sc, st, certificate",
     "category": "Certificates & Public Documents",
-    "slug": "caste-community-certificate-apply"
+    "slug": "apply-caste-community-certificate"
   },
   {
-    "name": "Residence / Domicile Certificate Apply",
+    "name": "Apply Residence / Domicile Certificate",
     "description": "Assistance with eligible residence/domicile certificate applications.",
     "keywords": "residence, domicile, nativity, address certificate",
     "category": "Certificates & Public Documents",
-    "slug": "residence-domicile-certificate-apply"
+    "slug": "apply-residence-domicile-certificate"
   },
   {
-    "name": "EWS Certificate Apply",
+    "name": "Apply EWS Certificate",
     "description": "Assistance with eligible EWS certificate applications.",
     "keywords": "ews, economically weaker section, certificate",
     "category": "Certificates & Public Documents",
-    "slug": "ews-certificate-apply"
+    "slug": "apply-ews-certificate"
   },
   {
-    "name": "Birth Certificate Apply",
+    "name": "Apply Birth Certificate",
     "description": "Assistance with eligible birth certificate services.",
     "keywords": "birth certificate, birth, certificate",
     "category": "Certificates & Public Documents",
-    "slug": "birth-certificate-apply"
+    "slug": "apply-birth-certificate"
   },
   {
-    "name": "Death Certificate Apply",
+    "name": "Apply Death Certificate",
     "description": "Assistance with eligible death certificate services.",
     "keywords": "death certificate, death, certificate",
     "category": "Certificates & Public Documents",
-    "slug": "death-certificate-apply"
+    "slug": "apply-death-certificate"
   },
   {
-    "name": "Marriage Certificate Apply",
+    "name": "Apply Marriage Certificate",
     "description": "Assistance with eligible marriage certificate services.",
     "keywords": "marriage certificate, marriage, certificate",
     "category": "Certificates & Public Documents",
-    "slug": "marriage-certificate-apply"
+    "slug": "apply-marriage-certificate"
   },
   {
-    "name": "Family / Legal Heir Certificate Apply",
+    "name": "Apply Family / Legal Heir Certificate",
     "description": "Assistance with eligible family/legal heir certificate processes.",
     "keywords": "family certificate, legal heir, heir certificate",
     "category": "Certificates & Public Documents",
-    "slug": "family-legal-heir-certificate-apply"
+    "slug": "apply-family-legal-heir-certificate"
   },
   {
-    "name": "Disability Certificate Apply",
+    "name": "Apply Disability Certificate",
     "description": "Assistance with eligible disability certificate processes.",
     "keywords": "disability certificate, pwd, udid, certificate",
     "category": "Certificates & Public Documents",
-    "slug": "disability-certificate-apply"
+    "slug": "apply-disability-certificate"
   },
   {
-    "name": "Non-Creamy Layer Certificate Apply",
+    "name": "Apply Non-Creamy Layer Certificate",
     "description": "Assistance with eligible non-creamy-layer certificate applications.",
     "keywords": "non creamy layer, ncl, obc certificate, bc certificate",
     "category": "Certificates & Public Documents",
-    "slug": "non-creamy-layer-certificate-apply"
+    "slug": "apply-non-creamy-layer-certificate"
   },
   {
-    "name": "Police Clearance Certificate Apply",
+    "name": "Apply Police Clearance Certificate",
     "description": "Assistance with eligible police-clearance certificate application steps and appointments.",
     "keywords": "police clearance, pcc, clearance certificate, police verification",
     "category": "Certificates & Public Documents",
-    "slug": "police-clearance-certificate-apply"
+    "slug": "apply-police-clearance-certificate"
   },
   {
-    "name": "Encumbrance Certificate Apply",
+    "name": "Apply Encumbrance Certificate",
     "description": "Assistance with eligible encumbrance-certificate searches and applications through the official process.",
     "keywords": "encumbrance certificate, ec, property document, registration",
     "category": "Certificates & Public Documents",
-    "slug": "encumbrance-certificate-apply"
+    "slug": "apply-encumbrance-certificate"
   },
   {
-    "name": "Land Record / Pahani / Adangal Apply",
+    "name": "Apply Land Record / Pahani / Adangal",
     "description": "Assistance with eligible land-record, Pahani, Adangal or record-of-rights services.",
     "keywords": "land record, pahani, adangal, ror, dharani, meebhoomi",
     "category": "Certificates & Public Documents",
-    "slug": "land-record-pahani-adangal-apply"
+    "slug": "apply-land-record-pahani-adangal"
   },
   {
-    "name": "Government Job Apply",
+    "name": "Apply Government Job",
     "description": "Assistance with eligible government recruitment applications.",
     "keywords": "government job, govt job, recruitment, application, job",
     "category": "Government Jobs & Employment",
-    "slug": "government-job-apply"
+    "slug": "apply-government-job"
   },
   {
-    "name": "State Government Job Apply",
+    "name": "Apply State Government Job",
     "description": "Assistance with eligible state government recruitment applications.",
     "keywords": "state government job, recruitment, job application",
     "category": "Government Jobs & Employment",
-    "slug": "state-government-job-apply"
+    "slug": "apply-state-government-job"
   },
   {
-    "name": "Police / Defence Recruitment Apply",
+    "name": "Apply Police / Defence Recruitment",
     "description": "Assistance with eligible police and defence recruitment applications.",
     "keywords": "police, defence, army, navy, air force, recruitment",
     "category": "Government Jobs & Employment",
-    "slug": "police-defence-recruitment-apply"
+    "slug": "apply-police-defence-recruitment"
   },
   {
-    "name": "Employment Registration Apply",
+    "name": "Apply Employment Registration",
     "description": "Assistance with eligible employment registration processes.",
     "keywords": "employment registration, job seeker, employment exchange",
     "category": "Government Jobs & Employment",
-    "slug": "employment-registration-apply"
+    "slug": "apply-employment-registration"
   },
   {
-    "name": "Job Application Correction / Status Apply",
+    "name": "Apply Job Application Correction / Status",
     "description": "Assistance with eligible application corrections and status checks.",
     "keywords": "job correction, application correction, status, recruitment",
     "category": "Government Jobs & Employment",
-    "slug": "job-application-correction-status-apply"
+    "slug": "apply-job-application-correction-status"
   },
   {
-    "name": "Apprenticeship Apply",
+    "name": "Apply Apprenticeship",
     "description": "Assistance with eligible apprenticeship registration/application processes.",
     "keywords": "apprenticeship, apprentice, training, employment",
     "category": "Government Jobs & Employment",
-    "slug": "apprenticeship-apply"
+    "slug": "apply-apprenticeship"
   },
   {
-    "name": "EPFO UAN Activation Apply",
+    "name": "Apply EPFO UAN Activation",
     "description": "Guidance for eligible EPFO UAN activation through the official process. Clients complete OTP themselves.",
     "keywords": "epfo, uan, uan activation, provident fund, pf",
     "category": "Government Jobs & Employment",
-    "slug": "epfo-uan-activation-apply"
+    "slug": "apply-epfo-uan-activation"
   },
   {
-    "name": "EPF Claim / Transfer / Status Apply",
+    "name": "Apply EPF Claim / Transfer / Status",
     "description": "Guidance for eligible EPF claim, transfer and status processes. Clients authorize official steps themselves.",
     "keywords": "epf, pf claim, provident fund, pf transfer, claim status, epfo",
     "category": "Government Jobs & Employment",
-    "slug": "epf-claim-transfer-status-apply"
+    "slug": "apply-epf-claim-transfer-status"
   },
   {
-    "name": "e-Shram Registration / Update Apply",
+    "name": "Apply e-Shram Registration / Update",
     "description": "Assistance with eligible e-Shram registration and profile-update processes.",
     "keywords": "eshram, e shram, unorganised worker, labour card, worker registration",
     "category": "Government Jobs & Employment",
-    "slug": "e-shram-registration-update-apply"
+    "slug": "apply-e-shram-registration-update"
   },
   {
-    "name": "National Career Service Registration Apply",
+    "name": "Apply National Career Service Registration",
     "description": "Assistance with eligible National Career Service job-seeker registration and profile setup.",
     "keywords": "ncs, national career service, job seeker, employment registration",
     "category": "Government Jobs & Employment",
-    "slug": "national-career-service-registration-apply"
+    "slug": "apply-national-career-service-registration"
   },
   {
-    "name": "ESIC e-Pehchan / Benefit Apply",
+    "name": "Apply ESIC e-Pehchan / Benefit",
     "description": "Guidance for eligible ESIC e-Pehchan and benefit-related online processes.",
     "keywords": "esic, esi, e pehchan, employee insurance, benefit",
     "category": "Government Jobs & Employment",
-    "slug": "esic-e-pehchan-benefit-apply"
+    "slug": "apply-esic-e-pehchan-benefit"
   },
   {
-    "name": "Government Scheme Apply",
+    "name": "Apply Government Scheme",
     "description": "Assistance with eligible central/state government scheme applications.",
     "keywords": "government scheme, scheme, welfare, application",
     "category": "Government Schemes & Welfare",
-    "slug": "government-scheme-apply"
+    "slug": "apply-government-scheme"
   },
   {
-    "name": "Pension Apply",
+    "name": "Apply Pension",
     "description": "Assistance with eligible pension and social security applications.",
     "keywords": "pension, social security, welfare",
     "category": "Government Schemes & Welfare",
-    "slug": "pension-apply"
+    "slug": "apply-pension"
   },
   {
-    "name": "Farmer Scheme Apply",
+    "name": "Apply Farmer Scheme",
     "description": "Assistance with eligible farmer welfare scheme applications.",
     "keywords": "farmer, agriculture, farmer scheme, welfare",
     "category": "Government Schemes & Welfare",
-    "slug": "farmer-scheme-apply"
+    "slug": "apply-farmer-scheme"
   },
   {
-    "name": "Senior Citizen Apply",
+    "name": "Apply Senior Citizen",
     "description": "Assistance with eligible senior citizen public-service applications.",
     "keywords": "senior citizen, welfare, public service",
     "category": "Government Schemes & Welfare",
-    "slug": "senior-citizen-apply"
+    "slug": "apply-senior-citizen"
   },
   {
-    "name": "Women & Child Welfare Scheme Apply",
+    "name": "Apply Women & Child Welfare Scheme",
     "description": "Assistance with eligible women and child welfare schemes.",
     "keywords": "women welfare, child welfare, welfare scheme",
     "category": "Government Schemes & Welfare",
-    "slug": "women-child-welfare-scheme-apply"
+    "slug": "apply-women-child-welfare-scheme"
   },
   {
-    "name": "Disability Welfare Scheme Apply",
+    "name": "Apply Disability Welfare Scheme",
     "description": "Assistance with eligible disability welfare schemes.",
     "keywords": "disability welfare, pwd, welfare scheme",
     "category": "Government Schemes & Welfare",
-    "slug": "disability-welfare-scheme-apply"
+    "slug": "apply-disability-welfare-scheme"
   },
   {
-    "name": "Housing Scheme Apply",
+    "name": "Apply Housing Scheme",
     "description": "Assistance with eligible government housing-scheme applications.",
     "keywords": "housing scheme, house, welfare, government scheme",
     "category": "Government Schemes & Welfare",
-    "slug": "housing-scheme-apply"
+    "slug": "apply-housing-scheme"
   },
   {
-    "name": "PM-KISAN Registration / Status Apply",
+    "name": "Apply PM-KISAN Registration / Status",
     "description": "Assistance with eligible PM-KISAN registration, correction and payment-status processes.",
     "keywords": "pm kisan, pmkisan, farmer, registration, beneficiary status",
     "category": "Government Schemes & Welfare",
-    "slug": "pm-kisan-registration-status-apply"
+    "slug": "apply-pm-kisan-registration-status"
   },
   {
-    "name": "Ayushman Bharat / PM-JAY Eligibility Apply",
+    "name": "Apply Ayushman Bharat / PM-JAY Eligibility",
     "description": "Guidance for checking eligible Ayushman Bharat or PM-JAY beneficiary and card processes.",
     "keywords": "ayushman bharat, pmjay, pm jay, health card, eligibility",
     "category": "Government Schemes & Welfare",
-    "slug": "ayushman-bharat-pm-jay-eligibility-apply"
+    "slug": "apply-ayushman-bharat-pm-jay-eligibility"
   },
   {
-    "name": "ABHA Health ID Apply",
+    "name": "Apply ABHA Health ID",
     "description": "Guidance for eligible ABHA health-ID creation and profile processes. Clients complete OTP themselves.",
     "keywords": "abha, health id, ayushman bharat health account, digital health",
     "category": "Government Schemes & Welfare",
-    "slug": "abha-health-id-apply"
+    "slug": "apply-abha-health-id"
   },
   {
-    "name": "Ration Card - New / Member Update Apply",
+    "name": "Apply Ration Card - New / Member Update",
     "description": "Assistance with eligible ration-card applications, member additions and corrections.",
     "keywords": "ration card, food security card, member add, ration update, new ration",
     "category": "Government Schemes & Welfare",
-    "slug": "ration-card-new-member-update-apply"
+    "slug": "apply-ration-card-new-member-update"
   },
   {
-    "name": "Widow / Single Women Pension Apply",
+    "name": "Apply Widow / Single Women Pension",
     "description": "Assistance with eligible widow or single-women pension application processes.",
     "keywords": "widow pension, single women pension, aasara, social security",
     "category": "Government Schemes & Welfare",
-    "slug": "widow-single-women-pension-apply"
+    "slug": "apply-widow-single-women-pension"
   },
   {
-    "name": "Labour Welfare Board Apply",
+    "name": "Apply Labour Welfare Board",
     "description": "Assistance with eligible labour-welfare-board registration, renewal and benefit applications.",
     "keywords": "labour welfare, construction worker, labour card, worker benefit",
     "category": "Government Schemes & Welfare",
-    "slug": "labour-welfare-board-apply"
+    "slug": "apply-labour-welfare-board"
   },
   {
-    "name": "MeeSeva / Public Service Apply",
+    "name": "Apply MeeSeva / Public Service",
     "description": "Assistance with eligible MeeSeva and public-service applications.",
     "keywords": "meeseva, mee seva, public service, online service",
     "category": "Other Online Public Services",
-    "slug": "meeseva-public-service-apply"
+    "slug": "apply-meeseva-public-service"
   },
   {
-    "name": "Government Application Status Apply",
+    "name": "Apply Government Application Status",
     "description": "Assistance with checking eligible government application status.",
     "keywords": "application status, status check, government",
     "category": "Other Online Public Services",
-    "slug": "government-application-status-apply"
+    "slug": "apply-government-application-status"
   },
   {
-    "name": "Government Form Filling Apply",
+    "name": "Apply Government Form Filling",
     "description": "Assistance with eligible online government form filling and document upload.",
     "keywords": "form filling, online form, government form, application",
     "category": "Other Online Public Services",
-    "slug": "government-form-filling-apply"
+    "slug": "apply-government-form-filling"
   },
   {
-    "name": "Government Appointment Booking Apply",
+    "name": "Apply Government Appointment Booking",
     "description": "Assistance with eligible online appointment booking.",
     "keywords": "appointment, booking, government appointment",
     "category": "Other Online Public Services",
-    "slug": "government-appointment-booking-apply"
+    "slug": "apply-government-appointment-booking"
   },
   {
-    "name": "Online Document Upload Apply",
+    "name": "Apply Online Document Upload",
     "description": "Assistance with preparing and uploading eligible documents to official portals.",
     "keywords": "document upload, online upload, application documents",
     "category": "Other Online Public Services",
-    "slug": "online-document-upload-apply"
+    "slug": "apply-online-document-upload"
   },
   {
-    "name": "Government Portal Account Apply",
+    "name": "Apply Government Portal Account",
     "description": "Assistance with eligible public-portal registration and account setup.",
     "keywords": "portal registration, government portal, account, registration",
     "category": "Other Online Public Services",
-    "slug": "government-portal-account-apply"
+    "slug": "apply-government-portal-account"
   },
   {
-    "name": "Udyam MSME Registration Apply",
+    "name": "Apply Udyam MSME Registration",
     "description": "Assistance with eligible Udyam/MSME registration through the official portal.",
     "keywords": "udyam, msme, micro enterprise, small business, business registration",
     "category": "Business & Licence Assistance",
-    "slug": "udyam-msme-registration-apply"
+    "slug": "apply-udyam-msme-registration"
   },
   {
-    "name": "GST Registration Apply",
+    "name": "Apply GST Registration",
     "description": "Form-filling guidance for eligible GST registration applications. Tax advice is not provided.",
     "keywords": "gst, gst registration, goods services tax, business tax registration",
     "category": "Business & Licence Assistance",
-    "slug": "gst-registration-apply"
+    "slug": "apply-gst-registration"
   },
   {
-    "name": "FSSAI Registration / Licence Apply",
+    "name": "Apply FSSAI Registration / Licence",
     "description": "Assistance with eligible FSSAI food-business registration or licence applications.",
     "keywords": "fssai, food licence, food license, food business, registration",
     "category": "Business & Licence Assistance",
-    "slug": "fssai-registration-licence-apply"
+    "slug": "apply-fssai-registration-licence"
   },
   {
-    "name": "Shop & Establishment Registration Apply",
+    "name": "Apply Shop & Establishment Registration",
     "description": "Assistance with eligible shop-and-establishment registration or renewal processes.",
     "keywords": "shop establishment, trade registration, labour department, business licence",
     "category": "Business & Licence Assistance",
-    "slug": "shop-establishment-registration-apply"
+    "slug": "apply-shop-establishment-registration"
   },
   {
-    "name": "Municipal Trade Licence Apply",
+    "name": "Apply Municipal Trade Licence",
     "description": "Assistance with eligible municipal trade-licence application and renewal processes.",
     "keywords": "trade licence, trade license, municipal, business licence, renewal",
     "category": "Business & Licence Assistance",
-    "slug": "municipal-trade-licence-apply"
+    "slug": "apply-municipal-trade-licence"
   },
   {
-    "name": "Electricity New Connection / Name Change Apply",
+    "name": "Apply Electricity New Connection / Name Change",
     "description": "Assistance with eligible electricity-connection applications and account-name changes.",
     "keywords": "electricity connection, power connection, name change, electricity service",
     "category": "Utility & Civic Services",
-    "slug": "electricity-new-connection-name-change-apply"
+    "slug": "apply-electricity-new-connection-name-change"
   },
   {
-    "name": "Electricity Bill Payment Apply",
+    "name": "Apply Electricity Bill Payment",
     "description": "Guidance for paying electricity bills through the official provider. Clients complete payment authorization themselves.",
     "keywords": "electricity bill, power bill, bill payment, utility",
     "category": "Utility & Civic Services",
-    "slug": "electricity-bill-payment-apply"
+    "slug": "apply-electricity-bill-payment"
   },
   {
-    "name": "Water Connection / Bill Apply",
+    "name": "Apply Water Connection / Bill",
     "description": "Assistance with eligible water-connection, account and bill-payment processes.",
     "keywords": "water connection, water bill, utility, municipal water",
     "category": "Utility & Civic Services",
-    "slug": "water-connection-bill-apply"
+    "slug": "apply-water-connection-bill"
   },
   {
-    "name": "Property Tax Payment / Assessment Apply",
+    "name": "Apply Property Tax Payment / Assessment",
     "description": "Guidance for eligible property-tax search, assessment and payment processes.",
     "keywords": "property tax, house tax, municipal tax, assessment",
     "category": "Utility & Civic Services",
-    "slug": "property-tax-payment-assessment-apply"
+    "slug": "apply-property-tax-payment-assessment"
   },
   {
-    "name": "LPG Connection / Subsidy Status Apply",
+    "name": "Apply LPG Connection / Subsidy Status",
     "description": "Guidance for eligible LPG connection and subsidy-status processes.",
     "keywords": "lpg, gas connection, cylinder, subsidy, dbtl",
     "category": "Utility & Civic Services",
-    "slug": "lpg-connection-subsidy-status-apply"
+    "slug": "apply-lpg-connection-subsidy-status"
   },
   {
-    "name": "Railway Ticket Booking Apply",
+    "name": "Apply Railway Ticket Booking",
     "description": "Guidance for railway ticket search and booking through the official railway process. Clients complete OTP and payment directly on the official portal.",
     "keywords": "railway, train, ticket, tickets, booking, irctc, travel",
     "category": "Travel & Ticketing Assistance",
-    "slug": "railway-ticket-booking-apply"
+    "slug": "apply-railway-ticket-booking"
   },
   {
-    "name": "Government Bus Ticket Booking Apply",
+    "name": "Apply Government Bus Ticket Booking",
     "description": "Guidance for bus search and booking through the relevant official transport portal. Clients complete OTP and payment themselves.",
     "keywords": "bus ticket, government bus, tsrtc, apsrtc, ticket booking, travel",
     "category": "Travel & Ticketing Assistance",
-    "slug": "government-bus-ticket-booking-apply"
+    "slug": "apply-government-bus-ticket-booking"
   },
   {
-    "name": "Student Bus Pass Apply",
+    "name": "Apply Student Bus Pass",
     "description": "Help with a student bus-pass application or renewal.",
     "keywords": "bus pass, student bus pass, concession pass, tgsrtc, tsrtc, apsrtc, renewal",
     "category": "Travel & Ticketing Assistance",
-    "slug": "student-bus-pass-apply"
+    "slug": "apply-student-bus-pass"
   },
   {
-    "name": "General Bus Pass Apply",
+    "name": "Apply General Bus Pass",
     "description": "Help with a general commuter bus-pass application or renewal.",
     "keywords": "bus pass, general bus pass, commuter pass, tgsrtc, tsrtc, apsrtc, renewal",
     "category": "Travel & Ticketing Assistance",
-    "slug": "general-bus-pass-apply"
+    "slug": "apply-general-bus-pass"
   }
 ]
