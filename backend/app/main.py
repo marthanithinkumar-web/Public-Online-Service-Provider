@@ -6,7 +6,8 @@ from .utils.database import db
 from .utils.schema_compat import ensure_user_schema
 from .models.user import User
 from .models.service import Category, Service
-from .routes import auth, services, orders, admin, reviews, grievances, categories, notifications, messages
+from .models.job import JobSource
+from .routes import auth, services, orders, admin, reviews, grievances, categories, notifications, messages, jobs
 from flask_cors import CORS
 from flask_migrate import Migrate
 from flask_talisman import Talisman
@@ -67,6 +68,11 @@ def ensure_default_services():
         residence.official_fee_status='known';residence.official_fee_inr=80.0
     db.session.commit()
 
+
+def ensure_job_sources():
+    from .jobs.sync import ensure_job_sources as ensure_sources
+    ensure_sources()
+
 def create_app():
     validate_runtime_security()
     database_uri=os.getenv('DATABASE_URL','sqlite:///psp.db')
@@ -99,8 +105,9 @@ def create_app():
             db.create_all()
             ensure_user_schema(db)
             ensure_default_services()
+            ensure_job_sources()
             ensure_admin_user()
-    app.register_blueprint(auth.bp,url_prefix='/api/auth');app.register_blueprint(services.bp,url_prefix='/api/services');app.register_blueprint(orders.bp,url_prefix='/api/orders');app.register_blueprint(admin.bp,url_prefix='/api/admin');app.register_blueprint(reviews.bp,url_prefix='/api/reviews');app.register_blueprint(grievances.bp,url_prefix='/api/grievances');app.register_blueprint(categories.bp,url_prefix='/api/categories');app.register_blueprint(notifications.bp,url_prefix='/api/notifications');app.register_blueprint(messages.bp,url_prefix='/api/messages');app.register_blueprint(__import__('app.routes.uploads',fromlist=['bp']).bp,url_prefix='/api/uploads')
+    app.register_blueprint(auth.bp,url_prefix='/api/auth');app.register_blueprint(services.bp,url_prefix='/api/services');app.register_blueprint(orders.bp,url_prefix='/api/orders');app.register_blueprint(admin.bp,url_prefix='/api/admin');app.register_blueprint(reviews.bp,url_prefix='/api/reviews');app.register_blueprint(grievances.bp,url_prefix='/api/grievances');app.register_blueprint(categories.bp,url_prefix='/api/categories');app.register_blueprint(notifications.bp,url_prefix='/api/notifications');app.register_blueprint(messages.bp,url_prefix='/api/messages');app.register_blueprint(jobs.bp,url_prefix='/api/jobs');app.register_blueprint(__import__('app.routes.uploads',fromlist=['bp']).bp,url_prefix='/api/uploads')
     @app.get('/')
     def index():return jsonify({'message':'Public Online Service Provider API'})
     @app.get('/health')

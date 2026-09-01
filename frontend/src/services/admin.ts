@@ -24,6 +24,22 @@ export async function fetchAdminOverview(){
   return (await api.get('/admin/overview', { headers: authHeader() })).data
 }
 
+export async function fetchAdminJobs(filters:Record<string,string|number>={}){
+  return (await api.get('/admin/jobs',{params:filters,headers:authHeader()})).data
+}
+
+export async function fetchAdminJobSources(){
+  return (await api.get('/admin/job-sources',{headers:authHeader()})).data
+}
+
+export async function updateAdminJob(id:number,payload:any){
+  return (await api.patch(`/admin/jobs/${id}`,payload,{headers:authHeader()})).data
+}
+
+export async function synchronizeJobs(){
+  return (await api.post('/admin/jobs/synchronize',{}, {headers:authHeader(),timeout:90000})).data
+}
+
 export async function fetchAdminUsers(page=1, q=''){
   return (await api.get('/admin/users', { params:{page, per_page:20, q}, headers:authHeader() })).data
 }

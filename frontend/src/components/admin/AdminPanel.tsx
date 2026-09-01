@@ -12,10 +12,12 @@ import NotificationManagement from './NotificationManagement'
 import ActivityReports from './ActivityReports'
 import AdminSettings from './AdminSettings'
 import MessageManagement from './MessageManagement'
+import JobManagement from './JobManagement'
 
 const links=[
   ['/admin/dashboard','Dashboard'],
   ['/admin/orders','Applications'],
+  ['/admin/jobs','Job Feed Management'],
   ['/admin/users','Clients'],
   ['/admin/services','Services & Fees'],
   ['/admin/documents','Documents'],
@@ -31,16 +33,18 @@ function AdminLinks({pathname}:{pathname:string}){return <>{links.map(([path,lab
 
 export default function AdminPanel(){
   const location=useLocation()
+  const pageTitle=links.find(([path])=>location.pathname===path||location.pathname.startsWith(`${path}/`))?.[1]||'Administration'
   return <div className="admin-workspace">
     <aside className="admin-sidebar"><div className="admin-sidebar-title"><strong>Administration</strong><small>Authorized provider workspace</small></div><nav aria-label="Admin navigation"><AdminLinks pathname={location.pathname}/></nav><div className="admin-sidebar-notice">Only authorized admins can view client records and documents.</div></aside>
     <details className="admin-mobile-menu"><summary>Administration menu</summary><nav><AdminLinks pathname={location.pathname}/></nav></details>
     <main className="admin-panel">
-      <div className="section-header admin-page-heading"><div><h1>Admin Dashboard</h1></div><Link className="btn btn-secondary" to="/">Public site</Link></div>
+      <div className="section-header admin-page-heading"><div><span className="eyebrow">Authorized workspace</span><h1>{pageTitle}</h1></div><Link className="btn btn-secondary" to="/">Public site</Link></div>
       <Routes>
         <Route index element={<Navigate to="/admin/dashboard" replace/>}/>
         <Route path="/dashboard" element={<AdminDashboard/>}/>
         <Route path="/orders" element={<OrderManagement/>}/>
         <Route path="/orders/:id" element={<AdminOrderDetail/>}/>
+        <Route path="/jobs" element={<JobManagement/>}/>
         <Route path="/services" element={<ServiceManagement/>}/>
         <Route path="/grievances" element={<GrievanceManagement/>}/>
         <Route path="/reviews" element={<ReviewManagement/>}/>
