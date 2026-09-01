@@ -6,8 +6,7 @@ on:
     paths:
       - '.github/workflows/job-notifications.yml'
       - 'backend/app/jobs/**'
-      - 'backend/app/models/job.py'
-      - 'backend/migrations_alembic/versions/20260831_14_job_notifications.py'
+      - 'backend/app/routes/jobs.py'
   schedule:
     # 07:45 Asia/Kolkata every day (02:15 UTC).
     - cron: '15 2 * * *'
@@ -22,38 +21,58 @@ concurrency:
 
 jobs:
   refresh:
-    name: Verify and refresh official notices
+    name: Wake production and refresh official notices
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      DATABASE_URL: ${{ secrets.NEON_BACKUP_DATABASE_URL }}
-      SKIP_DATABASE_BOOTSTRAP: '1'
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: pip
-          cache-dependency-path: backend/requirements.txt
-
-      - name: Verify database configuration
-        shell: bash
+      - name: Wake production job feed and wait for refresh
+        env:
+          JOBS_URL: https://public-online-service-provider-api.onrender.com/api/jobs/
+          SOURCES_URL: https://public-online-service-provider-api.onrender.com/api/jobs/sources
         run: |
-          set -Eeuo pipefail
-          if [[ -z "${DATABASE_URL:-}" ]]; then
-            echo "::error::The existing NEON_BACKUP_DATABASE_URL GitHub secret is required."
-            exit 1
-          fi
-          case "${DATABASE_URL}" in
-            postgresql://*|postgres://*) ;;
-            *) echo "::error::NEON_BACKUP_DATABASE_URL must be a PostgreSQL connection URL."; exit 1 ;;
-          esac
+          python3 - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.request
+          from datetime import datetime, timedelta
 
-      - name: Install application dependencies
-        working-directory: backend
-        run: python -m pip install --disable-pip-version-check -r requirements.txt
+          def get_json(url):
+              separator = '&' if '?' in url else '?'
+              request = urllib.request.Request(
+                  f'{url}{separator}probe={time.time_ns()}',
+                  headers={
+                      'User-Agent': 'POSP official job refresh/1.0',
+                      'Cache-Control': 'no-cache',
+                  },
+              )
+              with urllib.request.urlopen(request, timeout=120) as response:
+                  return json.load(response)
 
-      - name: Refresh allowlisted official sources
-        working-directory: backend
-        run: python -m app.jobs.sync
+          started = datetime.utcnow()
+          last_error = None
+          for attempt in range(75):
+              try:
+                  # Both endpoints can safely trigger the guarded refresh. The
+                  # production process and PostgreSQL advisory locks ensure that
+                  # at most one refresh runs in each 20-hour window.
+                  get_json(os.environ['JOBS_URL'])
+                  data = get_json(os.environ['SOURCES_URL'])
+                  recent = []
+                  for source in data.get('items', []):
+                      completed = source.get('last_sync_completed_at')
+                      if source.get('last_sync_status') == 'success' and completed:
+                          parsed = datetime.fromisoformat(completed.replace('Z', '+00:00')).replace(tzinfo=None)
+                          if parsed >= started - timedelta(hours=26):
+                              recent.append(source['name'])
+                  if recent:
+                      print('Successful official sources:', ', '.join(recent))
+                      raise SystemExit(0)
+                  last_error = 'No official source has completed successfully yet.'
+              except Exception as exc:
+                  last_error = str(exc)
+              print(f'Waiting for production refresh ({attempt + 1}/75): {last_error}')
+              time.sleep(10)
+
+          raise SystemExit(f'Production refresh did not complete: {last_error}')
+          PY
