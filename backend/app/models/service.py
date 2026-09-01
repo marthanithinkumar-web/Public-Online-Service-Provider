@@ -38,6 +38,7 @@ class Service(db.Model):
             'id': self.id,
             'slug': slugify(display_name),
             'name': display_name,
+            'catalog_name': self.name,
             'description': self.description,
             'price_inr': float(self.price_inr or 0.0),
             'official_fee_inr': float(self.official_fee_inr) if self.official_fee_inr is not None else None,

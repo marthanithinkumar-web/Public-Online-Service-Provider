@@ -7,7 +7,14 @@ import requests
 
 ALLOWED_HOSTS = {
     'employmentnews.gov.in', 'www.employmentnews.gov.in',
+    'ssc.gov.in', 'www.ssc.gov.in',
+    'rrbcdg.gov.in', 'www.rrbcdg.gov.in', 'rrbapply.gov.in', 'www.rrbapply.gov.in',
     'upsc.gov.in', 'www.upsc.gov.in', 'upsconline.nic.in', 'www.upsconline.nic.in',
+    'mha.gov.in', 'www.mha.gov.in',
+    'tgprb.in', 'www.tgprb.in', 'doc.tgprb.in',
+    'indiapost.gov.in', 'www.indiapost.gov.in',
+    'indiapostgdsonline.gov.in', 'www.indiapostgdsonline.gov.in',
+    'isro.gov.in', 'www.isro.gov.in',
     'ncs.gov.in', 'www.ncs.gov.in',
 }
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
@@ -33,7 +40,7 @@ def fetch_official_page(url, session=None):
     response.raise_for_status()
     validate_official_url(response.url)
     content_type = (response.headers.get('Content-Type') or '').lower()
-    if content_type and not any(kind in content_type for kind in ('text/html', 'application/xhtml+xml')):
+    if content_type and not any(kind in content_type for kind in ('text/html', 'application/xhtml+xml', 'application/json', 'text/json', 'text/plain')):
         raise ValueError('Official source returned an unsupported content type.')
     chunks = []
     size = 0

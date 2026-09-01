@@ -35,7 +35,7 @@ def ensure_job_sources():
         db.session.commit()
 
 
-def upsert_item(source, item):
+def upsert_item(source, item, allow_missing_deadline=False, missing_deadline_max_age_days=45):
     validate_official_url(item.official_notice_url)
     if item.application_url:
         validate_official_url(item.application_url)
@@ -71,7 +71,11 @@ def upsert_item(source, item):
             limits = {'title': 500, 'organization': 500, 'official_notice_url': 1200, 'application_url': 1200}
             value = value[:limits.get(field, 600)]
         setattr(existing, field, value)
-    proposed = target_status(item)
+    proposed = target_status(
+        item,
+        allow_missing_deadline=allow_missing_deadline,
+        missing_deadline_max_age_days=missing_deadline_max_age_days,
+    )
     if previous_status == 'hidden':
         existing.status = 'hidden'
     elif proposed == 'expired':
@@ -99,7 +103,12 @@ def sync_source(source, session=None):
         published = 0
         duplicates = 0
         for item in items:
-            job, _, duplicate = upsert_item(source, item)
+            job, _, duplicate = upsert_item(
+                source,
+                item,
+                allow_missing_deadline=definition.allow_missing_deadline,
+                missing_deadline_max_age_days=definition.missing_deadline_max_age_days,
+            )
             duplicates += int(duplicate)
             published += int(job.status == 'published')
         source.fetched_count = len(items)
@@ -127,9 +136,17 @@ def expire_old_jobs():
     ).all()
     for job in expired:
         job.status = 'expired'
-    if expired:
+    undated_cutoff = utc_now() - timedelta(days=60)
+    stale_undated = JobNotification.query.filter(
+        JobNotification.deadline.is_(None),
+        JobNotification.last_seen_at < undated_cutoff,
+        JobNotification.status.in_(['published', 'needs_review']),
+    ).all()
+    for job in stale_undated:
+        job.status = 'expired'
+    if expired or stale_undated:
         db.session.commit()
-    return len(expired)
+    return len(expired) + len(stale_undated)
 
 
 def sync_all_sources(session=None):

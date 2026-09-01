@@ -172,5 +172,32 @@ input,select,textarea{border-color:#d6e0eb!important}.btn,.search-submit,button{
 
 /* Phone-first finishing pass for the public feed and authenticated workspaces. */
 .job-card-heading>div{min-width:0}.job-results-summary{margin:7px 0 0;color:var(--muted);font-size:.78rem}.jobs-search input{width:100%}.job-filter-tabs{scrollbar-width:thin}.job-filter-tabs button{touch-action:manipulation}.source-chip-list>a small{min-width:0;overflow-wrap:anywhere}
+.job-search-forward{display:flex;align-items:center;justify-content:center;min-height:44px;padding:10px 13px;border:1px solid #bed4f2;border-radius:10px;background:#eef6ff;color:#075fcf;font-weight:850;text-align:center}
 @media(max-width:700px){.site-header{position:sticky;top:0;padding-top:0}.site-header-inner{min-height:58px;padding-top:7px;padding-bottom:7px}.brand-lockup{max-width:calc(100vw - 122px)}.brand-lockup>span{overflow:hidden}.site-header .brand,.brand-lockup small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.header-actions>.header-search,.header-actions>.mobile-menu-btn{min-height:44px}.page-content{width:100%}.jobs-page,.job-detail-page{gap:14px}.jobs-hero h1{font-size:clamp(1.85rem,9vw,2.45rem);letter-spacing:-.035em}.jobs-hero>p{font-size:.92rem;line-height:1.55}.jobs-search{width:100%;margin-top:18px}.jobs-search input{min-height:48px;font-size:16px}.jobs-search button{width:100%;min-height:48px}.jobs-directory,.job-source-transparency{border-radius:16px}.jobs-directory>.section-header{gap:13px}.job-filter-tabs{max-width:100%;padding-bottom:3px;scroll-snap-type:x proximity}.job-filter-tabs button{flex:0 0 auto;min-width:102px;min-height:44px;scroll-snap-align:start}.job-card{gap:14px}.job-card-heading h3{overflow-wrap:anywhere}.job-card-footer .btn{min-height:44px}.job-deadline{padding:12px 0 0;border-top:1px solid #e2e8ef}.source-chip-list>a{align-items:start}.source-chip-list>a small{grid-column:2}.job-source-transparency{padding:18px}.job-detail-deadline{min-width:0}.job-detail-header h1{font-size:clamp(1.75rem,8vw,2.35rem);overflow-wrap:anywhere}.table-scroll{margin-inline:-12px;padding-inline:12px;overscroll-behavior-inline:contain}.support-chat-panel{max-height:calc(100dvh - 94px)}}
 @media(max-width:420px){.brand-lockup small{display:none}.concept-hero h1{font-size:2rem!important}.jobs-hero{padding:23px 15px}.latest-jobs,.crucial-services,.jobs-directory{padding:14px}.job-card{padding:14px}.job-type-icon{width:42px;height:42px;flex-basis:42px}.job-admin-summary{grid-template-columns:1fr}.admin-record-actions{grid-template-columns:1fr}.job-source-health article{grid-template-columns:auto minmax(0,1fr)}.job-source-health article>a{grid-column:2;overflow-wrap:anywhere}}
+
+/* Smartphone-first safeguards used by every public and authenticated screen. */
+@media(max-width:600px){
+  .container{width:100%;padding-inline:10px}
+  .content-section,.dashboard-section,.admin-panel,.service-detail-card,.public-info-card{padding:16px;border-radius:16px}
+  .service-card-top,.request-contact-summary,.fee-summary-title{align-items:flex-start;flex-direction:column;gap:8px}
+  .service-price{max-width:none;text-align:left}
+  .request-card-main{align-items:flex-start;min-width:0}.request-card-main>div{min-width:0}.request-card h3,.request-card p{overflow-wrap:anywhere}
+  .request-card-side,.request-card-actions{align-items:flex-start;flex-direction:column;gap:9px}
+  .request-card-actions a{display:inline-flex;align-items:center;min-height:44px}
+  .admin-filters{display:grid;grid-template-columns:1fr;padding:12px}.admin-filters label:first-child{min-width:0}.admin-filters button{width:100%;min-height:46px}
+  .button-row{display:grid;grid-template-columns:1fr;width:100%}.button-row>*{width:100%}
+  .form-grid,.service-profile-grid,.admin-profile-grid{grid-template-columns:1fr!important}
+  .popular-searches .filter-tabs{flex-wrap:nowrap;max-width:100%;overflow-x:auto;padding-bottom:4px;scroll-snap-type:x proximity}
+  .popular-searches .filter-tabs button{flex:0 0 auto;min-height:44px;scroll-snap-align:start;white-space:nowrap}
+  .hero-search-panel .service-list{max-height:60dvh}
+  .footer-grid{gap:22px}.footer-links a,.footer-contact a{display:inline-flex;align-items:center;min-height:42px}
+  .support-chat-panel{inset:auto 8px 66px;width:auto;max-height:calc(100dvh - 78px)}
+  .support-chat-panel .chat-thread{max-height:42dvh}
+}
+@media(max-width:380px){
+  .brand-lockup{max-width:calc(100vw - 104px)}.brand-mark{width:34px;height:34px;flex-basis:34px}
+  .homepage-search-box{display:grid}.homepage-search-box .search-submit{min-height:46px;margin:0 6px 6px}
+  .hero-highlight-grid{grid-template-columns:1fr}.hero-highlight-grid div{border-right:0}.hero-highlight-grid div:nth-last-child(-n+2){border-bottom:1px solid var(--line)}.hero-highlight-grid div:last-child{border-bottom:0}
+  .job-card-heading{gap:10px}.job-type-icon{width:40px;height:40px;flex-basis:40px}
+}

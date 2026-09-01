@@ -23,6 +23,8 @@ async function fetchSnapshot(){
 
 function filterSnapshot(data:JobFeedData,params:Record<string,string|number|boolean>){
   const term=String(params.q||'').trim().toLowerCase()
+  const aliases:Record<string,string>={govt:'government',railways:'railway'}
+  const tokens=Array.from(new Set(term.replace(/[^a-z0-9]+/g,' ').split(' ').filter(Boolean).map(token=>aliases[token]||token)))
   const type=String(params.type||'').trim().toLowerCase()
   const featured=['1','true','yes'].includes(String(params.featured||'').toLowerCase())
   const requested=Number(params.limit||30)
@@ -30,9 +32,10 @@ function filterSnapshot(data:JobFeedData,params:Record<string,string|number|bool
   const items=(data.items||[]).filter(job=>{
     if(type&&job.job_type!==type)return false
     if(featured&&!job.is_featured)return false
-    if(!term)return true
-    return [job.title,job.organization,job.qualification,job.location]
-      .some(value=>String(value||'').toLowerCase().includes(term))
+    if(!tokens.length)return true
+    const searchable=[job.title,job.organization,job.qualification,job.location,job.source?.name,job.source?.key]
+      .map(value=>String(value||'').toLowerCase()).join(' ')
+    return tokens.every(token=>searchable.includes(token))
   }).slice(0,limit)
   return {...data,items,count:items.length}
 }

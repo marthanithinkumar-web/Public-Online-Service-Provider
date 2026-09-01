@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useState} from 'react'
 import {Link} from 'react-router-dom'
-import {fetchServiceCatalog,readCachedServices,servicePath} from '../../services/serviceCatalog'
+import {fetchServiceCatalog,isHomepageHighlightEligible,readCachedServices,servicePath} from '../../services/serviceCatalog'
 
 const preferred=['income certificate','scholarship','government job','aadhaar','birth certificate','ration card']
 const categoryName=(service:any)=>typeof service.category==='string'?service.category:service.category?.name||'Public service'
@@ -12,7 +12,7 @@ export default function ServicesSection(){
   useEffect(()=>{let active=true;fetchServiceCatalog(true).then(items=>{if(active)setServices(items)}).catch(()=>{}).finally(()=>{if(active)setLoading(false)});return()=>{active=false}},[])
 
   const popular=useMemo(()=>{
-    const available=services.filter(service=>service.is_active!==false)
+    const available=services.filter(service=>service.is_active!==false&&isHomepageHighlightEligible(service))
     const chosen:any[]=[]
     preferred.forEach(term=>{
       const remaining=available.filter(service=>!chosen.includes(service))
