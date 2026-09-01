@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "generated_at": null,
+  "items": [],
+  "sources": [
+    {
+      "key": "employment_news",
+      "name": "Employment News",
+      "listing_url": "https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All",
+      "enabled": true,
+      "last_sync_completed_at": null,
+      "last_sync_status": "not_run",
+      "fetched_count": 0,
+      "published_count": 0
+    },
+    {
+      "key": "upsc",
+      "name": "Union Public Service Commission",
+      "listing_url": "https://www.upsc.gov.in/recruitment/recruitment-advertisement",
+      "enabled": true,
+      "last_sync_completed_at": null,
+      "last_sync_status": "not_run",
+      "fetched_count": 0,
+      "published_count": 0
+    },
+    {
+      "key": "ncs",
+      "name": "National Career Service",
+      "listing_url": "https://www.ncs.gov.in/job-listing",
+      "enabled": true,
+      "last_sync_completed_at": null,
+      "last_sync_status": "not_run",
+      "fetched_count": 0,
+      "published_count": 0
+    }
+  ],
+  "count": 0,
+  "review_count": 0,
+  "successful_sources": 0
+}

@@ -24,7 +24,7 @@ jobs:
       - name: Check backup and restore shell syntax
         run: bash -n scripts/backup_postgres_to_b2.sh scripts/restore_postgres_from_b2.sh
       - name: Compile backup safety helpers
-        run: python -m py_compile scripts/b2_backup_catalog.py scripts/check_restore_target.py
+        run: python -m py_compile scripts/b2_backup_catalog.py scripts/check_restore_target.py backend/pre_migrate.py
 
   backend:
     name: Backend tests

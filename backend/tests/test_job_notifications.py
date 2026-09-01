@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta, timezone
 
 from app.jobs.sources import JobItem, SourceDefinition, parse_employment_news, parse_upsc
+from app.jobs.snapshot import build_snapshot
 from app.jobs.sync import fetch_official_page, sync_is_due, sync_source, trigger_background_sync, upsert_item
 from app.models.job import JobNotification, JobSource
 from app.models.user import User
@@ -144,3 +145,63 @@ def test_refresh_is_due_only_without_a_recent_success(client):
 def test_background_refresh_is_disabled_during_tests(client):
     with client.application.app_context():
         assert trigger_background_sync(client.application) is False
+
+
+def test_public_snapshot_publishes_only_complete_official_notices():
+    pages = {
+        'employmentnews.gov.in': '''<table><tr><th>Advertisement No.</th><th>Organization</th><th>Post</th><th>Last Date</th></tr>
+        <tr><td>EN-99</td><td>National Test Board</td><td>Assistant Posts</td><td>30 September 2099</td></tr></table>''',
+        'upsc.gov.in': '''<ul><li>Advertisement No.52 - 2099, closing date 29 September 2099
+        <a href="/sites/default/files/advt-52-2099.pdf">Official recruitment advertisement</a></li></ul>''',
+        'ncs.gov.in': '<html><body>No server-embedded job records in this fixture.</body></html>',
+    }
+
+    class Response:
+        encoding = 'utf-8'
+        headers = {'Content-Type': 'text/html; charset=utf-8'}
+        def __init__(self, url, body): self.url, self.body = url, body
+        def raise_for_status(self): pass
+        def iter_content(self, chunk_size): yield self.body.encode()
+
+    class Session:
+        def get(self, url, **_kwargs):
+            host = next(key for key in pages if key in url)
+            return Response(url, pages[host])
+
+    now = datetime(2099, 8, 1, tzinfo=timezone.utc)
+    snapshot = build_snapshot(session=Session(), now=now)
+    assert snapshot['successful_sources'] == 3
+    assert snapshot['count'] == 2
+    assert snapshot['review_count'] == 0
+    assert all(job['status'] == 'published' for job in snapshot['items'])
+    assert all(job['deadline'] for job in snapshot['items'])
+    assert all(job['official_notice_url'].startswith('https://') for job in snapshot['items'])
+
+
+def test_public_snapshot_keeps_verified_open_jobs_during_temporary_source_failure():
+    complete = _item(deadline=date(2099, 9, 30))
+    html = '''<table><tr><th>Advertisement No.</th><th>Organization</th><th>Post</th><th>Last Date</th></tr>
+    <tr><td>notice-1</td><td>Official Recruitment Board</td><td>Assistant Officer</td><td>30 September 2099</td></tr></table>'''
+
+    class Response:
+        url = 'https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All'
+        encoding = 'utf-8'
+        headers = {'Content-Type': 'text/html'}
+        def raise_for_status(self): pass
+        def iter_content(self, chunk_size): yield html.encode()
+
+    class FirstSession:
+        def get(self, url, **_kwargs):
+            if 'employmentnews.gov.in' in url: return Response()
+            raise RuntimeError('temporary source failure')
+
+    first = build_snapshot(session=FirstSession(), now=datetime(2099, 8, 1, tzinfo=timezone.utc))
+    assert first['count'] == 1
+
+    class FailedSession:
+        def get(self, *_args, **_kwargs): raise RuntimeError('temporary source failure')
+
+    second = build_snapshot(first, session=FailedSession(), now=datetime(2099, 8, 2, tzinfo=timezone.utc))
+    assert second['successful_sources'] == 0
+    assert second['count'] == 1
+    assert second['items'][0]['title'] == complete.title

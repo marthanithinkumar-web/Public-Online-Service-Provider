@@ -7,13 +7,14 @@ on:
       - '.github/workflows/job-notifications.yml'
       - 'backend/app/jobs/**'
       - 'backend/app/routes/jobs.py'
+      - 'frontend/src/services/jobs.ts'
   schedule:
     # 07:45 Asia/Kolkata every day (02:15 UTC).
     - cron: '15 2 * * *'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: official-job-notification-refresh
@@ -21,58 +22,78 @@ concurrency:
 
 jobs:
   refresh:
-    name: Wake production and refresh official notices
+    name: Refresh verified public job data
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Wake production job feed and wait for refresh
+      - name: Check out current website
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install official-source fetch dependency
+        run: python -m pip install --disable-pip-version-check requests==2.32.5
+
+      - name: Build verified public job snapshot
+        env:
+          PYTHONPATH: backend
+        run: python -m app.jobs.snapshot --output frontend/public/data/jobs.json
+
+      - name: Validate snapshot structure
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path('frontend/public/data/jobs.json').read_text(encoding='utf-8'))
+          assert data['schema_version'] == 1
+          assert isinstance(data['items'], list)
+          assert isinstance(data['sources'], list) and data['sources']
+          for item in data['items']:
+              assert item['status'] == 'published'
+              assert item['deadline']
+              assert item['official_notice_url'].startswith('https://')
+          print(f"Validated {len(data['items'])} published notice(s) from {len(data['sources'])} configured source(s).")
+          PY
+
+      - name: Publish snapshot when it changed
+        run: |
+          if git diff --quiet -- frontend/public/data/jobs.json; then
+            echo "No snapshot change to publish."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/public/data/jobs.json
+          git commit -m "Refresh verified official job snapshot [skip ci]"
+          git pull --rebase origin main
+          git push
+
+      - name: Probe database-backed job feed
+        continue-on-error: true
         env:
           JOBS_URL: https://public-online-service-provider-api.onrender.com/api/jobs/
           SOURCES_URL: https://public-online-service-provider-api.onrender.com/api/jobs/sources
         run: |
-          python3 - <<'PY'
+          python - <<'PY'
           import json
           import os
           import time
           import urllib.request
-          from datetime import datetime, timedelta
 
           def get_json(url):
               separator = '&' if '?' in url else '?'
               request = urllib.request.Request(
                   f'{url}{separator}probe={time.time_ns()}',
-                  headers={
-                      'User-Agent': 'POSP official job refresh/1.0',
-                      'Cache-Control': 'no-cache',
-                  },
+                  headers={'User-Agent': 'POSP official job refresh/2.0', 'Cache-Control': 'no-cache'},
               )
               with urllib.request.urlopen(request, timeout=120) as response:
                   return json.load(response)
 
-          started = datetime.utcnow()
-          last_error = None
-          for attempt in range(75):
-              try:
-                  # Both endpoints can safely trigger the guarded refresh. The
-                  # production process and PostgreSQL advisory locks ensure that
-                  # at most one refresh runs in each 20-hour window.
-                  get_json(os.environ['JOBS_URL'])
-                  data = get_json(os.environ['SOURCES_URL'])
-                  recent = []
-                  for source in data.get('items', []):
-                      completed = source.get('last_sync_completed_at')
-                      if source.get('last_sync_status') == 'success' and completed:
-                          parsed = datetime.fromisoformat(completed.replace('Z', '+00:00')).replace(tzinfo=None)
-                          if parsed >= started - timedelta(hours=26):
-                              recent.append(source['name'])
-                  if recent:
-                      print('Successful official sources:', ', '.join(recent))
-                      raise SystemExit(0)
-                  last_error = 'No official source has completed successfully yet.'
-              except Exception as exc:
-                  last_error = str(exc)
-              print(f'Waiting for production refresh ({attempt + 1}/75): {last_error}')
-              time.sleep(10)
-
-          raise SystemExit(f'Production refresh did not complete: {last_error}')
+          jobs = get_json(os.environ['JOBS_URL'])
+          sources = get_json(os.environ['SOURCES_URL'])
+          print(f"Production API ready: {jobs.get('count', 0)} job(s), {len(sources.get('items', []))} source(s).")
           PY
