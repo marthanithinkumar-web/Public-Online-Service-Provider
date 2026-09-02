@@ -1,5 +1,6 @@
 """Constrained HTTP access for approved official recruitment sources."""
 
+import random
 import time
 from urllib.parse import urlparse
 
@@ -20,8 +21,18 @@ ALLOWED_HOSTS = {
 }
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
 MAX_ATTEMPTS = 3
-RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
-RETRY_DELAYS_SECONDS = (0.0, 0.6, 1.5)
+# Government portals commonly return these codes temporarily to automated
+# server-side checks even while the same page remains available to browsers.
+TRANSIENT_STATUS_CODES = {403, 408, 425, 429, 500, 502, 503, 504}
+RETRY_DELAYS_SECONDS = (0.0, 0.8, 2.0)
+BROWSER_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                  '(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/json;q=0.9,text/plain;q=0.8,*/*;q=0.5',
+    'Accept-Language': 'en-IN,en;q=0.9',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+}
 
 
 class OfficialSourceUnavailable(RuntimeError):
@@ -53,26 +64,32 @@ def _read_safe_response(response):
     return b''.join(chunks).decode(encoding, errors='replace')
 
 
+def _retry_delay(attempt):
+    # Small jitter prevents every worker/deploy from retrying a government site
+    # at exactly the same instant after a transient outage or rate limit.
+    return RETRY_DELAYS_SECONDS[attempt] + random.uniform(0.0, 0.35)
+
+
 def fetch_official_page(url, session=None):
     """Fetch an allowlisted official page with bounded transient retries.
 
-    Safety/validation errors are never retried. Timeouts, connection failures and
-    explicitly retryable HTTP status codes receive a few short attempts. This
-    keeps one temporary government-site outage from breaking the verified feed.
+    Previously verified notices are handled by the sync layer, so a temporary
+    upstream/network/access-control failure never invalidates cached job data.
+    Safety errors (unapproved redirects/content) still fail immediately.
     """
     validate_official_url(url)
     client = session or requests.Session()
     last_reason = 'temporary network error'
     for attempt in range(MAX_ATTEMPTS):
         if attempt:
-            time.sleep(RETRY_DELAYS_SECONDS[attempt])
+            time.sleep(_retry_delay(attempt))
         try:
             response = client.get(
                 url,
-                timeout=(8, 25),
+                timeout=(10, 30),
                 allow_redirects=True,
                 stream=True,
-                headers={'User-Agent': 'PublicOnlineServiceProvider/1.0 (+independent job-notice index)'},
+                headers=BROWSER_HEADERS,
             )
         except (requests.Timeout, requests.ConnectionError) as exc:
             last_reason = 'timeout' if isinstance(exc, requests.Timeout) else 'connection failure'
@@ -82,18 +99,16 @@ def fetch_official_page(url, session=None):
                 f'Official source is temporarily unavailable after {MAX_ATTEMPTS} attempts ({last_reason}).'
             ) from None
 
-        # Validate every redirect destination before processing its body. A
-        # redirect outside the approved host set is a safety error, not a
-        # transient failure, and must fail immediately.
+        # Never follow/process a redirect outside the strict official allowlist.
         validate_official_url(response.url)
         status_code = getattr(response, 'status_code', 200)
-        if status_code in RETRYABLE_STATUS_CODES:
+        if status_code in TRANSIENT_STATUS_CODES:
             last_reason = f'HTTP {status_code}'
+            try:
+                response.close()
+            except Exception:
+                pass
             if attempt + 1 < MAX_ATTEMPTS:
-                try:
-                    response.close()
-                except Exception:
-                    pass
                 continue
             raise OfficialSourceUnavailable(
                 f'Official source is temporarily unavailable after {MAX_ATTEMPTS} attempts ({last_reason}).'
