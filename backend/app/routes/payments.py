@@ -104,6 +104,44 @@ def _email_receipt(payment):
     return send_email(order.email, f'Payment receipt for request {order.order_code}', receipt_text(order, payment))
 
 
+def _provider_payment(payment_id, credentials):
+    response = requests.get(f'{RAZORPAY_API}/payments/{payment_id}', auth=credentials, timeout=15)
+    response.raise_for_status()
+    return response.json()
+
+
+def _validate_provider_payment(payment, entity):
+    if not entity or str(entity.get('id') or '') != str(payment.razorpay_payment_id or entity.get('id') or ''):
+        raise ValueError('Razorpay payment id does not match this payment.')
+    if str(entity.get('order_id') or '') != payment.razorpay_order_id:
+        raise ValueError('Razorpay order id does not match this request.')
+    if int(entity.get('amount') or -1) != int(payment.amount_paise):
+        raise ValueError('Razorpay payment amount does not match the expected amount.')
+    if str(entity.get('currency') or '').upper() != payment.currency.upper():
+        raise ValueError('Razorpay payment currency does not match the expected currency.')
+
+
+def _mark_captured(payment):
+    was_captured = _captured(payment)
+    payment.status = 'captured'
+    payment.captured_at = payment.captured_at or utc_now()
+    payment.failure_code = None
+    payment.failure_description = None
+    if not was_captured:
+        label = {
+            'assistance_fee': 'assistance fee',
+            'official_fee': 'official fee',
+            'request_total': 'combined request fees',
+        }.get(payment.purpose, 'request payment')
+        db.session.add(Notification(
+            user_id=payment.order.user_id,
+            order_id=payment.order_id,
+            title='Request payment received',
+            message=f'Your {label} payment for request {payment.order.order_code} was received successfully. Your payment receipt is now available in the request.',
+        ))
+    return not was_captured
+
+
 @bp.get('/config')
 def payment_config():
     credentials = _credentials()
@@ -185,11 +223,38 @@ def verify_checkout(order_id):
     expected = hmac.new(credentials[1].encode('utf-8'), f'{payment.razorpay_order_id}|{payment_id}'.encode('utf-8'), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(expected, signature):
         return jsonify({'error': 'Payment signature verification failed.'}), 400
+
+    try:
+        provider_entity = _provider_payment(payment_id, credentials)
+    except requests.RequestException:
+        return jsonify({'error': 'Payment signature was valid, but Razorpay status could not be confirmed yet. Please retry shortly.'}), 502
+
     payment.razorpay_payment_id = payment_id
-    if not _captured(payment):
-        payment.status = 'authorized'
+    try:
+        _validate_provider_payment(payment, provider_entity)
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify({'error': str(exc)}), 400
+
+    provider_status = str(provider_entity.get('status') or '').lower()
+    send_receipt = False
+    if provider_status == 'captured':
+        send_receipt = _mark_captured(payment)
+    elif provider_status == 'authorized':
+        if not _captured(payment):
+            payment.status = 'authorized'
+    elif provider_status == 'failed':
+        payment.status = 'failed'
+        payment.failure_code = str(provider_entity.get('error_code') or '')[:120] or None
+        payment.failure_description = str(provider_entity.get('error_description') or '')[:1000] or None
+    else:
+        return jsonify({'error': f'Razorpay payment is not ready for confirmation yet (status: {provider_status or "unknown"}).'}), 409
+
     db.session.commit()
-    return jsonify({'message': 'Payment authorised. Final confirmation will update automatically after capture.', 'payment': _payment_payload(payment)})
+    if send_receipt:
+        _email_receipt(payment)
+    message = 'Payment captured and confirmed.' if provider_status == 'captured' else 'Payment authorised. Final confirmation will update automatically after capture.'
+    return jsonify({'message': message, 'payment': _payment_payload(payment)})
 
 
 @bp.get('/orders/<int:order_id>/status')
@@ -260,19 +325,24 @@ def razorpay_webhook():
     payment = Payment.query.filter_by(razorpay_order_id=provider_order_id).first() if provider_order_id else None
     if not payment:
         return jsonify({'ok': True}), 200
-    if provider_payment_id and not payment.razorpay_payment_id:
+
+    if provider_payment_id:
+        if payment.razorpay_payment_id and payment.razorpay_payment_id != provider_payment_id:
+            return jsonify({'error': 'Webhook payment id does not match the recorded payment.'}), 400
         payment.razorpay_payment_id = provider_payment_id
+        try:
+            _validate_provider_payment(payment, payment_entity)
+        except ValueError as exc:
+            db.session.rollback()
+            return jsonify({'error': str(exc)}), 400
+
     send_receipt = False
     if event_name in {'payment.captured', 'order.paid'}:
-        was_captured = _captured(payment)
-        payment.status = 'captured'
-        payment.captured_at = payment.captured_at or utc_now()
-        payment.failure_code = None
-        payment.failure_description = None
-        if not was_captured:
-            send_receipt = True
-            label = {'assistance_fee': 'assistance fee', 'official_fee': 'official fee', 'request_total': 'combined request fees'}.get(payment.purpose, 'request payment')
-            db.session.add(Notification(user_id=payment.order.user_id, order_id=payment.order_id, title='Request payment received', message=f'Your {label} payment for request {payment.order.order_code} was received successfully. Your payment receipt is now available in the request.'))
+        if not payment_entity:
+            return jsonify({'error': 'Captured payment webhook did not include payment details.'}), 400
+        if str(payment_entity.get('status') or '').lower() not in {'captured', 'paid'}:
+            return jsonify({'error': 'Captured payment webhook contained an inconsistent payment status.'}), 400
+        send_receipt = _mark_captured(payment)
     elif event_name == 'payment.failed' and not _captured(payment):
         payment.status = 'failed'
         payment.failure_code = str(payment_entity.get('error_code') or '')[:120] or None
