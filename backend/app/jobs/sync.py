@@ -100,10 +100,9 @@ def sync_source(source, session=None):
         db.session.commit()
         return {'source': source.key, 'fetched': len(items), 'published': published, 'duplicates': duplicates, 'status': 'success'}
     except OfficialSourceUnavailable as exc:
-        return _record_source_failure(source.id, 'Official source is temporarily unavailable. Previously verified notices remain available and synchronization will retry automatically.', str(exc))
+        return _record_source_failure(source.id, 'Official source is temporarily unavailable. Last verified job notices remain available and synchronization will retry automatically.', str(exc))
     except requests.RequestException as exc:
-        # Treat other transport/HTTP failures as upstream availability issues too.
-        return _record_source_failure(source.id, 'Official source could not be reached reliably. Previously verified notices remain available and synchronization will retry automatically.', str(exc))
+        return _record_source_failure(source.id, 'Official source could not be reached reliably. Last verified job notices remain available and synchronization will retry automatically.', str(exc))
     except Exception as exc:
         db.session.rollback()
         current = db.session.get(JobSource, source.id)
@@ -111,7 +110,7 @@ def sync_source(source, session=None):
         detail = str(exc).strip()
         if _has_verified_notices(source.id):
             current.last_sync_status = 'degraded'
-            current.last_error = 'The latest official-source check could not be processed. Previously verified notices remain available while the next check retries.'
+            current.last_error = 'The latest official-source check could not be processed. Last verified job notices remain available while the next check retries.'
         else:
             current.last_sync_status = 'failed'
             current.last_error = detail[:350] if detail else 'The official source could not be processed. Review the source configuration.'
