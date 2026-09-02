@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './App'
 import './styles/global.css'
+import './styles/admin-service-search.css'
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
