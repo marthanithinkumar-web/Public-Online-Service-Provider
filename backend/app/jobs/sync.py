@@ -6,7 +6,7 @@ from sqlalchemy import func, text
 
 from ..models.job import JobNotification, JobSource
 from ..utils.database import db
-from .official_fetch import fetch_official_page, validate_official_url
+from .official_fetch import OfficialSourceUnavailable, fetch_official_page, validate_official_url
 from .rules import item_hash, target_status, unique_slug
 from .sources import SOURCE_BY_KEY, SOURCE_DEFINITIONS, JobItem
 
@@ -91,6 +91,13 @@ def upsert_item(source, item, allow_missing_deadline=False, missing_deadline_max
     return existing, is_new, False
 
 
+def _has_verified_notices(source_id):
+    return JobNotification.query.filter(
+        JobNotification.source_id == source_id,
+        JobNotification.status.in_(['published', 'expired', 'hidden']),
+    ).count() > 0
+
+
 def sync_source(source, session=None):
     definition = SOURCE_BY_KEY[source.key]
     source.last_sync_started_at = utc_now()
@@ -118,14 +125,29 @@ def sync_source(source, session=None):
         source.last_error = f'{duplicates} duplicate notice(s) skipped.' if duplicates else None
         db.session.commit()
         return {'source': source.key, 'fetched': len(items), 'published': published, 'duplicates': duplicates, 'status': 'success'}
+    except OfficialSourceUnavailable as exc:
+        db.session.rollback()
+        current = db.session.get(JobSource, source.id)
+        current.last_sync_completed_at = utc_now()
+        current.last_sync_status = 'degraded' if _has_verified_notices(source.id) else 'failed'
+        current.last_error = (
+            'Official source is temporarily unreachable. Last verified job notices remain available and the next synchronization will retry automatically.'
+            if current.last_sync_status == 'degraded'
+            else 'Official source is temporarily unreachable. The next synchronization will retry automatically.'
+        )
+        db.session.commit()
+        return {'source': source.key, 'fetched': 0, 'published': int(current.published_count or 0), 'duplicates': 0, 'status': current.last_sync_status, 'error': str(exc)}
     except Exception as exc:
         db.session.rollback()
         current = db.session.get(JobSource, source.id)
         current.last_sync_completed_at = utc_now()
         current.last_sync_status = 'failed'
-        current.last_error = str(exc)[:1000]
+        # Configuration/parser/safety errors need attention, but the admin UI
+        # should show a concise message rather than a long requests traceback.
+        detail = str(exc).strip()
+        current.last_error = detail[:350] if detail else 'The official source could not be processed. Review the source configuration.'
         db.session.commit()
-        return {'source': source.key, 'fetched': 0, 'published': 0, 'duplicates': 0, 'status': 'failed', 'error': str(exc)}
+        return {'source': source.key, 'fetched': 0, 'published': int(current.published_count or 0), 'duplicates': 0, 'status': 'failed', 'error': detail}
 
 
 def expire_old_jobs():
@@ -156,7 +178,12 @@ def sync_all_sources(session=None):
         if source.key in SOURCE_BY_KEY:
             results.append(sync_source(source, session=session))
     expired = expire_old_jobs()
-    return {'results': results, 'expired': expired, 'successful_sources': sum(item['status'] == 'success' for item in results)}
+    return {
+        'results': results,
+        'expired': expired,
+        'successful_sources': sum(item['status'] == 'success' for item in results),
+        'degraded_sources': sum(item['status'] == 'degraded' for item in results),
+    }
 
 
 def sync_is_due(hours=20):
@@ -168,10 +195,10 @@ def sync_is_due(hours=20):
         JobSource.last_sync_started_at >= running_cutoff,
     ).count():
         return False
-    last_success = db.session.query(func.max(JobSource.last_sync_completed_at)).filter(
-        JobSource.enabled.is_(True), JobSource.last_sync_status == 'success',
+    last_healthy_check = db.session.query(func.max(JobSource.last_sync_completed_at)).filter(
+        JobSource.enabled.is_(True), JobSource.last_sync_status.in_(['success', 'degraded']),
     ).scalar()
-    return last_success is None or last_success < utc_now() - timedelta(hours=hours)
+    return last_healthy_check is None or last_healthy_check < utc_now() - timedelta(hours=hours)
 
 
 def trigger_background_sync(app):
@@ -220,7 +247,7 @@ def main():
     with app.app_context():
         result = sync_all_sources()
         print(result)
-        if result['successful_sources'] == 0:
+        if result['successful_sources'] + result.get('degraded_sources', 0) == 0:
             return 1
     return 0
 
