@@ -43,6 +43,11 @@ def _money(value, label):
     return amount
 
 
+def _component_locked(order, component):
+    purposes = ['request_total', component]
+    return Payment.query.filter(Payment.order_id == order.id, Payment.purpose.in_(purposes), Payment.status.in_(['created', 'authorized', 'captured', 'paid'])).first() is not None
+
+
 @bp.get('/job-assistance')
 def public_job_assistance_fee():
     response = jsonify({'price_inr': job_assistance_fee()})
@@ -68,12 +73,7 @@ def update_job_assistance_fee():
     service = Service.query.filter_by(name=JOB_SERVICE_NAME).first()
     if service:
         service.price_inr = amount
-    db.session.add(AdminAuditLog(
-        admin_id=admin.id,
-        action='job_assistance_fee_update',
-        summary=f'Changed the website-wide job application assistance fee to ₹{amount:.2f}.',
-        details={'previous_fee_inr': previous, 'new_fee_inr': amount, 'service_catalog_updated': bool(service), 'existing_requests_repriced': False},
-    ))
+    db.session.add(AdminAuditLog(admin_id=admin.id, action='job_assistance_fee_update', summary=f'Changed the website-wide job application assistance fee to ₹{amount:.2f}.', details={'previous_fee_inr': previous, 'new_fee_inr': amount, 'service_catalog_updated': bool(service), 'existing_requests_repriced': False}))
     db.session.commit()
     return jsonify({'message': f'Job application assistance fee updated to ₹{amount:g} across the website.', 'price_inr': amount, 'existing_requests_repriced': False})
 
@@ -93,12 +93,7 @@ def update_job_fee_rules(job_id):
     job.fee_factors = factors
     job.fee_rules = rules
     job.fee_rules_verified_at = utc_now()
-    db.session.add(AdminAuditLog(
-        admin_id=admin.id,
-        action='job_official_fee_rules_verified',
-        summary=f'Verified person-specific official fee rules for job {job.id}: {job.title}'[:500],
-        details={'job_id': job.id, 'factor_keys': [item['key'] for item in factors], 'rule_count': len(rules)},
-    ))
+    db.session.add(AdminAuditLog(admin_id=admin.id, action='job_official_fee_rules_verified', summary=f'Verified person-specific official fee rules for job {job.id}: {job.title}'[:500], details={'job_id': job.id, 'factor_keys': [item['key'] for item in factors], 'rule_count': len(rules)}))
     db.session.commit()
     return jsonify({'message': 'Official fee rules verified for this job.', 'job': job.to_dict(include_admin=True)})
 
@@ -111,12 +106,7 @@ def clear_job_fee_rules(job_id):
     job.fee_factors = None
     job.fee_rules = None
     job.fee_rules_verified_at = None
-    db.session.add(AdminAuditLog(
-        admin_id=admin.id,
-        action='job_official_fee_rules_cleared',
-        summary=f'Cleared person-specific official fee rules for job {job.id}: {job.title}'[:500],
-        details={'job_id': job.id},
-    ))
+    db.session.add(AdminAuditLog(admin_id=admin.id, action='job_official_fee_rules_cleared', summary=f'Cleared person-specific official fee rules for job {job.id}: {job.title}'[:500], details={'job_id': job.id}))
     db.session.commit()
     return jsonify({'message': 'Official fee rules cleared. This job will require manual fee confirmation.', 'job': job.to_dict(include_admin=True)})
 
@@ -141,9 +131,6 @@ def assess_job_fee(slug):
 def update_request_fees(order_id):
     admin = get_request_user()
     order = Order.query.filter_by(id=order_id).with_for_update().first_or_404()
-    blocking_payment = Payment.query.filter(Payment.order_id == order.id, Payment.status.in_(['created', 'authorized', 'captured', 'paid'])).first()
-    if blocking_payment:
-        return jsonify({'error': 'Fees cannot be changed after a payment checkout has been created. Resolve or refund that payment first.'}), 409
     data = request.get_json(silent=True) or {}
     status = str(data.get('official_fee_status') or '').strip().lower()
     if status not in {'known', 'none', 'unconfirmed'}:
@@ -153,16 +140,16 @@ def update_request_fees(order_id):
         official = _money(data.get('official_fee_inr'), 'official fee') if status == 'known' else (0.0 if status == 'none' else None)
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
+    if _component_locked(order, 'assistance_fee') and assistance != round(float(order.fee_inr or 0), 2):
+        return jsonify({'error': 'The assistance fee cannot be changed after its checkout has been created or paid.'}), 409
+    current_official = None if order.official_fee_inr is None else round(float(order.official_fee_inr), 2)
+    if _component_locked(order, 'official_fee') and (official != current_official or status != (order.official_fee_status or 'unconfirmed')):
+        return jsonify({'error': 'The official fee cannot be changed after its checkout has been created or paid.'}), 409
     previous = {'fee_inr': float(order.fee_inr or 0), 'official_fee_inr': order.official_fee_inr, 'official_fee_status': order.official_fee_status}
     order.fee_inr = assistance
     order.official_fee_inr = official
     order.official_fee_status = status
-    db.session.add(AdminAuditLog(
-        admin_id=admin.id,
-        action='request_fee_update',
-        summary=f'Confirmed fees for request {order.order_code}.',
-        details={'order_id': order.id, 'previous': previous, 'new': {'fee_inr': assistance, 'official_fee_inr': official, 'official_fee_status': status}, 'collection_flow': 'single_combined_payment'},
-    ))
+    db.session.add(AdminAuditLog(admin_id=admin.id, action='request_fee_update', summary=f'Confirmed fees for request {order.order_code}.', details={'order_id': order.id, 'previous': previous, 'new': {'fee_inr': assistance, 'official_fee_inr': official, 'official_fee_status': status}, 'collection_flow': 'assistance_official_or_combined'}))
     db.session.commit()
     total = assistance + (official or 0)
-    return jsonify({'message': 'Request fees updated. The client can pay the confirmed assistance and official fees together in one payment.', 'order': order.to_dict(include_admin=True), 'total_payable_inr': round(total, 2)})
+    return jsonify({'message': 'Request fees updated. The client can pay each fee separately or pay both together when both are due.', 'order': order.to_dict(include_admin=True), 'total_payable_inr': round(total, 2)})
