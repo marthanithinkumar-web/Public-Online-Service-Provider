@@ -2,6 +2,7 @@ import axios from 'axios'
 import {apiBase} from './apiBase'
 import {authHeader} from './auth'
 
+export type PaymentPurpose='assistance_fee'|'official_fee'|'request_total'
 let checkoutPromise:Promise<void>|null=null
 
 function loadCheckout(){
@@ -25,16 +26,21 @@ export async function getPaymentStatus(orderId:number){
   return (await axios.get(`${apiBase}/payments/orders/${orderId}/status`,{headers:authHeader(),timeout:15000})).data
 }
 
-export async function openPaymentReceipt(orderId:number){
-  const response=await axios.get(`${apiBase}/payments/orders/${orderId}/receipt`,{headers:authHeader(),responseType:'blob',timeout:15000})
+export async function openPaymentReceipt(orderId:number,paymentId?:number){
+  const suffix=paymentId?`?payment_id=${paymentId}`:''
+  const response=await axios.get(`${apiBase}/payments/orders/${orderId}/receipt${suffix}`,{headers:authHeader(),responseType:'blob',timeout:15000})
   const url=URL.createObjectURL(new Blob([response.data],{type:'text/html'}))
   const opened=window.open(url,'_blank','noopener,noreferrer')
   window.setTimeout(()=>URL.revokeObjectURL(url),60000)
   if(!opened)throw new Error('Please allow pop-ups to open the payment receipt.')
 }
 
-export async function payRequestTotal(order:any){
-  const response=await axios.post(`${apiBase}/payments/orders/${order.id}/checkout`,{}, {headers:authHeader(),timeout:15000})
+export async function emailPaymentReceipt(orderId:number){
+  return (await axios.post(`${apiBase}/payments/orders/${orderId}/receipt/email`,{}, {headers:authHeader(),timeout:15000})).data
+}
+
+export async function payRequest(order:any,purpose:PaymentPurpose){
+  const response=await axios.post(`${apiBase}/payments/orders/${order.id}/checkout`,{purpose}, {headers:authHeader(),timeout:15000})
   if(response.data?.payment?.status==='captured')return response.data.payment
   if(!response.data?.razorpay_order_id)return response.data?.payment||null
   await loadCheckout()
@@ -53,3 +59,5 @@ export async function payRequestTotal(order:any){
     instance.open()
   })
 }
+
+export const payRequestTotal=(order:any)=>payRequest(order,'request_total')
