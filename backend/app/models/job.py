@@ -65,6 +65,9 @@ class JobNotification(db.Model):
     qualification = db.Column(db.String(600), nullable=True)
     age_limit = db.Column(db.String(300), nullable=True)
     application_fee = db.Column(db.String(300), nullable=True)
+    fee_factors = db.Column(db.JSON, nullable=True)
+    fee_rules = db.Column(db.JSON, nullable=True)
+    fee_rules_verified_at = db.Column(db.DateTime, nullable=True)
     vacancies = db.Column(db.String(200), nullable=True)
     salary = db.Column(db.String(300), nullable=True)
     summary = db.Column(db.Text, nullable=True)
@@ -101,6 +104,8 @@ class JobNotification(db.Model):
             'qualification': self.qualification,
             'age_limit': self.age_limit,
             'application_fee': self.application_fee,
+            'fee_factors': self.fee_factors or [],
+            'fee_rules_verified': bool(self.fee_rules_verified_at),
             'vacancies': self.vacancies,
             'salary': self.salary,
             'summary': self.summary,
@@ -127,6 +132,8 @@ class JobNotification(db.Model):
                 'external_id': self.external_id,
                 'content_hash': self.content_hash,
                 'confidence': float(self.confidence or 0),
+                'fee_rules': self.fee_rules or [],
+                'fee_rules_verified_at': self.fee_rules_verified_at.isoformat() if self.fee_rules_verified_at else None,
                 'created_at': self.created_at.isoformat() if self.created_at else None,
                 'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             })
