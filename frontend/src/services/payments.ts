@@ -25,6 +25,14 @@ export async function getPaymentStatus(orderId:number){
   return (await axios.get(`${apiBase}/payments/orders/${orderId}/status`,{headers:authHeader(),timeout:15000})).data
 }
 
+export async function openPaymentReceipt(orderId:number){
+  const response=await axios.get(`${apiBase}/payments/orders/${orderId}/receipt`,{headers:authHeader(),responseType:'blob',timeout:15000})
+  const url=URL.createObjectURL(new Blob([response.data],{type:'text/html'}))
+  const opened=window.open(url,'_blank','noopener,noreferrer')
+  window.setTimeout(()=>URL.revokeObjectURL(url),60000)
+  if(!opened)throw new Error('Please allow pop-ups to open the payment receipt.')
+}
+
 export async function payRequestTotal(order:any){
   const response=await axios.post(`${apiBase}/payments/orders/${order.id}/checkout`,{}, {headers:authHeader(),timeout:15000})
   if(response.data?.payment?.status==='captured')return response.data.payment
