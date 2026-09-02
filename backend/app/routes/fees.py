@@ -61,12 +61,7 @@ def update_job_assistance_fee():
     service = Service.query.filter_by(name=JOB_SERVICE_NAME).first()
     if service:
         service.price_inr = amount
-    db.session.add(AdminAuditLog(
-        admin_id=admin.id,
-        action='job_assistance_fee_update',
-        summary=f'Changed the website-wide job application assistance fee to ₹{amount:.2f}.',
-        details={'previous_fee_inr': previous, 'new_fee_inr': amount, 'service_catalog_updated': bool(service), 'existing_requests_repriced': False},
-    ))
+    db.session.add(AdminAuditLog(admin_id=admin.id,action='job_assistance_fee_update',summary=f'Changed the website-wide job application assistance fee to ₹{amount:.2f}.',details={'previous_fee_inr': previous, 'new_fee_inr': amount, 'service_catalog_updated': bool(service), 'existing_requests_repriced': False}))
     db.session.commit()
     return jsonify({'message': f'Job application assistance fee updated to ₹{amount:g} across the website.', 'price_inr': amount, 'existing_requests_repriced': False})
 
@@ -92,7 +87,7 @@ def update_request_fees(order_id):
     order.fee_inr = assistance
     order.official_fee_inr = official
     order.official_fee_status = status
-    db.session.add(AdminAuditLog(admin_id=admin.id,action='request_fee_update',summary=f'Confirmed fees for request {order.order_code}.',details={'order_id': order.id, 'previous': previous, 'new': {'fee_inr': assistance, 'official_fee_inr': official, 'official_fee_status': status}}))
+    db.session.add(AdminAuditLog(admin_id=admin.id,action='request_fee_update',summary=f'Confirmed fees for request {order.order_code}.',details={'order_id': order.id, 'previous': previous, 'new': {'fee_inr': assistance, 'official_fee_inr': official, 'official_fee_status': status}, 'collection_flow': 'single_combined_payment'}))
     db.session.commit()
     total = assistance + (official or 0)
-    return jsonify({'message': 'Request fees updated.', 'order': order.to_dict(include_admin=True), 'total_payable_inr': round(total, 2)})
+    return jsonify({'message': 'Request fees updated. The client can pay the confirmed assistance and official fees together in one payment.', 'order': order.to_dict(include_admin=True), 'total_payable_inr': round(total, 2)})
