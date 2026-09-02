@@ -121,7 +121,7 @@ def test_capture_webhook_emails_receipt_once_and_client_can_print_it(client, mon
     monkeypatch.setenv('RAZORPAY_WEBHOOK_SECRET', 'webhook-secret')
     sent = []
     monkeypatch.setattr('app.routes.payments.send_email', lambda to, subject, body: sent.append((to, subject, body)) or True)
-    event = {'event':'payment.captured','payload':{'payment':{'entity':{'id':'pay_receipt_1','order_id':'order_receipt_1'}}}}
+    event = {'event':'payment.captured','payload':{'payment':{'entity':{'id':'pay_receipt_1','order_id':'order_receipt_1','amount':11000,'currency':'INR','status':'captured'}}}}
     raw = json.dumps(event, separators=(',', ':')).encode()
     signature = hmac.new(b'webhook-secret', raw, hashlib.sha256).hexdigest()
     response = client.post('/api/payments/razorpay/webhook', data=raw, content_type='application/json', headers={'X-Razorpay-Signature': signature})
@@ -141,3 +141,75 @@ def test_capture_webhook_emails_receipt_once_and_client_can_print_it(client, mon
     assert '₹110.00' in receipt.get_data(as_text=True)
     status = client.get(f'/api/payments/orders/{order_id}/status', headers=headers).get_json()
     assert status['payment']['receipt_available'] is True
+
+
+def test_verify_fetches_razorpay_and_rejects_amount_mismatch(client, monkeypatch):
+    headers = _client_headers(client, '6')
+    with client.application.app_context():
+        user = User.query.filter_by(email='payment-6@example.com').first()
+        category = Category.query.filter_by(name='Provider Verify').first() or Category(name='Provider Verify')
+        db.session.add(category); db.session.flush()
+        service = Service(name='Provider Verify Service', description='Verify provider state', price_inr=30, official_fee_inr=0, official_fee_status='none', category=category, is_active=True)
+        db.session.add(service); db.session.flush()
+        order = Order(order_code='REQ-PROVIDER-1', client_name=user.name, phone=user.phone, email=user.email, service=service, user_id=user.id, fee_inr=30, official_fee_inr=0, official_fee_status='none')
+        db.session.add(order); db.session.flush()
+        payment = Payment(order_id=order.id, purpose='assistance_fee', amount_paise=3000, currency='INR', status='created', razorpay_order_id='order_provider_1')
+        db.session.add(payment); db.session.commit(); order_id=order.id
+
+    monkeypatch.setenv('RAZORPAY_KEY_ID', 'rzp_test_key')
+    monkeypatch.setenv('RAZORPAY_KEY_SECRET', 'secret')
+    payment_id = 'pay_provider_1'
+    signature = hmac.new(b'secret', f'order_provider_1|{payment_id}'.encode(), hashlib.sha256).hexdigest()
+
+    class Response:
+        def raise_for_status(self): pass
+        def json(self):
+            return {'id':payment_id, 'order_id':'order_provider_1', 'amount':2999, 'currency':'INR', 'status':'captured'}
+
+    monkeypatch.setattr('app.routes.payments.requests.get', lambda *args, **kwargs: Response())
+    response = client.post(f'/api/payments/orders/{order_id}/verify', headers=headers, json={
+        'razorpay_payment_id': payment_id,
+        'razorpay_order_id': 'order_provider_1',
+        'razorpay_signature': signature,
+    })
+    assert response.status_code == 400
+    assert 'amount does not match' in response.get_json()['error']
+    with client.application.app_context():
+        payment = Payment.query.filter_by(razorpay_order_id='order_provider_1').one()
+        assert payment.status == 'created'
+        assert payment.razorpay_payment_id is None
+
+
+def test_verify_marks_provider_captured_payment_and_exposes_receipt(client, monkeypatch):
+    headers = _client_headers(client, '7')
+    with client.application.app_context():
+        user = User.query.filter_by(email='payment-7@example.com').first()
+        category = Category.query.filter_by(name='Provider Captured').first() or Category(name='Provider Captured')
+        db.session.add(category); db.session.flush()
+        service = Service(name='Provider Captured Service', description='Verify captured state', price_inr=30, official_fee_inr=0, official_fee_status='none', category=category, is_active=True)
+        db.session.add(service); db.session.flush()
+        order = Order(order_code='REQ-PROVIDER-2', client_name=user.name, phone=user.phone, email=user.email, service=service, user_id=user.id, fee_inr=30, official_fee_inr=0, official_fee_status='none')
+        db.session.add(order); db.session.flush()
+        payment = Payment(order_id=order.id, purpose='assistance_fee', amount_paise=3000, currency='INR', status='created', razorpay_order_id='order_provider_2')
+        db.session.add(payment); db.session.commit(); order_id=order.id
+
+    monkeypatch.setenv('RAZORPAY_KEY_ID', 'rzp_test_key')
+    monkeypatch.setenv('RAZORPAY_KEY_SECRET', 'secret')
+    monkeypatch.setattr('app.routes.payments.send_email', lambda *args, **kwargs: True)
+    payment_id = 'pay_provider_2'
+    signature = hmac.new(b'secret', f'order_provider_2|{payment_id}'.encode(), hashlib.sha256).hexdigest()
+
+    class Response:
+        def raise_for_status(self): pass
+        def json(self):
+            return {'id':payment_id, 'order_id':'order_provider_2', 'amount':3000, 'currency':'INR', 'status':'captured'}
+
+    monkeypatch.setattr('app.routes.payments.requests.get', lambda *args, **kwargs: Response())
+    response = client.post(f'/api/payments/orders/{order_id}/verify', headers=headers, json={
+        'razorpay_payment_id': payment_id,
+        'razorpay_order_id': 'order_provider_2',
+        'razorpay_signature': signature,
+    })
+    assert response.status_code == 200
+    assert response.get_json()['payment']['status'] == 'captured'
+    assert response.get_json()['payment']['receipt_available'] is True
