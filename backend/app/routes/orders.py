@@ -7,8 +7,9 @@ from ..models.attachment import Attachment
 from ..models.grievance import Grievance
 from ..models.review import Review
 from ..models.notification import Notification
+from ..models.job import JobNotification
 from ..utils.database import db
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from secrets import token_hex
 from ..schemas.order_schema import OrderCreateSchema, OrderSchema
 from ..utils.jwt_handler import get_request_user
@@ -21,6 +22,8 @@ MAX_APPLICATION_BYTES = 64 * 1024
 ALLOWED_CONTACT_METHODS = {'email', 'phone', 'whatsapp'}
 DUPLICATE_WINDOW_SECONDS = 60
 CLIENT_CANCELLABLE_STATUSES = {'New', 'Submitted', 'Pending', 'Documents Required'}
+JOB_ASSISTANCE_CATALOG_NAME = 'Government Job Application Assistance'
+JOB_ASSISTANCE_FEE_INR = 30.0
 
 
 def _generate_order_code():
@@ -54,6 +57,35 @@ def _normalise_application(value, depth=0):
     if isinstance(value, (int, float, bool)) or value is None:
         return value
     raise ValueError('Application contains an unsupported value.')
+
+
+def _bind_verified_job_context(service, application_data):
+    """Replace browser-provided job metadata with the current verified DB record."""
+    if service.name != JOB_ASSISTANCE_CATALOG_NAME:
+        return None
+    job_slug = str(application_data.get('job_slug') or '').strip()
+    if not job_slug:
+        return None
+    job = JobNotification.query.filter(
+        JobNotification.slug == job_slug,
+        JobNotification.status == 'published',
+        (JobNotification.deadline.is_(None) | (JobNotification.deadline >= date.today())),
+    ).first()
+    if not job:
+        raise ValueError('The selected official job notice is unavailable or has closed. Choose a current job notice and try again.')
+    application_data.update({
+        'job_id': job.id,
+        'job_slug': job.slug,
+        'job_title': job.title,
+        'job_organization': job.organization,
+        'job_deadline': job.deadline.isoformat() if job.deadline else None,
+        'job_official_notice_url': job.official_notice_url,
+        'job_application_url': job.application_url,
+        'job_source': job.source.name if job.source else None,
+        'job_source_key': job.source.key if job.source else None,
+        'job_official_fee': job.application_fee,
+    })
+    return job
 
 
 @bp.route('/', methods=['POST'])
@@ -94,6 +126,10 @@ def create_order():
     # reviewing the request.
     application_data.setdefault('service_name', service.name)
     application_data.setdefault('request_mode', 'express' if len(application_data) == 1 else 'guided')
+    try:
+        selected_job = _bind_verified_job_context(service, application_data)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 409
 
     description = json.dumps({'application_data': application_data}, ensure_ascii=False, separators=(',', ':'))
     if len(description.encode('utf-8')) > MAX_APPLICATION_BYTES:
@@ -117,16 +153,23 @@ def create_order():
             'order': order_data,
         }), 200
 
+    # Selected official jobs use the explicitly agreed ₹30 assistance fee.
+    # Government/official application fees vary by recruitment/category and
+    # remain separate until confirmed on the official portal.
+    fee_inr = JOB_ASSISTANCE_FEE_INR if selected_job else (service.price_inr or 0.0)
+    official_fee_inr = None if selected_job else service.official_fee_inr
+    official_fee_status = 'unconfirmed' if selected_job else (service.official_fee_status or 'unconfirmed')
     order = Order(
         order_code=_generate_order_code(), client_name=name, phone=phone, email=email,
         contact_method=contact_method, service=service, user_id=user.id,
-        description=description, fee_inr=service.price_inr or 0.0,
-        official_fee_inr=service.official_fee_inr,
-        official_fee_status=service.official_fee_status or 'unconfirmed', status='Submitted'
+        description=description, fee_inr=fee_inr,
+        official_fee_inr=official_fee_inr,
+        official_fee_status=official_fee_status, status='Submitted'
     )
     db.session.add(order)
     db.session.flush()
-    db.session.add(OrderStatusHistory(order_id=order.id, previous_status=None, new_status='Submitted', changed_by=user.email, note='Application submitted by client.'))
+    history_note = 'Official job application assistance requested by client.' if selected_job else 'Application submitted by client.'
+    db.session.add(OrderStatusHistory(order_id=order.id, previous_status=None, new_status='Submitted', changed_by=user.email, note=history_note))
     db.session.commit()
     order_data = dump_schema.dump(order)
     order_data['can_submit_feedback'] = Order.query.filter_by(user_id=user.id).count() == 1
