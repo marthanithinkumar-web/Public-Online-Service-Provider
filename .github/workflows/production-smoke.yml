@@ -1,0 +1,79 @@
+name: Production public smoke checks
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 2 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-public-smoke
+  cancel-in-progress: true
+
+env:
+  UI_URL: https://public-online-service-provider-india.onrender.com
+  API_URL: https://public-online-service-provider-api.onrender.com
+
+jobs:
+  smoke:
+    name: Verify deployed public journeys
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Wait for API health
+        run: |
+          set -Eeuo pipefail
+          curl --fail --silent --show-error --location \
+            --retry 8 --retry-delay 8 --retry-all-errors \
+            --max-time 30 "$API_URL/health" | tee /tmp/health.json
+          python - <<'PY'
+          import json
+          with open('/tmp/health.json', encoding='utf-8') as handle:
+              payload = json.load(handle)
+          assert payload.get('status') == 'ok', payload
+          PY
+
+      - name: Verify public service catalog API
+        run: |
+          set -Eeuo pipefail
+          curl --fail --silent --show-error --location \
+            --retry 5 --retry-delay 5 --retry-all-errors \
+            --max-time 30 "$API_URL/api/services" | tee /tmp/services.json
+          python - <<'PY'
+          import json
+          with open('/tmp/services.json', encoding='utf-8') as handle:
+              payload = json.load(handle)
+          assert isinstance(payload, list), type(payload)
+          assert len(payload) >= 100, f'Expected production catalog, found only {len(payload)} services'
+          assert all(item.get('id') and item.get('name') for item in payload[:10]), 'Catalog entries are incomplete'
+          PY
+
+      - name: Verify homepage and public discovery pages
+        run: |
+          set -Eeuo pipefail
+          for path in / /jobs /scholarships /meeseva /certificates /schemes; do
+            code="$(curl --silent --show-error --location --output "/tmp/page$(echo "$path" | tr '/' '_').html" --write-out '%{http_code}' --retry 5 --retry-delay 5 --retry-all-errors --max-time 30 "$UI_URL$path")"
+            test "$code" = "200" || { echo "Unexpected HTTP $code for $path"; exit 1; }
+          done
+          grep -qi 'Public Online Service Provider' /tmp/page_.html
+
+      - name: Verify robots and sitemap use production host
+        run: |
+          set -Eeuo pipefail
+          curl --fail --silent --show-error --location --max-time 30 "$UI_URL/robots.txt" -o /tmp/robots.txt
+          curl --fail --silent --show-error --location --max-time 30 "$UI_URL/sitemap.xml" -o /tmp/sitemap.xml
+          grep -Fq "$UI_URL/sitemap.xml" /tmp/robots.txt
+          grep -Fq "$UI_URL/" /tmp/sitemap.xml
+
+      - name: Verify private routes are not exposed as public SEO pages
+        run: |
+          set -Eeuo pipefail
+          for path in /login /register /account-settings /admin/login; do
+            headers="$(curl --silent --show-error --location --head --max-time 30 "$UI_URL$path")"
+            echo "$headers" | grep -qi 'x-robots-tag:.*noindex' || {
+              echo "Missing noindex header for $path"
+              exit 1
+            }
+          done
