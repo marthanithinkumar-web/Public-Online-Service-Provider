@@ -74,7 +74,7 @@ def test_combined_checkout_uses_assistance_plus_confirmed_official_fee(client, m
         captured.update(json)
         return Response()
     monkeypatch.setattr('app.routes.payments.requests.post', fake_post)
-    checkout = client.post(f'/api/payments/orders/{order_id}/checkout', headers=headers)
+    checkout = client.post(f'/api/payments/orders/{order_id}/checkout', headers=headers, json={'purpose':'request_total'})
     assert checkout.status_code == 201
     assert checkout.get_json()['amount'] == 11000
     assert captured['amount'] == 11000
@@ -82,7 +82,7 @@ def test_combined_checkout_uses_assistance_plus_confirmed_official_fee(client, m
     assert checkout.get_json()['breakdown']['official_fee_inr'] == 80
 
 
-def test_checkout_waits_for_admin_when_official_fee_is_unconfirmed(client, monkeypatch):
+def test_combined_checkout_waits_for_admin_but_assistance_can_be_paid(client, monkeypatch):
     with client.application.app_context():
         category = Category.query.filter_by(name='Payments').first() or Category(name='Payments')
         db.session.add(category); db.session.flush()
@@ -93,9 +93,16 @@ def test_checkout_waits_for_admin_when_official_fee_is_unconfirmed(client, monke
     order_id = created.get_json()['order']['id']
     monkeypatch.setenv('RAZORPAY_KEY_ID', 'rzp_test_key')
     monkeypatch.setenv('RAZORPAY_KEY_SECRET', 'secret')
-    checkout = client.post(f'/api/payments/orders/{order_id}/checkout', headers=headers)
+    class Response:
+        def raise_for_status(self): pass
+        def json(self): return {'id':'order_assistance_123'}
+    monkeypatch.setattr('app.routes.payments.requests.post', lambda *args, **kwargs: Response())
+    checkout = client.post(f'/api/payments/orders/{order_id}/checkout', headers=headers, json={'purpose':'request_total'})
     assert checkout.status_code == 409
-    assert 'pay once' in checkout.get_json()['error']
+    assert 'not been confirmed' in checkout.get_json()['error']
+    assistance = client.post(f'/api/payments/orders/{order_id}/checkout', headers=headers, json={'purpose':'assistance_fee'})
+    assert assistance.status_code == 201
+    assert assistance.get_json()['amount'] == 3000
 
 
 def test_capture_webhook_emails_receipt_once_and_client_can_print_it(client, monkeypatch):
