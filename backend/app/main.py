@@ -12,6 +12,7 @@ from flask_cors import CORS
 from flask_migrate import Migrate
 from flask_talisman import Talisman
 from .utils.password import hash_password
+from .utils.readiness import production_readiness, readiness_status
 
 load_dotenv()
 
@@ -118,4 +119,15 @@ def create_app():
             app.logger.exception('Database health check failed')
             return jsonify({'status':'unavailable'}), 503
         return jsonify({'status':'ok'}), 200
+    @app.get('/readiness')
+    def readiness():
+        try:
+            db.session.execute(text('SELECT 1'))
+        except Exception:
+            app.logger.exception('Database readiness check failed')
+            return jsonify({'status':'unavailable','checks':{'database':False}}), 503
+        checks={'database':True,**production_readiness()}
+        status=readiness_status(checks)
+        strict=os.getenv('STRICT_PRODUCTION_READINESS','0')=='1'
+        return jsonify({'status':status,'checks':checks}), (503 if strict and status!='ready' else 200)
     return app
