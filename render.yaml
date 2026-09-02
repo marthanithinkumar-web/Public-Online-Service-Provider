@@ -10,6 +10,7 @@ services:
     runtime: python
     rootDir: backend
     plan: free
+    autoDeployTrigger: commit
     buildCommand: pip install -r requirements.txt
     startCommand: export SKIP_DATABASE_BOOTSTRAP=1; python pre_migrate.py && flask --app app.main:create_app db upgrade --directory migrations_alembic && python seed.py && exec gunicorn -c gunicorn.conf.py wsgi:app
     healthCheckPath: /health
@@ -85,6 +86,7 @@ services:
     name: public-online-service-provider-ui
     runtime: static
     rootDir: frontend
+    autoDeployTrigger: commit
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     headers:
