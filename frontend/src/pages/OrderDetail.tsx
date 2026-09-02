@@ -4,6 +4,7 @@ import {Link,useParams} from 'react-router-dom'
 import {apiBase} from '../services/apiBase'
 import {authHeader} from '../services/auth'
 import FeeSummary from '../components/ui/FeeSummary'
+import PaymentPanel from '../components/ui/PaymentPanel'
 
 const REQUEST_TIMEOUT_MS=15000
 export default function OrderDetail(){
@@ -19,6 +20,7 @@ export default function OrderDetail(){
  return <div className="client-dashboard">
   <section className="dashboard-hero"><div><span className="eyebrow">Application {order.order_code}</span><h1>{order.service}</h1><p>Submitted {new Date(order.created_at).toLocaleString()} · Last updated {new Date(order.updated_at||order.created_at).toLocaleString()}</p></div><span className={`status-pill status-${String(order.status||'').toLowerCase().replace(/\s+/g,'-')}`}>{order.status}</span></section>
   <FeeSummary data={order}/>
+  <PaymentPanel order={order}/>
   <section className="dashboard-section"><h2>Application progress</h2><div className="request-timeline">{history.length?history.map((item:any)=><div className="timeline-item active" key={item.id}><strong>{item.new_status}</strong><span>{new Date(item.created_at).toLocaleString()}</span>{item.note&&<small>{item.note}</small>}</div>):<div className="timeline-item active"><strong>Application submitted</strong><span>{new Date(order.created_at).toLocaleString()}</span></div>}</div></section>
   <section className="dashboard-section"><h2>Application information</h2><div className="request-summary">{Object.entries(data).filter(([key])=>key!=='service_name').map(([key,value])=><p key={key}><strong>{key.replace(/_/g,' ')}:</strong> {String(value||'—')}</p>)}</div></section>
   <section className="dashboard-section"><h2>Documents</h2>{attachments.length?<ul className="document-list">{attachments.map((attachment:any)=><li key={attachment.id}><span>{attachment.filename}<small>{attachment.uploaded_by_role==='admin'?'Delivered by admin':'Uploaded with your request'}</small></span><div className="document-actions"><button className="btn-secondary" type="button" onClick={()=>download(attachment)}>View / download</button>{!terminal&&attachment.uploaded_by_role==='client'&&<button className="danger-button" type="button" disabled={deletingDocument===attachment.id} onClick={()=>removeDocument(attachment)}>{deletingDocument===attachment.id?'Removing…':'Remove'}</button>}</div></li>)}</ul>:<p>No documents attached.</p>}{uploadMsg&&<p className="info" role="status">{uploadMsg}</p>}</section>
