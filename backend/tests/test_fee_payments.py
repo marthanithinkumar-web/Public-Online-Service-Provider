@@ -1,6 +1,11 @@
+import hashlib
+import hmac
+import json
 from datetime import date, timedelta
 
 from app.models.job import JobNotification, JobSource
+from app.models.order import Order
+from app.models.payment import Payment
 from app.models.service import Category, Service
 from app.models.user import User
 from app.utils.database import db
@@ -91,3 +96,41 @@ def test_checkout_waits_for_admin_when_official_fee_is_unconfirmed(client, monke
     checkout = client.post(f'/api/payments/orders/{order_id}/checkout', headers=headers)
     assert checkout.status_code == 409
     assert 'pay once' in checkout.get_json()['error']
+
+
+def test_capture_webhook_emails_receipt_once_and_client_can_print_it(client, monkeypatch):
+    headers = _client_headers(client, '5')
+    with client.application.app_context():
+        user = User.query.filter_by(email='payment-5@example.com').first()
+        category = Category.query.filter_by(name='Receipt Tests').first() or Category(name='Receipt Tests')
+        db.session.add(category); db.session.flush()
+        service = Service(name='Receipt Test Service', description='Receipt test', price_inr=30, official_fee_inr=80, official_fee_status='known', category=category, is_active=True)
+        db.session.add(service); db.session.flush()
+        order = Order(order_code='REQ-RECEIPT-1', client_name=user.name, phone=user.phone, email=user.email, service=service, user_id=user.id, fee_inr=30, official_fee_inr=80, official_fee_status='known')
+        db.session.add(order); db.session.flush()
+        payment = Payment(order_id=order.id, purpose='request_total', amount_paise=11000, currency='INR', status='created', razorpay_order_id='order_receipt_1')
+        db.session.add(payment); db.session.commit(); order_id=order.id
+
+    monkeypatch.setenv('RAZORPAY_WEBHOOK_SECRET', 'webhook-secret')
+    sent = []
+    monkeypatch.setattr('app.routes.payments.send_email', lambda to, subject, body: sent.append((to, subject, body)) or True)
+    event = {'event':'payment.captured','payload':{'payment':{'entity':{'id':'pay_receipt_1','order_id':'order_receipt_1'}}}}
+    raw = json.dumps(event, separators=(',', ':')).encode()
+    signature = hmac.new(b'webhook-secret', raw, hashlib.sha256).hexdigest()
+    response = client.post('/api/payments/razorpay/webhook', data=raw, content_type='application/json', headers={'X-Razorpay-Signature': signature})
+    assert response.status_code == 200
+    assert len(sent) == 1
+    assert sent[0][0] == 'payment-5@example.com'
+    assert 'REQ-RECEIPT-1' in sent[0][1]
+    assert 'Total paid: ₹110.00' in sent[0][2]
+
+    duplicate = client.post('/api/payments/razorpay/webhook', data=raw, content_type='application/json', headers={'X-Razorpay-Signature': signature})
+    assert duplicate.status_code == 200
+    assert len(sent) == 1
+
+    receipt = client.get(f'/api/payments/orders/{order_id}/receipt', headers=headers)
+    assert receipt.status_code == 200
+    assert 'Payment Receipt' in receipt.get_data(as_text=True)
+    assert '₹110.00' in receipt.get_data(as_text=True)
+    status = client.get(f'/api/payments/orders/{order_id}/status', headers=headers).get_json()
+    assert status['payment']['receipt_available'] is True
