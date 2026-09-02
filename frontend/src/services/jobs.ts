@@ -2,9 +2,11 @@ import axios from 'axios'
 import {apiBase} from './apiBase'
 
 export type JobSource={key:string;name:string;listing_url:string;last_sync_completed_at?:string|null;last_sync_status?:string;fetched_count?:number;published_count?:number;last_error?:string|null;enabled?:boolean}
+export type JobFeeFactor={key:string;label:string;type:'select'|'text'|'boolean';options?:string[];required?:boolean}
+export type JobFeeRule={amount_inr:number;conditions:Record<string,string[]>;label?:string;priority?:number}
 export type JobNotification={
   id:number;slug:string;title:string;organization:string;job_type:'government'|'private';appointment_type?:string|null;
-  location?:string|null;qualification?:string|null;age_limit?:string|null;application_fee?:string|null;vacancies?:string|null;
+  location?:string|null;qualification?:string|null;age_limit?:string|null;application_fee?:string|null;fee_factors?:JobFeeFactor[];fee_rules_verified?:boolean;fee_rules?:JobFeeRule[];fee_rules_verified_at?:string|null;vacancies?:string|null;
   salary?:string|null;summary?:string|null;issue_date?:string|null;application_start_date?:string|null;deadline?:string|null;
   official_notice_url:string;application_url?:string|null;status:string;verification_status:string;is_featured:boolean;
   source?:JobSource|null;first_seen_at?:string|null;last_seen_at?:string|null;published_at?:string|null;confidence?:number;
