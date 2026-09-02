@@ -152,39 +152,6 @@ services:
         value: noindex, nofollow, noarchive
     routes:
       - type: rewrite
-        source: /services/*
-        destination: /services/*/index.html
-      - type: rewrite
-        source: /jobs
-        destination: /jobs/index.html
-      - type: rewrite
-        source: /scholarships
-        destination: /scholarships/index.html
-      - type: rewrite
-        source: /meeseva
-        destination: /meeseva/index.html
-      - type: rewrite
-        source: /certificates
-        destination: /certificates/index.html
-      - type: rewrite
-        source: /schemes
-        destination: /schemes/index.html
-      - type: rewrite
-        source: /about
-        destination: /about/index.html
-      - type: rewrite
-        source: /contact
-        destination: /contact/index.html
-      - type: rewrite
-        source: /privacy
-        destination: /privacy/index.html
-      - type: rewrite
-        source: /terms
-        destination: /terms/index.html
-      - type: rewrite
-        source: /disclaimer
-        destination: /disclaimer/index.html
-      - type: rewrite
         source: /*
         destination: /index.html
     envVars:
