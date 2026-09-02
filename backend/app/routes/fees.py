@@ -6,20 +6,24 @@ from ..middleware.auth import require_admin
 from ..models.admin_audit import AdminAuditLog
 from ..models.order import Order
 from ..models.payment import Payment
-from ..models.service import PlatformSetting
+from ..models.service import PlatformSetting, Service
 from ..utils.database import db
 from ..utils.jwt_handler import get_request_user
 
 bp = Blueprint('fees', __name__)
 JOB_FEE_KEY = 'job_assistance_fee_inr'
+JOB_SERVICE_NAME = 'Government Job Application Assistance'
 
 
 def job_assistance_fee():
     setting = db.session.get(PlatformSetting, JOB_FEE_KEY)
     try:
-        return max(0.0, float(setting.value)) if setting else 30.0
+        if setting:
+            return max(0.0, float(setting.value))
     except (TypeError, ValueError):
-        return 30.0
+        pass
+    service = Service.query.filter_by(name=JOB_SERVICE_NAME).first()
+    return max(0.0, float(service.price_inr or 0)) if service else 30.0
 
 
 def _money(value, label):
@@ -54,14 +58,17 @@ def update_job_assistance_fee():
         setting.value = f'{amount:.2f}'
     else:
         db.session.add(PlatformSetting(key=JOB_FEE_KEY, value=f'{amount:.2f}'))
+    service = Service.query.filter_by(name=JOB_SERVICE_NAME).first()
+    if service:
+        service.price_inr = amount
     db.session.add(AdminAuditLog(
         admin_id=admin.id,
         action='job_assistance_fee_update',
         summary=f'Changed the website-wide job application assistance fee to ₹{amount:.2f}.',
-        details={'previous_fee_inr': previous, 'new_fee_inr': amount, 'existing_requests_repriced': False},
+        details={'previous_fee_inr': previous, 'new_fee_inr': amount, 'service_catalog_updated': bool(service), 'existing_requests_repriced': False},
     ))
     db.session.commit()
-    return jsonify({'message': f'Job application assistance fee updated to ₹{amount:g}.', 'price_inr': amount, 'existing_requests_repriced': False})
+    return jsonify({'message': f'Job application assistance fee updated to ₹{amount:g} across the website.', 'price_inr': amount, 'existing_requests_repriced': False})
 
 
 @bp.put('/orders/<int:order_id>')
@@ -69,13 +76,9 @@ def update_job_assistance_fee():
 def update_request_fees(order_id):
     admin = get_request_user()
     order = Order.query.filter_by(id=order_id).with_for_update().first_or_404()
-    blocking_payment = Payment.query.filter(
-        Payment.order_id == order.id,
-        Payment.status.in_(['created', 'authorized', 'captured', 'paid']),
-    ).first()
+    blocking_payment = Payment.query.filter(Payment.order_id == order.id, Payment.status.in_(['created', 'authorized', 'captured', 'paid'])).first()
     if blocking_payment:
         return jsonify({'error': 'Fees cannot be changed after a payment checkout has been created. Resolve or refund that payment first.'}), 409
-
     data = request.get_json(silent=True) or {}
     status = str(data.get('official_fee_status') or '').strip().lower()
     if status not in {'known', 'none', 'unconfirmed'}:
@@ -85,17 +88,11 @@ def update_request_fees(order_id):
         official = _money(data.get('official_fee_inr'), 'official fee') if status == 'known' else (0.0 if status == 'none' else None)
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
-
     previous = {'fee_inr': float(order.fee_inr or 0), 'official_fee_inr': order.official_fee_inr, 'official_fee_status': order.official_fee_status}
     order.fee_inr = assistance
     order.official_fee_inr = official
     order.official_fee_status = status
-    db.session.add(AdminAuditLog(
-        admin_id=admin.id,
-        action='request_fee_update',
-        summary=f'Confirmed fees for request {order.order_code}.',
-        details={'order_id': order.id, 'previous': previous, 'new': {'fee_inr': assistance, 'official_fee_inr': official, 'official_fee_status': status}},
-    ))
+    db.session.add(AdminAuditLog(admin_id=admin.id,action='request_fee_update',summary=f'Confirmed fees for request {order.order_code}.',details={'order_id': order.id, 'previous': previous, 'new': {'fee_inr': assistance, 'official_fee_inr': official, 'official_fee_status': status}}))
     db.session.commit()
     total = assistance + (official or 0)
     return jsonify({'message': 'Request fees updated.', 'order': order.to_dict(include_admin=True), 'total_payable_inr': round(total, 2)})
