@@ -89,6 +89,9 @@ def _bind_verified_job_context(service, application_data):
         'job_application_url': job.application_url,
         'job_source': job.source.name if job.source else None,
         'job_source_key': job.source.key if job.source else None,
+        # Keep the historical key for existing clients/tests while the clearer
+        # notice-text key is used by the new person-specific fee workflow.
+        'job_official_fee': job.application_fee,
         'job_official_fee_notice_text': job.application_fee,
     })
     return job
