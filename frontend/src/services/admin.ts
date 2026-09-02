@@ -136,6 +136,16 @@ export async function updateHomepageAssistanceFee(price_inr:number){
   return (await api.put('/admin/services/homepage-assistance-fee',{price_inr},{headers:authHeader()})).data
 }
 
+export async function fetchJobAssistanceFee(){
+  return (await api.get('/fees/job-assistance',{headers:authHeader()})).data
+}
+
+export async function updateJobAssistanceFee(price_inr:number){
+  const res=await api.put('/fees/job-assistance',{price_inr},{headers:authHeader()})
+  clearServiceCatalog()
+  return res.data
+}
+
 export async function fetchAdminAudit(page=1){
   return (await api.get('/admin/audit', { params:{page, per_page:20}, headers:authHeader() })).data
 }
