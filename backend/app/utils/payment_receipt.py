@@ -6,19 +6,29 @@ def _money(value):
 
 
 def receipt_data(order, payment):
-    assistance = round(float(order.fee_inr or 0), 2)
-    official = round(float(order.official_fee_inr or 0), 2)
-    total = round(payment.amount_paise / 100, 2)
+    purpose = payment.purpose or 'request_total'
+    assistance_total = round(float(order.fee_inr or 0), 2)
+    official_total = round(float(order.official_fee_inr or 0), 2)
+    paid_total = round(payment.amount_paise / 100, 2)
+    assistance_paid = paid_total if purpose == 'assistance_fee' else (assistance_total if purpose == 'request_total' else 0.0)
+    official_paid = paid_total if purpose == 'official_fee' else (official_total if purpose == 'request_total' else 0.0)
     captured_at = payment.captured_at or payment.updated_at or payment.created_at
+    label = {
+        'assistance_fee': 'Assistance fee payment',
+        'official_fee': 'Official/government fee payment',
+        'request_total': 'Combined assistance and official fee payment',
+    }.get(purpose, 'Request payment')
     return {
-        'receipt_number': f'POSP-{payment.id:06d}',
+        'receipt_number': f'POSP-RCP-{payment.id:06d}',
         'order_code': order.order_code,
         'client_name': order.client_name,
         'client_email': order.email or '',
         'service': order.service.name if order.service else 'Service assistance',
-        'assistance_fee_inr': assistance,
-        'official_fee_inr': official,
-        'total_paid_inr': total,
+        'purpose': purpose,
+        'purpose_label': label,
+        'assistance_fee_inr': assistance_paid,
+        'official_fee_inr': official_paid,
+        'total_paid_inr': paid_total,
         'currency': payment.currency,
         'provider': 'Razorpay',
         'razorpay_order_id': payment.razorpay_order_id,
@@ -34,11 +44,12 @@ def receipt_text(order, payment):
         'Public Online Service Provider\n\n'
         f"Receipt: {data['receipt_number']}\n"
         f"Request: {data['order_code']}\n"
+        f"Payment type: {data['purpose_label']}\n"
         f"Client: {data['client_name']}\n"
         f"Service: {data['service']}\n"
         f"Paid at: {data['captured_at']}\n\n"
-        f"Assistance fee: {_money(data['assistance_fee_inr'])}\n"
-        f"Official/government fee collected: {_money(data['official_fee_inr'])}\n"
+        f"Assistance fee paid in this transaction: {_money(data['assistance_fee_inr'])}\n"
+        f"Official/government fee paid in this transaction: {_money(data['official_fee_inr'])}\n"
         f"Total paid: {_money(data['total_paid_inr'])}\n\n"
         f"Razorpay payment ID: {data['razorpay_payment_id']}\n"
         f"Razorpay order ID: {data['razorpay_order_id']}\n\n"
@@ -66,11 +77,11 @@ th,td{{padding:12px 8px;border-bottom:1px solid #e7ebef;text-align:left}} td:las
 </head>
 <body><main>
 <h1>Payment Receipt</h1><div class="muted">Public Online Service Provider</div>
-<p><strong>Receipt:</strong> {safe['receipt_number']}<br><strong>Request:</strong> {safe['order_code']}<br><strong>Paid at:</strong> {safe['captured_at']}</p>
+<p><strong>Receipt:</strong> {safe['receipt_number']}<br><strong>Request:</strong> {safe['order_code']}<br><strong>Payment type:</strong> {safe['purpose_label']}<br><strong>Paid at:</strong> {safe['captured_at']}</p>
 <p><strong>Client:</strong> {safe['client_name']}<br><strong>Service:</strong> {safe['service']}</p>
 <table><tbody>
-<tr><th>Assistance fee</th><td>{_money(data['assistance_fee_inr'])}</td></tr>
-<tr><th>Official/government fee collected</th><td>{_money(data['official_fee_inr'])}</td></tr>
+<tr><th>Assistance fee paid in this transaction</th><td>{_money(data['assistance_fee_inr'])}</td></tr>
+<tr><th>Official/government fee paid in this transaction</th><td>{_money(data['official_fee_inr'])}</td></tr>
 <tr class="total"><th>Total paid</th><td>{_money(data['total_paid_inr'])}</td></tr>
 </tbody></table>
 <p><strong>Razorpay payment ID:</strong> {safe['razorpay_payment_id']}<br><strong>Razorpay order ID:</strong> {safe['razorpay_order_id']}</p>
