@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from ..jobs.fee_rules import assess_official_fee
 from ..models.order import Order
 from ..models.service import Service, PlatformSetting
 from ..models.user import User
@@ -88,7 +89,7 @@ def _bind_verified_job_context(service, application_data):
         'job_application_url': job.application_url,
         'job_source': job.source.name if job.source else None,
         'job_source_key': job.source.key if job.source else None,
-        'job_official_fee': job.application_fee,
+        'job_official_fee_notice_text': job.application_fee,
     })
     return job
 
@@ -133,6 +134,34 @@ def create_order():
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 409
 
+    official_fee_inr = service.official_fee_inr
+    official_fee_status = service.official_fee_status or 'unconfirmed'
+    if selected_job:
+        assessment = assess_official_fee(selected_job, application_data)
+        if assessment['status'] == 'missing_factors':
+            return jsonify({
+                'error': 'Complete the fee-determining details required by this official notification before submitting.',
+                'missing_fee_factors': assessment.get('missing') or [],
+            }), 400
+        if assessment['status'] == 'known':
+            official_fee_inr = assessment['amount_inr']
+            official_fee_status = 'none' if float(official_fee_inr or 0) == 0 else 'known'
+            application_data['job_official_fee_assessment'] = {
+                'status': official_fee_status,
+                'amount_inr': official_fee_inr,
+                'matched_rule': assessment.get('matched_rule'),
+                'verified_rules': True,
+            }
+        else:
+            official_fee_inr = None
+            official_fee_status = 'unconfirmed'
+            application_data['job_official_fee_assessment'] = {
+                'status': 'unconfirmed',
+                'amount_inr': None,
+                'reason': 'No verified automatic rule matched; admin confirmation is required before payment.',
+                'verified_rules': bool(selected_job.fee_rules_verified_at),
+            }
+
     description = json.dumps({'application_data': application_data}, ensure_ascii=False, separators=(',', ':'))
     if len(description.encode('utf-8')) > MAX_APPLICATION_BYTES:
         return jsonify({'error': 'Application information is too large. Please remove unnecessary text and try again.'}), 413
@@ -151,8 +180,6 @@ def create_order():
         return jsonify({'message': 'This request was already submitted recently.', 'duplicate': True, 'order': order_data}), 200
 
     fee_inr = _job_assistance_fee() if selected_job else (service.price_inr or 0.0)
-    official_fee_inr = None if selected_job else service.official_fee_inr
-    official_fee_status = 'unconfirmed' if selected_job else (service.official_fee_status or 'unconfirmed')
     order = Order(
         order_code=_generate_order_code(), client_name=name, phone=phone, email=email,
         contact_method=contact_method, service=service, user_id=user.id,
