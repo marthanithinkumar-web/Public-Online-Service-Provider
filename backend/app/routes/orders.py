@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from ..models.order import Order
-from ..models.service import Service
+from ..models.service import Service, PlatformSetting
 from ..models.user import User
 from ..models.order_history import OrderStatusHistory
 from ..models.attachment import Attachment
@@ -23,7 +23,14 @@ ALLOWED_CONTACT_METHODS = {'email', 'phone', 'whatsapp'}
 DUPLICATE_WINDOW_SECONDS = 60
 CLIENT_CANCELLABLE_STATUSES = {'New', 'Submitted', 'Pending', 'Documents Required'}
 JOB_ASSISTANCE_CATALOG_NAME = 'Government Job Application Assistance'
-JOB_ASSISTANCE_FEE_INR = 30.0
+
+
+def _job_assistance_fee():
+    setting = db.session.get(PlatformSetting, 'job_assistance_fee_inr')
+    try:
+        return max(0.0, float(setting.value)) if setting else 30.0
+    except (TypeError, ValueError):
+        return 30.0
 
 
 def _generate_order_code():
@@ -36,7 +43,6 @@ def _authenticated_user():
 
 def _client_history_dict(item):
     data = item.to_dict()
-    # Clients need the status, time and visible note—not staff identifiers.
     data.pop('changed_by', None)
     return data
 
@@ -60,7 +66,6 @@ def _normalise_application(value, depth=0):
 
 
 def _bind_verified_job_context(service, application_data):
-    """Replace browser-provided job metadata with the current verified DB record."""
     if service.name != JOB_ASSISTANCE_CATALOG_NAME:
         return None
     job_slug = str(application_data.get('job_slug') or '').strip()
@@ -121,9 +126,6 @@ def create_order():
         return jsonify({'error': str(exc)}), 400
     if not isinstance(application_data, dict):
         return jsonify({'error': 'Application information must use named fields.'}), 400
-    # Express requests are allowed with account contact details only. The
-    # provider can request missing service-specific information securely after
-    # reviewing the request.
     application_data.setdefault('service_name', service.name)
     application_data.setdefault('request_mode', 'express' if len(application_data) == 1 else 'guided')
     try:
@@ -135,7 +137,6 @@ def create_order():
     if len(description.encode('utf-8')) > MAX_APPLICATION_BYTES:
         return jsonify({'error': 'Application information is too large. Please remove unnecessary text and try again.'}), 413
 
-    # Protect against double taps/retries creating the same request repeatedly.
     recent_cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=DUPLICATE_WINDOW_SECONDS)
     duplicate = (Order.query.filter(
         Order.user_id == user.id,
@@ -147,16 +148,9 @@ def create_order():
         first_order = Order.query.filter_by(user_id=user.id).order_by(Order.created_at.asc(), Order.id.asc()).first()
         order_data = dump_schema.dump(duplicate)
         order_data['can_submit_feedback'] = bool(first_order and first_order.id == duplicate.id and not Review.query.join(Order, Review.order_id == Order.id).filter(Order.user_id == user.id).first())
-        return jsonify({
-            'message': 'This request was already submitted recently.',
-            'duplicate': True,
-            'order': order_data,
-        }), 200
+        return jsonify({'message': 'This request was already submitted recently.', 'duplicate': True, 'order': order_data}), 200
 
-    # Selected official jobs use the explicitly agreed ₹30 assistance fee.
-    # Government/official application fees vary by recruitment/category and
-    # remain separate until confirmed on the official portal.
-    fee_inr = JOB_ASSISTANCE_FEE_INR if selected_job else (service.price_inr or 0.0)
+    fee_inr = _job_assistance_fee() if selected_job else (service.price_inr or 0.0)
     official_fee_inr = None if selected_job else service.official_fee_inr
     official_fee_status = 'unconfirmed' if selected_job else (service.official_fee_status or 'unconfirmed')
     order = Order(
@@ -217,27 +211,13 @@ def cancel_order(order_id):
     if order.user_id != user.id:
         return jsonify({'error': 'You can cancel only your own request.'}), 403
     if order.status not in CLIENT_CANCELLABLE_STATUSES:
-        return jsonify({
-            'error': 'This request can no longer be cancelled directly. Contact the provider or submit a grievance for help.',
-            'status': order.status,
-        }), 409
+        return jsonify({'error': 'This request can no longer be cancelled directly. Contact the provider or submit a grievance for help.', 'status': order.status}), 409
     data = request.get_json(silent=True) or {}
     reason = str(data.get('reason') or 'Cancelled by the client before processing.').strip()[:500]
     previous = order.status
     order.status = 'Cancelled'
     order.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
-    db.session.add(OrderStatusHistory(
-        order_id=order.id,
-        previous_status=previous,
-        new_status='Cancelled',
-        changed_by=user.email,
-        note=reason or 'Cancelled by the client before processing.',
-    ))
-    db.session.add(Notification(
-        user_id=user.id,
-        order_id=order.id,
-        title='Request cancelled',
-        message=f'Your request {order.order_code} was cancelled. No further processing will take place.',
-    ))
+    db.session.add(OrderStatusHistory(order_id=order.id, previous_status=previous, new_status='Cancelled', changed_by=user.email, note=reason or 'Cancelled by the client before processing.'))
+    db.session.add(Notification(user_id=user.id, order_id=order.id, title='Request cancelled', message=f'Your request {order.order_code} was cancelled. No further processing will take place.'))
     db.session.commit()
     return jsonify({'message': 'Your request has been cancelled.', 'order': dump_schema.dump(order)})
