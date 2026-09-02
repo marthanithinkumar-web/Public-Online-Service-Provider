@@ -1,4 +1,4 @@
-import React,{useEffect,useMemo,useState} from 'react'
+import React,{useEffect,useState} from 'react'
 import axios from 'axios'
 import {Link,useParams} from 'react-router-dom'
 import {apiBase} from '../services/apiBase'
@@ -18,7 +18,7 @@ export default function OrderDetail(){
  if(loading)return <div className="dashboard-state"><div className="loading-dot"/><p>Loading request...</p></div>
  if(error||!payload?.order)return <div className="dashboard-state error-state"><h2>Request unavailable</h2><p>{error||'This request could not be found.'}</p><button onClick={load}>Try again</button><Link className="btn btn-primary" to="/my-orders">Back to requests</Link></div>
  const order=payload.order;const data=order.application_data||{};const history=payload.history||[];const attachments=payload.attachments||[];const notifications=payload.notifications||[];const terminal=['Completed','Cancelled','Rejected'].includes(order.status);const canCancel=['New','Submitted','Pending','Documents Required'].includes(order.status);const canEdit=canCancel
- const editableEntries=useMemo(()=>Object.entries(data).filter(([key,value])=>!PROTECTED_EDIT_KEYS.has(key)&&['string','number','boolean'].includes(typeof value)),[data])
+ const editableEntries=Object.entries(data).filter(([key,value])=>!PROTECTED_EDIT_KEYS.has(key)&&['string','number','boolean'].includes(typeof value))
  const beginEdit=()=>{const initial:Record<string,string>={};editableEntries.forEach(([key,value])=>{initial[key]=value==null?'':String(value)});setEditData(initial);setActionMessage('');setEditing(true)}
  const saveEdit=async()=>{if(!canEdit||savingEdit)return;setSavingEdit(true);setActionMessage('');try{const application_data:any={...data};for(const [key] of editableEntries)application_data[key]=editData[key]??'';const response=await axios.put(`${apiBase}/orders/${order.id}`,{application_data},{headers:authHeader(),timeout:REQUEST_TIMEOUT_MS});setActionMessage(response.data.message||'Application updated.');setEditing(false);await load()}catch(e:any){setActionMessage(e?.response?.data?.error||'Unable to save application changes.')}finally{setSavingEdit(false)}}
  return <div className="client-dashboard">
