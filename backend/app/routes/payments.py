@@ -4,13 +4,15 @@ import os
 from datetime import datetime, timezone
 
 import requests
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, Response, jsonify, request
 
 from ..models.notification import Notification
 from ..models.order import Order
 from ..models.payment import Payment
 from ..utils.database import db
+from ..utils.email import send_email
 from ..utils.jwt_handler import get_request_user
+from ..utils.payment_receipt import receipt_html, receipt_text
 
 bp = Blueprint('payments', __name__)
 RAZORPAY_API = 'https://api.razorpay.com/v1'
@@ -49,6 +51,24 @@ def _payable_breakdown(order):
     return round(assistance + official, 2), {'assistance_fee_inr': assistance, 'official_fee_inr': official, 'official_fee_status': status}
 
 
+def _payment_payload(payment):
+    data = payment.to_dict() if payment else None
+    if data and _captured(payment):
+        data['receipt_available'] = True
+    return data
+
+
+def _email_receipt(payment):
+    order = payment.order
+    if not order or not order.email:
+        return False
+    return send_email(
+        order.email,
+        f'Payment receipt for request {order.order_code}',
+        receipt_text(order, payment),
+    )
+
+
 @bp.get('/config')
 def payment_config():
     credentials = _credentials()
@@ -73,11 +93,11 @@ def create_checkout(order_id):
 
     existing = Payment.query.filter_by(order_id=order.id, purpose='request_total').order_by(Payment.id.desc()).first()
     if _captured(existing):
-        return jsonify({'message': 'This request is already paid.', 'payment': existing.to_dict(), 'breakdown': breakdown}), 200
+        return jsonify({'message': 'This request is already paid.', 'payment': _payment_payload(existing), 'breakdown': breakdown}), 200
     if existing and existing.status in {'created', 'authorized'}:
         if existing.amount_paise != amount_paise:
             return jsonify({'error': 'The request fee changed after checkout was created. Contact the administrator before paying.'}), 409
-        return jsonify({'key_id': credentials[0], 'razorpay_order_id': existing.razorpay_order_id, 'amount': existing.amount_paise, 'currency': existing.currency, 'name': 'Public Online Service Provider', 'description': f'Request payment for {order.order_code}', 'prefill': {'name': order.client_name, 'email': order.email or '', 'contact': order.phone or ''}, 'payment': existing.to_dict(), 'breakdown': breakdown})
+        return jsonify({'key_id': credentials[0], 'razorpay_order_id': existing.razorpay_order_id, 'amount': existing.amount_paise, 'currency': existing.currency, 'name': 'Public Online Service Provider', 'description': f'Request payment for {order.order_code}', 'prefill': {'name': order.client_name, 'email': order.email or '', 'contact': order.phone or ''}, 'payment': _payment_payload(existing), 'breakdown': breakdown})
 
     payload = {'amount': amount_paise, 'currency': 'INR', 'receipt': order.order_code[:40], 'notes': {'platform_order_id': str(order.id), 'platform_order_code': order.order_code, 'purpose': 'request_total', 'assistance_fee_inr': f"{breakdown['assistance_fee_inr']:.2f}", 'official_fee_inr': f"{(breakdown['official_fee_inr'] or 0):.2f}"}}
     try:
@@ -90,7 +110,7 @@ def create_checkout(order_id):
     payment = Payment(order_id=order.id, purpose='request_total', amount_paise=amount_paise, currency='INR', status='created', razorpay_order_id=provider_order['id'])
     db.session.add(payment)
     db.session.commit()
-    return jsonify({'key_id': credentials[0], 'razorpay_order_id': payment.razorpay_order_id, 'amount': payment.amount_paise, 'currency': payment.currency, 'name': 'Public Online Service Provider', 'description': f'Request payment for {order.order_code}', 'prefill': {'name': order.client_name, 'email': order.email or '', 'contact': order.phone or ''}, 'payment': payment.to_dict(), 'breakdown': breakdown}), 201
+    return jsonify({'key_id': credentials[0], 'razorpay_order_id': payment.razorpay_order_id, 'amount': payment.amount_paise, 'currency': payment.currency, 'name': 'Public Online Service Provider', 'description': f'Request payment for {order.order_code}', 'prefill': {'name': order.client_name, 'email': order.email or '', 'contact': order.phone or ''}, 'payment': _payment_payload(payment), 'breakdown': breakdown}), 201
 
 
 @bp.post('/orders/<int:order_id>/verify')
@@ -117,7 +137,7 @@ def verify_checkout(order_id):
     if not _captured(payment):
         payment.status = 'authorized'
     db.session.commit()
-    return jsonify({'message': 'Payment authorised. Final confirmation will update automatically after capture.', 'payment': payment.to_dict()})
+    return jsonify({'message': 'Payment authorised. Final confirmation will update automatically after capture.', 'payment': _payment_payload(payment)})
 
 
 @bp.get('/orders/<int:order_id>/status')
@@ -127,7 +147,18 @@ def payment_status(order_id):
         return error
     payment = Payment.query.filter_by(order_id=order.id, purpose='request_total').order_by(Payment.id.desc()).first()
     total, breakdown = _payable_breakdown(order)
-    return jsonify({'payment': payment.to_dict() if payment else None, 'breakdown': breakdown, 'total_payable_inr': total})
+    return jsonify({'payment': _payment_payload(payment), 'breakdown': breakdown, 'total_payable_inr': total})
+
+
+@bp.get('/orders/<int:order_id>/receipt')
+def payment_receipt(order_id):
+    order, error = _client_order(order_id)
+    if error:
+        return error
+    payment = Payment.query.filter_by(order_id=order.id, purpose='request_total').order_by(Payment.id.desc()).first()
+    if not _captured(payment):
+        return jsonify({'error': 'A receipt is available only after payment is confirmed.'}), 409
+    return Response(receipt_html(order, payment), mimetype='text/html', headers={'Cache-Control': 'private, no-store'})
 
 
 @bp.post('/razorpay/webhook')
@@ -153,6 +184,7 @@ def razorpay_webhook():
         return jsonify({'ok': True}), 200
     if provider_payment_id and not payment.razorpay_payment_id:
         payment.razorpay_payment_id = provider_payment_id
+    send_receipt = False
     if event_name in {'payment.captured', 'order.paid'}:
         was_captured = _captured(payment)
         payment.status = 'captured'
@@ -160,7 +192,8 @@ def razorpay_webhook():
         payment.failure_code = None
         payment.failure_description = None
         if not was_captured:
-            db.session.add(Notification(user_id=payment.order.user_id, order_id=payment.order_id, title='Request payment received', message=f'Payment for request {payment.order.order_code} was received successfully.'))
+            send_receipt = True
+            db.session.add(Notification(user_id=payment.order.user_id, order_id=payment.order_id, title='Request payment received', message=f'Payment for request {payment.order.order_code} was received successfully. Your payment receipt is now available in the request.'))
     elif event_name == 'payment.failed' and not _captured(payment):
         payment.status = 'failed'
         payment.failure_code = str(payment_entity.get('error_code') or '')[:120] or None
@@ -168,4 +201,6 @@ def razorpay_webhook():
     elif event_name == 'payment.authorized' and payment.status == 'created':
         payment.status = 'authorized'
     db.session.commit()
+    if send_receipt:
+        _email_receipt(payment)
     return jsonify({'ok': True}), 200
