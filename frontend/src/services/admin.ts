@@ -52,10 +52,6 @@ export async function setClientActive(id:number, active:boolean){
   return (await api.post(`/admin/users/${id}/active`, {active}, {headers:authHeader()})).data
 }
 
-export async function fetchAdminDocuments(page=1){
-  return (await api.get('/admin/documents', { params:{page, per_page:20}, headers:authHeader() })).data
-}
-
 export async function sendClientNotification(payload:any){
   return (await api.post('/admin/notifications', payload, { headers:authHeader() })).data
 }
@@ -65,7 +61,7 @@ export async function fetchAdminProfile(){
 }
 
 export async function updateAdminProfile(payload:any){
-  return (await api.put('/admin/profile', payload, { headers:authHeader() })).data
+  return (await api.put('/admin/profile', payload, { headers:authHeader()})).data
 }
 
 export async function fetchSystemReadiness(){
