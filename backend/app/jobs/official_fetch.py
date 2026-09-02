@@ -20,11 +20,11 @@ ALLOWED_HOSTS = {
     'ncs.gov.in', 'www.ncs.gov.in',
 }
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
-MAX_ATTEMPTS = 4
+MAX_ATTEMPTS = 3
 # Government portals commonly return these codes temporarily to automated
 # server-side checks even while the same page remains available to browsers.
 TRANSIENT_STATUS_CODES = {403, 408, 425, 429, 500, 502, 503, 504}
-RETRY_DELAYS_SECONDS = (0.0, 0.8, 2.0, 4.0)
+RETRY_DELAYS_SECONDS = (0.0, 0.8, 2.0)
 BROWSER_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
                   '(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
