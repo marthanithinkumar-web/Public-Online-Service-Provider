@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './App'
 import './styles/global.css'
 import './styles/admin-service-search.css'
+import './styles/latest-jobs-layout.css'
 
 // Requirement fields remain optional unless their existing validation marks them required.
 // This presentation-only cleanup removes repeated "optional" wording without changing validation.
