@@ -3,12 +3,13 @@ from ..models.service import Service, Category, PlatformSetting
 from ..utils.database import db
 from ..middleware.auth import require_admin
 from ..schemas.service_schema import ServiceSchema
-from ..utils.service_requirements import get_service_requirements
+from ..utils.service_requirements import get_service_requirements, SERVICE_REQUIREMENT_PROFILE_BY_NAME
 from sqlalchemy import and_, or_
 from ..utils.seo import application_service_name, legacy_application_service_name, slugify
 
 bp = Blueprint('services', __name__)
 schema = ServiceSchema()
+SERVICE_REQUIREMENT_PROFILE_BY_NAME['Mobile Recharge'] = 'utility'
 
 
 def current_assistance_fee():
