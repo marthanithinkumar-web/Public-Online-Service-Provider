@@ -46,6 +46,8 @@ export async function fetchJobAssistanceFee(){ return (await api.get('/fees/job-
 export async function updateJobAssistanceFee(price_inr:number){ const res=await api.put('/fees/job-assistance',{price_inr},{headers:authHeader()});clearServiceCatalog();return res.data }
 export async function fetchScholarshipAssistanceFee(){ return (await api.get('/fees/scholarship-assistance',{headers:authHeader()})).data }
 export async function updateScholarshipAssistanceFee(price_inr:number){ const res=await api.put('/fees/scholarship-assistance',{price_inr},{headers:authHeader()});clearServiceCatalog();return res.data }
+export async function fetchRechargeBillAssistanceFee(){ return (await api.get('/fees/recharge-bill-assistance',{headers:authHeader()})).data }
+export async function updateRechargeBillAssistanceFee(price_inr:number){ const res=await api.put('/fees/recharge-bill-assistance',{price_inr},{headers:authHeader()});clearServiceCatalog();return res.data }
 export async function fetchAdminAudit(page=1){ return (await api.get('/admin/audit',{params:{page,per_page:20},headers:authHeader()})).data }
 export async function fetchGrievances(page=1,per_page=20){ return (await api.get('/grievances/admin',{params:{page,per_page},headers:authHeader()})).data }
 export async function updateGrievanceStatus(id:number,status:string,response?:string){ return (await api.post(`/grievances/admin/${id}/status`,{status,response},{headers:authHeader()})).data }
