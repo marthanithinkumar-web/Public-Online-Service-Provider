@@ -59,7 +59,10 @@ def upgrade():
 
     existing_setting = bind.execute(sa.text('SELECT key FROM platform_settings WHERE key = :key'), {'key': 'recharge_bill_assistance_fee_inr'}).scalar()
     if existing_setting is None:
-        bind.execute(sa.text('INSERT INTO platform_settings (key, value) VALUES (:key, :value)'), {'key': 'recharge_bill_assistance_fee_inr', 'value': '10.00'})
+        bind.execute(sa.text('''
+            INSERT INTO platform_settings (key, value, updated_at)
+            VALUES (:key, :value, CURRENT_TIMESTAMP)
+        '''), {'key': 'recharge_bill_assistance_fee_inr', 'value': '10.00'})
 
 
 def downgrade():
