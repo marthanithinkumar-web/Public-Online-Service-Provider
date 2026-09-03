@@ -1,0 +1,77 @@
+name: Refresh scholarship notifications
+
+on:
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/app/scholarships/**'
+      - 'frontend/public/data/scholarships.json'
+      - '.github/workflows/scholarship-notifications.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Refresh active scholarship snapshot
+        working-directory: backend
+        run: python -m app.scholarships.snapshot --output ../frontend/public/data/scholarships.json
+      - name: Validate scholarship snapshot
+        run: |
+          python - <<'PY'
+          import json
+          from datetime import date
+          from pathlib import Path
+          from urllib.parse import urlparse
+          p=Path('frontend/public/data/scholarships.json')
+          data=json.loads(p.read_text(encoding='utf-8'))
+          items=data.get('items',[])
+          assert data.get('count') == len(items)
+          slugs=set()
+          for item in items:
+              slug=item.get('slug')
+              assert slug and slug not in slugs, f'duplicate/missing slug: {slug}'
+              slugs.add(slug)
+              deadline=item.get('deadline')
+              if deadline:
+                  assert date.fromisoformat(deadline[:10]) >= date.today(), f'expired scholarship published: {slug}'
+              for key in ('source_url','application_url'):
+                  value=item.get(key)
+                  assert value and urlparse(value).scheme == 'https', f'invalid {key}: {slug}'
+              assert item.get('source_name'), f'missing source attribution: {slug}'
+          print(f'Validated {len(items)} active scholarships')
+          PY
+      - name: Commit refreshed snapshot
+        run: |
+          if git diff --quiet -- frontend/public/data/scholarships.json; then
+            echo 'Scholarship snapshot unchanged.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/public/data/scholarships.json
+          git commit -m 'Refresh active scholarships [skip ci]'
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Probe production scholarship API
+        run: |
+          python - <<'PY'
+          import json, urllib.request
+          base='https://public-online-service-provider-api.onrender.com/api'
+          with urllib.request.urlopen(base+'/scholarships/', timeout=30) as response:
+              assert response.status == 200
+              payload=json.load(response)
+              assert isinstance(payload.get('items'), list)
+          print('Production scholarship API responded successfully.')
+          PY
