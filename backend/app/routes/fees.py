@@ -16,21 +16,31 @@ from ..utils.jwt_handler import get_request_user
 bp = Blueprint('fees', __name__)
 JOB_FEE_KEY = 'job_assistance_fee_inr'
 JOB_SERVICE_NAME = 'Government Job Application Assistance'
+SCHOLARSHIP_FEE_KEY = 'scholarship_assistance_fee_inr'
+SCHOLARSHIP_SERVICE_NAME = 'Scholarship Application Assistance'
 
 
 def utc_now():
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def job_assistance_fee():
-    setting = db.session.get(PlatformSetting, JOB_FEE_KEY)
+def _configured_assistance_fee(key, service_name, default=30.0):
+    setting = db.session.get(PlatformSetting, key)
     try:
         if setting:
             return max(0.0, float(setting.value))
     except (TypeError, ValueError):
         pass
-    service = Service.query.filter_by(name=JOB_SERVICE_NAME).first()
-    return max(0.0, float(service.price_inr or 0)) if service else 30.0
+    service = Service.query.filter_by(name=service_name).first()
+    return max(0.0, float(service.price_inr or 0)) if service else default
+
+
+def job_assistance_fee():
+    return _configured_assistance_fee(JOB_FEE_KEY, JOB_SERVICE_NAME)
+
+
+def scholarship_assistance_fee():
+    return _configured_assistance_fee(SCHOLARSHIP_FEE_KEY, SCHOLARSHIP_SERVICE_NAME)
 
 
 def _money(value, label):
@@ -48,6 +58,27 @@ def _component_locked(order, component):
     return Payment.query.filter(Payment.order_id == order.id, Payment.purpose.in_(purposes), Payment.status.in_(['created', 'authorized', 'captured', 'paid'])).first() is not None
 
 
+def _update_assistance_fee(key, service_name, action, label):
+    admin = get_request_user()
+    data = request.get_json(silent=True) or {}
+    try:
+        amount = _money(data.get('price_inr'), f'{label} assistance fee')
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    setting = db.session.get(PlatformSetting, key)
+    previous = setting.value if setting else None
+    if setting:
+        setting.value = f'{amount:.2f}'
+    else:
+        db.session.add(PlatformSetting(key=key, value=f'{amount:.2f}'))
+    service = Service.query.filter_by(name=service_name).first()
+    if service:
+        service.price_inr = amount
+    db.session.add(AdminAuditLog(admin_id=admin.id, action=action, summary=f'Changed the website-wide {label} application assistance fee to ₹{amount:.2f}.', details={'previous_fee_inr': previous, 'new_fee_inr': amount, 'service_catalog_updated': bool(service), 'existing_requests_repriced': False}))
+    db.session.commit()
+    return jsonify({'message': f'{label.capitalize()} application assistance fee updated to ₹{amount:g} across the website.', 'price_inr': amount, 'existing_requests_repriced': False})
+
+
 @bp.get('/job-assistance')
 def public_job_assistance_fee():
     response = jsonify({'price_inr': job_assistance_fee()})
@@ -58,24 +89,20 @@ def public_job_assistance_fee():
 @bp.put('/job-assistance')
 @require_admin
 def update_job_assistance_fee():
-    admin = get_request_user()
-    data = request.get_json(silent=True) or {}
-    try:
-        amount = _money(data.get('price_inr'), 'job assistance fee')
-    except ValueError as exc:
-        return jsonify({'error': str(exc)}), 400
-    setting = db.session.get(PlatformSetting, JOB_FEE_KEY)
-    previous = setting.value if setting else None
-    if setting:
-        setting.value = f'{amount:.2f}'
-    else:
-        db.session.add(PlatformSetting(key=JOB_FEE_KEY, value=f'{amount:.2f}'))
-    service = Service.query.filter_by(name=JOB_SERVICE_NAME).first()
-    if service:
-        service.price_inr = amount
-    db.session.add(AdminAuditLog(admin_id=admin.id, action='job_assistance_fee_update', summary=f'Changed the website-wide job application assistance fee to ₹{amount:.2f}.', details={'previous_fee_inr': previous, 'new_fee_inr': amount, 'service_catalog_updated': bool(service), 'existing_requests_repriced': False}))
-    db.session.commit()
-    return jsonify({'message': f'Job application assistance fee updated to ₹{amount:g} across the website.', 'price_inr': amount, 'existing_requests_repriced': False})
+    return _update_assistance_fee(JOB_FEE_KEY, JOB_SERVICE_NAME, 'job_assistance_fee_update', 'job')
+
+
+@bp.get('/scholarship-assistance')
+def public_scholarship_assistance_fee():
+    response = jsonify({'price_inr': scholarship_assistance_fee(), 'official_fee_inr': 0, 'official_fee_status': 'none'})
+    response.headers['Cache-Control'] = 'public, max-age=60, stale-while-revalidate=300'
+    return response
+
+
+@bp.put('/scholarship-assistance')
+@require_admin
+def update_scholarship_assistance_fee():
+    return _update_assistance_fee(SCHOLARSHIP_FEE_KEY, SCHOLARSHIP_SERVICE_NAME, 'scholarship_assistance_fee_update', 'scholarship')
 
 
 @bp.put('/jobs/<int:job_id>/rules')
