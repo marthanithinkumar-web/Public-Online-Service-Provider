@@ -2,8 +2,9 @@ import React,{useEffect,useMemo,useState} from 'react'
 import {Link} from 'react-router-dom'
 import {
   createCategory,createService,fetchAdminJobs,fetchCategories,fetchServices,setServiceActive,
-  fetchHomepageAssistanceFee,fetchJobAssistanceFee,updateAllAssistanceFees,updateHomepageAssistanceFee,
-  updateJobAssistanceFee,updateService,
+  fetchHomepageAssistanceFee,fetchJobAssistanceFee,fetchScholarshipAssistanceFee,
+  updateAllAssistanceFees,updateHomepageAssistanceFee,updateJobAssistanceFee,
+  updateScholarshipAssistanceFee,updateService,
 } from '../../services/admin'
 import FeeSummary from '../ui/FeeSummary'
 
@@ -25,6 +26,7 @@ export default function ServiceManagement(){
   const [globalConfirmed,setGlobalConfirmed]=useState(false)
   const [homepageFee,setHomepageFee]=useState<number|''>(30)
   const [jobFee,setJobFee]=useState<number|''>(30)
+  const [scholarshipFee,setScholarshipFee]=useState<number|''>(30)
   const [searchQuery,setSearchQuery]=useState('')
   const [jobResults,setJobResults]=useState<any[]>([])
   const [searching,setSearching]=useState(false)
@@ -35,13 +37,14 @@ export default function ServiceManagement(){
   const load=async()=>{
     try{
       setError('')
-      const [serviceItems,categoryItems,homepageFeeResult,jobFeeResult]=await Promise.all([
-        fetchServices(),fetchCategories(),fetchHomepageAssistanceFee(),fetchJobAssistanceFee(),
+      const [serviceItems,categoryItems,homepageFeeResult,jobFeeResult,scholarshipFeeResult]=await Promise.all([
+        fetchServices(),fetchCategories(),fetchHomepageAssistanceFee(),fetchJobAssistanceFee(),fetchScholarshipAssistanceFee(),
       ])
       setServices(serviceItems)
       setCategories(categoryItems)
       setHomepageFee(Number(homepageFeeResult.price_inr))
       setJobFee(Number(jobFeeResult.price_inr??30))
+      setScholarshipFee(Number(scholarshipFeeResult.price_inr??30))
       const feeValues=Array.from(new Set(serviceItems.map((service:any)=>Number(service.price_inr||0))))
       if(feeValues.length===1){
         setGlobalFee(feeValues[0] as number)
@@ -132,6 +135,18 @@ export default function ServiceManagement(){
     finally{setBusy(false)}
   }
 
+  const saveScholarshipFee=async()=>{
+    const value=Number(scholarshipFee)
+    if(scholarshipFee===''||!Number.isFinite(value)||value<0||value>100000){setError('Enter a valid scholarship application assistance fee from ₹0 to ₹1,00,000.');return}
+    try{
+      setBusy(true);setError('');setMessage('')
+      const result=await updateScholarshipAssistanceFee(value)
+      setScholarshipFee(Number(result.price_inr))
+      setMessage(`${result.message} Existing submitted scholarship applications keep their original agreed fee.`)
+    }catch(err:any){setError(err?.response?.data?.error||'Unable to update the website-wide scholarship application assistance fee.')}
+    finally{setBusy(false)}
+  }
+
   const searchCatalog=async()=>{
     const q=searchQuery.trim()
     if(!q){setJobResults([]);return}
@@ -198,6 +213,15 @@ export default function ServiceManagement(){
         <label>Job Application Assistance Fee (₹)<input type="number" min="0" max="100000" step="0.01" value={jobFee} onChange={e=>setJobFee(e.target.value===''?'':Number(e.target.value))}/></label>
         <button type="button" disabled={busy||jobFee===''} onClick={saveJobFee}>{busy?'Saving…':'Save job application fee'}</button>
         <small>₹0 is allowed. You can change this amount at any time; it updates the assistance fee for future job application requests throughout the website.</small>
+      </div>
+    </section>
+
+    <section className="dashboard-section global-fee-card" aria-labelledby="scholarship-global-fee-title">
+      <div><span className="eyebrow">Website-wide pricing</span><h3 id="scholarship-global-fee-title">Scholarship Application Assistance Fee</h3><p className="global-fee-current">This fee applies to every new scholarship application assistance request. Scholarship application fees are not treated as government or official fees on this platform.</p></div>
+      <div className="global-fee-controls">
+        <label>Scholarship Application Assistance Fee (₹)<input type="number" min="0" max="100000" step="0.01" value={scholarshipFee} onChange={e=>setScholarshipFee(e.target.value===''?'':Number(e.target.value))}/></label>
+        <button type="button" disabled={busy||scholarshipFee===''} onClick={saveScholarshipFee}>{busy?'Saving…':'Save scholarship application fee'}</button>
+        <small>₹0 is allowed. Changes apply only to future scholarship assistance requests; existing submitted requests keep their agreed fee.</small>
       </div>
     </section>
 
