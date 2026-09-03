@@ -18,6 +18,8 @@ JOB_FEE_KEY = 'job_assistance_fee_inr'
 JOB_SERVICE_NAME = 'Government Job Application Assistance'
 SCHOLARSHIP_FEE_KEY = 'scholarship_assistance_fee_inr'
 SCHOLARSHIP_SERVICE_NAME = 'Scholarship Application Assistance'
+RECHARGE_BILL_FEE_KEY = 'recharge_bill_assistance_fee_inr'
+RECHARGE_BILL_SERVICE_NAME = 'Recharge & Bill Payments'
 
 
 def utc_now():
@@ -41,6 +43,10 @@ def job_assistance_fee():
 
 def scholarship_assistance_fee():
     return _configured_assistance_fee(SCHOLARSHIP_FEE_KEY, SCHOLARSHIP_SERVICE_NAME)
+
+
+def recharge_bill_assistance_fee():
+    return _configured_assistance_fee(RECHARGE_BILL_FEE_KEY, RECHARGE_BILL_SERVICE_NAME, default=10.0)
 
 
 def _money(value, label):
@@ -74,9 +80,9 @@ def _update_assistance_fee(key, service_name, action, label):
     service = Service.query.filter_by(name=service_name).first()
     if service:
         service.price_inr = amount
-    db.session.add(AdminAuditLog(admin_id=admin.id, action=action, summary=f'Changed the website-wide {label} application assistance fee to ₹{amount:.2f}.', details={'previous_fee_inr': previous, 'new_fee_inr': amount, 'service_catalog_updated': bool(service), 'existing_requests_repriced': False}))
+    db.session.add(AdminAuditLog(admin_id=admin.id, action=action, summary=f'Changed the website-wide {label} assistance fee to ₹{amount:.2f}.', details={'previous_fee_inr': previous, 'new_fee_inr': amount, 'service_catalog_updated': bool(service), 'existing_requests_repriced': False}))
     db.session.commit()
-    return jsonify({'message': f'{label.capitalize()} application assistance fee updated to ₹{amount:g} across the website.', 'price_inr': amount, 'existing_requests_repriced': False})
+    return jsonify({'message': f'{label.capitalize()} assistance fee updated to ₹{amount:g} across the website.', 'price_inr': amount, 'existing_requests_repriced': False})
 
 
 @bp.get('/job-assistance')
@@ -89,7 +95,7 @@ def public_job_assistance_fee():
 @bp.put('/job-assistance')
 @require_admin
 def update_job_assistance_fee():
-    return _update_assistance_fee(JOB_FEE_KEY, JOB_SERVICE_NAME, 'job_assistance_fee_update', 'job')
+    return _update_assistance_fee(JOB_FEE_KEY, JOB_SERVICE_NAME, 'job_assistance_fee_update', 'job application')
 
 
 @bp.get('/scholarship-assistance')
@@ -102,7 +108,20 @@ def public_scholarship_assistance_fee():
 @bp.put('/scholarship-assistance')
 @require_admin
 def update_scholarship_assistance_fee():
-    return _update_assistance_fee(SCHOLARSHIP_FEE_KEY, SCHOLARSHIP_SERVICE_NAME, 'scholarship_assistance_fee_update', 'scholarship')
+    return _update_assistance_fee(SCHOLARSHIP_FEE_KEY, SCHOLARSHIP_SERVICE_NAME, 'scholarship_assistance_fee_update', 'scholarship application')
+
+
+@bp.get('/recharge-bill-assistance')
+def public_recharge_bill_assistance_fee():
+    response = jsonify({'price_inr': recharge_bill_assistance_fee()})
+    response.headers['Cache-Control'] = 'public, max-age=60, stale-while-revalidate=300'
+    return response
+
+
+@bp.put('/recharge-bill-assistance')
+@require_admin
+def update_recharge_bill_assistance_fee():
+    return _update_assistance_fee(RECHARGE_BILL_FEE_KEY, RECHARGE_BILL_SERVICE_NAME, 'recharge_bill_assistance_fee_update', 'recharge & bill payment')
 
 
 @bp.put('/jobs/<int:job_id>/rules')
