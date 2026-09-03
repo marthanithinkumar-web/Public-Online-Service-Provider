@@ -16,11 +16,20 @@ export type JobNotification={
 export type JobFeedData={items:JobNotification[];count:number;sources?:JobSource[];generated_at?:string|null;successful_sources?:number;review_count?:number}
 
 const api=axios.create({baseURL:apiBase,timeout:8000})
+let snapshotCache:JobFeedData|null=null
+let snapshotPromise:Promise<JobFeedData>|null=null
 
-async function fetchSnapshot(){
-  const response=await fetch(`/data/jobs.json?refresh=${Date.now()}`,{cache:'no-store',headers:{Accept:'application/json'}})
-  if(!response.ok)throw new Error('Verified job snapshot is unavailable.')
-  return await response.json() as JobFeedData
+async function fetchSnapshot(force=false){
+  if(snapshotCache&&!force)return snapshotCache
+  if(snapshotPromise&&!force)return snapshotPromise
+  snapshotPromise=(async()=>{
+    const response=await fetch('/data/jobs.json',{cache:'default',headers:{Accept:'application/json'}})
+    if(!response.ok)throw new Error('Verified job snapshot is unavailable.')
+    const data=await response.json() as JobFeedData
+    snapshotCache=data
+    return data
+  })()
+  try{return await snapshotPromise}finally{snapshotPromise=null}
 }
 
 function filterSnapshot(data:JobFeedData,params:Record<string,string|number|boolean>){
@@ -42,31 +51,42 @@ function filterSnapshot(data:JobFeedData,params:Record<string,string|number|bool
   return {...data,items,count:items.length}
 }
 
+async function refreshJobsInBackground(params:Record<string,string|number|boolean>){
+  try{
+    const fresh=(await api.get('/jobs/',{params,timeout:3500})).data as JobFeedData
+    if(!Object.keys(params).length||(!params.q&&!params.type&&!params.featured))snapshotCache=fresh
+  }catch{
+    // The checked-in verified snapshot remains the last-known-good result.
+  }
+}
+
 export async function fetchJobs(params:Record<string,string|number|boolean>={}){
   try{
-    return (await api.get('/jobs/',{params})).data as JobFeedData
+    const snapshot=filterSnapshot(await fetchSnapshot(),params)
+    void refreshJobsInBackground(params)
+    return snapshot
   }catch{
-    return filterSnapshot(await fetchSnapshot(),params)
+    return (await api.get('/jobs/',{params})).data as JobFeedData
   }
 }
 
 export async function fetchJob(slug:string){
   try{
-    return (await api.get(`/jobs/${encodeURIComponent(slug)}`)).data as {job:JobNotification}
-  }catch{
     const data=await fetchSnapshot()
     const job=(data.items||[]).find(item=>item.slug===slug)
-    if(!job)throw new Error('Verified job notice was not found.')
-    return {job}
+    if(job){void api.get(`/jobs/${encodeURIComponent(slug)}`,{timeout:3500}).catch(()=>undefined);return {job}}
+  }catch{
+    // Fall through to the live API when the snapshot cannot be loaded.
   }
+  return (await api.get(`/jobs/${encodeURIComponent(slug)}`)).data as {job:JobNotification}
 }
 
 export async function fetchJobSources(){
   try{
-    return (await api.get('/jobs/sources')).data as {items:JobSource[]}
-  }catch{
     const data=await fetchSnapshot()
     return {items:data.sources||[]}
+  }catch{
+    return (await api.get('/jobs/sources')).data as {items:JobSource[]}
   }
 }
 
