@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-03T05:06:19Z",
+  "generated_at": "2026-09-03T19:29:11Z",
   "items": [
     {
       "id": 267100590369153,
@@ -29,11 +29,11 @@
         "key": "employment_news",
         "name": "Employment News",
         "listing_url": "https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All",
-        "last_sync_completed_at": "2026-09-03T05:06:19Z",
+        "last_sync_completed_at": "2026-09-03T19:29:11Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-09-01T11:46:58Z",
-      "last_seen_at": "2026-09-03T05:06:19Z",
+      "last_seen_at": "2026-09-03T19:29:11Z",
       "published_at": "2026-09-01T11:46:58Z",
       "content_hash": "f2ed33cee981e9d51c4c9e684e9e44c19ed668d90f22aa6fcced3336d61a3f6b"
     },
@@ -64,11 +64,11 @@
         "key": "employment_news",
         "name": "Employment News",
         "listing_url": "https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All",
-        "last_sync_completed_at": "2026-09-03T05:06:19Z",
+        "last_sync_completed_at": "2026-09-03T19:29:11Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-09-01T11:46:58Z",
-      "last_seen_at": "2026-09-03T05:06:19Z",
+      "last_seen_at": "2026-09-03T19:29:11Z",
       "published_at": "2026-09-01T11:46:58Z",
       "content_hash": "5ce29811700a1fc4d4eb32a560fd7f24c1311e60d87c14b0dc329cd596f826b7"
     },
@@ -99,11 +99,11 @@
         "key": "employment_news",
         "name": "Employment News",
         "listing_url": "https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All",
-        "last_sync_completed_at": "2026-09-03T05:06:19Z",
+        "last_sync_completed_at": "2026-09-03T19:29:11Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-09-01T11:46:58Z",
-      "last_seen_at": "2026-09-03T05:06:19Z",
+      "last_seen_at": "2026-09-03T19:29:11Z",
       "published_at": "2026-09-01T11:46:58Z",
       "content_hash": "0d64b805bcc834445658481a145e22a1db8fc6d7ec326b33a0c878a816ba9f48"
     },
@@ -134,11 +134,11 @@
         "key": "employment_news",
         "name": "Employment News",
         "listing_url": "https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All",
-        "last_sync_completed_at": "2026-09-03T05:06:19Z",
+        "last_sync_completed_at": "2026-09-03T19:29:11Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-09-01T11:46:58Z",
-      "last_seen_at": "2026-09-03T05:06:19Z",
+      "last_seen_at": "2026-09-03T19:29:11Z",
       "published_at": "2026-09-01T11:46:58Z",
       "content_hash": "7200a2b756ed3e9de7690bd65a36540829a4e7200f60463d0cb95108806aa6c8"
     },
@@ -169,11 +169,11 @@
         "key": "employment_news",
         "name": "Employment News",
         "listing_url": "https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All",
-        "last_sync_completed_at": "2026-09-03T05:06:19Z",
+        "last_sync_completed_at": "2026-09-03T19:29:11Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-09-01T11:46:58Z",
-      "last_seen_at": "2026-09-03T05:06:19Z",
+      "last_seen_at": "2026-09-03T19:29:11Z",
       "published_at": "2026-09-01T11:46:58Z",
       "content_hash": "b24e4987043a9ea59a95079b86527753eed11bacf86ba92a299dc7df70307abb"
     },
@@ -204,11 +204,11 @@
         "key": "employment_news",
         "name": "Employment News",
         "listing_url": "https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All",
-        "last_sync_completed_at": "2026-09-03T05:06:19Z",
+        "last_sync_completed_at": "2026-09-03T19:29:11Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-09-01T11:46:58Z",
-      "last_seen_at": "2026-09-03T05:06:19Z",
+      "last_seen_at": "2026-09-03T19:29:11Z",
       "published_at": "2026-09-01T11:46:58Z",
       "content_hash": "3904701d93122af2a20b5332d6b4c51118d9456b914e6cab2bfc9b0bc9753cb4"
     },
@@ -239,11 +239,11 @@
         "key": "upsc",
         "name": "Union Public Service Commission",
         "listing_url": "https://www.upsc.gov.in/recruitment/recruitment-advertisement",
-        "last_sync_completed_at": "2026-09-03T05:06:19Z",
+        "last_sync_completed_at": "2026-09-03T19:29:11Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-09-03T05:06:19Z",
-      "last_seen_at": "2026-09-03T05:06:19Z",
+      "last_seen_at": "2026-09-03T19:29:11Z",
       "published_at": "2026-09-03T05:06:19Z",
       "content_hash": "90b5f539dedb345ad240bb121e0eb1dc99c54de479956f284940032ba6bbe1b7"
     },
@@ -274,11 +274,11 @@
         "key": "ssc",
         "name": "Staff Selection Commission",
         "listing_url": "https://ssc.gov.in/api/general-website/portal/notice-boards?page=1&limit=100&contentType=notice-boards&key=createdAt&order=DESC&isAttachment=true&language=english&attributes=id%2Cheadline%2CexamId%2CcontentType%2CredirectUrl%2CstartDate%2CendDate%2Clanguage%2CcreatedAt",
-        "last_sync_completed_at": "2026-09-03T05:06:19Z",
+        "last_sync_completed_at": "2026-09-03T19:29:11Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-09-01T17:11:18Z",
-      "last_seen_at": "2026-09-03T05:06:19Z",
+      "last_seen_at": "2026-09-03T19:29:11Z",
       "published_at": "2026-09-01T17:11:18Z",
       "content_hash": "246d9bb158cf902e8e2504e1e3ac042e5544361d0f4a77726f6beae96b57ba5f"
     },
@@ -309,11 +309,11 @@
         "key": "ssc",
         "name": "Staff Selection Commission",
         "listing_url": "https://ssc.gov.in/api/general-website/portal/notice-boards?page=1&limit=100&contentType=notice-boards&key=createdAt&order=DESC&isAttachment=true&language=english&attributes=id%2Cheadline%2CexamId%2CcontentType%2CredirectUrl%2CstartDate%2CendDate%2Clanguage%2CcreatedAt",
-        "last_sync_completed_at": "2026-09-03T05:06:19Z",
+        "last_sync_completed_at": "2026-09-03T19:29:11Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-09-01T17:11:18Z",
-      "last_seen_at": "2026-09-03T05:06:19Z",
+      "last_seen_at": "2026-09-03T19:29:11Z",
       "published_at": "2026-09-01T17:11:18Z",
       "content_hash": "32d833cfd4e190f084cc205fa25bc4552b49e0ff49f415443bd80f7ea1e2a2ae"
     },
@@ -344,11 +344,11 @@
         "key": "ssc",
         "name": "Staff Selection Commission",
         "listing_url": "https://ssc.gov.in/api/general-website/portal/notice-boards?page=1&limit=100&contentType=notice-boards&key=createdAt&order=DESC&isAttachment=true&language=english&attributes=id%2Cheadline%2CexamId%2CcontentType%2CredirectUrl%2CstartDate%2CendDate%2Clanguage%2CcreatedAt",
-        "last_sync_completed_at": "2026-09-03T05:06:19Z",
+        "last_sync_completed_at": "2026-09-03T19:29:11Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-09-01T17:11:18Z",
-      "last_seen_at": "2026-09-03T05:06:19Z",
+      "last_seen_at": "2026-09-03T19:29:11Z",
       "published_at": "2026-09-01T17:11:18Z",
       "content_hash": "e2d69d659a12b23d46e0d5bf7035bb507bfafbb277e7ec3bbb11b367031998ea"
     },
@@ -379,11 +379,11 @@
         "key": "ssc",
         "name": "Staff Selection Commission",
         "listing_url": "https://ssc.gov.in/api/general-website/portal/notice-boards?page=1&limit=100&contentType=notice-boards&key=createdAt&order=DESC&isAttachment=true&language=english&attributes=id%2Cheadline%2CexamId%2CcontentType%2CredirectUrl%2CstartDate%2CendDate%2Clanguage%2CcreatedAt",
-        "last_sync_completed_at": "2026-09-03T05:06:19Z",
+        "last_sync_completed_at": "2026-09-03T19:29:11Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-09-02T14:37:47Z",
-      "last_seen_at": "2026-09-03T05:06:19Z",
+      "last_seen_at": "2026-09-03T19:29:11Z",
       "published_at": "2026-09-02T14:37:47Z",
       "content_hash": "f8abf4b1a7268f54ce098c759bed43ad5848fd12548d8dc5e43f4c6bc3f601ef"
     }
@@ -394,7 +394,7 @@
       "name": "Employment News",
       "listing_url": "https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All",
       "enabled": true,
-      "last_sync_completed_at": "2026-09-03T05:06:19Z",
+      "last_sync_completed_at": "2026-09-03T19:29:11Z",
       "last_sync_status": "success",
       "fetched_count": 12,
       "published_count": 6
@@ -404,17 +404,17 @@
       "name": "Staff Selection Commission",
       "listing_url": "https://ssc.gov.in/api/general-website/portal/notice-boards?page=1&limit=100&contentType=notice-boards&key=createdAt&order=DESC&isAttachment=true&language=english&attributes=id%2Cheadline%2CexamId%2CcontentType%2CredirectUrl%2CstartDate%2CendDate%2Clanguage%2CcreatedAt",
       "enabled": true,
-      "last_sync_completed_at": "2026-09-03T05:06:19Z",
+      "last_sync_completed_at": "2026-09-03T19:29:11Z",
       "last_sync_status": "success",
-      "fetched_count": 3,
-      "published_count": 3
+      "fetched_count": 2,
+      "published_count": 2
     },
     {
       "key": "rrb",
       "name": "Railway Recruitment Board",
       "listing_url": "https://www.rrbcdg.gov.in/",
       "enabled": true,
-      "last_sync_completed_at": "2026-09-03T05:06:19Z",
+      "last_sync_completed_at": "2026-09-03T19:29:11Z",
       "last_sync_status": "failed",
       "fetched_count": 0,
       "published_count": 0,
@@ -425,7 +425,7 @@
       "name": "Union Public Service Commission",
       "listing_url": "https://www.upsc.gov.in/recruitment/recruitment-advertisement",
       "enabled": true,
-      "last_sync_completed_at": "2026-09-03T05:06:19Z",
+      "last_sync_completed_at": "2026-09-03T19:29:11Z",
       "last_sync_status": "success",
       "fetched_count": 1,
       "published_count": 1
@@ -435,7 +435,7 @@
       "name": "Intelligence Bureau / Ministry of Home Affairs",
       "listing_url": "https://www.mha.gov.in/en/notifications/vacancies?title=Intelligence%20Bureau",
       "enabled": true,
-      "last_sync_completed_at": "2026-09-03T05:06:19Z",
+      "last_sync_completed_at": "2026-09-03T19:29:11Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -445,7 +445,7 @@
       "name": "Telangana Police Recruitment Board",
       "listing_url": "https://www.tgprb.in/",
       "enabled": true,
-      "last_sync_completed_at": "2026-09-03T05:06:19Z",
+      "last_sync_completed_at": "2026-09-03T19:29:11Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -455,7 +455,7 @@
       "name": "India Post — GDS Online Engagement",
       "listing_url": "https://www.indiapost.gov.in/gdsonlineengagement",
       "enabled": true,
-      "last_sync_completed_at": "2026-09-03T05:06:19Z",
+      "last_sync_completed_at": "2026-09-03T19:29:11Z",
       "last_sync_status": "failed",
       "fetched_count": 0,
       "published_count": 0,
@@ -466,7 +466,7 @@
       "name": "Department of Posts — Vacancies",
       "listing_url": "https://www.indiapost.gov.in/vacancies",
       "enabled": true,
-      "last_sync_completed_at": "2026-09-03T05:06:19Z",
+      "last_sync_completed_at": "2026-09-03T19:29:11Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -476,7 +476,7 @@
       "name": "Indian Space Research Organisation",
       "listing_url": "https://www.isro.gov.in/ViewAllOpportunities.html",
       "enabled": true,
-      "last_sync_completed_at": "2026-09-03T05:06:19Z",
+      "last_sync_completed_at": "2026-09-03T19:29:11Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -486,7 +486,7 @@
       "name": "National Career Service",
       "listing_url": "https://www.ncs.gov.in/job-listing",
       "enabled": true,
-      "last_sync_completed_at": "2026-09-03T05:06:19Z",
+      "last_sync_completed_at": "2026-09-03T19:29:11Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
