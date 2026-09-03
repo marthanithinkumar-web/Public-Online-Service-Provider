@@ -163,6 +163,6 @@ def update_service(service_id):
 @bp.route('/<int:service_id>/active', methods=['POST'])
 @require_admin
 def set_service_active(service_id):
-    s = db.get_or_404(Service, service_id);data=request.json or {};active=data.get('active')
+    s=db.get_or_404(Service,service_id);data=request.json or {};active=data.get('active')
     if active is None:return jsonify({'error':'active required (true/false)'}),400
-    s.is_active=bool(active);db.session.commit();return jsonify({'message':'Service active status updated','service':_service_dict(s)})
+    s.is_active=bool(active);db.session.commit();return jsonify({'message':'Service status updated','service':_service_dict(s)})
