@@ -2,7 +2,7 @@ import React,{useEffect,useMemo,useRef,useState} from 'react'
 import {Link,useLocation} from 'react-router-dom'
 import {fetchServiceCatalog,readCachedServices,servicePath,serviceSearchTokens} from '../../services/serviceCatalog'
 
-const POPULAR=['Income certificate','Scholarships','Government jobs','Aadhaar update','Birth certificate','Ration card']
+const POPULAR=['Mobile recharge','Bill payments','Income certificate','Scholarships','Government jobs','Aadhaar update','Birth certificate','Ration card']
 const categoryName=(service:any)=>typeof service.category==='string'?service.category:service.category?.name||'Other services'
 const normalise=(value:string)=>value.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\bgovt\b/g,'government')
 
@@ -39,7 +39,7 @@ export default function SearchPanel({context='home',variant='section'}:{context?
 
   return <section className={variant==='hero'?'hero-search-panel':'content-section search-panel-premium'} id="service-search" aria-labelledby={titleId}>
     {variant==='section'?<div className="section-header inline"><div><span className="eyebrow">{context==='dashboard'?'Explore services':'Quick search'}</span><h2 id={titleId}>What service do you need help with?</h2></div><span className="search-meta" aria-live="polite">{loading?'Loading services':term?`${visible.length} result${visible.length===1?'':'s'}`:'Ready'}</span></div>:<h2 className="visually-hidden" id={titleId}>Search public services</h2>}
-    <div className="search-box homepage-search-box"><span className="search-input-icon" aria-hidden="true">⌕</span><input ref={inputRef} id={inputId} type="search" autoComplete="off" aria-label="Search services" placeholder="Search for a service, certificate, job or scholarship" value={q} onChange={e=>{setQ(e.target.value);setCategory('')}}/>{q?<button type="button" className="btn-secondary search-submit" onClick={()=>{setQ('');setCategory('');inputRef.current?.focus()}} aria-label="Clear service search">Clear</button>:<button type="button" className="search-submit" onClick={()=>inputRef.current?.focus()}>Search</button>}</div>
+    <div className="search-box homepage-search-box"><span className="search-input-icon" aria-hidden="true">⌕</span><input ref={inputRef} id={inputId} type="search" autoComplete="off" aria-label="Search services" placeholder="Search services, jobs, scholarships, recharge or bill payments" value={q} onChange={e=>{setQ(e.target.value);setCategory('')}}/>{q?<button type="button" className="btn-secondary search-submit" onClick={()=>{setQ('');setCategory('');inputRef.current?.focus()}} aria-label="Clear service search">Clear</button>:<button type="button" className="search-submit" onClick={()=>inputRef.current?.focus()}>Search</button>}</div>
     <div className="popular-searches" aria-label="Popular searches"><strong>Popular Searches</strong><div className="filter-tabs">{POPULAR.map(item=><button type="button" key={item} onClick={()=>choose(item)}>{item}</button>)}</div></div>
     {term&&<Link className="job-search-forward" to={`/jobs?q=${encodeURIComponent(term)}`}>Search current official job notices for “{term}” →</Link>}
     {categories.length>1&&<label className="search-category-filter">Filter results by category<select value={category} onChange={e=>setCategory(e.target.value)}><option value="">All categories</option>{categories.map(item=><option key={item}>{item}</option>)}</select></label>}
