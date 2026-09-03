@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/generate-seo.mjs && vite build && node scripts/prerender-seo.mjs",
+    "build": "node scripts/generate-seo.mjs && vite build && node scripts/prerender-seo.mjs && node scripts/verify-refresh-shell.mjs",
     "typecheck": "tsc --noEmit",
     "start": "vite"
   },
