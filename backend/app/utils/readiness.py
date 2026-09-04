@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlparse
 
 
 def _present(name):
@@ -23,13 +24,17 @@ def smtp_configured():
 
 
 def persistent_storage_configured():
-    return all(_present(name) for name in (
+    if not all(_present(name) for name in (
         'S3_BUCKET',
         'S3_ENDPOINT_URL',
         'AWS_ACCESS_KEY_ID',
         'AWS_SECRET_ACCESS_KEY',
         'AWS_REGION',
-    ))
+    )):
+        return False
+    endpoint = (os.getenv('S3_ENDPOINT_URL') or '').strip()
+    parsed = urlparse(endpoint)
+    return parsed.scheme == 'https' and bool(parsed.netloc)
 
 
 def shared_rate_limit_configured():
