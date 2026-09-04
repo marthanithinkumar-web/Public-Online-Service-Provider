@@ -49,11 +49,17 @@ jobs:
               sys.exit(1)
           health=(payload.get('discovery') or {}).get('source_health') or {}
           items=payload.get('items') or []
+          bad_provider=any(
+              item.get('source_key') == 'nsp'
+              and any(marker in str(item.get('provider') or '') for marker in ('Welfare Based Scheme)', 'Merit Based Scheme)'))
+              for item in items
+          )
           ok=(
               payload.get('official_count', 0) >= 5
               and (health.get('nsp') or {}).get('ok') is True
               and len(health) >= 5
               and any(item.get('source_key','').startswith('tg_epass') for item in items)
+              and not bad_provider
           )
           sys.exit(0 if ok else 1)
           PY
@@ -61,7 +67,7 @@ jobs:
               ready=1
               break
             fi
-            echo "Waiting for current scholarship discovery feed (attempt $attempt/24)..."
+            echo "Waiting for current provider-clean scholarship discovery feed (attempt $attempt/24)..."
             sleep 10
           done
           test "$ready" = "1"
