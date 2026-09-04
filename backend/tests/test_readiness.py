@@ -1,6 +1,7 @@
 from app.utils.readiness import (
     production_readiness,
     readiness_status,
+    persistent_storage_connectivity,
     shared_rate_limit_configured,
     smtp_configured,
     smtp_connectivity,
@@ -71,6 +72,21 @@ def test_readiness_rejects_insecure_storage_endpoint(monkeypatch):
     checks = production_readiness()
     assert checks['persistent_document_storage'] is False
     assert readiness_status(checks) == 'needs_configuration'
+
+
+def test_persistent_storage_connectivity_uses_read_only_bucket_probe(monkeypatch):
+    _clear_readiness_env(monkeypatch)
+    _set_complete_readiness_env(monkeypatch)
+    captured = {}
+
+    class FakeClient:
+        def list_objects_v2(self, Bucket, MaxKeys):
+            captured.update(bucket=Bucket, max_keys=MaxKeys)
+            return {'ResponseMetadata': {'HTTPStatusCode': 200}, 'KeyCount': 0}
+
+    monkeypatch.setattr('app.utils.s3.s3_client', lambda: FakeClient())
+    assert persistent_storage_connectivity() is True
+    assert captured == {'bucket': 'private-documents', 'max_keys': 1}
 
 
 def test_rate_limit_readiness_rejects_invalid_redis_uri(monkeypatch):
@@ -179,6 +195,7 @@ def test_readiness_endpoint_is_non_blocking_until_strict_mode(client, monkeypatc
     assert response.status_code == 200
     payload = response.get_json()
     assert payload['status'] == 'needs_configuration'
+    assert payload['checks']['persistent_storage_connectivity'] is False
     assert payload['checks']['shared_rate_limit_connectivity'] is False
     assert payload['checks']['smtp_connectivity'] is False
     assert payload['checks']['razorpay_connectivity'] is False
@@ -187,6 +204,7 @@ def test_readiness_endpoint_is_non_blocking_until_strict_mode(client, monkeypatc
 def test_readiness_endpoint_can_report_all_external_connectivity(client, monkeypatch):
     _clear_readiness_env(monkeypatch)
     _set_complete_readiness_env(monkeypatch)
+    monkeypatch.setattr('app.main.persistent_storage_connectivity', lambda: True)
     monkeypatch.setattr('app.main.shared_rate_limit_connectivity', lambda: True)
     monkeypatch.setattr('app.main.smtp_connectivity', lambda: True)
     monkeypatch.setattr('app.main.razorpay_connectivity', lambda: True)
@@ -194,6 +212,7 @@ def test_readiness_endpoint_can_report_all_external_connectivity(client, monkeyp
     assert response.status_code == 200
     payload = response.get_json()
     assert payload['status'] == 'ready'
+    assert payload['checks']['persistent_storage_connectivity'] is True
     assert payload['checks']['shared_rate_limit_connectivity'] is True
     assert payload['checks']['smtp_connectivity'] is True
     assert payload['checks']['razorpay_live_credentials'] is True
