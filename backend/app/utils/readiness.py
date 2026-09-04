@@ -4,6 +4,11 @@ import ssl
 from email.utils import parseaddr
 from urllib.parse import urlparse
 
+import requests
+
+
+RAZORPAY_API = 'https://api.razorpay.com/v1'
+
 
 def _present(name):
     return bool((os.getenv(name) or '').strip())
@@ -110,6 +115,45 @@ def shared_rate_limit_connectivity():
         return False
 
 
+def razorpay_live_credentials_configured():
+    """Require a complete live Razorpay credential pair for production use."""
+    key_id = (os.getenv('RAZORPAY_KEY_ID') or '').strip()
+    key_secret = (os.getenv('RAZORPAY_KEY_SECRET') or '').strip()
+    return bool(key_id.startswith('rzp_live_') and key_secret)
+
+
+def razorpay_webhook_configured():
+    """Require the server-side webhook signing secret without exposing it."""
+    return _present('RAZORPAY_WEBHOOK_SECRET')
+
+
+def razorpay_connectivity():
+    """Safely verify live Razorpay API authentication without creating a charge.
+
+    This performs a read-only order-list request using a one-item page. The
+    readiness response contains only a boolean and never returns credentials,
+    provider data, or payment details.
+    """
+    if not razorpay_live_credentials_configured():
+        return False
+    credentials = (
+        (os.getenv('RAZORPAY_KEY_ID') or '').strip(),
+        (os.getenv('RAZORPAY_KEY_SECRET') or '').strip(),
+    )
+    try:
+        response = requests.get(
+            f'{RAZORPAY_API}/orders',
+            params={'count': 1},
+            auth=credentials,
+            timeout=5,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        return isinstance(payload, dict) and isinstance(payload.get('items'), list)
+    except (requests.RequestException, ValueError, TypeError):
+        return False
+
+
 def production_readiness():
     smtp_ready = smtp_configured()
     admin_2fa_enabled = os.getenv('ADMIN_2FA_ENABLED', '0') == '1'
@@ -118,6 +162,8 @@ def production_readiness():
         'shared_rate_limit_storage': shared_rate_limit_configured(),
         'smtp_delivery': smtp_ready,
         'admin_2fa': admin_2fa_enabled and smtp_ready,
+        'razorpay_live_credentials': razorpay_live_credentials_configured(),
+        'razorpay_webhook': razorpay_webhook_configured(),
     }
     return checks
 
