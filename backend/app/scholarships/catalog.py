@@ -23,7 +23,9 @@ def _matches(item, query):
     tokens = [token for token in re.sub(r'[^a-z0-9]+', ' ', (query or '').lower()).split() if token]
     if not tokens:
         return True
-    haystack = ' '.join(str(item.get(key) or '') for key in ('title', 'provider', 'source_name', 'region', 'education_level', 'category', 'eligibility')).lower()
+    haystack = ' '.join(str(item.get(key) or '') for key in (
+        'title', 'provider', 'source_name', 'source_type', 'region', 'education_level', 'category', 'eligibility', 'academic_year'
+    )).lower()
     return all(token in haystack for token in tokens)
 
 
@@ -33,5 +35,17 @@ def load_catalog(query='', today=None):
     except (OSError, ValueError, TypeError):
         payload = {'items': []}
     items = [item for item in payload.get('items', []) if isinstance(item, dict) and _active(item, today) and _matches(item, query)]
-    items.sort(key=lambda item: (item.get('deadline') or '9999-12-31', item.get('title') or ''))
-    return {'items': items, 'count': len(items), 'generated_at': datetime.now(timezone.utc).isoformat()}
+    items.sort(key=lambda item: (
+        0 if item.get('source_type') == 'official' else 1,
+        item.get('deadline') or '9999-12-31',
+        item.get('title') or '',
+    ))
+    return {
+        'items': items,
+        'count': len(items),
+        'generated_at': payload.get('generated_at') or datetime.now(timezone.utc).isoformat(),
+        'official_count': sum(1 for item in items if item.get('source_type') == 'official' or item.get('is_official') is True),
+        'private_count': sum(1 for item in items if item.get('source_type') == 'private' or item.get('is_official') is False),
+        'stale_source_count': sum(1 for item in items if item.get('stale_source')),
+        'discovery': payload.get('discovery') or {},
+    }
