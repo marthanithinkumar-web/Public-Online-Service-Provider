@@ -3,7 +3,9 @@ import re
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-CATALOG_PATH = Path(__file__).resolve().parents[3] / 'frontend' / 'public' / 'data' / 'scholarships.json'
+LOCAL_CATALOG_PATH = Path(__file__).resolve().parent / 'data' / 'scholarships.json'
+LEGACY_CATALOG_PATH = Path(__file__).resolve().parents[3] / 'frontend' / 'public' / 'data' / 'scholarships.json'
+CATALOG_PATH = LOCAL_CATALOG_PATH if LOCAL_CATALOG_PATH.exists() else LEGACY_CATALOG_PATH
 
 
 def _active(item, today=None):
