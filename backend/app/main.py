@@ -41,7 +41,22 @@ def ensure_admin_user():
     if changed:db.session.commit()
 
 def ensure_default_services():
-    defaults=[('Certificates','Residence Certificate','Assistance to apply for residence/domicile certificate',30.0,'residence,domicile,address,certificate'),('Certificates','Ration Card Services','Help with Ration Card related applications',30.0,'ration,card,food,subsidy'),('Government Jobs','Government Job Application','Assistance to apply for government job openings',30.0,'job,application,recruitment,jobs'),('Scholarships','Scholarship Application Assistance','Guidance and application support for eligible scholarships',30.0,'scholarship,education,student,financial aid'),('MeeSeva / Public Services','MeeSeva Service Assistance','Assistance with common MeeSeva and public service applications',30.0,'meeseva,public service,government,application'),('Government Schemes','Government Scheme Application Support','Eligibility guidance and application assistance for government schemes',30.0,'scheme,government scheme,benefit,eligibility'),('Travel & Ticketing Assistance','Railway Ticket Booking Assistance','Guidance for railway ticket search and booking through the official railway process. Clients complete OTP and payment directly on the official portal.',30.0,'railway,train,ticket,tickets,booking,irctc,travel'),('Identity & Citizen Documents','Official Document PDF Access Assistance','Help clients access an available official PDF or digital copy through the relevant official portal. This service does not create, alter or replace an identity document; clients complete any OTP or portal authentication themselves.',5.0,'pdf,document pdf,digital copy,download,aadhaar,aadhar,e-aadhaar,voter id,e-epic,pan,e-pan,abha,apaar,digilocker,ration card,driving licence,rc,certificate,marksheet'),('Recharge & Bill Payments','Mobile Recharge','Assistance with prepaid mobile recharge plan selection and request tracking for supported Indian operators. Operator plan amount is kept separate from the website assistance fee.',10.0,'mobile recharge,recharge,prepaid,airtel,jio,vi,vodafone idea,bsnl,telecom,phone recharge,recharge plan,bill payment,bills')]
+    defaults=[
+        ('Certificates','Residence Certificate','Assistance to apply for residence/domicile certificate',30.0,'residence,domicile,address,certificate'),
+        ('Certificates','Ration Card Services','Help with Ration Card related applications',30.0,'ration,card,food,subsidy'),
+        ('Government Jobs','Government Job Application','Assistance to apply for government job openings',30.0,'job,application,recruitment,jobs'),
+        ('Scholarships','Scholarship Application Assistance','Guidance and application support for eligible scholarships',30.0,'scholarship,education,student,financial aid'),
+        ('MeeSeva / Public Services','MeeSeva Service Assistance','Assistance with common MeeSeva and public service applications',30.0,'meeseva,public service,government,application'),
+        ('Government Schemes','Government Scheme Application Support','Eligibility guidance and application assistance for government schemes',30.0,'scheme,government scheme,benefit,eligibility'),
+        ('Travel & Ticketing Assistance','Railway Ticket Booking Assistance','Guidance for railway ticket search and booking through the official railway process. Clients complete OTP and payment directly on the official portal.',30.0,'railway,train,ticket,tickets,booking,irctc,travel'),
+        ('Identity & Citizen Documents','Official Document PDF Access Assistance','Help clients access an available official PDF or digital copy through the relevant official portal. This service does not create, alter or replace an identity document; clients complete any OTP or portal authentication themselves.',5.0,'pdf,document pdf,digital copy,download,aadhaar,aadhar,e-aadhaar,voter id,e-epic,pan,e-pan,abha,apaar,digilocker,ration card,driving licence,rc,certificate,marksheet'),
+        ('Recharge & Bill Payments','Mobile Recharge','Assistance with prepaid mobile recharge plan selection and request tracking for supported Indian operators. Operator plan amount is kept separate from the website assistance fee.',10.0,'mobile recharge,recharge,prepaid,airtel,jio,vi,vodafone idea,bsnl,telecom,phone recharge,recharge plan,bill payment,bills'),
+        ('Recharge & Bill Payments','Mobile Postpaid Bill Payment Assistance','Assistance with postpaid mobile bill details and request tracking for supported Indian operators. The bill amount is separate from the website assistance fee and payment authorization remains with the client.',10.0,'mobile postpaid,postpaid bill,mobile bill,airtel postpaid,jio postpaid,vi postpaid,bsnl postpaid,telecom bill,bill payment'),
+        ('Recharge & Bill Payments','DTH Recharge Assistance','Assistance with DTH recharge details, plan selection and request tracking. The DTH recharge amount is separate from the website assistance fee and payment authorization remains with the client.',10.0,'dth recharge,tata play,airtel digital tv,dish tv,d2h,videocon d2h,sun direct,tv recharge,recharge'),
+        ('Recharge & Bill Payments','Broadband / Landline Bill Payment Assistance','Assistance with broadband or landline bill details and request tracking. The provider bill amount is separate from the website assistance fee and payment authorization remains with the client.',10.0,'broadband bill,landline bill,internet bill,fiber bill,airtel xstream,jiofiber,bsnl broadband,act fibernet,bill payment'),
+        ('Recharge & Bill Payments','FASTag Recharge Assistance','Assistance with FASTag recharge details and request tracking. The FASTag recharge amount is separate from the website assistance fee and payment authorization remains with the client.',10.0,'fastag recharge,fast tag,toll recharge,vehicle tag,nhai,highway toll,recharge'),
+        ('Recharge & Bill Payments','Piped Gas Bill Payment Assistance','Assistance with piped-gas bill details and request tracking. The gas bill amount is separate from the website assistance fee and payment authorization remains with the client.',10.0,'piped gas bill,gas bill,png bill,city gas,consumer number,bill payment,utility'),
+    ]
     defaults.extend([('Travel & Ticketing Assistance','Student Bus Pass Assistance','Help with a student bus-pass application or renewal.',30.0,'bus pass,student bus pass,concession pass,tgsrtc,tsrtc,apsrtc,renewal'),('Travel & Ticketing Assistance','General Bus Pass Assistance','Help with a general commuter bus-pass application or renewal.',30.0,'bus pass,general bus pass,commuter pass,tgsrtc,tsrtc,apsrtc,renewal')])
     for cat_name,name,desc,price,keywords in defaults:
         cat=Category.query.filter_by(name=cat_name).first()
@@ -51,10 +66,16 @@ def ensure_default_services():
         else:service.category_id=service.category_id or cat.id
     residence=Service.query.filter_by(name='Residence Certificate').first()
     if residence:residence.official_fee_status='known';residence.official_fee_inr=80.0
-    recharge=Service.query.filter_by(name='Mobile Recharge').first()
-    if recharge:
-        recharge.official_fee_status='none';recharge.official_fee_inr=0.0
-        if not recharge.keywords:recharge.keywords='mobile recharge,recharge,prepaid,airtel,jio,vi,vodafone idea,bsnl,telecom,phone recharge,recharge plan,bill payment,bills'
+    recharge_bill_names=(
+        'Mobile Recharge',
+        'Mobile Postpaid Bill Payment Assistance',
+        'DTH Recharge Assistance',
+        'Broadband / Landline Bill Payment Assistance',
+        'FASTag Recharge Assistance',
+        'Piped Gas Bill Payment Assistance',
+    )
+    for recharge_bill in Service.query.filter(Service.name.in_(recharge_bill_names)).all():
+        recharge_bill.official_fee_status='none';recharge_bill.official_fee_inr=0.0
     db.session.commit()
 
 def ensure_job_sources():
