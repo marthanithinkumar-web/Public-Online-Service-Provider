@@ -151,6 +151,41 @@ def test_snapshot_separates_official_and_private_and_replaces_healthy_source(tmp
     assert payload['discovery']['source_health']['nsp']['ok'] is True
 
 
+def test_snapshot_normalizes_neighbouring_nsp_scheme_title_used_as_provider(tmp_path):
+    path = tmp_path / 'scholarships.json'
+    path.write_text('{"items": []}', encoding='utf-8')
+    base = {
+        'source_name': 'National Scholarship Portal',
+        'source_url': 'https://scholarships.gov.in/All-Scholarships',
+        'application_url': 'https://scholarships.gov.in/Students',
+        'deadline': '2026-10-31', 'status': 'active', 'source_key': 'nsp',
+        'source_type': 'official', 'is_official': True, 'record_type': 'scholarship',
+        'verified_at': NOW.isoformat(), 'last_seen_at': NOW.isoformat(),
+    }
+    bad_aicte = {
+        **base,
+        'id': 'nsp-aicte-pragati', 'slug': 'aicte-pragati',
+        'title': 'AICTE - Pragati Scholarship Scheme For Girl Students',
+        'provider': 'AICTE - Swanath Scholarship Scheme (Technical Degree) (Welfare Based Scheme)',
+    }
+    bad_other = {
+        **base,
+        'id': 'nsp-pm-usp-jk', 'slug': 'pm-usp-jk',
+        'title': 'PM USP Special Scholarship Scheme For Jammu Kashmir And Ladakh',
+        'provider': 'AICTE - Swanath Scholarship Scheme (Technical Degree) (Welfare Based Scheme)',
+    }
+
+    def discoverer(now=None):
+        return [bad_aicte, bad_other], {'nsp': {'ok': True, 'count': 2, 'checked_at': now.isoformat()}}
+
+    payload = refresh_snapshot(path, today=date(2026, 9, 4), now=NOW, discovery_func=discoverer)
+    providers = {item['slug']: item['provider'] for item in payload['items']}
+
+    assert providers['aicte-pragati'] == 'All India Council for Technical Education (AICTE)'
+    assert providers['pm-usp-jk'] == 'Government of India (via National Scholarship Portal)'
+    assert all('Swanath Scholarship Scheme' not in provider for provider in providers.values())
+
+
 def test_snapshot_preserves_recent_official_entry_when_source_fails(tmp_path):
     path = tmp_path / 'scholarships.json'
     path.write_text(json.dumps({
