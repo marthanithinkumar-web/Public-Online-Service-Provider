@@ -38,8 +38,33 @@ def persistent_storage_configured():
 
 
 def shared_rate_limit_configured():
-    uri = (os.getenv('RATELIMIT_STORAGE_URI') or '').strip().lower()
-    return uri.startswith(('redis://', 'rediss://'))
+    uri = (os.getenv('RATELIMIT_STORAGE_URI') or '').strip()
+    if not uri:
+        return False
+    parsed = urlparse(uri)
+    return parsed.scheme in {'redis', 'rediss'} and bool(parsed.hostname)
+
+
+def shared_rate_limit_connectivity():
+    """Confirm that the configured Redis/Valkey rate-limit store answers PING.
+
+    The check uses short timeouts and never exposes credentials or connection
+    details. It is intended for the production /readiness endpoint only.
+    """
+    if not shared_rate_limit_configured():
+        return False
+    try:
+        import redis
+
+        client = redis.Redis.from_url(
+            os.environ['RATELIMIT_STORAGE_URI'],
+            socket_connect_timeout=2,
+            socket_timeout=2,
+            retry_on_timeout=False,
+        )
+        return bool(client.ping())
+    except Exception:
+        return False
 
 
 def production_readiness():
