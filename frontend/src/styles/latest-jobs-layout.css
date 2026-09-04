@@ -1,1 +1,1 @@
-.latest-job-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch}.latest-job-grid>*{min-width:0;width:100%;height:100%}@media(max-width:720px){.latest-job-grid{grid-template-columns:1fr}}
+.latest-jobs .latest-job-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:16px;align-items:stretch}.latest-jobs .latest-job-grid>*{grid-column:auto!important;min-width:0;width:100%;height:100%;max-width:none!important}@media(max-width:720px){.latest-jobs .latest-job-grid{grid-template-columns:1fr!important}}
