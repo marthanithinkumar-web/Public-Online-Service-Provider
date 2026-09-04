@@ -40,26 +40,81 @@ jobs:
           assert payload.get('status') == 'ok', payload
           PY
 
-      - name: Verify public service catalog API
+      - name: Verify production dependency readiness
         run: |
           set -Eeuo pipefail
           curl --fail --silent --show-error --location \
             --retry 5 --retry-delay 5 --retry-all-errors \
-            --max-time 30 "$API_URL/api/services" | tee /tmp/services.json
+            --max-time 30 "$API_URL/readiness" -o /tmp/readiness.json
+          python - <<'PY'
+          import json
+          with open('/tmp/readiness.json', encoding='utf-8') as handle:
+              payload = json.load(handle)
+          checks = payload.get('checks') or {}
+          required = [
+              'database',
+              'persistent_document_storage',
+              'shared_rate_limit_storage',
+              'shared_rate_limit_connectivity',
+              'smtp_delivery',
+              'smtp_connectivity',
+              'admin_2fa',
+              'razorpay_live_credentials',
+              'razorpay_webhook',
+              'razorpay_connectivity',
+          ]
+          failed = [name for name in required if checks.get(name) is not True]
+          if failed:
+              raise SystemExit('Production readiness failed: ' + ', '.join(failed))
+          print('Launch-critical production dependency checks are ready.')
+          PY
+
+      - name: Verify public service catalog and search APIs
+        run: |
+          set -Eeuo pipefail
+          curl --fail --silent --show-error --location \
+            --retry 5 --retry-delay 5 --retry-all-errors \
+            --max-time 30 "$API_URL/api/services" -o /tmp/services.json
+          curl --fail --silent --show-error --location \
+            --retry 5 --retry-delay 5 --retry-all-errors \
+            --max-time 30 "$API_URL/api/services/search?q=income%20certificate" -o /tmp/service-search.json
           python - <<'PY'
           import json
           with open('/tmp/services.json', encoding='utf-8') as handle:
               payload = json.load(handle)
           assert isinstance(payload, list), type(payload)
           assert len(payload) >= 100, f'Expected production catalog, found only {len(payload)} services'
-          assert all(item.get('id') and item.get('name') for item in payload[:10]), 'Catalog entries are incomplete'
+          assert all(item.get('id') and item.get('name') and item.get('slug') for item in payload[:10]), 'Catalog entries are incomplete'
+          with open('/tmp/service-search.json', encoding='utf-8') as handle:
+              results = json.load(handle)
+          assert isinstance(results, list) and results, 'Production service search returned no results'
+          assert any('income' in str(item.get('name', '')).lower() for item in results), results[:5]
+          PY
+
+      - name: Verify public jobs and scholarships APIs
+        run: |
+          set -Eeuo pipefail
+          curl --fail --silent --show-error --location --max-time 30 \
+            "$API_URL/api/jobs/?limit=5" -o /tmp/jobs.json
+          curl --fail --silent --show-error --location --max-time 30 \
+            "$API_URL/api/scholarships/" -o /tmp/scholarships.json
+          python - <<'PY'
+          import json
+          with open('/tmp/jobs.json', encoding='utf-8') as handle:
+              jobs = json.load(handle)
+          assert isinstance(jobs, dict) and isinstance(jobs.get('items'), list), jobs
+          assert isinstance(jobs.get('count'), int), jobs
+          with open('/tmp/scholarships.json', encoding='utf-8') as handle:
+              scholarships = json.load(handle)
+          assert isinstance(scholarships, dict) and isinstance(scholarships.get('items'), list), scholarships
           PY
 
       - name: Verify homepage and public discovery pages
         run: |
           set -Eeuo pipefail
-          for path in / /jobs /scholarships /meeseva /certificates /schemes; do
-            code="$(curl --silent --show-error --location --output "/tmp/page$(echo "$path" | tr '/' '_').html" --write-out '%{http_code}' --retry 5 --retry-delay 5 --retry-all-errors --max-time 30 "$UI_URL$path")"
+          for path in / /jobs /scholarships /meeseva /certificates /schemes /about /contact /privacy /terms /disclaimer /services/pan-card-new-application; do
+            output="/tmp/page$(echo "$path" | tr '/' '_').html"
+            code="$(curl --silent --show-error --location --output "$output" --write-out '%{http_code}' --retry 5 --retry-delay 5 --retry-all-errors --max-time 30 "$UI_URL$path")"
             test "$code" = "200" || { echo "Unexpected HTTP $code for $path"; exit 1; }
           done
           grep -qi 'Public Online Service Provider' /tmp/page_.html
@@ -71,14 +126,21 @@ jobs:
           curl --fail --silent --show-error --location --max-time 30 "$UI_URL/sitemap.xml" -o /tmp/sitemap.xml
           grep -Fq "$UI_URL/sitemap.xml" /tmp/robots.txt
           grep -Fq "$UI_URL/" /tmp/sitemap.xml
+          for path in /login /register /account-settings /messages /grievances /submit-grievance /submit-review /reset-password; do
+            grep -Fq "Disallow: $path" /tmp/robots.txt || { echo "robots.txt does not block $path"; exit 1; }
+          done
+          grep -Fq 'Disallow: /admin/' /tmp/robots.txt
+          grep -Fq 'Disallow: /my-orders' /tmp/robots.txt
 
-      - name: Verify private routes are not exposed as public SEO pages
+      - name: Verify private routes send noindex response headers
         run: |
           set -Eeuo pipefail
-          for path in /login /register /account-settings /admin/login; do
+          missing=0
+          for path in /login /register /account-settings /admin/login /my-orders /messages /grievances /submit-grievance /submit-review /request-reset /reset-password /verify; do
             headers="$(curl --silent --show-error --location --head --max-time 30 "$UI_URL$path")"
-            echo "$headers" | grep -qi 'x-robots-tag:.*noindex' || {
+            if ! echo "$headers" | grep -qi 'x-robots-tag:.*noindex'; then
               echo "Missing noindex header for $path"
-              exit 1
-            }
+              missing=1
+            fi
           done
+          test "$missing" = "0"
