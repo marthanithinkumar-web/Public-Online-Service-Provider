@@ -1,12 +1,19 @@
-from app.utils.readiness import production_readiness, readiness_status, shared_rate_limit_configured
+from app.utils.readiness import (
+    production_readiness,
+    readiness_status,
+    shared_rate_limit_configured,
+    smtp_configured,
+    smtp_connectivity,
+)
 
 
 def _clear_readiness_env(monkeypatch):
     for name in (
         'SMTP_HOST','SMTP_PORT','SMTP_USER','SMTP_PASS','SMTP_FROM_EMAIL',
-        'MAIL_DEFAULT_SENDER','ADMIN_EMAIL','ADMIN_2FA_ENABLED','S3_BUCKET',
-        'S3_ENDPOINT_URL','AWS_ACCESS_KEY_ID','AWS_SECRET_ACCESS_KEY','AWS_REGION',
-        'RATELIMIT_STORAGE_URI','STRICT_PRODUCTION_READINESS',
+        'SMTP_USE_TLS','SMTP_USE_SSL','MAIL_DEFAULT_SENDER','ADMIN_EMAIL',
+        'ADMIN_2FA_ENABLED','S3_BUCKET','S3_ENDPOINT_URL','AWS_ACCESS_KEY_ID',
+        'AWS_SECRET_ACCESS_KEY','AWS_REGION','RATELIMIT_STORAGE_URI',
+        'STRICT_PRODUCTION_READINESS',
     ):
         monkeypatch.delenv(name, raising=False)
 
@@ -69,6 +76,57 @@ def test_rate_limit_readiness_rejects_invalid_redis_uri(monkeypatch):
     assert shared_rate_limit_configured() is True
 
 
+def test_smtp_readiness_validates_port_sender_and_credentials(monkeypatch):
+    _clear_readiness_env(monkeypatch)
+    monkeypatch.setenv('SMTP_HOST', 'smtp.example.test')
+    monkeypatch.setenv('SMTP_PORT', 'not-a-port')
+    monkeypatch.setenv('SMTP_FROM_EMAIL', 'sender@example.test')
+    assert smtp_configured() is False
+
+    monkeypatch.setenv('SMTP_PORT', '587')
+    monkeypatch.setenv('SMTP_FROM_EMAIL', '')
+    assert smtp_configured() is False
+
+    monkeypatch.setenv('SMTP_FROM_EMAIL', 'sender@example.test')
+    monkeypatch.setenv('SMTP_USER', 'smtp-user')
+    assert smtp_configured() is False
+
+    monkeypatch.setenv('SMTP_PASS', 'smtp-password')
+    assert smtp_configured() is True
+
+
+def test_smtp_connectivity_uses_tls_authentication_without_sending_mail(monkeypatch):
+    _clear_readiness_env(monkeypatch)
+    _set_complete_readiness_env(monkeypatch)
+    captured = {}
+
+    class FakeSMTP:
+        def __init__(self, host, port, timeout):
+            captured.update(host=host, port=port, timeout=timeout)
+        def __enter__(self):
+            return self
+        def __exit__(self, *_):
+            return False
+        def ehlo(self):
+            captured['ehlo_count'] = captured.get('ehlo_count', 0) + 1
+        def starttls(self, context):
+            captured['tls'] = context is not None
+        def login(self, username, password):
+            captured.update(username=username, password=password)
+        def noop(self):
+            captured['noop'] = True
+            return 250, b'OK'
+
+    monkeypatch.setattr('app.utils.readiness.smtplib.SMTP', FakeSMTP)
+    assert smtp_connectivity() is True
+    assert captured['host'] == 'smtp.example.test'
+    assert captured['port'] == 587
+    assert captured['timeout'] == 5
+    assert captured['tls'] is True
+    assert captured['username'] == 'smtp-user'
+    assert captured['noop'] is True
+
+
 def test_readiness_endpoint_is_non_blocking_until_strict_mode(client, monkeypatch):
     _clear_readiness_env(monkeypatch)
     response = client.get('/readiness')
@@ -76,6 +134,20 @@ def test_readiness_endpoint_is_non_blocking_until_strict_mode(client, monkeypatc
     payload = response.get_json()
     assert payload['status'] == 'needs_configuration'
     assert payload['checks']['shared_rate_limit_connectivity'] is False
+    assert payload['checks']['smtp_connectivity'] is False
+
+
+def test_readiness_endpoint_can_report_all_external_connectivity(client, monkeypatch):
+    _clear_readiness_env(monkeypatch)
+    _set_complete_readiness_env(monkeypatch)
+    monkeypatch.setattr('app.main.shared_rate_limit_connectivity', lambda: True)
+    monkeypatch.setattr('app.main.smtp_connectivity', lambda: True)
+    response = client.get('/readiness')
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload['status'] == 'ready'
+    assert payload['checks']['shared_rate_limit_connectivity'] is True
+    assert payload['checks']['smtp_connectivity'] is True
 
 
 def test_readiness_endpoint_can_fail_closed_in_strict_mode(client, monkeypatch):
