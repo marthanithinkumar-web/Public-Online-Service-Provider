@@ -110,6 +110,12 @@ def _provider_payment(payment_id, credentials):
     return response.json()
 
 
+def _provider_order(order_id, credentials):
+    response = requests.get(f'{RAZORPAY_API}/orders/{order_id}', auth=credentials, timeout=15)
+    response.raise_for_status()
+    return response.json()
+
+
 def _validate_provider_payment(payment, entity):
     if not entity or str(entity.get('id') or '') != str(payment.razorpay_payment_id or entity.get('id') or ''):
         raise ValueError('Razorpay payment id does not match this payment.')
@@ -176,7 +182,39 @@ def create_checkout(order_id):
     if existing and existing.status in {'created', 'authorized'}:
         if existing.amount_paise != amount_paise:
             return jsonify({'error': 'The fee changed after checkout was created. Contact the administrator before paying.'}), 409
-        return jsonify({'key_id': credentials[0], 'razorpay_order_id': existing.razorpay_order_id, 'amount': existing.amount_paise, 'currency': existing.currency, 'name': 'Public Online Service Provider', 'description': f'{purpose.replace("_", " ").title()} for {order.order_code}', 'prefill': {'name': order.client_name, 'email': order.email or '', 'contact': order.phone or ''}, 'payment': _payment_payload(existing), 'breakdown': breakdown, 'purpose': purpose})
+
+        # A Razorpay order belongs to the API key/mode that created it. If the
+        # deployment is switched from Test to Live (or keys are rotated), an
+        # old open order cannot be opened with the new key and Checkout shows a
+        # generic "Something went wrong" screen. Verify the saved provider
+        # order with the currently configured credentials before reusing it.
+        try:
+            provider_existing = _provider_order(existing.razorpay_order_id, credentials)
+        except requests.HTTPError as exc:
+            status_code = getattr(getattr(exc, 'response', None), 'status_code', None)
+            if status_code not in {400, 401, 403, 404}:
+                return jsonify({'error': 'Unable to confirm the existing Razorpay checkout right now. Please try again.'}), 502
+            existing.status = 'superseded'
+            existing.failure_code = 'provider_order_unavailable'
+            existing.failure_description = 'Previous Razorpay checkout is not valid for the currently configured credentials.'
+            db.session.commit()
+        except requests.RequestException:
+            return jsonify({'error': 'Unable to confirm the existing Razorpay checkout right now. Please try again.'}), 502
+        else:
+            provider_status = str(provider_existing.get('status') or '').lower()
+            provider_matches = (
+                str(provider_existing.get('id') or '') == existing.razorpay_order_id
+                and int(provider_existing.get('amount') or -1) == existing.amount_paise
+                and str(provider_existing.get('currency') or '').upper() == existing.currency.upper()
+            )
+            if provider_matches and provider_status in {'created', 'attempted'}:
+                return jsonify({'key_id': credentials[0], 'razorpay_order_id': existing.razorpay_order_id, 'amount': existing.amount_paise, 'currency': existing.currency, 'name': 'Public Online Service Provider', 'description': f'{purpose.replace("_", " ").title()} for {order.order_code}', 'prefill': {'name': order.client_name, 'email': order.email or '', 'contact': order.phone or ''}, 'payment': _payment_payload(existing), 'breakdown': breakdown, 'purpose': purpose})
+            if provider_matches and provider_status == 'paid':
+                return jsonify({'error': 'Razorpay reports this checkout as already paid. Refresh payment status before trying again.'}), 409
+            existing.status = 'superseded'
+            existing.failure_code = 'provider_order_mismatch'
+            existing.failure_description = 'Previous Razorpay checkout no longer matches the current request or provider state.'
+            db.session.commit()
 
     payload = {
         'amount': amount_paise,
