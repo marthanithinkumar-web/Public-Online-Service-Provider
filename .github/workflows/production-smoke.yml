@@ -43,11 +43,13 @@ jobs:
       - name: Verify production dependency readiness
         run: |
           set -Eeuo pipefail
+          : > /tmp/readiness-failures.txt
           curl --fail --silent --show-error --location \
             --retry 5 --retry-delay 5 --retry-all-errors \
             --max-time 30 "$API_URL/readiness" -o /tmp/readiness.json
           python - <<'PY'
           import json
+          from pathlib import Path
           with open('/tmp/readiness.json', encoding='utf-8') as handle:
               payload = json.load(handle)
           checks = payload.get('checks') or {}
@@ -65,8 +67,11 @@ jobs:
           ]
           failed = [name for name in required if checks.get(name) is not True]
           if failed:
-              raise SystemExit('Production readiness failed: ' + ', '.join(failed))
-          print('Launch-critical production dependency checks are ready.')
+              message = 'Production readiness failed: ' + ', '.join(failed)
+              print(message)
+              Path('/tmp/readiness-failures.txt').write_text(message + '\n', encoding='utf-8')
+          else:
+              print('Launch-critical production dependency checks are ready.')
           PY
 
       - name: Verify public service catalog and search APIs
@@ -135,12 +140,24 @@ jobs:
       - name: Verify private routes send noindex response headers
         run: |
           set -Eeuo pipefail
-          missing=0
+          : > /tmp/noindex-failures.txt
           for path in /login /register /account-settings /admin/login /my-orders /messages /grievances /submit-grievance /submit-review /request-reset /reset-password /verify; do
             headers="$(curl --silent --show-error --location --head --max-time 30 "$UI_URL$path")"
             if ! echo "$headers" | grep -qi 'x-robots-tag:.*noindex'; then
-              echo "Missing noindex header for $path"
-              missing=1
+              echo "Missing noindex header for $path" | tee -a /tmp/noindex-failures.txt
             fi
           done
-          test "$missing" = "0"
+
+      - name: Fail on collected production blockers
+        run: |
+          set -Eeuo pipefail
+          blockers=0
+          if test -s /tmp/readiness-failures.txt; then
+            cat /tmp/readiness-failures.txt
+            blockers=1
+          fi
+          if test -s /tmp/noindex-failures.txt; then
+            cat /tmp/noindex-failures.txt
+            blockers=1
+          fi
+          test "$blockers" = "0"
