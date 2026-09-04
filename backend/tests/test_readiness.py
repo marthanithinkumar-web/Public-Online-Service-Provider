@@ -4,6 +4,9 @@ from app.utils.readiness import (
     shared_rate_limit_configured,
     smtp_configured,
     smtp_connectivity,
+    razorpay_live_credentials_configured,
+    razorpay_webhook_configured,
+    razorpay_connectivity,
 )
 
 
@@ -13,6 +16,7 @@ def _clear_readiness_env(monkeypatch):
         'SMTP_USE_TLS','SMTP_USE_SSL','MAIL_DEFAULT_SENDER','ADMIN_EMAIL',
         'ADMIN_2FA_ENABLED','S3_BUCKET','S3_ENDPOINT_URL','AWS_ACCESS_KEY_ID',
         'AWS_SECRET_ACCESS_KEY','AWS_REGION','RATELIMIT_STORAGE_URI',
+        'RAZORPAY_KEY_ID','RAZORPAY_KEY_SECRET','RAZORPAY_WEBHOOK_SECRET',
         'STRICT_PRODUCTION_READINESS',
     ):
         monkeypatch.delenv(name, raising=False)
@@ -31,6 +35,9 @@ def _set_complete_readiness_env(monkeypatch):
     monkeypatch.setenv('AWS_SECRET_ACCESS_KEY', 'secret-key')
     monkeypatch.setenv('AWS_REGION', 'region-1')
     monkeypatch.setenv('RATELIMIT_STORAGE_URI', 'rediss://default:password@redis.example.test:6379/0')
+    monkeypatch.setenv('RAZORPAY_KEY_ID', 'rzp_live_example')
+    monkeypatch.setenv('RAZORPAY_KEY_SECRET', 'razorpay-secret')
+    monkeypatch.setenv('RAZORPAY_WEBHOOK_SECRET', 'webhook-secret')
 
 
 def test_readiness_reports_missing_launch_configuration(monkeypatch):
@@ -41,6 +48,8 @@ def test_readiness_reports_missing_launch_configuration(monkeypatch):
         'shared_rate_limit_storage': False,
         'smtp_delivery': False,
         'admin_2fa': False,
+        'razorpay_live_credentials': False,
+        'razorpay_webhook': False,
     }
     assert readiness_status(checks) == 'needs_configuration'
 
@@ -127,6 +136,43 @@ def test_smtp_connectivity_uses_tls_authentication_without_sending_mail(monkeypa
     assert captured['noop'] is True
 
 
+def test_razorpay_readiness_requires_live_credentials_and_webhook(monkeypatch):
+    _clear_readiness_env(monkeypatch)
+    monkeypatch.setenv('RAZORPAY_KEY_ID', 'rzp_test_example')
+    monkeypatch.setenv('RAZORPAY_KEY_SECRET', 'secret')
+    monkeypatch.setenv('RAZORPAY_WEBHOOK_SECRET', 'webhook-secret')
+    assert razorpay_live_credentials_configured() is False
+    assert razorpay_webhook_configured() is True
+
+    monkeypatch.setenv('RAZORPAY_KEY_ID', 'rzp_live_example')
+    assert razorpay_live_credentials_configured() is True
+    monkeypatch.delenv('RAZORPAY_WEBHOOK_SECRET', raising=False)
+    assert razorpay_webhook_configured() is False
+
+
+def test_razorpay_connectivity_uses_read_only_live_api_probe(monkeypatch):
+    _clear_readiness_env(monkeypatch)
+    _set_complete_readiness_env(monkeypatch)
+    captured = {}
+
+    class Response:
+        def raise_for_status(self):
+            return None
+        def json(self):
+            return {'items': []}
+
+    def fake_get(url, params, auth, timeout):
+        captured.update(url=url, params=params, auth=auth, timeout=timeout)
+        return Response()
+
+    monkeypatch.setattr('app.utils.readiness.requests.get', fake_get)
+    assert razorpay_connectivity() is True
+    assert captured['url'].endswith('/orders')
+    assert captured['params'] == {'count': 1}
+    assert captured['auth'][0] == 'rzp_live_example'
+    assert captured['timeout'] == 5
+
+
 def test_readiness_endpoint_is_non_blocking_until_strict_mode(client, monkeypatch):
     _clear_readiness_env(monkeypatch)
     response = client.get('/readiness')
@@ -135,6 +181,7 @@ def test_readiness_endpoint_is_non_blocking_until_strict_mode(client, monkeypatc
     assert payload['status'] == 'needs_configuration'
     assert payload['checks']['shared_rate_limit_connectivity'] is False
     assert payload['checks']['smtp_connectivity'] is False
+    assert payload['checks']['razorpay_connectivity'] is False
 
 
 def test_readiness_endpoint_can_report_all_external_connectivity(client, monkeypatch):
@@ -142,12 +189,16 @@ def test_readiness_endpoint_can_report_all_external_connectivity(client, monkeyp
     _set_complete_readiness_env(monkeypatch)
     monkeypatch.setattr('app.main.shared_rate_limit_connectivity', lambda: True)
     monkeypatch.setattr('app.main.smtp_connectivity', lambda: True)
+    monkeypatch.setattr('app.main.razorpay_connectivity', lambda: True)
     response = client.get('/readiness')
     assert response.status_code == 200
     payload = response.get_json()
     assert payload['status'] == 'ready'
     assert payload['checks']['shared_rate_limit_connectivity'] is True
     assert payload['checks']['smtp_connectivity'] is True
+    assert payload['checks']['razorpay_live_credentials'] is True
+    assert payload['checks']['razorpay_webhook'] is True
+    assert payload['checks']['razorpay_connectivity'] is True
 
 
 def test_readiness_endpoint_can_fail_closed_in_strict_mode(client, monkeypatch):
