@@ -4,6 +4,11 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '17 2 * * *'
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/production-smoke.yml
+      - render.yaml
 
 permissions:
   contents: read
