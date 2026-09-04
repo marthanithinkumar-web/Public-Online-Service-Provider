@@ -1,0 +1,122 @@
+name: Production scholarship discovery smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 3 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/app/scholarships/**'
+      - 'backend/app/routes/scholarships.py'
+      - 'backend/tests/test_scholarship_discovery.py'
+      - 'frontend/src/services/scholarships.ts'
+      - 'frontend/src/pages/Scholarships.tsx'
+      - 'frontend/src/pages/ScholarshipDetail.tsx'
+      - '.github/workflows/scholarship-notifications.yml'
+      - '.github/workflows/production-scholarship-smoke.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-scholarship-discovery-smoke
+  cancel-in-progress: true
+
+env:
+  API_URL: https://public-online-service-provider-api.onrender.com
+  UI_URL: https://public-online-service-provider-india.onrender.com
+
+jobs:
+  smoke:
+    name: Verify daily scholarship discovery in production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Wait for discovered scholarship feed deployment
+        run: |
+          set -Eeuo pipefail
+          ready=0
+          for attempt in $(seq 1 24); do
+            curl --fail --silent --show-error --location --max-time 30 \
+              "$API_URL/api/scholarships/" -o /tmp/scholarships.json || true
+            if python - <<'PY'
+          import json, sys
+          try:
+              with open('/tmp/scholarships.json', encoding='utf-8') as handle:
+                  payload=json.load(handle)
+          except Exception:
+              sys.exit(1)
+          health=(payload.get('discovery') or {}).get('source_health') or {}
+          items=payload.get('items') or []
+          ok=(
+              payload.get('official_count', 0) >= 5
+              and (health.get('nsp') or {}).get('ok') is True
+              and len(health) >= 5
+              and any(item.get('source_key','').startswith('tg_epass') for item in items)
+          )
+          sys.exit(0 if ok else 1)
+          PY
+            then
+              ready=1
+              break
+            fi
+            echo "Waiting for current scholarship discovery feed (attempt $attempt/24)..."
+            sleep 10
+          done
+          test "$ready" = "1"
+
+      - name: Verify scholarship trust, freshness and provider quality
+        run: |
+          set -Eeuo pipefail
+          curl --fail --silent --show-error --location --max-time 30 \
+            "$API_URL/api/scholarships/?q=telangana" -o /tmp/telangana.json
+          curl --fail --silent --show-error --location --max-time 30 \
+            "$API_URL/api/scholarships/?q=aicte" -o /tmp/aicte.json
+          python - <<'PY'
+          import json
+          from datetime import date, datetime, timezone
+
+          with open('/tmp/scholarships.json', encoding='utf-8') as handle:
+              payload=json.load(handle)
+          items=payload['items']
+          assert payload['count'] == len(items), payload['count']
+          assert payload.get('official_count', 0) >= 5, payload.get('official_count')
+          assert payload.get('private_count', 0) >= 0
+          discovery=payload.get('discovery') or {}
+          assert discovery.get('mode') == 'official_daily_discovery', discovery
+          checked=datetime.fromisoformat(discovery['checked_at'].replace('Z','+00:00'))
+          if checked.tzinfo is None:
+              checked=checked.replace(tzinfo=timezone.utc)
+          assert (datetime.now(timezone.utc)-checked).total_seconds() <= 36*3600, discovery['checked_at']
+          health=discovery.get('source_health') or {}
+          assert (health.get('nsp') or {}).get('ok') is True, health.get('nsp')
+          assert int((health.get('nsp') or {}).get('count') or 0) >= 5, health.get('nsp')
+
+          for item in items:
+              assert item.get('source_type') in {'official','private'}, item.get('title')
+              assert item.get('is_official') is (item['source_type']=='official'), item.get('title')
+              if item.get('deadline'):
+                  assert date.fromisoformat(item['deadline'][:10]) >= date.today(), item['title']
+              if item.get('source_key') == 'nsp':
+                  provider=str(item.get('provider') or '')
+                  assert 'Welfare Based Scheme)' not in provider, (item['title'], provider)
+                  assert 'Merit Based Scheme)' not in provider, (item['title'], provider)
+
+          with open('/tmp/telangana.json', encoding='utf-8') as handle:
+              telangana=json.load(handle)
+          assert telangana.get('items'), 'Telangana scholarship search is empty'
+          assert any(item.get('source_key','').startswith('tg_epass') for item in telangana['items']), telangana['items'][:3]
+
+          with open('/tmp/aicte.json', encoding='utf-8') as handle:
+              aicte=json.load(handle)
+          assert aicte.get('items'), 'AICTE scholarship search is empty'
+          assert any('AICTE' in str(item.get('title')) for item in aicte['items']), aicte['items'][:3]
+          print(f"Production discovery verified: {payload.get('official_count')} official scholarships; {len(health)} source checks.")
+          PY
+
+      - name: Verify scholarship public page
+        run: |
+          set -Eeuo pipefail
+          curl --fail --silent --show-error --location --max-time 30 "$UI_URL/scholarships" -o /tmp/scholarships.html
+          grep -qi 'Scholarships' /tmp/scholarships.html
