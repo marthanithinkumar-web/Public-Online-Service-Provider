@@ -4,7 +4,7 @@ from sqlalchemy import text
 from dotenv import load_dotenv
 from .utils.database import db
 from .utils.schema_compat import ensure_user_schema
-from .utils.readiness import production_readiness, readiness_status, shared_rate_limit_connectivity, smtp_connectivity, razorpay_connectivity
+from .utils.readiness import production_readiness, readiness_status, persistent_storage_connectivity, shared_rate_limit_connectivity, smtp_connectivity, razorpay_connectivity
 from .models.user import User
 from .models.service import Category, Service
 from .models.job import JobSource
@@ -93,6 +93,7 @@ def create_app():
             app.logger.exception('Database readiness check failed')
             return jsonify({'status':'unavailable','checks':{'database':False}}),503
         checks={'database':True,**production_readiness()}
+        checks['persistent_storage_connectivity']=persistent_storage_connectivity()
         checks['shared_rate_limit_connectivity']=shared_rate_limit_connectivity()
         checks['smtp_connectivity']=smtp_connectivity()
         checks['razorpay_connectivity']=razorpay_connectivity()
