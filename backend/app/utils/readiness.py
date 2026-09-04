@@ -85,6 +85,28 @@ def persistent_storage_configured():
     return parsed.scheme == 'https' and bool(parsed.netloc)
 
 
+def persistent_storage_connectivity():
+    """Verify the configured private S3-compatible bucket is reachable.
+
+    The probe is read-only: it lists at most one object. This validates the
+    endpoint, bucket and credentials needed by the application's attachment
+    lifecycle without creating or exposing any client data.
+    """
+    if not persistent_storage_configured():
+        return False
+    try:
+        from .s3 import s3_client
+
+        response = s3_client().list_objects_v2(
+            Bucket=(os.getenv('S3_BUCKET') or '').strip(),
+            MaxKeys=1,
+        )
+        status_code = (response.get('ResponseMetadata') or {}).get('HTTPStatusCode')
+        return int(status_code or 0) == 200
+    except Exception:
+        return False
+
+
 def shared_rate_limit_configured():
     uri = (os.getenv('RATELIMIT_STORAGE_URI') or '').strip()
     if not uri:
