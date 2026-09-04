@@ -8,6 +8,8 @@ on:
     branches: [main]
     paths:
       - .github/workflows/production-smoke.yml
+      - backend/app/main.py
+      - backend/app/utils/readiness.py
       - render.yaml
 
 permissions:
@@ -56,6 +58,7 @@ jobs:
           required = [
               'database',
               'persistent_document_storage',
+              'persistent_storage_connectivity',
               'shared_rate_limit_storage',
               'shared_rate_limit_connectivity',
               'smtp_delivery',
