@@ -9,7 +9,16 @@ from ..utils.seo import application_service_name, legacy_application_service_nam
 
 bp = Blueprint('services', __name__)
 schema = ServiceSchema()
-SERVICE_REQUIREMENT_PROFILE_BY_NAME['Mobile Recharge'] = 'utility'
+RECHARGE_BILL_SERVICE_NAMES = (
+    'Mobile Recharge',
+    'Mobile Postpaid Bill Payment Assistance',
+    'DTH Recharge Assistance',
+    'Broadband / Landline Bill Payment Assistance',
+    'FASTag Recharge Assistance',
+    'Piped Gas Bill Payment Assistance',
+)
+for service_name in RECHARGE_BILL_SERVICE_NAMES:
+    SERVICE_REQUIREMENT_PROFILE_BY_NAME[service_name] = 'utility'
 
 
 def current_assistance_fee():
@@ -47,23 +56,59 @@ def _fee_values(data, current=None):
     return status, amount
 
 
-def _mobile_recharge_requirements():
-    return {
-        'fields': [
+def _recharge_bill_requirements(service_name):
+    fields_by_service = {
+        'Mobile Recharge': [
             {'key': 'mobile_number', 'label': 'Mobile number', 'placeholder': '10-digit Indian mobile number', 'required': False},
             {'key': 'operator', 'label': 'Operator', 'type': 'select', 'options': ['Airtel', 'Jio', 'Vi', 'BSNL'], 'required': False},
             {'key': 'circle', 'label': 'Circle / state', 'placeholder': 'Mobile circle or state', 'required': False},
             {'key': 'plan_reference', 'label': 'Recharge plan', 'placeholder': 'Example: 28 days / 1.5 GB per day', 'required': False},
             {'key': 'recharge_amount', 'label': 'Recharge amount (₹)', 'placeholder': 'Plan amount', 'required': False},
         ],
+        'Mobile Postpaid Bill Payment Assistance': [
+            {'key': 'mobile_number', 'label': 'Postpaid mobile number', 'placeholder': '10-digit Indian mobile number', 'required': False},
+            {'key': 'operator', 'label': 'Operator', 'type': 'select', 'options': ['Airtel', 'Jio', 'Vi', 'BSNL'], 'required': False},
+            {'key': 'circle', 'label': 'Circle / state', 'placeholder': 'Mobile circle or state', 'required': False},
+            {'key': 'account_reference', 'label': 'Account / customer reference (if available)', 'required': False},
+            {'key': 'bill_amount', 'label': 'Bill amount (₹)', 'placeholder': 'Amount shown by the operator', 'required': False},
+        ],
+        'DTH Recharge Assistance': [
+            {'key': 'dth_operator', 'label': 'DTH operator', 'type': 'select', 'options': ['Tata Play', 'Airtel Digital TV', 'Dish TV', 'd2h', 'Sun Direct', 'Other'], 'required': False},
+            {'key': 'subscriber_id', 'label': 'Subscriber / customer ID', 'required': False},
+            {'key': 'registered_mobile', 'label': 'Registered mobile number (if available)', 'required': False},
+            {'key': 'plan_reference', 'label': 'Pack / plan reference (if known)', 'required': False},
+            {'key': 'recharge_amount', 'label': 'Recharge amount (₹)', 'placeholder': 'Recharge amount', 'required': False},
+        ],
+        'Broadband / Landline Bill Payment Assistance': [
+            {'key': 'provider', 'label': 'Broadband / landline provider', 'placeholder': 'Example: JioFiber, Airtel Xstream, BSNL, ACT', 'required': False},
+            {'key': 'account_number', 'label': 'Account / customer number', 'required': False},
+            {'key': 'landline_number', 'label': 'Landline / service number (if applicable)', 'required': False},
+            {'key': 'circle', 'label': 'Circle / state / city', 'required': False},
+            {'key': 'bill_amount', 'label': 'Bill amount (₹)', 'placeholder': 'Amount shown by the provider', 'required': False},
+        ],
+        'FASTag Recharge Assistance': [
+            {'key': 'fastag_issuer', 'label': 'FASTag issuer / bank / provider', 'required': False},
+            {'key': 'vehicle_registration', 'label': 'Vehicle registration number', 'required': False},
+            {'key': 'fastag_reference', 'label': 'FASTag / customer reference (if available)', 'required': False},
+            {'key': 'recharge_amount', 'label': 'Recharge amount (₹)', 'placeholder': 'Recharge amount', 'required': False},
+        ],
+        'Piped Gas Bill Payment Assistance': [
+            {'key': 'provider', 'label': 'Piped gas provider', 'required': False},
+            {'key': 'consumer_number', 'label': 'Consumer / customer number', 'required': False},
+            {'key': 'location', 'label': 'City / state', 'required': False},
+            {'key': 'bill_amount', 'label': 'Bill amount (₹)', 'placeholder': 'Amount shown by the gas provider', 'required': False},
+        ],
+    }
+    return {
+        'fields': fields_by_service[service_name],
         'documents': [],
-        'safety_note': 'Never provide OTPs, UPI PINs, card PIN/CVV, banking passwords or operator-account passwords.',
+        'safety_note': 'Never provide OTPs, UPI PINs, card PIN/CVV, banking passwords or provider-account passwords. The bill or recharge amount is separate from the website assistance fee, and the website does not claim third-party payment completion without an authorised provider integration.',
     }
 
 
 def _service_dict(service):
     data = service.to_dict()
-    data['requirements'] = _mobile_recharge_requirements() if service.name == 'Mobile Recharge' else get_service_requirements(service)
+    data['requirements'] = _recharge_bill_requirements(service.name) if service.name in RECHARGE_BILL_SERVICE_NAMES else get_service_requirements(service)
     return data
 
 
