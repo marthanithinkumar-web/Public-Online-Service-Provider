@@ -1,6 +1,13 @@
 name: Encrypted production database backup
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/database-backup.yml'
+      - 'scripts/backup_postgres_to_b2.sh'
+      - 'scripts/b2_backup_catalog.py'
   schedule:
     # 02:00 Asia/Kolkata (20:30 UTC on the previous day).
     - cron: '30 20 * * *'
