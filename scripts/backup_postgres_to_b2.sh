@@ -10,7 +10,6 @@ required_variables=(
   B2_BACKUP_ENDPOINT_URL
   AWS_ACCESS_KEY_ID
   AWS_SECRET_ACCESS_KEY
-  AWS_REGION
 )
 
 for variable in "${required_variables[@]}"; do
@@ -20,16 +19,24 @@ for variable in "${required_variables[@]}"; do
   fi
 done
 
-if [[ ! "${B2_BACKUP_ENDPOINT_URL}" =~ ^https://s3\.[a-z0-9-]+\.backblazeb2\.com/?$ ]]; then
+if [[ ! "${B2_BACKUP_ENDPOINT_URL}" =~ ^https://s3\.([a-z0-9-]+)\.backblazeb2\.com/?$ ]]; then
   echo "B2_BACKUP_ENDPOINT_URL must be an HTTPS Backblaze B2 S3 endpoint." >&2
   exit 2
 fi
+B2_REGION="${BASH_REMATCH[1]}"
+export AWS_REGION="${B2_REGION}"
+export AWS_DEFAULT_REGION="${B2_REGION}"
+
 if [[ ! "${B2_BACKUP_BUCKET}" =~ ^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$ ]]; then
   echo "B2_BACKUP_BUCKET is not a valid S3-compatible bucket name." >&2
   exit 2
 fi
 if (( ${#BACKUP_ENCRYPTION_PASSPHRASE} < 24 )); then
   echo "BACKUP_ENCRYPTION_PASSPHRASE must contain at least 24 characters." >&2
+  exit 2
+fi
+if [[ "${AWS_ACCESS_KEY_ID}" =~ [[:space:]] ]] || [[ "${AWS_SECRET_ACCESS_KEY}" =~ [[:space:]] ]]; then
+  echo "Backblaze B2 credentials must not contain whitespace." >&2
   exit 2
 fi
 
@@ -69,6 +76,7 @@ fi
 public_grants="$(aws s3api get-bucket-acl \
   --bucket "${B2_BACKUP_BUCKET}" \
   --endpoint-url "${B2_BACKUP_ENDPOINT_URL}" \
+  --region "${B2_REGION}" \
   --query "length(Grants[?Grantee.URI=='http://acs.amazonaws.com/groups/global/AllUsers'])" \
   --output text)"
 if [[ "${public_grants}" != "0" ]]; then
@@ -134,9 +142,9 @@ rm -f -- "${verified_dump}"
 
 echo "Uploading the encrypted archive and checksum to the private B2 bucket..."
 aws s3 cp "${encrypted_file}" "s3://${B2_BACKUP_BUCKET}/${object_key}" \
-  --endpoint-url "${B2_BACKUP_ENDPOINT_URL}" --only-show-errors --no-progress
+  --endpoint-url "${B2_BACKUP_ENDPOINT_URL}" --region "${B2_REGION}" --only-show-errors --no-progress
 aws s3 cp "${checksum_file}" "s3://${B2_BACKUP_BUCKET}/${object_key}.sha256" \
-  --endpoint-url "${B2_BACKUP_ENDPOINT_URL}" --only-show-errors --no-progress
+  --endpoint-url "${B2_BACKUP_ENDPOINT_URL}" --region "${B2_REGION}" --only-show-errors --no-progress
 
 echo "Applying exact-version retention (keeping ${BACKUP_RETENTION_COUNT} daily backups)..."
 versions_file="${WORK_DIR}/versions.json"
@@ -145,6 +153,7 @@ aws s3api list-object-versions \
   --bucket "${B2_BACKUP_BUCKET}" \
   --prefix "${BACKUP_PREFIX}" \
   --endpoint-url "${B2_BACKUP_ENDPOINT_URL}" \
+  --region "${B2_REGION}" \
   --output json > "${versions_file}"
 python3 "${SCRIPT_DIR}/b2_backup_catalog.py" \
   --input "${versions_file}" \
@@ -160,7 +169,8 @@ while IFS=$'\t' read -r encoded_key encoded_version; do
     --bucket "${B2_BACKUP_BUCKET}" \
     --key "${key}" \
     --version-id "${version_id}" \
-    --endpoint-url "${B2_BACKUP_ENDPOINT_URL}" >/dev/null
+    --endpoint-url "${B2_BACKUP_ENDPOINT_URL}" \
+    --region "${B2_REGION}" >/dev/null
   deleted_versions=$((deleted_versions + 1))
 done < "${delete_plan}"
 
