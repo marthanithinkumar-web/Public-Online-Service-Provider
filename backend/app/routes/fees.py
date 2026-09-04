@@ -20,6 +20,14 @@ SCHOLARSHIP_FEE_KEY = 'scholarship_assistance_fee_inr'
 SCHOLARSHIP_SERVICE_NAME = 'Scholarship Application Assistance'
 RECHARGE_BILL_FEE_KEY = 'recharge_bill_assistance_fee_inr'
 RECHARGE_BILL_SERVICE_NAME = 'Mobile Recharge'
+RECHARGE_BILL_SERVICE_NAMES = (
+    'Mobile Recharge',
+    'Mobile Postpaid Bill Payment Assistance',
+    'DTH Recharge Assistance',
+    'Broadband / Landline Bill Payment Assistance',
+    'FASTag Recharge Assistance',
+    'Piped Gas Bill Payment Assistance',
+)
 
 
 def utc_now():
@@ -64,7 +72,7 @@ def _component_locked(order, component):
     return Payment.query.filter(Payment.order_id == order.id, Payment.purpose.in_(purposes), Payment.status.in_(['created', 'authorized', 'captured', 'paid'])).first() is not None
 
 
-def _update_assistance_fee(key, service_name, action, label):
+def _update_assistance_fee(key, service_name, action, label, additional_service_names=()):
     admin = get_request_user()
     data = request.get_json(silent=True) or {}
     try:
@@ -77,10 +85,11 @@ def _update_assistance_fee(key, service_name, action, label):
         setting.value = f'{amount:.2f}'
     else:
         db.session.add(PlatformSetting(key=key, value=f'{amount:.2f}'))
-    service = Service.query.filter_by(name=service_name).first()
-    if service:
+    service_names = (service_name, *additional_service_names)
+    services = Service.query.filter(Service.name.in_(service_names)).all()
+    for service in services:
         service.price_inr = amount
-    db.session.add(AdminAuditLog(admin_id=admin.id, action=action, summary=f'Changed the website-wide {label} assistance fee to ₹{amount:.2f}.', details={'previous_fee_inr': previous, 'new_fee_inr': amount, 'service_catalog_updated': bool(service), 'existing_requests_repriced': False}))
+    db.session.add(AdminAuditLog(admin_id=admin.id, action=action, summary=f'Changed the website-wide {label} assistance fee to ₹{amount:.2f}.', details={'previous_fee_inr': previous, 'new_fee_inr': amount, 'service_catalog_updated': bool(services), 'service_catalog_updated_count': len(services), 'existing_requests_repriced': False}))
     db.session.commit()
     return jsonify({'message': f'{label.capitalize()} assistance fee updated to ₹{amount:g} across the website.', 'price_inr': amount, 'existing_requests_repriced': False})
 
@@ -121,7 +130,13 @@ def public_recharge_bill_assistance_fee():
 @bp.put('/recharge-bill-assistance')
 @require_admin
 def update_recharge_bill_assistance_fee():
-    return _update_assistance_fee(RECHARGE_BILL_FEE_KEY, RECHARGE_BILL_SERVICE_NAME, 'recharge_bill_assistance_fee_update', 'recharge and bill payment')
+    return _update_assistance_fee(
+        RECHARGE_BILL_FEE_KEY,
+        RECHARGE_BILL_SERVICE_NAME,
+        'recharge_bill_assistance_fee_update',
+        'recharge and bill payment',
+        RECHARGE_BILL_SERVICE_NAMES[1:],
+    )
 
 
 @bp.put('/jobs/<int:job_id>/rules')
