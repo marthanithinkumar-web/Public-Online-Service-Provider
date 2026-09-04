@@ -1,0 +1,97 @@
+name: Razorpay production confirmation
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - backend/app/utils/readiness.py
+      - backend/app/main.py
+      - backend/app/routes/payments.py
+      - backend/.env.production.example
+      - backend/tests/test_readiness.py
+      - .github/workflows/production-payment-confirmation.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: razorpay-production-confirmation
+  cancel-in-progress: true
+
+env:
+  API_URL: https://public-online-service-provider-api.onrender.com
+
+jobs:
+  verify:
+    name: Verify live Razorpay production configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Wait for deployed Razorpay readiness schema
+        run: |
+          set -Eeuo pipefail
+          ready=0
+          for attempt in $(seq 1 30); do
+            if curl --silent --show-error --location --max-time 30 \
+              "$API_URL/readiness" -o /tmp/readiness.json; then
+              if python - <<'PY'
+          import json
+          try:
+              with open('/tmp/readiness.json', encoding='utf-8') as handle:
+                  payload = json.load(handle)
+          except Exception:
+              raise SystemExit(1)
+          checks = payload.get('checks') or {}
+          raise SystemExit(0 if 'razorpay_connectivity' in checks else 1)
+          PY
+              then
+                ready=1
+                break
+              fi
+            fi
+            echo "Waiting for the latest backend deployment (attempt $attempt/30)..."
+            sleep 20
+          done
+          test "$ready" = "1" || {
+            echo "Production did not expose the new Razorpay readiness checks within the deployment window."
+            exit 1
+          }
+
+      - name: Confirm live credentials, webhook, and Razorpay API authentication
+        run: |
+          set -Eeuo pipefail
+          python - <<'PY'
+          import json
+          with open('/tmp/readiness.json', encoding='utf-8') as handle:
+              payload = json.load(handle)
+          checks = payload.get('checks') or {}
+          required = {
+              'razorpay_live_credentials': checks.get('razorpay_live_credentials'),
+              'razorpay_webhook': checks.get('razorpay_webhook'),
+              'razorpay_connectivity': checks.get('razorpay_connectivity'),
+          }
+          failed = [name for name, value in required.items() if value is not True]
+          if failed:
+              raise SystemExit('Razorpay production confirmation failed: ' + ', '.join(failed))
+          print('Razorpay live credentials, webhook configuration, and read-only API authentication are confirmed.')
+          PY
+
+      - name: Confirm public checkout config exposes only the live key id
+        run: |
+          set -Eeuo pipefail
+          curl --fail --silent --show-error --location --max-time 30 \
+            "$API_URL/api/payments/config" -o /tmp/payment-config.json
+          python - <<'PY'
+          import json
+          with open('/tmp/payment-config.json', encoding='utf-8') as handle:
+              payload = json.load(handle)
+          assert payload.get('provider') == 'razorpay', payload
+          assert payload.get('enabled') is True, payload
+          key_id = str(payload.get('key_id') or '')
+          assert key_id.startswith('rzp_live_'), 'Production checkout is not using a Razorpay live key id.'
+          forbidden = {'key_secret', 'webhook_secret', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'}
+          assert forbidden.isdisjoint(payload), 'A server-only Razorpay secret was exposed by the public config endpoint.'
+          print('Public checkout config is enabled with a live Razorpay key id and exposes no server-only secrets.')
+          PY
