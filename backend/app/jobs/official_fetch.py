@@ -14,7 +14,7 @@ ALLOWED_HOSTS = {
     'upsc.gov.in', 'www.upsc.gov.in', 'upsconline.nic.in', 'www.upsconline.nic.in',
     'mha.gov.in', 'www.mha.gov.in',
     'tgprb.in', 'www.tgprb.in', 'doc.tgprb.in',
-    'indiapost.gov.in', 'www.indiapost.gov.in',
+    'indiapost.gov.in', 'www.indiapost.gov.in', 'app.indiapost.gov.in',
     'indiapostgdsonline.gov.in', 'www.indiapostgdsonline.gov.in',
     'isro.gov.in', 'www.isro.gov.in',
     'ncs.gov.in', 'www.ncs.gov.in',
