@@ -9,7 +9,11 @@ on:
     paths:
       - .github/workflows/production-smoke.yml
       - backend/app/main.py
+      - backend/app/routes/services.py
+      - backend/app/routes/fees.py
       - backend/app/utils/readiness.py
+      - backend/migrations_alembic/versions/20260904_18_bill_payment_services.py
+      - frontend/scripts/seo-catalog.mjs
       - render.yaml
 
 permissions:
@@ -99,6 +103,61 @@ jobs:
           assert any('income' in str(item.get('name', '')).lower() for item in results), results[:5]
           PY
 
+      - name: Verify recharge and bill payment catalog
+        run: |
+          set -Eeuo pipefail
+          expected='Mobile Recharge|Mobile Postpaid Bill Payment Assistance|DTH Recharge Assistance|Broadband / Landline Bill Payment Assistance|FASTag Recharge Assistance|Piped Gas Bill Payment Assistance'
+          ready=0
+          for attempt in $(seq 1 18); do
+            curl --fail --silent --show-error --location --max-time 30 "$API_URL/api/services" -o /tmp/recharge-services.json
+            if EXPECTED="$expected" python - <<'PY'
+          import json, os, sys
+          expected=set(os.environ['EXPECTED'].split('|'))
+          with open('/tmp/recharge-services.json', encoding='utf-8') as handle:
+              items=json.load(handle)
+          names={item.get('catalog_name') for item in items}
+          sys.exit(0 if expected <= names else 1)
+          PY
+            then
+              ready=1
+              break
+            fi
+            echo "Waiting for recharge/bill catalog deployment (attempt $attempt/18)..."
+            sleep 10
+          done
+          test "$ready" = "1"
+          curl --fail --silent --show-error --location --max-time 30 "$API_URL/api/fees/recharge-bill-assistance" -o /tmp/recharge-fee.json
+          for term in 'postpaid%20bill' 'dth%20recharge' 'broadband%20bill' 'fastag' 'piped%20gas'; do
+            curl --fail --silent --show-error --location --max-time 30 "$API_URL/api/services/search?q=$term" -o "/tmp/search-${term//%20/-}.json"
+          done
+          EXPECTED="$expected" python - <<'PY'
+          import json, os
+          expected=set(os.environ['EXPECTED'].split('|'))
+          with open('/tmp/recharge-services.json', encoding='utf-8') as handle:
+              items=json.load(handle)
+          selected={item['catalog_name']:item for item in items if item.get('catalog_name') in expected}
+          assert set(selected) == expected, set(selected)
+          with open('/tmp/recharge-fee.json', encoding='utf-8') as handle:
+              fee=json.load(handle)
+          configured=float(fee['price_inr'])
+          for name,item in selected.items():
+              assert item['category']=='Recharge & Bill Payments', (name,item['category'])
+              assert item['official_fee_status']=='none', (name,item['official_fee_status'])
+              assert float(item['official_fee_inr'])==0.0, (name,item['official_fee_inr'])
+              assert float(item['price_inr'])==configured, (name,item['price_inr'],configured)
+          searches={
+              'postpaid-bill':'Mobile Postpaid Bill Payment Assistance',
+              'dth-recharge':'DTH Recharge Assistance',
+              'broadband-bill':'Broadband / Landline Bill Payment Assistance',
+              'fastag':'FASTag Recharge Assistance',
+              'piped-gas':'Piped Gas Bill Payment Assistance',
+          }
+          for key,name in searches.items():
+              with open(f'/tmp/search-{key}.json', encoding='utf-8') as handle:
+                  results=json.load(handle)
+              assert any(item.get('catalog_name')==name for item in results), (key,name)
+          PY
+
       - name: Verify public jobs and scholarships APIs
         run: |
           set -Eeuo pipefail
@@ -120,7 +179,7 @@ jobs:
       - name: Verify homepage and public discovery pages
         run: |
           set -Eeuo pipefail
-          for path in / /jobs /scholarships /meeseva /certificates /schemes /about /contact /privacy /terms /disclaimer /services/pan-card-new-application; do
+          for path in / /jobs /scholarships /meeseva /certificates /schemes /about /contact /privacy /terms /disclaimer /services/pan-card-new-application /services/mobile-recharge /services/apply-fastag-recharge; do
             output="/tmp/page$(echo "$path" | tr '/' '_').html"
             code="$(curl --silent --show-error --location --output "$output" --write-out '%{http_code}' --retry 5 --retry-delay 5 --retry-all-errors --max-time 30 "$UI_URL$path")"
             test "$code" = "200" || { echo "Unexpected HTTP $code for $path"; exit 1; }
@@ -134,6 +193,8 @@ jobs:
           curl --fail --silent --show-error --location --max-time 30 "$UI_URL/sitemap.xml" -o /tmp/sitemap.xml
           grep -Fq "$UI_URL/sitemap.xml" /tmp/robots.txt
           grep -Fq "$UI_URL/" /tmp/sitemap.xml
+          grep -Fq "$UI_URL/services/mobile-recharge" /tmp/sitemap.xml
+          grep -Fq "$UI_URL/services/apply-fastag-recharge" /tmp/sitemap.xml
           for path in /login /register /account-settings /messages /grievances /submit-grievance /submit-review /reset-password; do
             grep -Fq "Disallow: $path" /tmp/robots.txt || { echo "robots.txt does not block $path"; exit 1; }
           done
