@@ -14,9 +14,14 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: scholarship-notifications
+  cancel-in-progress: true
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,25 +29,45 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Refresh active scholarship snapshot
+      - name: Install discovery dependency
+        run: python -m pip install 'requests==2.32.5'
+      - name: Discover and refresh active scholarships
         working-directory: backend
-        run: python -m app.scholarships.snapshot --output ../frontend/public/data/scholarships.json
+        run: python -m app.scholarships.snapshot --output ../frontend/public/data/scholarships.json --strict
       - name: Validate scholarship snapshot
+        env:
+          PYTHONPATH: backend
         run: |
           python - <<'PY'
           import json
           from datetime import date
           from pathlib import Path
           from urllib.parse import urlparse
+          from app.scholarships.discovery import is_official_url
+
           p=Path('frontend/public/data/scholarships.json')
           data=json.loads(p.read_text(encoding='utf-8'))
           items=data.get('items',[])
           assert data.get('count') == len(items)
+          official=[item for item in items if item.get('source_type') == 'official']
+          private=[item for item in items if item.get('source_type') == 'private']
+          assert data.get('official_count') == len(official), (data.get('official_count'), len(official))
+          assert data.get('private_count') == len(private), (data.get('private_count'), len(private))
+          assert len(official) >= 5, f'expected at least 5 current official scholarships, found {len(official)}'
+          discovery=data.get('discovery') or {}
+          health=discovery.get('source_health') or {}
+          assert discovery.get('mode') == 'official_daily_discovery', discovery
+          assert (health.get('nsp') or {}).get('ok') is True, health.get('nsp')
+          assert len(health) >= 5, f'official source health coverage is too small: {list(health)}'
+
           slugs=set()
           for item in items:
               slug=item.get('slug')
               assert slug and slug not in slugs, f'duplicate/missing slug: {slug}'
               slugs.add(slug)
+              source_type=item.get('source_type')
+              assert source_type in {'official','private'}, f'unknown source type: {slug}'
+              assert item.get('is_official') is (source_type == 'official'), f'official-source flag mismatch: {slug}'
               deadline=item.get('deadline')
               if deadline:
                   assert date.fromisoformat(deadline[:10]) >= date.today(), f'expired scholarship published: {slug}'
@@ -50,7 +75,13 @@ jobs:
                   value=item.get(key)
                   assert value and urlparse(value).scheme == 'https', f'invalid {key}: {slug}'
               assert item.get('source_name'), f'missing source attribution: {slug}'
-          print(f'Validated {len(items)} active scholarships')
+              if source_type == 'official':
+                  assert is_official_url(item['source_url']), f'official listing uses untrusted source: {slug}'
+                  assert is_official_url(item['application_url']), f'official listing uses untrusted application URL: {slug}'
+
+          print(f"Validated {len(items)} active scholarships: {len(official)} official, {len(private)} private/partner")
+          for key, value in sorted(health.items()):
+              print(f"{key}: {'ok' if value.get('ok') else 'failed'} ({value.get('count', 0)} discovered)")
           PY
       - name: Commit refreshed snapshot
         run: |
@@ -74,22 +105,29 @@ jobs:
 
           url='https://public-online-service-provider-api.onrender.com/api/scholarships/'
           last_error=None
-          for attempt in range(1, 5):
+          for attempt in range(1, 9):
               try:
-                  request=urllib.request.Request(url, headers={'User-Agent': 'github-actions-scholarship-probe/1.0'})
+                  request=urllib.request.Request(url, headers={'User-Agent': 'github-actions-scholarship-probe/2.0'})
                   with urllib.request.urlopen(request, timeout=45) as response:
                       if response.status != 200:
                           raise RuntimeError(f'unexpected HTTP status {response.status}')
                       payload=json.load(response)
-                      if not isinstance(payload.get('items'), list):
-                          raise RuntimeError('response payload does not contain an items list')
-                  print('Production scholarship API responded successfully.')
+                  if not isinstance(payload.get('items'), list):
+                      raise RuntimeError('response payload does not contain an items list')
+                  if int(payload.get('official_count') or 0) < 5:
+                      raise RuntimeError(f"production feed has only {payload.get('official_count')} official scholarships")
+                  health=(payload.get('discovery') or {}).get('source_health') or {}
+                  if not health:
+                      raise RuntimeError('production feed does not expose discovery source health yet')
+                  if not any(str(item.get('source_name','')).lower().startswith('telangana epass') for item in payload['items']):
+                      raise RuntimeError('production feed does not contain a current Telangana ePASS discovery yet')
+                  print(f"Production scholarship API is current: {payload.get('official_count')} official scholarships from {len(health)} checked sources.")
                   break
               except (TimeoutError, urllib.error.URLError, urllib.error.HTTPError, RuntimeError, json.JSONDecodeError) as exc:
                   last_error=exc
-                  if attempt == 4:
+                  if attempt == 8:
                       raise SystemExit(f'Production scholarship API probe failed after {attempt} attempts: {exc}')
-                  delay=15 * attempt
+                  delay=15
                   print(f'Probe attempt {attempt} failed: {exc}. Retrying in {delay}s...')
                   time.sleep(delay)
           PY
