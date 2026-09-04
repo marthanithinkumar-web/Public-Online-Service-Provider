@@ -29,6 +29,32 @@ def _age_days(value, now):
     return max(0.0, (now - parsed).total_seconds() / 86400)
 
 
+def _normalise_nsp_provider(item):
+    """Prevent a neighbouring NSP scheme title from being published as provider."""
+    value = dict(item)
+    if value.get('source_key') != 'nsp':
+        return value
+    provider = str(value.get('provider') or '').strip()
+    title = str(value.get('title') or '').strip()
+    lower = provider.lower()
+    trustworthy_prefixes = (
+        'ministry of ',
+        'department of ',
+        'all india council for technical education',
+        'north eastern council',
+        'university grants commission',
+    )
+    scheme_like = any(marker in lower for marker in (' scholarship', ' scholarship scheme', ' fellowship', ' financial assistance', ' welfare based scheme', ' merit based scheme'))
+    if provider and (lower.startswith(trustworthy_prefixes) or not scheme_like):
+        return value
+    if title.lower().startswith('aicte'):
+        value['provider'] = 'All India Council for Technical Education (AICTE)'
+    else:
+        value['provider'] = 'Government of India (via National Scholarship Portal)'
+    value['provider_normalized'] = True
+    return value
+
+
 def _normalise_existing(item, generated_at=None):
     value = dict(item)
     official = is_official_url(value.get('source_url'))
@@ -42,7 +68,7 @@ def _normalise_existing(item, generated_at=None):
         value['last_seen_at'] = value.get('verified_at') or generated_at
     if not value.get('discovery_method'):
         value['discovery_method'] = 'existing_snapshot' if official else 'manual_or_partner_listing'
-    return value
+    return _normalise_nsp_provider(value)
 
 
 def _preserve_previous(item, health, now, check_date):
@@ -81,6 +107,7 @@ def refresh_snapshot(path=CATALOG_PATH, today=None, *, discover=True, strict=Fal
     if discover:
         discoverer = discovery_func or discover_official_scholarships
         discovered, health = discoverer(now=now)
+        discovered = [_normalise_nsp_provider(item) for item in discovered]
         if strict:
             nsp = health.get('nsp') or {}
             if not nsp.get('ok'):
