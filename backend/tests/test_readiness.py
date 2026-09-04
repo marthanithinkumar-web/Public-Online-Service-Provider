@@ -1,4 +1,4 @@
-from app.utils.readiness import production_readiness, readiness_status
+from app.utils.readiness import production_readiness, readiness_status, shared_rate_limit_configured
 
 
 def _clear_readiness_env(monkeypatch):
@@ -57,11 +57,25 @@ def test_readiness_rejects_insecure_storage_endpoint(monkeypatch):
     assert readiness_status(checks) == 'needs_configuration'
 
 
+def test_rate_limit_readiness_rejects_invalid_redis_uri(monkeypatch):
+    _clear_readiness_env(monkeypatch)
+    monkeypatch.setenv('RATELIMIT_STORAGE_URI', 'redis://')
+    assert shared_rate_limit_configured() is False
+
+    monkeypatch.setenv('RATELIMIT_STORAGE_URI', 'https://redis.example.test')
+    assert shared_rate_limit_configured() is False
+
+    monkeypatch.setenv('RATELIMIT_STORAGE_URI', 'rediss://default:password@redis.example.test:6379/0')
+    assert shared_rate_limit_configured() is True
+
+
 def test_readiness_endpoint_is_non_blocking_until_strict_mode(client, monkeypatch):
     _clear_readiness_env(monkeypatch)
     response = client.get('/readiness')
     assert response.status_code == 200
-    assert response.get_json()['status'] == 'needs_configuration'
+    payload = response.get_json()
+    assert payload['status'] == 'needs_configuration'
+    assert payload['checks']['shared_rate_limit_connectivity'] is False
 
 
 def test_readiness_endpoint_can_fail_closed_in_strict_mode(client, monkeypatch):
