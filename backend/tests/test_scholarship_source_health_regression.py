@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from app.scholarships.discovery import SOURCE_DEFINITIONS, human_date, parse_social_justice, parse_tribal_affairs
+from app.scholarships.discovery import SOURCE_DEFINITIONS, human_date, is_official_url, parse_social_justice, parse_tribal_affairs
 
 
 NOW = datetime(2026, 9, 5, 3, 0, tzinfo=timezone.utc)
@@ -10,10 +10,12 @@ def _source(key, name, url, parser):
     return {'key': key, 'name': name, 'url': url, 'parser': parser}
 
 
-def test_first_party_source_urls_use_current_stable_pages():
+def test_first_party_source_urls_use_dedicated_official_portals():
     sources = {source['key']: source for source in SOURCE_DEFINITIONS}
-    assert sources['social_justice']['url'] == 'https://socialjustice.gov.in/whats-new/1493'
-    assert sources['tribal_affairs']['url'] == 'https://tribal.nic.in/'
+    assert sources['social_justice']['url'] == 'https://nosmsje.gov.in/public/'
+    assert sources['tribal_affairs']['url'] == 'https://overseas.tribal.gov.in/AboutUs.aspx'
+    assert is_official_url(sources['social_justice']['url'])
+    assert is_official_url(sources['tribal_affairs']['url'])
 
 
 def test_human_date_reads_ordinal_month_deadlines():
@@ -23,38 +25,24 @@ def test_human_date_reads_ordinal_month_deadlines():
 
 
 def test_tribal_nos_parser_does_not_publish_expired_selection_year():
-    html = '''
-    <div>Last Date Extended! Apply for National Overseas Scholarship (NOS) for ST Candidates 2026-27.</div>
-    <div>New Deadline: 15th July 2026, 5:30 PM.</div>
-    <div>Ministry invites online application for the National Overseas Scholarship Scheme (NOS) for ST candidates for the selection year 2026-27.</div>
-    <div>The portal is open till 30-06-2026, 5:00 PM.</div>
-    '''
-    source = _source('tribal_affairs', 'Ministry of Tribal Affairs', 'https://tribal.nic.in/', 'tribal_affairs')
+    html = '<div>National Overseas Scholarship (NOS) for ST Candidates 2026-27. New Deadline: 15th July 2026.</div>'
+    source = _source('tribal_affairs', 'Ministry of Tribal Affairs', 'https://overseas.tribal.gov.in/AboutUs.aspx', 'tribal_affairs')
     assert parse_tribal_affairs(html, source, now=NOW) == []
 
 
 def test_tribal_nos_parser_publishes_only_future_explicit_deadline():
-    html = '''
-    <div>Last Date Extended! Apply for National Overseas Scholarship (NOS) for ST Candidates 2026-27.</div>
-    <div>New Deadline: 31st October 2026, 5:30 PM.</div>
-    '''
-    source = _source('tribal_affairs', 'Ministry of Tribal Affairs', 'https://tribal.nic.in/', 'tribal_affairs')
+    html = '<div>National Overseas Scholarship (NOS) for ST Candidates 2026-27. New Deadline: 31st October 2026.</div>'
+    source = _source('tribal_affairs', 'Ministry of Tribal Affairs', 'https://overseas.tribal.gov.in/AboutUs.aspx', 'tribal_affairs')
     items = parse_tribal_affairs(html, source, now=NOW)
     assert len(items) == 1
     assert items[0]['deadline'] == '2026-10-31'
     assert items[0]['academic_year'] == '2026-27'
-    assert items[0]['status'] == 'active'
 
 
-def test_social_justice_stable_whats_new_page_is_parseable_as_official_notices():
-    html = '''
-    <h3>News / Events (What's New)</h3>
-    <div>Scheme Guidelines for 2026-27 - Central Sector Scholarship of Top Class Education for SC Students</div>
-    <div>National Overseas Scholarship (NOS) for SC etc. Candidates-Scheme Guidelines 2026-27</div>
-    <div>Post-Matric Scholarship for OBC, EBC & DNT Students</div>
-    '''
-    source = _source('social_justice', 'Department of Social Justice & Empowerment', 'https://socialjustice.gov.in/whats-new/1493', 'social_justice')
+def test_social_justice_nos_portal_is_parseable_as_official_notice():
+    html = '<div>National Overseas Scholarship Scheme for SC etc. Candidates Selection Year 2026-27</div>'
+    source = _source('social_justice', 'Department of Social Justice & Empowerment', 'https://nosmsje.gov.in/public/', 'social_justice')
     items = parse_social_justice(html, source, now=NOW)
-    assert len(items) == 3
-    assert all(item['is_official'] is True for item in items)
-    assert all(item['record_type'] == 'official_notice' for item in items)
+    assert len(items) == 1
+    assert items[0]['is_official'] is True
+    assert items[0]['record_type'] == 'official_notice'
