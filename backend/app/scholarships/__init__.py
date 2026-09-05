@@ -1,12 +1,18 @@
 """Scholarship feed helpers."""
 
-# Prefer stable, server-rendered pages on the same allow-listed government hosts.
-# The discovery module still enforces the official HTTPS host allow-list.
+# These dedicated scholarship portals are first-party Government of India/NIC
+# services and remain subject to the discovery module's strict HTTPS host check.
 from . import discovery as _discovery
 
+_discovery.OFFICIAL_HOSTS.update({
+    'nosmsje.gov.in',
+    'www.nosmsje.gov.in',
+    'overseas.tribal.gov.in',
+})
+
 _STABLE_SOURCE_URLS = {
-    'social_justice': 'https://socialjustice.gov.in/whats-new/1493',
-    'tribal_affairs': 'https://tribal.nic.in/',
+    'social_justice': 'https://nosmsje.gov.in/public/',
+    'tribal_affairs': 'https://overseas.tribal.gov.in/AboutUs.aspx',
 }
 
 _discovery.SOURCE_DEFINITIONS = tuple(
