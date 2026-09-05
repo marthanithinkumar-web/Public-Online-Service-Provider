@@ -76,35 +76,81 @@ jobs:
             echo "No snapshot change to publish."
             exit 0
           fi
+
+          cp frontend/public/data/jobs.json /tmp/jobs.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/public/data/jobs.json
-          git commit -m "Refresh verified official job snapshot [skip ci]"
-          git pull --rebase origin main
-          git push
 
-      - name: Probe database-backed job feed
-        continue-on-error: true
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/jobs.json frontend/public/data/jobs.json
+
+            if git diff --quiet -- frontend/public/data/jobs.json; then
+              echo "The same verified snapshot is already present on main."
+              exit 0
+            fi
+
+            git add frontend/public/data/jobs.json
+            git commit -m "Refresh verified official job snapshot [skip ci]"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+
+            echo "Snapshot push raced with another main update; retrying ($attempt/5)."
+            sleep $((attempt * 2))
+          done
+
+          echo "Unable to publish the verified snapshot after five retries."
+          exit 1
+
+      - name: Verify deployed database-backed job feed
         env:
-          JOBS_URL: https://public-online-service-provider-api.onrender.com/api/jobs/
+          JOBS_URL: https://public-online-service-provider-api.onrender.com/api/jobs/?limit=100
           SOURCES_URL: https://public-online-service-provider-api.onrender.com/api/jobs/sources
+          PYTHONPATH: backend
         run: |
           python - <<'PY'
           import json
           import os
           import time
           import urllib.request
+          from pathlib import Path
+
+          snapshot = json.loads(Path('frontend/public/data/jobs.json').read_text(encoding='utf-8'))
+          expected_sources = len(snapshot['sources'])
+          last = None
 
           def get_json(url):
               separator = '&' if '?' in url else '?'
               request = urllib.request.Request(
                   f'{url}{separator}probe={time.time_ns()}',
-                  headers={'User-Agent': 'POSP official job refresh/2.0', 'Cache-Control': 'no-cache'},
+                  headers={'User-Agent': 'POSP official job refresh/3.0', 'Cache-Control': 'no-cache'},
               )
               with urllib.request.urlopen(request, timeout=120) as response:
                   return json.load(response)
 
-          jobs = get_json(os.environ['JOBS_URL'])
-          sources = get_json(os.environ['SOURCES_URL'])
-          print(f"Production API ready: {jobs.get('count', 0)} job(s), {len(sources.get('items', []))} source(s).")
+          # Render deployment and the database refresh happen asynchronously.
+          # Repeated reads both wait for the new deploy and trigger the guarded
+          # background synchronization endpoint once that deploy is serving.
+          for attempt in range(24):
+              try:
+                  sources = get_json(os.environ['SOURCES_URL'])
+                  jobs = get_json(os.environ['JOBS_URL'])
+                  source_items = sources.get('items', [])
+                  statuses = [str(item.get('last_sync_status') or '') for item in source_items]
+                  last = (jobs.get('count', 0), len(source_items), statuses)
+                  print(
+                      f"Production probe {attempt + 1}/24: "
+                      f"{last[0]} job(s), {last[1]}/{expected_sources} source(s), "
+                      f"statuses={statuses}."
+                  )
+                  if len(source_items) >= expected_sources and all(status not in {'', 'not_run'} for status in statuses):
+                      print(f"Production API synchronized: {last[0]} returned job(s), {last[1]} source(s).")
+                      break
+              except Exception as exc:
+                  print(f"Production probe {attempt + 1}/24 is not ready yet: {exc}")
+              time.sleep(15)
+          else:
+              raise SystemExit(f"Production job feed did not synchronize in time; last observed state: {last}")
           PY
