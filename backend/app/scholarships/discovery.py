@@ -31,8 +31,8 @@ SOURCE_DEFINITIONS = (
     {'key': 'tg_epass_prematric', 'name': 'Telangana ePASS - Pre Matric', 'url': 'https://telanganaepass.cgg.gov.in/PrematricLinks.do', 'parser': 'tg_prematric'},
     {'key': 'tg_epass_overseas', 'name': 'Telangana ePASS - Overseas Scholarships', 'url': 'https://telanganaepass.cgg.gov.in/OverseasLinks.do', 'parser': 'tg_overseas'},
     {'key': 'ap_jnanabhumi', 'name': 'Andhra Pradesh JnanaBhumi', 'url': 'https://jnanabhumi.ap.gov.in/', 'parser': 'ap_jnanabhumi'},
-    {'key': 'social_justice', 'name': 'Department of Social Justice & Empowerment', 'url': 'https://socialjustice.gov.in/whats-new/1493', 'parser': 'social_justice'},
-    {'key': 'tribal_affairs', 'name': 'Ministry of Tribal Affairs', 'url': 'https://tribal.nic.in/Scholarship.Aspx', 'parser': 'tribal_affairs'},
+    {'key': 'social_justice', 'name': 'Department of Social Justice & Empowerment', 'url': 'https://socialjustice.gov.in/schemes', 'parser': 'social_justice'},
+    {'key': 'tribal_affairs', 'name': 'Ministry of Tribal Affairs', 'url': 'https://tribal.nic.in/WhatsNewsArchives.aspx', 'parser': 'tribal_affairs'},
 )
 
 
@@ -83,6 +83,35 @@ def iso_date(value):
     if not match:
         return None
     day, month, year = map(int, match.groups())
+    try:
+        return datetime(year, month, day).date().isoformat()
+    except ValueError:
+        return None
+
+
+_MONTHS = {
+    'jan': 1, 'january': 1, 'feb': 2, 'february': 2, 'mar': 3, 'march': 3,
+    'apr': 4, 'april': 4, 'may': 5, 'jun': 6, 'june': 6, 'jul': 7, 'july': 7,
+    'aug': 8, 'august': 8, 'sep': 9, 'sept': 9, 'september': 9, 'oct': 10,
+    'october': 10, 'nov': 11, 'november': 11, 'dec': 12, 'december': 12,
+}
+
+
+def human_date(value):
+    numeric = iso_date(value)
+    if numeric:
+        return numeric
+    match = re.search(
+        r'(?<!\d)(\d{1,2})(?:st|nd|rd|th)?\s+'
+        r'(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)'
+        r'[,\s]+(20\d{2})(?!\d)',
+        str(value or ''), re.I,
+    )
+    if not match:
+        return None
+    day = int(match.group(1))
+    month = _MONTHS[match.group(2).lower()]
+    year = int(match.group(3))
     try:
         return datetime(year, month, day).date().isoformat()
     except ValueError:
@@ -359,17 +388,44 @@ def parse_social_justice(document, source, now=None):
 
 
 def parse_tribal_affairs(document, source, now=None):
-    text = ' '.join(html_lines(document))
-    years = re.findall(r'NOS Advertisement\s+(20\d{2}-\d{2})', text, re.I)
-    if not years:
+    lines = html_lines(document)
+    today = (now or datetime.now(timezone.utc)).date()
+    candidates = []
+    for index, line in enumerate(lines):
+        lower = line.lower()
+        if 'national overseas scholarship' not in lower and 'nos for st' not in lower:
+            continue
+        window = ' '.join(lines[max(0, index - 1):index + 3])
+        year_match = re.search(r'(20\d{2}-\d{2})', window)
+        if not year_match:
+            continue
+        deadline = None
+        extended = re.search(r'new deadline\s*:\s*([^,.;]{4,40})', window, re.I)
+        if extended:
+            deadline = human_date(extended.group(1))
+        if not deadline:
+            till = re.search(r'(?:open\s+till|deadline\s*:?|last date[^:]{0,30}:)\s*([^,.;]{4,40})', window, re.I)
+            if till:
+                deadline = human_date(till.group(1))
+        if not deadline:
+            deadline = human_date(window)
+        if not deadline:
+            continue
+        candidates.append((year_match.group(1), deadline))
+
+    if not candidates:
         return []
-    year = sorted(set(years), reverse=True)[0]
+    year = sorted({year for year, _ in candidates}, reverse=True)[0]
+    deadlines = [deadline for candidate_year, deadline in candidates if candidate_year == year]
+    deadline = max(deadlines)
+    if datetime.fromisoformat(deadline).date() < today:
+        return []
     return [official_item(
-        f'National Overseas Scholarship for ST Students - Advertisement {year}',
+        f'National Overseas Scholarship for ST Students {year}',
         'Ministry of Tribal Affairs, Government of India', source,
-        region='India', education_level='Higher Education / Overseas', category='Welfare Based', academic_year=year,
-        eligibility='ST students should verify the current National Overseas Scholarship advertisement, selection-year rules and application dates.',
-        record_type='official_notice', now=now,
+        deadline=deadline, region='India', education_level='Higher Education / Overseas', category='Welfare Based', academic_year=year,
+        eligibility='ST students should verify the current National Overseas Scholarship selection-year rules and application conditions on the official portal.',
+        application_url=source['url'], record_type='scholarship', now=now,
     )]
 
 
