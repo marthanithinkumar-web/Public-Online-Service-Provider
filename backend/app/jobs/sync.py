@@ -3,7 +3,7 @@ import threading
 from datetime import date, datetime, timedelta, timezone
 
 import requests
-from sqlalchemy import func, text
+from sqlalchemy import text
 
 from ..models.job import JobNotification, JobSource
 from ..utils.database import db
@@ -138,9 +138,28 @@ def sync_all_sources(session=None):
 
 def sync_is_due(hours=20):
     running_cutoff = utc_now() - timedelta(hours=1)
-    if JobSource.query.filter(JobSource.enabled.is_(True), JobSource.last_sync_status == 'running', JobSource.last_sync_started_at >= running_cutoff).count(): return False
-    last_healthy_check = db.session.query(func.max(JobSource.last_sync_completed_at)).filter(JobSource.enabled.is_(True), JobSource.last_sync_status.in_(['success', 'degraded'])).scalar()
-    return last_healthy_check is None or last_healthy_check < utc_now() - timedelta(hours=hours)
+    if JobSource.query.filter(JobSource.enabled.is_(True), JobSource.last_sync_status == 'running', JobSource.last_sync_started_at >= running_cutoff).count():
+        return False
+
+    configured_keys = {definition.key for definition in SOURCE_DEFINITIONS}
+    stored_sources = {source.key: source for source in JobSource.query.all()}
+
+    # Production skips database bootstrap during app startup. A newly configured
+    # source therefore may not have a database row yet. Treat that mismatch as
+    # immediately due so the background refresh can create and populate it.
+    if any(key not in stored_sources for key in configured_keys):
+        return True
+
+    enabled_sources = [stored_sources[key] for key in configured_keys if stored_sources[key].enabled]
+    completed_sources = [source for source in enabled_sources if source.last_sync_completed_at is not None]
+    if not completed_sources:
+        return True
+
+    # Once the feed has been initialized, any source that has actually synced
+    # before must remain fresh. Existing never-run rows do not invalidate an
+    # otherwise fresh bootstrap, while a missing configured row always does.
+    stale_cutoff = utc_now() - timedelta(hours=hours)
+    return any(source.last_sync_completed_at < stale_cutoff for source in completed_sources)
 
 
 def trigger_background_sync(app):
