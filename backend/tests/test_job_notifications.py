@@ -255,9 +255,10 @@ def test_cross_source_duplicate_is_blocked(client):
 def test_refresh_is_due_only_without_a_recent_success(client):
     with client.application.app_context():
         assert sync_is_due() is True
-        source = JobSource.query.filter_by(key='employment_news').one()
-        source.last_sync_status = 'success'
-        source.last_sync_completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        for source in JobSource.query.all():
+            source.last_sync_status = 'success'
+            source.last_sync_completed_at = now
         db.session.commit()
         assert sync_is_due() is False
 

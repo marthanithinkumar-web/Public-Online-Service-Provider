@@ -141,25 +141,29 @@ def sync_is_due(hours=20):
     if JobSource.query.filter(JobSource.enabled.is_(True), JobSource.last_sync_status == 'running', JobSource.last_sync_started_at >= running_cutoff).count():
         return False
 
-    configured_keys = {definition.key for definition in SOURCE_DEFINITIONS}
     stored_sources = {source.key: source for source in JobSource.query.all()}
-
-    # Production skips database bootstrap during app startup. A newly configured
-    # source therefore may not have a database row yet. Treat that mismatch as
-    # immediately due so the background refresh can create and populate it.
-    if any(key not in stored_sources for key in configured_keys):
-        return True
-
-    enabled_sources = [stored_sources[key] for key in configured_keys if stored_sources[key].enabled]
-    completed_sources = [source for source in enabled_sources if source.last_sync_completed_at is not None]
-    if not completed_sources:
-        return True
-
-    # Once the feed has been initialized, any source that has actually synced
-    # before must remain fresh. Existing never-run rows do not invalidate an
-    # otherwise fresh bootstrap, while a missing configured row always does.
     stale_cutoff = utc_now() - timedelta(hours=hours)
-    return any(source.last_sync_completed_at < stale_cutoff for source in completed_sources)
+
+    for definition in SOURCE_DEFINITIONS:
+        source = stored_sources.get(definition.key)
+        # Production skips database bootstrap during app startup. Missing source
+        # rows, newly added sources, and changed official listing URLs must force
+        # a refresh so the database cannot silently lag behind the code registry.
+        if source is None:
+            return True
+        if source.name != definition.name or source.listing_url != definition.listing_url:
+            return True
+        if not source.enabled:
+            continue
+        # A source row can be created just before an instance is terminated. Such
+        # a never-run source must not be treated as fresh merely because another
+        # source completed recently.
+        if source.last_sync_completed_at is None:
+            return True
+        if source.last_sync_completed_at < stale_cutoff:
+            return True
+
+    return False
 
 
 def trigger_background_sync(app):
