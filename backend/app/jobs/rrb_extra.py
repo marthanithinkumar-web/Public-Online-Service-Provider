@@ -25,6 +25,7 @@ _INITIAL = re.compile(
     r'recruitment\s+(?:to|for)\s+the\s+posts?',
     re.I,
 )
+_HEADING_RE = re.compile(r'<h[1-5]\b[^>]*>', re.I)
 
 
 def _text(fragment):
@@ -32,6 +33,17 @@ def _text(fragment):
     fragment = re.sub(r'<img\b[^>]*(?:alt|title)=["\']([^"\']+)["\'][^>]*>', r' \1 ', fragment, flags=re.I)
     fragment = re.sub(r'<[^>]+>', ' ', fragment)
     return clean(unescape(fragment))
+
+
+def _local_context(raw, anchor):
+    """Use the closest heading so neighbouring result cards cannot poison a CEN."""
+    preceding = raw[max(0, anchor.start() - 1400):anchor.start()]
+    headings = list(_HEADING_RE.finditer(preceding))
+    if headings:
+        start = max(0, anchor.start() - 1400) + headings[-1].start()
+    else:
+        start = max(0, anchor.start() - 700)
+    return _text(raw[start:anchor.end()])
 
 
 def parse_rrb_regional(html, base_url):
@@ -47,9 +59,7 @@ def parse_rrb_regional(html, base_url):
         href = clean(match.group(1))
         if not href or href.startswith(('#', 'javascript:', 'mailto:')):
             continue
-        start = max(0, match.start() - 900)
-        end = min(len(raw), match.end() + 450)
-        context = _text(raw[start:end])
+        context = _local_context(raw, match)
         cen = _CEN_RE.search(context)
         if not cen or _EXCLUDED.search(context) or not _INITIAL.search(context):
             continue
