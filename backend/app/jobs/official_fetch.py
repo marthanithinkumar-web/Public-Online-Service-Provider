@@ -32,7 +32,7 @@ RETRY_DELAYS_SECONDS = (0.0, 0.8, 2.0)
 BROWSER_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
                   '(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/json;q=0.9,text/plain;q=0.8,*/*;q=0.5',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,text/xml;q=0.9,application/json;q=0.8,text/plain;q=0.7,*/*;q=0.5',
     'Accept-Language': 'en-IN,en;q=0.9',
     'Cache-Control': 'no-cache',
     'Pragma': 'no-cache',
@@ -53,7 +53,11 @@ def validate_official_url(url):
 def _read_safe_response(response):
     validate_official_url(response.url)
     content_type = (response.headers.get('Content-Type') or '').lower()
-    if content_type and not any(kind in content_type for kind in ('text/html', 'application/xhtml+xml', 'application/json', 'text/json', 'text/plain')):
+    allowed_types = (
+        'text/html', 'application/xhtml+xml', 'application/xml', 'text/xml',
+        'application/json', 'text/json', 'text/plain',
+    )
+    if content_type and not any(kind in content_type for kind in allowed_types):
         raise ValueError('Official source returned an unsupported content type.')
     chunks = []
     size = 0

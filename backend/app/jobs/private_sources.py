@@ -59,25 +59,25 @@ def _title_from_job_url(job_url):
     return clean(' '.join(parts))
 
 
-def _raw_job_links(html, href_pattern):
-    raw = html_lib.unescape(str(html or '')).replace('\\/', '/')
+def _raw_job_links(document, href_pattern):
+    raw = html_lib.unescape(str(document or '')).replace('\\/', '/')
     candidates = re.findall(
-        r'(?:https://[^\s"\'<>]+|/(?:[^\s"\'<>]*/)?job/[^\s"\'<>]+)',
+        r'https://[^\s"\'<>]+|/(?:[^\s"\'<>]*/)?job/[^\s"\'<>]+',
         raw,
         flags=re.I,
     )
     return [(candidate.rstrip('),.;]'), '') for candidate in candidates if href_pattern.search(candidate)]
 
 
-def parse_private_careers(html, base_url):
-    """Extract individual active-role links from an approved employer career page."""
+def parse_private_careers(document, base_url):
+    """Extract individual active-role links from an approved employer page or sitemap."""
     organization, href_pattern = _source_profile(base_url)
     if not organization or href_pattern is None:
         return []
 
-    document = _CareerLinkParser()
-    document.feed(str(html or ''))
-    document.close()
+    parser = _CareerLinkParser()
+    parser.feed(str(document or ''))
+    parser.close()
 
     items = []
     seen = set()
@@ -85,9 +85,9 @@ def parse_private_careers(html, base_url):
         'search jobs', 'search job', 'view jobs', 'view job', 'apply', 'apply now',
         'learn more', 'read more', 'careers', 'career opportunities', 'open positions',
     }
-    links = list(document.links)
+    links = list(parser.links)
     if organization == 'Wipro':
-        links.extend(_raw_job_links(html, href_pattern))
+        links.extend(_raw_job_links(document, href_pattern))
 
     for href, label in links:
         href = clean(href)
@@ -123,7 +123,7 @@ PRIVATE_SOURCES = (
     SourceDefinition(
         'wipro_careers',
         'Wipro Careers',
-        'https://careers.wipro.com/viewalljobs/?locale=en_US',
+        'https://careers.wipro.com/sitemap.xml',
         parse_private_careers,
         allow_missing_deadline=True,
     ),

@@ -3,12 +3,12 @@ from app.jobs.private_sources import parse_private_careers
 from app.jobs.sources import SOURCE_BY_KEY
 
 
-WIPRO_SEARCH_URL = 'https://careers.wipro.com/viewalljobs/?locale=en_US'
+WIPRO_SITEMAP_URL = 'https://careers.wipro.com/sitemap.xml'
 
 
 def test_private_sources_are_registered_and_official():
     expected = {
-        'wipro_careers': WIPRO_SEARCH_URL,
+        'wipro_careers': WIPRO_SITEMAP_URL,
         'infosys_careers': 'https://digitalcareers.infosys.com/infosys/global-careers?location=India',
         'accenture_careers': 'https://www.accenture.com/in-en/careers/jobsearch',
     }
@@ -17,21 +17,18 @@ def test_private_sources_are_registered_and_official():
         assert validate_official_url(url) == url
 
 
-def test_wipro_parser_marks_jobs_private():
-    html = '<a href="/job/Hyderabad-Cloud-Engineer-IND-500032/189947-en_US/">Cloud Engineer</a>'
-    items = parse_private_careers(html, WIPRO_SEARCH_URL)
+def test_wipro_parser_reads_job_urls_from_xml_sitemap():
+    xml = '''<?xml version="1.0" encoding="UTF-8"?>
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      <url><loc>https://careers.wipro.com/job/Hyderabad-AI-ENGINEER-L1-IND-500032/197509-en_US/</loc></url>
+      <url><loc>https://careers.wipro.com/content/Life-at-Wipro/?locale=en_US</loc></url>
+    </urlset>'''
+    items = parse_private_careers(xml, WIPRO_SITEMAP_URL)
     assert len(items) == 1
     assert items[0].organization == 'Wipro'
     assert items[0].job_type == 'private'
-    assert items[0].official_notice_url.startswith('https://careers.wipro.com/job/')
-
-
-def test_wipro_parser_recovers_embedded_successfactors_job_url():
-    html = '<script>window.jobs={"url":"\\/job\\/Hyderabad-AI-ENGINEER-L1-IND-500032\\/197509-en_US\\/"};</script>'
-    items = parse_private_careers(html, WIPRO_SEARCH_URL)
-    assert len(items) == 1
-    assert items[0].job_type == 'private'
     assert 'AI ENGINEER L1' in items[0].title.upper()
+    assert items[0].official_notice_url.endswith('/197509-en_US/')
 
 
 def test_infosys_parser_keeps_official_role_links_only():
