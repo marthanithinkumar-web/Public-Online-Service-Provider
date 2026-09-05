@@ -1,8 +1,9 @@
 """Official private-employer career sources for the verified jobs feed."""
 
+import html as html_lib
 import re
 from html.parser import HTMLParser
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 
 from .sources import JobItem, SourceDefinition, clean
 
@@ -40,6 +41,44 @@ def _source_profile(base_url):
     return None, None
 
 
+def _title_from_job_url(job_url):
+    """Derive a conservative title only when an official listing hides anchor text."""
+    path = unquote(urlparse(job_url).path)
+    match = re.search(r'/job/([^/]+)/', path, re.I)
+    if not match:
+        return ''
+    slug = match.group(1)
+    # Wipro job paths commonly use City-ROLE-COUNTRY-ZIP; retain the useful role
+    # phrase while stripping obvious location/country/ZIP framing.
+    parts = [part for part in slug.split('-') if part]
+    if len(parts) >= 3 and parts[-1].isdigit():
+        parts = parts[:-1]
+    if parts and parts[-1].upper() in {'IND', 'USA', 'GBR', 'CAN', 'AUS'}:
+        parts = parts[:-1]
+    if len(parts) >= 2 and parts[0].lower() in {
+        'hyderabad', 'bengaluru', 'bangalore', 'chennai', 'pune', 'gurugram',
+        'gurgaon', 'noida', 'kolkata', 'mumbai', 'coimbatore', 'bhubaneswar',
+    }:
+        parts = parts[1:]
+    return clean(' '.join(parts))
+
+
+def _raw_job_links(html, base_url, href_pattern):
+    """Recover official job URLs embedded in server-rendered markup or JSON."""
+    raw = html_lib.unescape(str(html or '')).replace('\\/', '/')
+    candidates = re.findall(
+        r'(?:https://[^\s"\'<>]+|/(?:[^\s"\'<>]*/)?job/[^\s"\'<>]+)',
+        raw,
+        flags=re.I,
+    )
+    links = []
+    for candidate in candidates:
+        candidate = candidate.rstrip('),.;]')
+        if href_pattern.search(candidate):
+            links.append((candidate, ''))
+    return links
+
+
 def parse_private_careers(html, base_url):
     """Extract individual active-role links from an approved employer career page."""
     organization, href_pattern = _source_profile(base_url)
@@ -56,15 +95,21 @@ def parse_private_careers(html, base_url):
         'search jobs', 'search job', 'view jobs', 'view job', 'apply', 'apply now',
         'learn more', 'read more', 'careers', 'career opportunities', 'open positions',
     }
-    for href, label in document.links:
+    links = list(document.links)
+    if organization == 'Wipro':
+        links.extend(_raw_job_links(html, base_url, href_pattern))
+
+    for href, label in links:
         href = clean(href)
         title = clean(label)
         if not href or not href_pattern.search(href):
             continue
-        if len(title) < 4 or title.lower() in generic_labels:
-            continue
         job_url = urljoin(base_url, href)
         if not job_url.startswith('https://') or job_url in seen:
+            continue
+        if not title or title.lower() in generic_labels:
+            title = _title_from_job_url(job_url)
+        if len(title) < 4:
             continue
         seen.add(job_url)
 
@@ -89,7 +134,7 @@ PRIVATE_SOURCES = (
     SourceDefinition(
         'wipro_careers',
         'Wipro Careers',
-        'https://careers.wipro.com/viewalljobs/',
+        'https://careers.wipro.com/search/?createNewAlert=false&q=&locationsearch=India',
         parse_private_careers,
         allow_missing_deadline=True,
     ),
