@@ -69,42 +69,67 @@ jobs:
                   undated += 1
           print(f"Validated {len(data['items'])} published notice(s), including {undated} active undated notice(s), from {len(data['sources'])} configured source(s).")
           PY
+          cp frontend/public/data/jobs.json /tmp/verified-jobs.json
 
       - name: Publish snapshot when it changed
         run: |
-          if git diff --quiet -- frontend/public/data/jobs.json; then
-            echo "No snapshot change to publish."
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/public/data/jobs.json
-          git commit -m "Refresh verified official job snapshot [skip ci]"
-          git pull --rebase origin main
-          git push
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/verified-jobs.json frontend/public/data/jobs.json
+            if git diff --quiet -- frontend/public/data/jobs.json; then
+              echo "No snapshot change to publish."
+              exit 0
+            fi
+            git add frontend/public/data/jobs.json
+            git commit -m "Refresh verified official job snapshot [skip ci]"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Snapshot push raced with another main update; retrying from latest main ($attempt/5)."
+          done
+          echo "Unable to publish verified snapshot after 5 attempts." >&2
+          exit 1
 
-      - name: Probe database-backed job feed
-        continue-on-error: true
+      - name: Verify database-backed production job count
         env:
           JOBS_URL: https://public-online-service-provider-api.onrender.com/api/jobs/
           SOURCES_URL: https://public-online-service-provider-api.onrender.com/api/jobs/sources
+          SNAPSHOT_PATH: /tmp/verified-jobs.json
         run: |
           python - <<'PY'
           import json
           import os
           import time
           import urllib.request
+          from pathlib import Path
+
+          expected = len(json.loads(Path(os.environ['SNAPSHOT_PATH']).read_text(encoding='utf-8'))['items'])
 
           def get_json(url):
               separator = '&' if '?' in url else '?'
               request = urllib.request.Request(
                   f'{url}{separator}probe={time.time_ns()}',
-                  headers={'User-Agent': 'POSP official job refresh/2.0', 'Cache-Control': 'no-cache'},
+                  headers={'User-Agent': 'POSP official job refresh/3.0', 'Cache-Control': 'no-cache'},
               )
               with urllib.request.urlopen(request, timeout=120) as response:
                   return json.load(response)
 
-          jobs = get_json(os.environ['JOBS_URL'])
-          sources = get_json(os.environ['SOURCES_URL'])
-          print(f"Production API ready: {jobs.get('count', 0)} job(s), {len(sources.get('items', []))} source(s).")
+          deadline = time.time() + 8 * 60
+          last_total = None
+          last_sources = 0
+          while time.time() < deadline:
+              jobs = get_json(os.environ['JOBS_URL'])
+              sources = get_json(os.environ['SOURCES_URL'])
+              last_total = jobs.get('total')
+              last_sources = len(sources.get('items', []))
+              print(f"Production verification: {last_total} active published job(s), {last_sources} source(s); expected {expected}.")
+              if last_total == expected:
+                  print(f"Production database verified: {last_total} active published job(s) exactly match the verified snapshot.")
+                  break
+              time.sleep(20)
+          else:
+              raise SystemExit(f"Production database count did not converge to snapshot: got {last_total}, expected {expected}; sources={last_sources}.")
           PY
