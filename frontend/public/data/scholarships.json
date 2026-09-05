@@ -1,70 +1,70 @@
 {
-  "generated_at": "2026-09-04T17:13:45.551241+00:00",
+  "generated_at": "2026-09-05T02:40:35.607687+00:00",
   "count": 34,
   "official_count": 33,
   "private_count": 1,
   "stale_source_count": 0,
   "discovery": {
     "mode": "official_daily_discovery",
-    "checked_at": "2026-09-04T17:13:45.551241+00:00",
+    "checked_at": "2026-09-05T02:40:35.607687+00:00",
     "source_health": {
       "nsp": {
         "ok": true,
         "source_name": "National Scholarship Portal",
         "source_url": "https://scholarships.gov.in/All-Scholarships",
         "count": 26,
-        "checked_at": "2026-09-04T17:13:45.551241+00:00",
-        "elapsed_ms": 2049
+        "checked_at": "2026-09-05T02:40:35.607687+00:00",
+        "elapsed_ms": 2182
       },
       "tg_epass_postmatric": {
         "ok": true,
         "source_name": "Telangana ePASS - Post Matric",
         "source_url": "https://telanganaepass.cgg.gov.in/epassonlinelinks.jsp",
         "count": 3,
-        "checked_at": "2026-09-04T17:13:45.551241+00:00",
-        "elapsed_ms": 1358
+        "checked_at": "2026-09-05T02:40:35.607687+00:00",
+        "elapsed_ms": 1166
       },
       "tg_epass_prematric": {
         "ok": true,
         "source_name": "Telangana ePASS - Pre Matric",
         "source_url": "https://telanganaepass.cgg.gov.in/PrematricLinks.do",
         "count": 2,
-        "checked_at": "2026-09-04T17:13:45.551241+00:00",
-        "elapsed_ms": 3403
+        "checked_at": "2026-09-05T02:40:35.607687+00:00",
+        "elapsed_ms": 3505
       },
       "tg_epass_overseas": {
         "ok": true,
         "source_name": "Telangana ePASS - Overseas Scholarships",
         "source_url": "https://telanganaepass.cgg.gov.in/OverseasLinks.do",
         "count": 2,
-        "checked_at": "2026-09-04T17:13:45.551241+00:00",
-        "elapsed_ms": 964
+        "checked_at": "2026-09-05T02:40:35.607687+00:00",
+        "elapsed_ms": 1172
       },
       "ap_jnanabhumi": {
         "ok": true,
         "source_name": "Andhra Pradesh JnanaBhumi",
         "source_url": "https://jnanabhumi.ap.gov.in/",
         "count": 0,
-        "checked_at": "2026-09-04T17:13:45.551241+00:00",
-        "elapsed_ms": 968
+        "checked_at": "2026-09-05T02:40:35.607687+00:00",
+        "elapsed_ms": 995
       },
       "social_justice": {
         "ok": false,
         "source_name": "Department of Social Justice & Empowerment",
         "source_url": "https://socialjustice.gov.in/whats-new/1493",
         "count": 0,
-        "checked_at": "2026-09-04T17:13:45.551241+00:00",
+        "checked_at": "2026-09-05T02:40:35.607687+00:00",
         "error": "RuntimeError: social_justice fetch failed: ConnectionError",
-        "elapsed_ms": 7702
+        "elapsed_ms": 8055
       },
       "tribal_affairs": {
         "ok": false,
         "source_name": "Ministry of Tribal Affairs",
         "source_url": "https://tribal.nic.in/Scholarship.Aspx",
         "count": 0,
-        "checked_at": "2026-09-04T17:13:45.551241+00:00",
+        "checked_at": "2026-09-05T02:40:35.607687+00:00",
         "error": "RuntimeError: tribal_affairs fetch failed: SSLError",
-        "elapsed_ms": 8021
+        "elapsed_ms": 8395
       }
     }
   },
@@ -89,8 +89,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "tg_epass_overseas-mahatma-jyothiba-phule-overseas-vidya-nidhi-for-bc-ebc-students",
@@ -112,8 +112,8 @@
       "record_type": "scholarship",
       "academic_year": null,
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-national-means-cum-merit-scholarship",
@@ -135,8 +135,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-pm-usp-special-scholarship-scheme-for-jammu-kashmir-and-ladakh",
@@ -158,8 +158,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00",
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00",
       "provider_normalized": true
     },
     {
@@ -182,8 +182,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-pre-matric-scholarship-for-students-with-disabilities",
@@ -205,8 +205,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-aicte-pragati-scholarship-scheme-for-girl-students-technical-degree",
@@ -228,8 +228,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00",
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00",
       "provider_normalized": true
     },
     {
@@ -252,8 +252,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00",
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00",
       "provider_normalized": true
     },
     {
@@ -276,8 +276,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00",
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00",
       "provider_normalized": true
     },
     {
@@ -300,8 +300,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00",
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00",
       "provider_normalized": true
     },
     {
@@ -324,8 +324,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-aicte-swanath-scholarship-scheme-technical-diploma",
@@ -347,8 +347,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00",
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00",
       "provider_normalized": true
     },
     {
@@ -371,8 +371,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-financial-assistance-for-education-to-the-wards-of-beedi-cine-iomc-lsdm-post-matric",
@@ -394,8 +394,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-financial-support-to-the-students-of-ner-for-higher-professional-courses-nec-merit-scholarship",
@@ -417,8 +417,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-icar-junior-research-fellowships-jrf-and-senior-research-fellowships-srf",
@@ -440,8 +440,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00",
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00",
       "provider_normalized": true
     },
     {
@@ -464,8 +464,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-icar-national-talent-scholarship-nts-ug",
@@ -487,8 +487,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-icar-post-graduate-scholarship-pgs",
@@ -510,8 +510,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-national-fellowship-and-scholarship-for-higher-education-of-st-students-scholarship-formally-top-class-education-for-schedule-tribe-students",
@@ -533,8 +533,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-national-renewable-energy-fellowship-scheme",
@@ -556,8 +556,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-post-matric-scholarship-for-students-with-disabilities",
@@ -579,8 +579,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-prime-minister-s-scholarship-scheme-for-central-armed-police-forces-and-assam-rifles",
@@ -602,8 +602,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-prime-minister-s-scholarship-scheme-for-ministry-of-railways",
@@ -625,8 +625,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-prime-minister-s-scholarship-scheme-for-wards-of-states-uts-police-personnel-martyred-during-terror-naxal-attacks",
@@ -648,8 +648,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-scholarship-for-top-class-education-for-students-with-disabilities",
@@ -671,8 +671,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "nsp-stipend-scheme-for-under-graduate-and-post-graduate-studies-in-indian-statistical-institute-kolkata",
@@ -694,8 +694,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "tg_epass_overseas-ambedkar-overseas-vidya-nidhi-for-sc-students",
@@ -717,8 +717,8 @@
       "record_type": "scholarship",
       "academic_year": null,
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "tg_epass_postmatric-telangana-epass-other-state-post-matric-scholarship-registration-2026-27",
@@ -740,8 +740,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "tg_epass_postmatric-telangana-epass-post-matric-scholarship-fresh-registration-2026-27",
@@ -763,8 +763,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "tg_epass_postmatric-telangana-epass-post-matric-scholarship-renewal-2026-27",
@@ -786,8 +786,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "tg_epass_prematric-telangana-epass-pre-matric-scholarship-fresh-registration-2026-27",
@@ -809,8 +809,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "tg_epass_prematric-telangana-epass-pre-matric-scholarship-renewal-2026-27",
@@ -832,8 +832,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-04T17:13:45.551241+00:00",
-      "last_seen_at": "2026-09-04T17:13:45.551241+00:00"
+      "verified_at": "2026-09-05T02:40:35.607687+00:00",
+      "last_seen_at": "2026-09-05T02:40:35.607687+00:00"
     },
     {
       "id": "b4s-support-2026",
