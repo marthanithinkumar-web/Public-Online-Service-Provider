@@ -3,7 +3,7 @@ import threading
 from datetime import date, datetime, timedelta, timezone
 
 import requests
-from sqlalchemy import func, text
+from sqlalchemy import text
 
 from ..models.job import JobNotification, JobSource
 from ..utils.database import db
@@ -150,14 +150,16 @@ def sync_is_due(hours=20):
     if any(key not in stored_sources for key in configured_keys):
         return True
 
+    enabled_sources = [stored_sources[key] for key in configured_keys if stored_sources[key].enabled]
+    completed_sources = [source for source in enabled_sources if source.last_sync_completed_at is not None]
+    if not completed_sources:
+        return True
+
+    # Once the feed has been initialized, any source that has actually synced
+    # before must remain fresh. Existing never-run rows do not invalidate an
+    # otherwise fresh bootstrap, while a missing configured row always does.
     stale_cutoff = utc_now() - timedelta(hours=hours)
-    for key in configured_keys:
-        source = stored_sources[key]
-        if not source.enabled:
-            continue
-        if source.last_sync_completed_at is None or source.last_sync_completed_at < stale_cutoff:
-            return True
-    return False
+    return any(source.last_sync_completed_at < stale_cutoff for source in completed_sources)
 
 
 def trigger_background_sync(app):
