@@ -11,6 +11,8 @@ import json
 from datetime import date, datetime
 from pathlib import Path
 
+from sqlalchemy import or_
+
 from ..models.job import JobNotification, JobSource
 from ..utils.database import db
 from .official_fetch import validate_official_url
@@ -73,7 +75,7 @@ def import_verified_snapshot(path):
         source.last_sync_status = metadata.get('last_sync_status') or 'not_run'
         source.fetched_count = int(metadata.get('fetched_count') or 0)
         source.published_count = int(metadata.get('published_count') or 0)
-        source.last_error = (metadata.get('last_error') or None)
+        source.last_error = metadata.get('last_error') or None
 
     # Retired source rows must not keep appearing as enabled production sources.
     for key, source in stored_sources.items():
@@ -131,25 +133,30 @@ def import_verified_snapshot(path):
         job.verification_status = 'official_source_checked'
         job.confidence = float(item.get('confidence') or 0)
         job.is_featured = bool(item.get('is_featured', False))
-        job.first_seen_at = _parse_datetime(item.get('first_seen_at')) or job.first_seen_at
-        job.last_seen_at = _parse_datetime(item.get('last_seen_at')) or job.last_seen_at
-        job.published_at = _parse_datetime(item.get('published_at')) or job.published_at
+        first_seen = _parse_datetime(item.get('first_seen_at'))
+        last_seen = _parse_datetime(item.get('last_seen_at'))
+        published_at = _parse_datetime(item.get('published_at'))
+        if first_seen:
+            job.first_seen_at = first_seen
+        if last_seen:
+            job.last_seen_at = last_seen
+        if published_at:
+            job.published_at = published_at
         seen_hashes.add(digest)
 
     # The validated snapshot is the exact active public set. Retire older rows
     # omitted from it instead of leaving stale jobs visible indefinitely.
-    stale = JobNotification.query.filter(
-        JobNotification.status.in_(['published', 'needs_review']),
-        ~JobNotification.content_hash.in_(seen_hashes),
-    ).all() if seen_hashes else JobNotification.query.filter(JobNotification.status.in_(['published', 'needs_review'])).all()
-    for job in stale:
+    stale_query = JobNotification.query.filter(JobNotification.status.in_(['published', 'needs_review']))
+    if seen_hashes:
+        stale_query = stale_query.filter(~JobNotification.content_hash.in_(seen_hashes))
+    for job in stale_query.all():
         job.status = 'expired'
 
     db.session.commit()
 
     active_total = JobNotification.query.filter(
         JobNotification.status == 'published',
-        db.or_(JobNotification.deadline.is_(None), JobNotification.deadline >= date.today()),
+        or_(JobNotification.deadline.is_(None), JobNotification.deadline >= date.today()),
     ).count()
     expected = len(data['items'])
     if active_total != expected:
