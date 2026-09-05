@@ -21,6 +21,9 @@ ALLOWED_HOSTS = {
     'indiapostgdsonline.gov.in', 'www.indiapostgdsonline.gov.in',
     'isro.gov.in', 'www.isro.gov.in',
     'ncs.gov.in', 'www.ncs.gov.in',
+    'careers.wipro.com',
+    'digitalcareers.infosys.com',
+    'accenture.com', 'www.accenture.com',
 }
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
 MAX_ATTEMPTS = 3
