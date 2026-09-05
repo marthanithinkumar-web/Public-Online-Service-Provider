@@ -11,6 +11,8 @@ ALLOWED_HOSTS = {
     'employmentnews.gov.in', 'www.employmentnews.gov.in',
     'ssc.gov.in', 'www.ssc.gov.in',
     'rrbcdg.gov.in', 'www.rrbcdg.gov.in', 'rrbapply.gov.in', 'www.rrbapply.gov.in',
+    'rrbsecunderabad.gov.in', 'www.rrbsecunderabad.gov.in',
+    'rrbchennai.gov.in', 'www.rrbchennai.gov.in',
     'upsc.gov.in', 'www.upsc.gov.in', 'upsconline.nic.in', 'www.upsconline.nic.in',
     'mha.gov.in', 'www.mha.gov.in',
     'tgprb.in', 'www.tgprb.in', 'doc.tgprb.in',
