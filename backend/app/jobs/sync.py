@@ -34,6 +34,7 @@ def ensure_job_sources():
                 changed = True
     if changed:
         db.session.commit()
+    return changed
 
 
 def upsert_item(source, item, allow_missing_deadline=False, missing_deadline_max_age_days=45):
@@ -141,23 +142,23 @@ def sync_is_due(hours=20):
     if JobSource.query.filter(JobSource.enabled.is_(True), JobSource.last_sync_status == 'running', JobSource.last_sync_started_at >= running_cutoff).count():
         return False
 
-    configured_keys = {definition.key for definition in SOURCE_DEFINITIONS}
-    stored_sources = {source.key: source for source in JobSource.query.all()}
-
-    # Production skips database bootstrap during app startup. A newly configured
-    # source therefore may not have a database row yet. Treat that mismatch as
-    # immediately due so the background refresh can create and populate it.
-    if any(key not in stored_sources for key in configured_keys):
+    # Production deliberately skips the broad database bootstrap at web-process
+    # startup. Register any newly configured official source here instead. The
+    # first request that notices the registry change immediately schedules a
+    # refresh, while preserving the existing lightweight startup behavior.
+    if ensure_job_sources():
         return True
 
+    configured_keys = {definition.key for definition in SOURCE_DEFINITIONS}
+    stored_sources = {source.key: source for source in JobSource.query.all()}
     enabled_sources = [stored_sources[key] for key in configured_keys if stored_sources[key].enabled]
     completed_sources = [source for source in enabled_sources if source.last_sync_completed_at is not None]
     if not completed_sources:
         return True
 
-    # Once the feed has been initialized, any source that has actually synced
-    # before must remain fresh. Existing never-run rows do not invalidate an
-    # otherwise fresh bootstrap, while a missing configured row always does.
+    # Sources that have synchronized before must remain fresh. Never-run rows
+    # are tolerated during the initial bootstrap, but a newly registered source
+    # above always forces a refresh once so it can be populated.
     stale_cutoff = utc_now() - timedelta(hours=hours)
     return any(source.last_sync_completed_at < stale_cutoff for source in completed_sources)
 
