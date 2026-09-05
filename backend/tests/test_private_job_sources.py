@@ -3,7 +3,7 @@ from app.jobs.private_sources import parse_private_careers
 from app.jobs.sources import SOURCE_BY_KEY
 
 
-WIPRO_SEARCH_URL = 'https://careers.wipro.com/search/?createNewAlert=false&q=&locationsearch=India'
+WIPRO_SEARCH_URL = 'https://careers.wipro.com/viewalljobs/?locale=en_US'
 
 
 def test_private_sources_are_registered_and_official():
