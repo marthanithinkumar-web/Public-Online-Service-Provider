@@ -107,12 +107,37 @@ jobs:
             echo 'Scholarship snapshot unchanged.'
             exit 0
           fi
+
+          snapshot_dir="$(mktemp -d)"
+          cp backend/app/scholarships/data/scholarships.json "$snapshot_dir/backend-scholarships.json"
+          cp frontend/public/data/scholarships.json "$snapshot_dir/frontend-scholarships.json"
+
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add backend/app/scholarships/data/scholarships.json frontend/public/data/scholarships.json
-          git commit -m 'Refresh active scholarships'
-          git pull --rebase origin main
-          git push origin HEAD:main
+
+          for attempt in 1 2 3 4 5; do
+            echo "Snapshot push attempt ${attempt}/5"
+            git fetch origin main
+            git reset --hard origin/main
+            cp "$snapshot_dir/backend-scholarships.json" backend/app/scholarships/data/scholarships.json
+            cp "$snapshot_dir/frontend-scholarships.json" frontend/public/data/scholarships.json
+            git add backend/app/scholarships/data/scholarships.json frontend/public/data/scholarships.json
+
+            if git diff --cached --quiet; then
+              echo 'Latest main already contains this scholarship snapshot.'
+              exit 0
+            fi
+
+            git commit -m 'Refresh active scholarships'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+
+            echo 'main changed while publishing the snapshot; retrying from the newest main.'
+          done
+
+          echo 'Unable to publish the refreshed scholarship snapshot after 5 attempts.' >&2
+          exit 1
       - name: Probe deployed production scholarship snapshot
         run: |
           python - <<'PY'
