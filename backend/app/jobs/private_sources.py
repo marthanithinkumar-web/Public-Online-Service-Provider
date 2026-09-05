@@ -123,7 +123,7 @@ PRIVATE_SOURCES = (
     SourceDefinition(
         'wipro_careers',
         'Wipro Careers',
-        'https://careers.wipro.com/search/?createNewAlert=false&q=&locationsearch=India',
+        'https://careers.wipro.com/viewalljobs/?locale=en_US',
         parse_private_careers,
         allow_missing_deadline=True,
     ),
