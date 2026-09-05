@@ -36,7 +36,7 @@ def _source_profile(base_url):
     if host.endswith('digitalcareers.infosys.com'):
         return 'Infosys', re.compile(r'jobdetails|/job/', re.I)
     if host.endswith('accenture.com'):
-        return 'Accenture', re.compile(r'/careers/jobdetails\?id=', re.I)
+        return 'Accenture', re.compile(r'(?:^|/)jobdetails\?id=|/careers/jobdetails\?id=', re.I)
     return None, None
 
 
@@ -89,7 +89,7 @@ PRIVATE_SOURCES = (
     SourceDefinition(
         'wipro_careers',
         'Wipro Careers',
-        'https://careers.wipro.com/',
+        'https://careers.wipro.com/viewalljobs/',
         parse_private_careers,
         allow_missing_deadline=True,
     ),

@@ -5,7 +5,7 @@ from app.jobs.sources import SOURCE_BY_KEY
 
 def test_private_sources_are_registered_and_official():
     expected = {
-        'wipro_careers': 'https://careers.wipro.com/',
+        'wipro_careers': 'https://careers.wipro.com/viewalljobs/',
         'infosys_careers': 'https://digitalcareers.infosys.com/infosys/global-careers?location=India',
         'accenture_careers': 'https://www.accenture.com/in-en/careers/jobsearch',
     }
@@ -16,7 +16,7 @@ def test_private_sources_are_registered_and_official():
 
 def test_wipro_parser_marks_jobs_private():
     html = '<a href="/job/Hyderabad-Cloud-Engineer-500123/">Cloud Engineer</a>'
-    items = parse_private_careers(html, 'https://careers.wipro.com/')
+    items = parse_private_careers(html, 'https://careers.wipro.com/viewalljobs/')
     assert len(items) == 1
     assert items[0].organization == 'Wipro'
     assert items[0].job_type == 'private'
@@ -36,10 +36,11 @@ def test_infosys_parser_keeps_official_role_links_only():
 
 def test_accenture_parser_keeps_jobdetails_links():
     html = '''
-    <a href="/in-en/careers/jobdetails?id=ATCI-12345_en">Application Developer</a>
+    <a href="jobdetails?id=ATCI-12345_en">Application Developer</a>
     <a href="/in-en/careers/jobsearch">Search Jobs</a>
     '''
     items = parse_private_careers(html, 'https://www.accenture.com/in-en/careers/jobsearch')
     assert len(items) == 1
     assert items[0].organization == 'Accenture'
     assert items[0].job_type == 'private'
+    assert 'jobdetails?id=ATCI-12345_en' in items[0].official_notice_url
