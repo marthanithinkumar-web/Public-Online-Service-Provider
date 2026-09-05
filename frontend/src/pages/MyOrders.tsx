@@ -3,6 +3,7 @@ import {Link,useLocation} from 'react-router-dom'
 import axios from 'axios'
 import {authHeader, fetchClientProfile} from '../services/auth'
 import {apiBase} from '../services/apiBase'
+import {PROVIDER} from '../services/config'
 import {applicationName,applicationSearchText} from '../services/applicationLabel'
 import SearchPanel from '../components/ui/SearchPanel'
 import CategoriesSection from '../components/ui/CategoriesSection'
@@ -13,10 +14,14 @@ import JobRecommendations from '../components/jobs/JobRecommendations'
 const REQUEST_TIMEOUT_MS = 15000
 const CLOSED = ['Completed','Cancelled','Rejected']
 const FILTERS = ['All','Pending','Under Review','In Progress','Completed','Rejected']
+const REFUND_ASSISTANCE_MESSAGE='Please contact the administrator for refund assistance. No cancellation fee is charged.'
+
+type PaymentState = {assistance_fee:boolean;official_fee:boolean}
 
 export default function MyOrders(){
   const location=useLocation()
   const [orders,setOrders]=useState<any[]>([])
+  const [paymentState,setPaymentState]=useState<Record<number,PaymentState>>({})
   const [notifications,setNotifications]=useState<any[]>([])
   const [unread,setUnread]=useState(0)
   const [profile,setProfile]=useState<any>(null)
@@ -36,8 +41,14 @@ export default function MyOrders(){
         axios.get(`${apiBase}/notifications`,{headers:authHeader(),timeout:REQUEST_TIMEOUT_MS}),
         fetchClientProfile(),
     ])
-    if(ordersResult.status==='fulfilled')setOrders(Array.isArray(ordersResult.value.data)?ordersResult.value.data:[])
-    else{const err:any=ordersResult.reason;setError(axios.isCancel(err)?'The request was cancelled. Please try again.':err?.code==='ECONNABORTED'?'Your applications took too long to load. You can still search services below, or try loading the dashboard again.':'We could not load your applications. You can still search services below, or try again.')}
+    if(ordersResult.status==='fulfilled'){
+      const orderItems=Array.isArray(ordersResult.value.data)?ordersResult.value.data:[]
+      setOrders(orderItems)
+      const statuses=await Promise.allSettled(orderItems.map((order:any)=>axios.get(`${apiBase}/payments/orders/${order.id}/status`,{headers:authHeader(),timeout:REQUEST_TIMEOUT_MS})))
+      const next:Record<number,PaymentState>={}
+      statuses.forEach((result,index)=>{if(result.status==='fulfilled'){const paid=result.value.data?.paid_components||{};next[orderItems[index].id]={assistance_fee:Boolean(paid.assistance_fee),official_fee:Boolean(paid.official_fee)}}})
+      setPaymentState(next)
+    } else{const err:any=ordersResult.reason;setError(axios.isCancel(err)?'The request was cancelled. Please try again.':err?.code==='ECONNABORTED'?'Your applications took too long to load. You can still search services below, or try loading the dashboard again.':'We could not load your applications. You can still search services below, or try again.')}
     if(notificationsResult.status==='fulfilled'){const data=notificationsResult.value.data;setNotifications(data.items||[]);setUnread(data.unread||0)}
     else setNotificationError('Notifications are temporarily unavailable. Your service search and applications remain usable.')
     if(profileResult.status==='fulfilled')setProfile(profileResult.value.user||null)
@@ -56,7 +67,7 @@ export default function MyOrders(){
   const view=location.hash.replace('#','')
   const applications=<section className="dashboard-section" id="applications"><div className="section-header inline"><div><h2>{view==='track'?'Track My Request':'My Service Applications'}</h2></div></div>
     <div className="application-toolbar"><label>Search applications<input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Order number, service or job title"/></label><div className="filter-tabs" role="group" aria-label="Filter applications">{FILTERS.map(item=><button type="button" className={filter===item?'active':''} aria-pressed={filter===item} onClick={()=>setFilter(item)} key={item}>{item}</button>)}</div></div>
-    {orders.length===0?<div className="empty-dashboard"><h3>No applications yet</h3></div>:filteredOrders.length===0?<div className="empty-dashboard"><h3>No matching applications</h3></div>:<div className="request-list">{filteredOrders.map(order=><article key={order.id} className="request-card"><div className="request-card-main"><div className="request-icon">A</div><div><div className="request-code">{order.order_code}</div><h3>{applicationName(order)}</h3>{applicationName(order)!==order.service&&<p>{order.service}</p>}<p>{new Date(order.created_at).toLocaleString()}</p></div></div><div className="request-card-side"><span className={`status-pill status-${String(order.status||'').toLowerCase().replace(/\s+/g,'-')}`}>{order.status}</span><span className="request-fee-mini"><strong>Applicable Assistance Fee ₹{order.fee_inr}</strong><small>Official fee: {order.official_fee_status==='unconfirmed'?'To be confirmed':`₹${order.official_fee_inr||0}`}</small></span></div><div className="request-card-actions"><Link to={`/my-orders/${order.id}`}>View application</Link>{!CLOSED.includes(order.status)&&<Link to={`/submit-grievance?order_id=${order.id}`}>Get help</Link>}</div></article>)}</div>}
+    {orders.length===0?<div className="empty-dashboard"><h3>No applications yet</h3></div>:filteredOrders.length===0?<div className="empty-dashboard"><h3>No matching applications</h3></div>:<div className="request-list">{filteredOrders.map(order=>{const paid=paymentState[order.id]||{assistance_fee:false,official_fee:false};const anyPaid=paid.assistance_fee||paid.official_fee;return <article key={order.id} className="request-card"><div className="request-card-main"><div className="request-icon">A</div><div><div className="request-code">{order.order_code}</div><h3>{applicationName(order)}</h3>{applicationName(order)!==order.service&&<p>{order.service}</p>}<p>{new Date(order.created_at).toLocaleString()}</p></div></div><div className="request-card-side"><span className={`status-pill status-${String(order.status||'').toLowerCase().replace(/\s+/g,'-')}`}>{order.status}</span><span className="request-fee-mini"><strong>{paid.assistance_fee?`Assistance Fee Paid ₹${order.fee_inr}`:`Applicable Assistance Fee ₹${order.fee_inr}`}</strong><small>{paid.official_fee?`Official fee paid: ₹${order.official_fee_inr||0}`:`Official fee: ${order.official_fee_status==='unconfirmed'?'To be confirmed':`₹${order.official_fee_inr||0}`}`}</small></span></div>{order.status==='Cancelled'&&anyPaid&&<div className="info" role="status"><strong>{REFUND_ASSISTANCE_MESSAGE}</strong><br/>Administrator: {PROVIDER.name}<br/>Phone: <a href={`tel:${PROVIDER.phone}`}>{PROVIDER.phone}</a> / <a href={`tel:${PROVIDER.phone2}`}>{PROVIDER.phone2}</a><br/>Email: <a href={`mailto:${PROVIDER.email}`}>{PROVIDER.email}</a></div>}<div className="request-card-actions"><Link to={`/my-orders/${order.id}`}>View application</Link>{!CLOSED.includes(order.status)&&<Link to={`/submit-grievance?order_id=${order.id}`}>Get help</Link>}</div></article>})}</div>}
   </section>
   const notificationSection=<>{notificationError&&<p className="info" role="alert">{notificationError}</p>}{notifications.length?<section className="dashboard-section" id="notifications"><div className="section-header inline"><h2>Notifications</h2>{unread>0&&<button disabled={markingRead} onClick={markAllRead}>{markingRead?'Updating…':'Mark all read'}</button>}</div><div className="notification-list">{notifications.map(item=><article key={item.id} className={item.is_read?'notification-card':'notification-card unread'}><strong>{item.title}</strong><p>{item.message}</p><small>{new Date(item.created_at).toLocaleString()}</small>{item.order_id&&<Link to={`/my-orders/${item.order_id}`}>View application</Link>}</article>)}</div></section>:<section className="dashboard-section"><h2>Notifications</h2><p>No notifications.</p></section>}</>
 
