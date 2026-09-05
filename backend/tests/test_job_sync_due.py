@@ -29,6 +29,28 @@ def test_sync_is_due_when_a_configured_source_has_no_database_row(client):
         assert sync_is_due() is True
 
 
+def test_sync_is_due_when_enabled_configured_source_never_completed(client):
+    with client.application.app_context():
+        _mark_all_sources_recent()
+        source = JobSource.query.filter_by(key=SOURCE_DEFINITIONS[-1].key).one()
+        source.last_sync_status = 'not_run'
+        source.last_sync_completed_at = None
+        db.session.commit()
+
+        assert sync_is_due() is True
+
+
+def test_sync_is_due_when_configured_source_url_changed(client):
+    with client.application.app_context():
+        _mark_all_sources_recent()
+        definition = SOURCE_DEFINITIONS[-1]
+        source = JobSource.query.filter_by(key=definition.key).one()
+        source.listing_url = 'https://example.invalid/old-listing'
+        db.session.commit()
+
+        assert sync_is_due() is True
+
+
 def test_sync_is_due_when_any_enabled_configured_source_is_stale(client):
     with client.application.app_context():
         _mark_all_sources_recent()
