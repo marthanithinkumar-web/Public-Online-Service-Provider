@@ -10,6 +10,7 @@ import requests
 ALLOWED_HOSTS = {
     'employmentnews.gov.in', 'www.employmentnews.gov.in',
     'ssc.gov.in', 'www.ssc.gov.in',
+    'rrcb.gov.in', 'www.rrcb.gov.in',
     'rrbcdg.gov.in', 'www.rrbcdg.gov.in', 'rrbapply.gov.in', 'www.rrbapply.gov.in',
     'rrbsecunderabad.gov.in', 'www.rrbsecunderabad.gov.in',
     'rrbchennai.gov.in', 'www.rrbchennai.gov.in',
@@ -23,8 +24,6 @@ ALLOWED_HOSTS = {
 }
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
 MAX_ATTEMPTS = 3
-# Government portals commonly return these codes temporarily to automated
-# server-side checks even while the same page remains available to browsers.
 TRANSIENT_STATUS_CODES = {403, 408, 425, 429, 500, 502, 503, 504}
 RETRY_DELAYS_SECONDS = (0.0, 0.8, 2.0)
 BROWSER_HEADERS = {
@@ -67,18 +66,11 @@ def _read_safe_response(response):
 
 
 def _retry_delay(attempt):
-    # Small jitter prevents every worker/deploy from retrying a government site
-    # at exactly the same instant after a transient outage or rate limit.
     return RETRY_DELAYS_SECONDS[attempt] + random.uniform(0.0, 0.35)
 
 
 def fetch_official_page(url, session=None):
-    """Fetch an allowlisted official page with bounded transient retries.
-
-    Previously verified notices are handled by the sync layer, so a temporary
-    upstream/network/access-control failure never invalidates cached job data.
-    Safety errors (unapproved redirects/content) still fail immediately.
-    """
+    """Fetch an allowlisted official page with bounded transient retries."""
     validate_official_url(url)
     client = session or requests.Session()
     last_reason = 'temporary network error'
@@ -101,7 +93,6 @@ def fetch_official_page(url, session=None):
                 f'Official source is temporarily unavailable after {MAX_ATTEMPTS} attempts ({last_reason}).'
             ) from None
 
-        # Never follow/process a redirect outside the strict official allowlist.
         validate_official_url(response.url)
         status_code = getattr(response, 'status_code', 200)
         if status_code in TRANSIENT_STATUS_CODES:
