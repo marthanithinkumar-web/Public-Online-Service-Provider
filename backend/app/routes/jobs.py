@@ -42,6 +42,7 @@ def list_jobs():
         query = query.filter(JobNotification.job_type == job_type)
     if featured in {'1', 'true', 'yes'}:
         query = query.filter(JobNotification.is_featured.is_(True))
+    total = query.count()
     try:
         limit = min(100, max(1, int(request.args.get('limit', 30))))
     except (TypeError, ValueError):
@@ -51,7 +52,7 @@ def list_jobs():
         JobNotification.deadline.asc(),
         JobNotification.published_at.desc(),
     ).limit(limit).all()
-    response = jsonify({'items': [job.to_dict() for job in jobs], 'count': len(jobs)})
+    response = jsonify({'items': [job.to_dict() for job in jobs], 'count': len(jobs), 'total': total})
     response.headers['Cache-Control'] = 'public, max-age=300, stale-while-revalidate=600'
     return response
 
