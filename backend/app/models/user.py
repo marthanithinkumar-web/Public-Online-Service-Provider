@@ -1,5 +1,7 @@
 from ..utils.database import db
 from datetime import datetime, timezone
+from sqlalchemy import event
+
 def utc_now(): return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
@@ -66,3 +68,16 @@ class User(db.Model):
         if include_service_profile:
             data['service_profile'] = self.service_profile_dict()
         return data
+
+
+@event.listens_for(User, 'after_insert')
+def _alert_admin_new_client(mapper, connection, target):
+    if target.is_admin:
+        return
+    try:
+        from ..utils.admin_alerts import send_admin_activity_alert
+        client = (target.name or 'A new client').strip()[:120]
+        send_admin_activity_alert('New client registered', f'{client} created a client account. Open the admin workspace to review the new client.', None)
+    except Exception:
+        # External alerts are best-effort and must never break registration.
+        pass
