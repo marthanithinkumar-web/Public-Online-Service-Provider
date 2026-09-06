@@ -6,6 +6,7 @@ from ..models.admin_audit import AdminAuditLog
 from ..models.notification import Notification
 from ..models.support_message import SupportMessage
 from ..models.user import User
+from ..utils.admin_alerts import send_admin_activity_alert
 from ..utils.database import db
 from ..utils.jwt_handler import get_request_user
 from ..utils.limiter import limiter
@@ -58,6 +59,12 @@ def send_client_message():
     )
     db.session.add(item)
     db.session.commit()
+    # Keep message contents private while still alerting the administrator through
+    # the existing zero-cost email + Web Push admin-alert channels.
+    send_admin_activity_alert(
+        'New client support message',
+        f'Registered client #{user.id} sent a new private support message. Open Admin Messages to reply.',
+    )
     return jsonify({'message': 'Your message was sent to the service team.', 'item': item.to_dict()}), 201
 
 
