@@ -7,6 +7,7 @@ const CONFIG:Record<string,{title:string;description:string;terms:string[];quick
  '/government-services':{title:'Government Services',description:'Browse all available certificate, identity, education, land, welfare, transport, licence and other public-service assistance in one easy place.',terms:[],quick:['Certificates','Identity & ID','Education','Land & Revenue','Transport','Welfare','Business & Licences','Other Services']},
  '/recharge-bills':{title:'Recharge & Bill Payments',description:'Choose the exact recharge or bill type you need, then open it to view details and start your request.',terms:['recharge','bill','electricity','dth','broadband','water','gas','fastag','postpaid','landline'],quick:['Mobile Recharge','Postpaid','DTH','Electricity','Broadband','FASTag','Gas','Other Bills']}
 }
+const PAYMENT_TERMS=['recharge','bill','electricity','dth','broadband','water','gas','fastag','postpaid','landline']
 
 function bucketFor(service:any,payment:boolean){
  const text=`${service.name||''} ${service.category||''} ${service.keywords||''}`.toLowerCase()
@@ -35,7 +36,7 @@ export default function ServiceDirectory(){
  const [catalog,setCatalog]=useState<any[]>(()=>readCachedServices(true));const [loading,setLoading]=useState(catalog.length===0);const [query,setQuery]=useState('');const [active,setActive]=useState('All')
  useEffect(()=>{let mounted=true;fetchServiceCatalog().then(items=>{if(mounted)setCatalog(items)}).catch(()=>{}).finally(()=>{if(mounted)setLoading(false)});return()=>{mounted=false}},[])
  useEffect(()=>{setQuery('');setActive('All')},[location.pathname])
- const scoped=useMemo(()=>catalog.filter(s=>{const hay=`${s.name||''} ${s.category||''} ${s.keywords||''} ${s.description||''}`.toLowerCase();return config.terms.length===0||config.terms.some(term=>hay.includes(term))}),[catalog,config])
+ const scoped=useMemo(()=>catalog.filter(s=>{const hay=`${s.name||''} ${s.category||''} ${s.keywords||''} ${s.description||''}`.toLowerCase();if(payment)return config.terms.some(term=>hay.includes(term));return !PAYMENT_TERMS.some(term=>hay.includes(term))}),[catalog,config,payment])
  const services=useMemo(()=>{const q=query.trim().toLowerCase();return scoped.filter(s=>{const hay=`${s.name||''} ${s.category||''} ${s.keywords||''} ${s.description||''}`.toLowerCase();return(!q||hay.includes(q))&&(active==='All'||bucketFor(s,payment)===active)})},[scoped,query,active,payment])
  const grouped=useMemo(()=>config.quick.map(name=>({name,items:services.filter(s=>bucketFor(s,payment)===name)})).filter(group=>group.items.length>0),[services,config.quick,payment])
  return <div className="service-directory-page">
