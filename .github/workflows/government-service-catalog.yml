@@ -1,0 +1,84 @@
+name: Monitor official government services
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/government-service-catalog.yml'
+      - 'backend/app/government_services/**'
+  schedule:
+    # 08:15 Asia/Kolkata every day (02:45 UTC).
+    - cron: '45 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: government-service-catalog-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    name: Discover official government service changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out current website
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate reviewed government-service manifest
+        env:
+          PYTHONPATH: backend
+        run: |
+          python - <<'PY'
+          from app.government_services.catalog import load_verified_catalog
+          data = load_verified_catalog()
+          print(f"Validated {len(data['services'])} verified government service record(s).")
+          PY
+
+      - name: Scan first-party government portals
+        env:
+          PYTHONPATH: backend
+        run: |
+          python -m app.government_services.monitor \
+            --output frontend/public/data/government-service-source-snapshot.json
+          cp frontend/public/data/government-service-source-snapshot.json /tmp/government-service-source-snapshot.json
+
+      - name: Publish discovery snapshot when changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p frontend/public/data
+            cp /tmp/government-service-source-snapshot.json frontend/public/data/government-service-source-snapshot.json
+            # generated_at changes every run; normalize it before comparison so
+            # commits happen only when source health/candidates/content change.
+            python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('frontend/public/data/government-service-source-snapshot.json')
+          data = json.loads(path.read_text(encoding='utf-8'))
+          data.pop('generated_at', None)
+          path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+          PY
+            if git diff --quiet -- frontend/public/data/government-service-source-snapshot.json; then
+              echo "No government-service discovery change to publish."
+              exit 0
+            fi
+            git add frontend/public/data/government-service-source-snapshot.json
+            git commit -m "Refresh official government service discovery snapshot [skip ci]"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Discovery snapshot push raced with another main update; retrying ($attempt/5)."
+          done
+          echo "Unable to publish government-service discovery snapshot after 5 attempts." >&2
+          exit 1
