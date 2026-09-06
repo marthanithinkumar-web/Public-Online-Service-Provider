@@ -3,8 +3,10 @@ import {Link} from 'react-router-dom'
 
 const links=[
   ['/my-orders','Dashboard'],
-  ['/my-orders#service-search','Find Services'],
-  ['/jobs','Job Opportunities'],
+  ['/government-services','Government Services'],
+  ['/jobs','Jobs'],
+  ['/scholarships','Scholarships'],
+  ['/recharge-bills','Recharge & Bills'],
   ['/my-orders#applications','My Applications'],
   ['/my-orders#track','Track My Request'],
   ['/my-orders#notifications','Notifications'],
@@ -16,7 +18,7 @@ function WorkspaceLinks(){return <>{links.map(([to,label])=><Link key={to} to={t
 
 export default function ClientWorkspaceNav(){
   return <>
-    <aside className="client-workspace-sidebar" aria-label="Client workspace navigation"><div className="workspace-sidebar-title"><strong>My workspace</strong><small>Requests and account</small></div><nav><WorkspaceLinks/></nav></aside>
+    <aside className="client-workspace-sidebar" aria-label="Client workspace navigation"><div className="workspace-sidebar-title"><strong>My workspace</strong><small>Services, opportunities & requests</small></div><nav><WorkspaceLinks/></nav></aside>
     <details className="client-workspace-mobile"><summary>My workspace menu</summary><nav><WorkspaceLinks/></nav></details>
   </>
 }
