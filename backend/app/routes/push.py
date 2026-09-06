@@ -10,7 +10,7 @@ from ..utils.jwt_handler import decode_token
 bp = Blueprint('push', __name__)
 
 
-def _require_admin():
+def _require_user():
     auth = request.headers.get('Authorization', '')
     if not auth.startswith('Bearer '):
         return None
@@ -19,7 +19,7 @@ def _require_admin():
     except Exception:
         return None
     user = db.session.get(User, data.get('user_id'))
-    return user if user and user.is_admin and user.is_active and data.get('token_version', 0) == user.token_version else None
+    return user if user and user.is_active and data.get('token_version', 0) == user.token_version else None
 
 
 @bp.get('/public-key')
@@ -30,9 +30,9 @@ def public_key():
 
 @bp.post('/subscribe')
 def subscribe():
-    admin = _require_admin()
-    if not admin:
-        return jsonify({'error': 'Admin access required'}), 403
+    user = _require_user()
+    if not user:
+        return jsonify({'error': 'Authentication required'}), 403
     payload = request.get_json(silent=True) or {}
     endpoint = str(payload.get('endpoint') or '').strip()
     keys = payload.get('keys') or {}
@@ -42,23 +42,23 @@ def subscribe():
         return jsonify({'error': 'Invalid push subscription'}), 400
     row = PushSubscription.query.filter_by(endpoint=endpoint).first()
     if row is None:
-        row = PushSubscription(user_id=admin.id, endpoint=endpoint, p256dh=p256dh, auth=auth_key)
+        row = PushSubscription(user_id=user.id, endpoint=endpoint, p256dh=p256dh, auth=auth_key)
         db.session.add(row)
     else:
-        row.user_id = admin.id
+        row.user_id = user.id
         row.p256dh = p256dh
         row.auth = auth_key
     db.session.commit()
-    return jsonify({'subscribed': True})
+    return jsonify({'subscribed': True, 'role': 'admin' if user.is_admin else 'client'})
 
 
 @bp.delete('/subscribe')
 def unsubscribe():
-    admin = _require_admin()
-    if not admin:
-        return jsonify({'error': 'Admin access required'}), 403
+    user = _require_user()
+    if not user:
+        return jsonify({'error': 'Authentication required'}), 403
     endpoint = str((request.get_json(silent=True) or {}).get('endpoint') or '').strip()
     if endpoint:
-        PushSubscription.query.filter_by(user_id=admin.id, endpoint=endpoint).delete()
+        PushSubscription.query.filter_by(user_id=user.id, endpoint=endpoint).delete()
         db.session.commit()
     return jsonify({'subscribed': False})
