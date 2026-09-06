@@ -44,7 +44,7 @@ test('real client application can be processed to completion by an admin', async
   const orderUrl = new URL(clientPage.url())
   const orderId = orderUrl.pathname.split('/').pop()
   expect(orderId).toMatch(/^\d+$/)
-  await expect(clientPage.getByText('Submitted', { exact: true }).first()).toBeVisible()
+  await expect(clientPage.getByRole('heading', { name: 'Application progress', exact: true })).toBeVisible()
 
   const adminContext = await browser.newContext()
   const adminPage = await adminContext.newPage()
@@ -55,8 +55,9 @@ test('real client application can be processed to completion by an admin', async
 
   await expect(adminPage).toHaveURL(/\/admin\/dashboard$/)
   await adminPage.goto(`/admin/orders/${orderId}`)
-  await expect(adminPage.getByText(client.name, { exact: false })).toBeVisible()
-  await expect(adminPage.getByText('Submitted', { exact: true }).first()).toBeVisible()
+  const adminDetail = adminPage.locator('.admin-order-detail')
+  await expect(adminDetail).toContainText(client.name)
+  await expect(adminDetail).toContainText('Status: Submitted')
 
   const statusSelect = adminPage.getByLabel('Next status')
   const note = adminPage.getByLabel('Processing note')
@@ -65,21 +66,21 @@ test('real client application can be processed to completion by an admin', async
   await statusSelect.selectOption('Under Review')
   await note.fill('E2E admin started reviewing the application.')
   await updateButton.click()
-  await expect(adminPage.getByText('Under Review', { exact: true }).first()).toBeVisible()
+  await expect(adminDetail).toContainText('Status: Under Review')
 
   await statusSelect.selectOption('In Progress')
   await note.fill('E2E admin is processing the application.')
   await updateButton.click()
-  await expect(adminPage.getByText('In Progress', { exact: true }).first()).toBeVisible()
+  await expect(adminDetail).toContainText('Status: In Progress')
 
   await statusSelect.selectOption('Completed')
   await note.fill('E2E request completed by admin.')
   await updateButton.click()
-  await expect(adminPage.getByText('Completed', { exact: true }).first()).toBeVisible()
+  await expect(adminDetail).toContainText('Status: Completed')
   await expect(adminPage.getByText('This request is closed and can no longer be moved to another status.')).toBeVisible()
 
   await clientPage.reload()
-  await expect(clientPage.getByText('Completed', { exact: true }).first()).toBeVisible()
+  await expect(clientPage.locator('.dashboard-hero .status-pill')).toHaveText('Completed')
   await expect(clientPage.getByText('E2E request completed by admin.', { exact: true }).first()).toBeVisible()
   await expect(clientPage.getByText('This application is closed.', { exact: true })).toBeVisible()
 
