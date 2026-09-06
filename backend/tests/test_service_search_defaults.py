@@ -119,10 +119,12 @@ def test_default_catalog_services_expose_optional_application_details(client):
 
 def test_seed_catalog_and_explicit_requirement_registry_match():
     import ast
+    import json
     from pathlib import Path
     from app.utils.service_requirements import SERVICE_REQUIREMENT_PROFILE_BY_NAME
 
-    seed_path = Path(__file__).resolve().parents[1] / 'seed.py'
+    backend_path = Path(__file__).resolve().parents[1]
+    seed_path = backend_path / 'seed.py'
     module = ast.parse(seed_path.read_text(encoding='utf-8'))
     catalog = None
     for node in ast.walk(module):
@@ -130,7 +132,7 @@ def test_seed_catalog_and_explicit_requirement_registry_match():
             catalog = ast.literal_eval(node.value)
             break
 
-    main_path = Path(__file__).resolve().parents[1] / 'app' / 'main.py'
+    main_path = backend_path / 'app' / 'main.py'
     main_module = ast.parse(main_path.read_text(encoding='utf-8'))
     startup_defaults = None
     for node in ast.walk(main_module):
@@ -138,11 +140,18 @@ def test_seed_catalog_and_explicit_requirement_registry_match():
             startup_defaults = ast.literal_eval(node.value)
             break
 
+    verified_path = backend_path / 'app' / 'government_services' / 'verified_catalog.json'
+    verified = json.loads(verified_path.read_text(encoding='utf-8'))
+
     assert catalog is not None
     assert startup_defaults is not None
     catalog_names = {item[0] for items in catalog.values() for item in items}
     startup_names = {item[1] for item in startup_defaults}
-    assert set(SERVICE_REQUIREMENT_PROFILE_BY_NAME) == catalog_names | startup_names
+    verified_names = {
+        item['name'] for item in verified.get('services', [])
+        if str(item.get('requirement_profile') or '').strip()
+    }
+    assert set(SERVICE_REQUIREMENT_PROFILE_BY_NAME) == catalog_names | startup_names | verified_names
 
 
 def test_service_search_matches_partial_words_categories_and_keywords(client):
