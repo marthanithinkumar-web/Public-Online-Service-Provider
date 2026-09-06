@@ -9,7 +9,7 @@ const CATEGORY_ROUTES:Record<string,{title:string;query:string}>={
  jobs:{title:'Government Jobs',query:'jobs'},
  scholarships:{title:'Scholarships',query:'scholarship'},
  meeseva:{title:'MeeSeva / Public Services',query:'meeseva'},
- certificates:{title:'Certificates',query:'certificate'},
+ certificates:{title:'MeeSeva Certificates',query:'certificate'},
  schemes:{title:'Government Schemes',query:'scheme'},
 }
 
