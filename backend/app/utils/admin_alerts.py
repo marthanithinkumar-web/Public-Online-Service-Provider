@@ -46,10 +46,17 @@ def _web_push(title, message, link):
     try:
         from pywebpush import WebPushException, webpush
         from ..models.push_subscription import PushSubscription
+        from ..models.user import User
         stale = []
         sent = False
         payload = json.dumps({'title': title, 'body': message, 'url': link or '/admin'})
-        for sub in PushSubscription.query.all():
+        subscriptions = (
+            PushSubscription.query
+            .join(User, User.id == PushSubscription.user_id)
+            .filter(User.is_admin.is_(True), User.is_active.is_(True))
+            .all()
+        )
+        for sub in subscriptions:
             try:
                 webpush(subscription_info={'endpoint': sub.endpoint, 'keys': {'p256dh': sub.p256dh, 'auth': sub.auth}}, data=payload, vapid_private_key=private_key, vapid_claims={'sub': subject}, timeout=8)
                 sent = True
