@@ -82,6 +82,7 @@ def test_restore_target_guard_accepts_expected_temporary_neon_branch():
 
 def test_backup_workflow_and_shell_scripts_have_safety_controls():
     workflow = (ROOT / ".github/workflows/database-backup.yml").read_text()
+    verification_workflow = (ROOT / ".github/workflows/database-backup-verify.yml").read_text()
     backup_script = (ROOT / "scripts/backup_postgres_to_b2.sh").read_text()
     restore_script = (ROOT / "scripts/restore_postgres_from_b2.sh").read_text()
 
@@ -97,9 +98,16 @@ def test_backup_workflow_and_shell_scripts_have_safety_controls():
     assert "RESTORE_TO_NON_PRODUCTION_ONLY" in restore_script
     assert "check_restore_target.py" in restore_script
 
+    assert "schedule:" in verification_workflow
+    assert "RESTORE_MODE: verify" in verification_workflow
+    assert "restore_postgres_from_b2.sh" in verification_workflow
+    assert "NEON_BACKUP_DATABASE_URL" in verification_workflow
+    assert "RESTORE_TARGET_DATABASE_URL" not in verification_workflow
+    assert "CONFIRM_NON_PRODUCTION_RESTORE" not in verification_workflow
+
 
 def test_backup_catalog_cli_emits_no_plaintext_keys(tmp_path):
-    catalog_path = ROOT / "scripts/b2_backup_catalog.py"
+    catalog_path = ROOT / "scripts" / "b2_backup_catalog.py"
     payload_path = tmp_path / "versions.json"
     payload_path.write_text(
         json.dumps(
