@@ -1,4 +1,5 @@
 import base64
+import json
 import logging
 import os
 from urllib import parse, request
@@ -37,13 +38,44 @@ def _twilio_message(to_number, from_number, body):
         return False
 
 
+def _web_push(title, message, link):
+    private_key = (os.getenv('WEB_PUSH_VAPID_PRIVATE_KEY') or '').strip()
+    subject = (os.getenv('WEB_PUSH_VAPID_SUBJECT') or 'mailto:' + (os.getenv('ADMIN_EMAIL') or 'admin@example.com')).strip()
+    if not private_key:
+        return False
+    try:
+        from pywebpush import WebPushException, webpush
+        from ..models.push_subscription import PushSubscription
+        stale = []
+        sent = False
+        payload = json.dumps({'title': title, 'body': message, 'url': link or '/admin'})
+        for sub in PushSubscription.query.all():
+            try:
+                webpush(subscription_info={'endpoint': sub.endpoint, 'keys': {'p256dh': sub.p256dh, 'auth': sub.auth}}, data=payload, vapid_private_key=private_key, vapid_claims={'sub': subject}, timeout=8)
+                sent = True
+            except WebPushException as exc:
+                if getattr(exc.response, 'status_code', None) in (404, 410):
+                    stale.append(sub)
+                else:
+                    logger.warning('Admin web push delivery failed (%s)', type(exc).__name__)
+        if stale:
+            from .database import db
+            for sub in stale:
+                db.session.delete(sub)
+            db.session.commit()
+        return sent
+    except Exception as exc:
+        logger.warning('Admin web push unavailable (%s)', type(exc).__name__)
+        return False
+
+
 def send_admin_activity_alert(title, message, order_id=None):
-    """Best-effort external admin alert. Never raises into a client request."""
+    """Best-effort admin alert. Never raises into a client request."""
     safe_title = _clean(title, 160)
     safe_message = _clean(message, 700)
     link = _admin_link(order_id)
     body = f'{safe_title}\n\n{safe_message}' + (f'\n\nOpen admin: {link}' if link else '')
-    results = {'email': False, 'sms': False, 'whatsapp': False}
+    results = {'email': False, 'web_push': False, 'sms': False, 'whatsapp': False}
 
     email = (os.getenv('ADMIN_ALERT_EMAIL') or os.getenv('ADMIN_EMAIL') or '').strip()
     if email:
@@ -52,6 +84,9 @@ def send_admin_activity_alert(title, message, order_id=None):
         except Exception as exc:
             logger.warning('Admin email alert delivery failed (%s)', type(exc).__name__)
 
+    results['web_push'] = _web_push(safe_title, safe_message, link)
+
+    # Paid provider channels remain optional and disabled when no credentials exist.
     phone = (os.getenv('ADMIN_ALERT_PHONE') or '').strip()
     sms_from = (os.getenv('TWILIO_SMS_FROM') or '').strip()
     if phone and sms_from:
