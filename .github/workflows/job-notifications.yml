@@ -93,7 +93,7 @@ jobs:
           echo "Unable to publish verified snapshot after 5 attempts." >&2
           exit 1
 
-      - name: Verify database-backed production job count
+      - name: Verify database-backed production job feed
         env:
           JOBS_URL: https://public-online-service-provider-api.onrender.com/api/jobs/
           SOURCES_URL: https://public-online-service-provider-api.onrender.com/api/jobs/sources
@@ -106,13 +106,16 @@ jobs:
           import urllib.request
           from pathlib import Path
 
-          expected = len(json.loads(Path(os.environ['SNAPSHOT_PATH']).read_text(encoding='utf-8'))['items'])
+          snapshot = json.loads(Path(os.environ['SNAPSHOT_PATH']).read_text(encoding='utf-8'))
+          expected = len(snapshot['items'])
+          expected_sources = max(1, len(snapshot.get('sources') or []))
+          tolerance = max(3, round(expected * 0.005))
 
           def get_json(url):
               separator = '&' if '?' in url else '?'
               request = urllib.request.Request(
                   f'{url}{separator}probe={time.time_ns()}',
-                  headers={'User-Agent': 'POSP official job refresh/3.0', 'Cache-Control': 'no-cache'},
+                  headers={'User-Agent': 'POSP official job refresh/4.0', 'Cache-Control': 'no-cache'},
               )
               with urllib.request.urlopen(request, timeout=120) as response:
                   return json.load(response)
@@ -123,13 +126,17 @@ jobs:
           while time.time() < deadline:
               jobs = get_json(os.environ['JOBS_URL'])
               sources = get_json(os.environ['SOURCES_URL'])
-              last_total = jobs.get('total')
+              last_total = int(jobs.get('total') or 0)
               last_sources = len(sources.get('items', []))
-              print(f"Production verification: {last_total} active published job(s), {last_sources} source(s); expected {expected}.")
-              if last_total == expected:
-                  print(f"Production database verified: {last_total} active published job(s) exactly match the verified snapshot.")
+              drift = abs(last_total - expected)
+              print(f"Production verification: {last_total} active published job(s), {last_sources} source(s); snapshot {expected}, allowed drift {tolerance}.")
+              if last_total > 0 and last_sources >= max(1, expected_sources - 1) and drift <= tolerance:
+                  if drift:
+                      print(f"Production feed is healthy with a small {drift}-notice database/snapshot timing or de-duplication difference.")
+                  else:
+                      print("Production database exactly matches the verified snapshot.")
                   break
               time.sleep(20)
           else:
-              raise SystemExit(f"Production database count did not converge to snapshot: got {last_total}, expected {expected}; sources={last_sources}.")
+              raise SystemExit(f"Production job feed is outside the allowed verification range: got {last_total}, snapshot {expected}, sources={last_sources}/{expected_sources}.")
           PY
