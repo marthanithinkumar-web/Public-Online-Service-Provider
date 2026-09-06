@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+from sqlalchemy import event, text
+
 from ..utils.database import db
 
 
@@ -31,3 +33,17 @@ class SupportMessage(db.Model):
             'read_by_admin': bool(self.read_by_admin),
             'created_at': self.created_at.isoformat(),
         }
+
+
+@event.listens_for(SupportMessage, 'after_insert')
+def _alert_admin_client_message(mapper, connection, target):
+    if target.sender_role != 'client':
+        return
+    try:
+        row = connection.execute(text('SELECT name FROM users WHERE id = :user_id'), {'user_id': target.user_id}).mappings().first()
+        client = ((row or {}).get('name') or 'A client').strip()[:120]
+        from ..utils.admin_alerts import send_admin_activity_alert
+        # Do not copy private message contents into SMS/WhatsApp/email alerts.
+        send_admin_activity_alert('New client message', f'{client} sent a new private support message. Open the admin Messages section to read it securely.', None)
+    except Exception:
+        pass
