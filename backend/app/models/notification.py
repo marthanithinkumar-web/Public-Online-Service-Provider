@@ -25,3 +25,8 @@ class Notification(db.Model):
             'is_read': bool(self.is_read),
             'created_at': self.created_at.isoformat(),
         }
+
+
+# Import after model declaration so the mapper listener can bind without a circular
+# dependency while keeping every in-site client notification eligible for web push.
+from ..utils import client_notifications as _client_notifications  # noqa: E402,F401
