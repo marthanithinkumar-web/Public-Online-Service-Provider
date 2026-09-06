@@ -4,7 +4,7 @@ from ..utils.database import db
 from ..middleware.auth import require_admin
 from ..schemas.service_schema import ServiceSchema
 from ..utils.service_requirements import get_service_requirements, SERVICE_REQUIREMENT_PROFILE_BY_NAME
-from ..utils.specialized_service_requirements import get_specialized_requirements, SPECIALIZED_SERVICE_NAMES
+from ..utils.specialized_service_requirements import get_specialized_requirements
 from sqlalchemy import and_, or_
 from ..utils.seo import application_service_name, legacy_application_service_name, slugify
 
@@ -20,8 +20,6 @@ RECHARGE_BILL_SERVICE_NAMES = (
 )
 for service_name in RECHARGE_BILL_SERVICE_NAMES:
     SERVICE_REQUIREMENT_PROFILE_BY_NAME[service_name] = 'utility'
-for service_name in SPECIALIZED_SERVICE_NAMES:
-    SERVICE_REQUIREMENT_PROFILE_BY_NAME[service_name] = 'specialized_safe'
 
 
 def current_assistance_fee():
