@@ -33,6 +33,14 @@ const observer=new MutationObserver(records=>records.forEach(record=>record.adde
 })))
 observer.observe(document.body,{childList:true,subtree:true})
 
+// Zero-cost notification support: register the site's service worker so the installed
+// web app can display browser/Android notifications without a paid SMS provider.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => undefined)
+  })
+}
+
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
