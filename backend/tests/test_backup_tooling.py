@@ -83,6 +83,7 @@ def test_restore_target_guard_accepts_expected_temporary_neon_branch():
 def test_backup_workflow_and_shell_scripts_have_safety_controls():
     workflow = (ROOT / ".github/workflows/database-backup.yml").read_text()
     verification_workflow = (ROOT / ".github/workflows/database-backup-verify.yml").read_text()
+    restore_drill_workflow = (ROOT / ".github/workflows/database-backup-restore-drill.yml").read_text()
     backup_script = (ROOT / "scripts/backup_postgres_to_b2.sh").read_text()
     restore_script = (ROOT / "scripts/restore_postgres_from_b2.sh").read_text()
 
@@ -104,6 +105,21 @@ def test_backup_workflow_and_shell_scripts_have_safety_controls():
     assert "NEON_BACKUP_DATABASE_URL" in verification_workflow
     assert "RESTORE_TARGET_DATABASE_URL" not in verification_workflow
     assert "CONFIRM_NON_PRODUCTION_RESTORE" not in verification_workflow
+
+    assert "schedule:" in restore_drill_workflow
+    assert "RESTORE_DRILL_CONTAINER: posp-restore-drill" in restore_drill_workflow
+    assert "RESTORE_DRILL_DATABASE: posp_restore_drill" in restore_drill_workflow
+    assert "docker run --detach --name \"${RESTORE_DRILL_CONTAINER}\"" in restore_drill_workflow
+    assert "-p 127.0.0.1" not in restore_drill_workflow
+    assert "RESTORE_TARGET_DATABASE_URL" not in restore_drill_workflow
+    assert "CONFIRM_NON_PRODUCTION_RESTORE" not in restore_drill_workflow
+    assert "pg_restore --exit-on-error --no-owner --no-acl" in restore_drill_workflow
+    assert "docker rm --force \"${RESTORE_DRILL_CONTAINER}\"" in restore_drill_workflow
+    assert "rm -rf -- \"${RUNNER_TEMP}/posp-full-restore-drill\"" in restore_drill_workflow
+    assert "public.users" in restore_drill_workflow
+    assert "public.orders" in restore_drill_workflow
+    assert "public.services" in restore_drill_workflow
+    assert "public.alembic_version" in restore_drill_workflow
 
 
 def test_backup_catalog_cli_emits_no_plaintext_keys(tmp_path):
