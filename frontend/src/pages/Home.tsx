@@ -1,8 +1,6 @@
 import React,{useEffect,useMemo,useState} from 'react'
 import {Link} from 'react-router-dom'
 import SearchPanel from '../components/ui/SearchPanel'
-import ServicesSection from '../components/ui/ServicesSection'
-import CategoriesSection from '../components/ui/CategoriesSection'
 import LatestJobs from '../components/jobs/LatestJobs'
 import {fetchServiceCatalog,isHomepageHighlightEligible,readCachedServices,servicePath} from '../services/serviceCatalog'
 import {fetchScholarships,Scholarship,scholarshipPath} from '../services/scholarships'
@@ -10,63 +8,23 @@ import axios from 'axios'
 import {apiBase} from '../services/apiBase'
 import '../styles/home-modern.css'
 
-const crucialTerms=['pan','income certificate','caste certificate']
-const paymentTerms=['recharge','bill payment','electricity','dth','broadband','water bill','gas bill']
+const serviceTerms=['caste','income','residence','aadhaar','pan','voter','ration','birth','death','driving','vehicle','passport','land','meeseva','education','legal','health','welfare','labour']
+const paymentTerms=['recharge','bill payment','electricity','dth','broadband','water bill','gas bill','fastag']
 
 export default function Home(){
-  const [catalog,setCatalog]=useState<any[]>(()=>readCachedServices(true))
-  const [scholarships,setScholarships]=useState<Scholarship[]>([])
-  const [reviews,setReviews]=useState<any[]>([])
-  const [homepageFee,setHomepageFee]=useState<number>(30)
-
-  useEffect(()=>{let active=true;fetchServiceCatalog().then(items=>{if(active)setCatalog(items)}).catch(()=>{});return()=>{active=false}},[])
-  useEffect(()=>{let active=true;fetchScholarships().then(data=>{if(active)setScholarships((data.items||[]).slice(0,4))}).catch(()=>{});return()=>{active=false}},[])
-  useEffect(()=>{let active=true;axios.get(`${apiBase}/services/homepage-assistance-fee`,{timeout:6000}).then(response=>{const value=Number(response.data?.price_inr);if(active&&Number.isFinite(value)&&value>=0)setHomepageFee(value)}).catch(()=>{});return()=>{active=false}},[])
-  useEffect(()=>{
-    let active=true
-    const preload=()=>{
-      import('./ServiceDetail');import('./Login');import('./Jobs');import('./Scholarships')
-      axios.get(`${apiBase}/reviews/public`,{timeout:6000}).then(response=>{if(active)setReviews((response.data||[]).slice(0,3))}).catch(()=>{})
-    }
-    const idle=(window as any).requestIdleCallback
-    const handle=idle?idle(preload,{timeout:2500}):window.setTimeout(preload,1200)
-    return()=>{active=false;if(idle)(window as any).cancelIdleCallback?.(handle);else window.clearTimeout(handle)}
-  },[])
-
-  const crucial=useMemo(()=>{const eligible=catalog.filter(isHomepageHighlightEligible);const selected:any[]=[];crucialTerms.forEach(term=>{const match=eligible.find(service=>!selected.includes(service)&&`${service.name} ${service.keywords||''}`.toLowerCase().includes(term));if(match)selected.push(match)});eligible.forEach(service=>{if(selected.length<3&&!selected.includes(service))selected.push(service)});return selected.slice(0,3)},[catalog])
-  const paymentServices=useMemo(()=>catalog.filter(service=>paymentTerms.some(term=>`${service.name} ${service.category||''} ${service.keywords||''}`.toLowerCase().includes(term))).slice(0,6),[catalog])
-  const mobileRecharge=paymentServices.find(service=>`${service.name} ${service.keywords||''}`.toLowerCase().includes('recharge'))
-  const billPayment=paymentServices.find(service=>`${service.name} ${service.category||''} ${service.keywords||''}`.toLowerCase().includes('bill'))
-
-  return <div className="home-page redesigned-home modern-access-home">
-    <section className="hero concept-hero modern-home-hero">
-      <div className="hero-copy"><span className="eyebrow light">Jobs • Scholarships • Services</span><h1>Find opportunities and essential services without confusion</h1><p>Search current jobs and scholarships first, then access public-service, recharge and bill-payment assistance from one clear place.</p><SearchPanel variant="hero"/><div className="hero-links"><Link className="hero-link-primary" to="/jobs">Browse latest jobs</Link><Link className="hero-link-track" to="/scholarships">Find scholarships</Link></div></div>
-      <aside className="hero-panel" aria-label="Quick access"><div className="hero-safety-card"><span className="safety-shield">✓</span><div><strong>Simple and secure</strong><p>Clear steps, transparent fees and no requests for OTPs, PINs, CVVs or passwords.</p></div></div><div className="hero-highlight-grid"><div><strong>Daily</strong><span>Job checks</span></div><div><strong>Current</strong><span>Scholarships</span></div><div><strong>{catalog.length||'100+'}</strong><span>Services</span></div><div><strong>Mobile</strong><span>Friendly access</span></div></div></aside>
-    </section>
-
-    <section className="home-priority-grid" aria-label="Primary homepage options">
-      <Link className="home-priority-card jobs" to="/jobs"><span className="priority-icon">▣</span><div><span className="eyebrow">Updated opportunities</span><h2>Latest Job Updates</h2><p>Government and private opportunities with clear deadlines and source details.</p><strong>View jobs →</strong></div></Link>
-      <Link className="home-priority-card scholarships" to="/scholarships"><span className="priority-icon">◆</span><div><span className="eyebrow">Education opportunities</span><h2>Scholarships</h2><p>Explore active central, state and other scholarship opportunities in one place.</p><strong>View scholarships →</strong></div></Link>
-    </section>
-
-    <LatestJobs/>
-
-    <section className="content-section home-scholarships" aria-labelledby="home-scholarships-title">
-      <div className="section-header"><div><span className="eyebrow">For students</span><h2 id="home-scholarships-title">Latest Scholarships</h2><p>Open an opportunity directly or browse the complete scholarship list.</p></div><Link className="text-link" to="/scholarships">View all scholarships →</Link></div>
-      {scholarships.length>0?<div className="home-scholarship-grid">{scholarships.map(item=><Link className="home-scholarship-card" key={item.id} to={scholarshipPath(item)}><span className="scholarship-badge">Scholarship</span><h3>{item.title}</h3><p>{item.provider}</p><small>{item.deadline?`Last date: ${item.deadline}`:'Check details for deadline'}</small><strong>View details →</strong></Link>)}</div>:<div className="home-inline-loading">Scholarships are loading. You can open the full scholarship page anytime.</div>}
-    </section>
-
-    <section className="content-section home-quick-actions" aria-labelledby="quick-actions-title"><div className="section-header"><div><span className="eyebrow">Quick access</span><h2 id="quick-actions-title">What do you want to do?</h2></div></div><div className="quick-action-grid"><Link to="/#service-search"><strong>Find a service</strong><span>Search certificates, IDs, schemes and more →</span></Link><Link to="/my-orders"><strong>Track a request</strong><span>See status, messages and payments →</span></Link><Link to={mobileRecharge?servicePath(mobileRecharge):'/#service-search'}><strong>Mobile recharge</strong><span>Start recharge assistance →</span></Link><Link to={billPayment?servicePath(billPayment):'/#service-search'}><strong>Pay a bill</strong><span>Find supported bill-payment assistance →</span></Link></div></section>
-
-    <section className="content-section crucial-services home-lower-section" aria-labelledby="crucial-services-title"><div className="section-header"><div><span className="eyebrow">Frequently needed</span><h2 id="crucial-services-title">Popular Services</h2></div><Link className="text-link" to="/#service-search">View all services →</Link></div><div className="crucial-service-grid">{crucial.map((service,index)=><Link className="crucial-service-card" to={servicePath(service)} key={service.id}><span className={`crucial-icon tone-${index+1}`} aria-hidden="true">{index===0?'▤':index===1?'▧':'◆'}</span><div><h3>{service.name}</h3><p>{service.description}</p><small>Applicable Assistance Fee ₹{Number(service.price_inr||0)}</small></div><span className="crucial-arrow" aria-hidden="true">›</span></Link>)}</div></section>
-
-    <section className="content-section crucial-services home-lower-section" aria-labelledby="recharge-bills-title"><div className="section-header"><div><span className="eyebrow">Recharge & bills</span><h2 id="recharge-bills-title">Recharge & Bill Payments</h2></div><Link className="text-link" to="/#service-search">View all services →</Link></div><div className="crucial-service-grid"><Link className="crucial-service-card" to={mobileRecharge?servicePath(mobileRecharge):'/#service-search'}><span className="crucial-icon tone-1" aria-hidden="true">▣</span><div><h3>Mobile Recharge</h3><p>{mobileRecharge?.description||'Recharge supported mobile connections through the available assistance service.'}</p><small>Assistance Fee ₹{Number(mobileRecharge?.price_inr??10)}</small></div><span className="crucial-arrow" aria-hidden="true">›</span></Link><Link className="crucial-service-card" to={billPayment?servicePath(billPayment):'/#service-search'}><span className="crucial-icon tone-2" aria-hidden="true">▤</span><div><h3>Bill Payments</h3><p>{billPayment?.description||'Find available electricity, DTH, broadband, water, gas and other bill-payment assistance.'}</p><small>Assistance Fee ₹{Number(billPayment?.price_inr??10)}</small></div><span className="crucial-arrow" aria-hidden="true">›</span></Link></div></section>
-
-    <div className="home-lower-section"><CategoriesSection/><ServicesSection/></div>
-
-    {reviews.length>0&&<section className="content-section home-lower-section" aria-labelledby="client-reviews-title"><div className="section-header"><div><span className="eyebrow">Client feedback</span><h2 id="client-reviews-title">Ratings & suggestions</h2></div></div><div className="review-grid">{reviews.map(review=><article className="review-card" key={review.id}><div className="review-stars" aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}{'☆'.repeat(5-review.rating)}</div><p>{review.comment||'Thank you.'}</p><footer><strong>{review.reviewer}</strong>{review.service&&<span>{review.service}</span>}</footer></article>)}</div></section>}
-
-    <section className="content-section privacy-block simplified-home-fee home-lower-section" id="help"><div className="privacy-copy"><span className="eyebrow">Transparent fees</span><h2>Know the charges before submitting</h2><p>Our assistance fee is separate from government or official charges. You review the applicable amounts before payment.</p></div><div className="home-fee-card"><span>Applicable Assistance Fee</span><dl><div><dt>Standard fee</dt><dd>₹{homepageFee}</dd></div><div><dt>Government / Official Fee</dt><dd>To be confirmed</dd></div></dl></div></section>
-    <section className="home-cta"><div><span className="eyebrow light">Everything in one place</span><h2>Jobs, scholarships, services and request tracking—made easier</h2></div><Link className="btn btn-primary light-btn" to="/#service-search">Search now</Link></section>
-  </div>
+ const [catalog,setCatalog]=useState<any[]>(()=>readCachedServices(true));const [scholarships,setScholarships]=useState<Scholarship[]>([])
+ useEffect(()=>{let a=true;fetchServiceCatalog().then(x=>{if(a)setCatalog(x)}).catch(()=>{});return()=>{a=false}},[])
+ useEffect(()=>{let a=true;fetchScholarships().then(x=>{if(a)setScholarships((x.items||[]).slice(0,5))}).catch(()=>{});return()=>{a=false}},[])
+ useEffect(()=>{const preload=()=>{import('./ServiceDetail');import('./Login');import('./Jobs');import('./Scholarships')};const idle=(window as any).requestIdleCallback;const h=idle?idle(preload,{timeout:2500}):window.setTimeout(preload,1200);return()=>idle?(window as any).cancelIdleCallback?.(h):window.clearTimeout(h)},[])
+ const browse=useMemo(()=>{const eligible=catalog.filter(isHomepageHighlightEligible),out:any[]=[];serviceTerms.forEach(t=>{const m=eligible.find(s=>!out.includes(s)&&`${s.name} ${s.category||''} ${s.keywords||''}`.toLowerCase().includes(t));if(m)out.push(m)});eligible.forEach(s=>{if(out.length<18&&!out.includes(s))out.push(s)});return out.slice(0,18)},[catalog])
+ const payments=useMemo(()=>catalog.filter(s=>paymentTerms.some(t=>`${s.name} ${s.category||''} ${s.keywords||''}`.toLowerCase().includes(t))).slice(0,8),[catalog])
+ const icon=(name:string)=>{const n=name.toLowerCase();if(n.includes('aadhaar'))return'◎';if(n.includes('vehicle')||n.includes('driving'))return'▰';if(n.includes('passport')||n.includes('pan')||n.includes('voter'))return'▣';if(n.includes('land'))return'⌂';if(n.includes('health'))return'♥';if(n.includes('education'))return'◆';return'▤'}
+ return <div className="world-home">
+  <section className="world-hero"><div className="world-hero-copy"><span className="world-kicker">GOVERNMENT SERVICES · JOBS · SCHOLARSHIPS · PAYMENTS · ALL IN ONE PLACE</span><h1>A Simpler Way to a <em>Brighter Tomorrow</em></h1><p>Access essential services, discover opportunities, pay bills and get clear support from one trusted platform.</p><SearchPanel variant="hero"/><div className="popular-row"><span>Popular:</span><Link to="/#browse-services">Certificates</Link><Link to="/jobs">Jobs</Link><Link to="/scholarships">Scholarships</Link><Link to="/#payments">Recharge & Bills</Link></div></div><aside className="world-hero-side"><div className="hero-promise"><b>⚡ Fast & Convenient</b><span>Save time, do more online</span></div><div className="hero-promise"><b>✓ Trusted & Secure</b><span>Clear steps and safer guidance</span></div><div className="hero-promise"><b>◆ Expert Support</b><span>Help when you need it</span></div><div className="hero-promise"><b>♥ Opportunities for All</b><span>Jobs, scholarships and more</span></div></aside></section>
+  <section className="world-primary" aria-label="Main actions"><Link to="/#browse-services"><i>▤</i><div><h2>Apply for Government Services</h2><p>Certificates, applications and more</p></div><b>›</b></Link><Link to="/jobs"><i>▣</i><div><h2>Find Government Jobs</h2><p>Latest notifications and opportunities</p></div><b>›</b></Link><Link to="/scholarships"><i>◆</i><div><h2>Explore Scholarships</h2><p>For students and aspirants</p></div><b>›</b></Link><Link to="/#payments"><i>₹</i><div><h2>Recharge & Pay Bills</h2><p>Mobile, DTH, utilities and more</p></div><b>›</b></Link></section>
+  <section className="world-section service-browser" id="browse-services"><header><div><h2>Browse Government Services</h2><p>Frequently needed services, arranged together for quick access.</p></div><Link to="/#service-search">View All Services →</Link></header><div className="service-icon-grid">{browse.map(s=><Link key={s.id} to={servicePath(s)}><i>{icon(s.name)}</i><span>{s.name}</span></Link>)}</div></section>
+  <section className="world-information-grid"><div className="world-panel jobs-panel"><header><h2>Latest Job Notifications</h2><Link to="/jobs">View All Jobs →</Link></header><LatestJobs/></div><div className="world-panel scholarship-panel"><header><h2>Latest Scholarships</h2><Link to="/scholarships">View All Scholarships →</Link></header><div className="compact-list">{scholarships.length?scholarships.map(s=><Link key={s.id} to={scholarshipPath(s)}><i>◆</i><div><b>{s.title}</b><span>{s.provider}</span></div><strong>Open</strong></Link>):<p>Scholarships are loading…</p>}</div></div><div className="world-panel payments-panel" id="payments"><header><h2>Recharge & Bill Payments</h2><Link to="/#service-search">View All →</Link></header><div className="payment-grid">{payments.length?payments.map(s=><Link key={s.id} to={servicePath(s)}><i>₹</i><span>{s.name}</span></Link>):<><Link to="/#service-search"><i>▣</i><span>Mobile Recharge</span></Link><Link to="/#service-search"><i>⚡</i><span>Electricity Bill</span></Link><Link to="/#service-search"><i>◉</i><span>DTH Recharge</span></Link><Link to="/#service-search"><i>▤</i><span>Other Bills</span></Link></>}</div><div className="support-card"><i>☏</i><div><b>Need Help?</b><span>Our support team is here for you.</span></div><Link to="/contact">Contact Support →</Link></div></div></section>
+  <section className="trust-strip"><div><b>✓</b><span><strong>Secure & Trusted</strong>Your data, our priority</span></div><div><b>⚡</b><span><strong>Fast & Convenient</strong>Save time online</span></div><div><b>◎</b><span><strong>Easy to Use</strong>Clear on mobile and desktop</span></div><div><b>♥</b><span><strong>Here to Help</strong>Support when you need it</span></div></section>
+  <section className="world-cta"><div><span>BETTER OPPORTUNITIES</span><h2>A clearer path to services and a brighter future.</h2><p>Learn · Apply · Track · Grow</p></div><Link to="/#service-search">Explore Now →</Link></section>
+ </div>
 }
