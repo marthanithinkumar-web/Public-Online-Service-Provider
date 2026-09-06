@@ -16,11 +16,13 @@ def _base_url():
     return (os.getenv('PUBLIC_APP_URL') or os.getenv('FRONTEND_URL') or '').rstrip('/')
 
 
-def _client_link(order_id=None):
+def _client_link(notification):
     base = _base_url()
+    if notification.title == 'New message from support':
+        return f'{base}/messages' if base else '/messages'
     if not base:
-        return '/my-orders'
-    return f'{base}/my-orders/{order_id}' if order_id else f'{base}/my-orders'
+        return f'/my-orders/{notification.order_id}' if notification.order_id else '/my-orders'
+    return f'{base}/my-orders/{notification.order_id}' if notification.order_id else f'{base}/my-orders'
 
 
 def _deliver_push(connection, notification):
@@ -41,7 +43,7 @@ def _deliver_push(connection, notification):
     payload = json.dumps({
         'title': str(notification.title or 'Application update')[:160],
         'body': str(notification.message or '')[:700],
-        'url': _client_link(notification.order_id),
+        'url': _client_link(notification),
     })
     sent = False
     for endpoint, p256dh, auth in rows:
@@ -61,25 +63,26 @@ def _deliver_push(connection, notification):
     return sent
 
 
-def _deliver_status_email(connection, notification):
+def _deliver_email(connection, notification):
     # Manual admin notifications already send email in the admin route. Automatic
-    # request status notifications previously only appeared inside the website, so
-    # add email delivery here without creating duplicate manual-notification emails.
-    if notification.title != 'Request status updated':
+    # status updates and private support replies need their own matching email.
+    if notification.title not in {'Request status updated', 'New message from support'}:
         return False
     email = connection.execute(
         select(User.email).where(User.id == notification.user_id, User.is_active.is_(True))
     ).scalar_one_or_none()
     if not email:
         return False
+    if notification.title == 'New message from support':
+        subject = 'Public Online Service Provider — New support message'
+        body = 'The service team replied to your private support chat. Sign in to your account to read and reply.'
+    else:
+        subject = 'Public Online Service Provider — Request status updated'
+        body = str(notification.message or '')
     try:
-        return bool(send_email(
-            email,
-            'Public Online Service Provider — Request status updated',
-            str(notification.message or ''),
-        ))
+        return bool(send_email(email, subject, body))
     except Exception as exc:
-        logger.warning('Client status email delivery failed (%s)', type(exc).__name__)
+        logger.warning('Client notification email delivery failed (%s)', type(exc).__name__)
         return False
 
 
@@ -96,6 +99,6 @@ def deliver_client_notification(mapper, connection, notification):
         if not user or user.is_admin or not user.is_active:
             return
         _deliver_push(connection, notification)
-        _deliver_status_email(connection, notification)
+        _deliver_email(connection, notification)
     except Exception as exc:
         logger.warning('Client notification delivery failed (%s)', type(exc).__name__)
