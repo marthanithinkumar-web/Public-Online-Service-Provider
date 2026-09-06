@@ -38,10 +38,10 @@ const maybeOfferWebPush=async()=>{
   const isAdmin=Boolean((user as any).is_admin)
   const button=document.createElement('button')
   button.id='web-push-optin'
-  button.textContent=isAdmin?'Enable admin phone notifications':'Enable application notifications'
-  button.setAttribute('aria-label',button.textContent)
-  Object.assign(button.style,{position:'fixed',right:'16px',bottom:'16px',zIndex:'9999',padding:'12px 16px',borderRadius:'10px',border:'1px solid currentColor',background:'Canvas',color:'CanvasText',boxShadow:'0 4px 16px rgba(0,0,0,.18)',fontWeight:'600'})
-  button.onclick=async()=>{button.disabled=true;button.textContent='Enabling…';try{await enableWebPush();sessionStorage.setItem(`push-synced:${userKey}`,'1');button.remove()}catch(err){button.disabled=false;button.textContent=err instanceof Error?err.message:'Could not enable notifications'}}
+  button.textContent=isAdmin?'🔔 Enable admin phone notifications':'🔔 Enable application notifications'
+  button.setAttribute('aria-label',isAdmin?'Enable admin phone notifications':'Enable application notifications on this phone')
+  Object.assign(button.style,{position:'fixed',right:'12px',bottom:'82px',zIndex:'9999',width:'min(360px, calc(100vw - 24px))',minHeight:'58px',padding:'16px 20px',borderRadius:'14px',border:'2px solid currentColor',background:'Canvas',color:'CanvasText',boxShadow:'0 8px 28px rgba(0,0,0,.28)',fontWeight:'800',fontSize:'16px',lineHeight:'1.25',textAlign:'center',cursor:'pointer'})
+  button.onclick=async()=>{button.disabled=true;button.textContent='Enabling notifications…';try{await enableWebPush();sessionStorage.setItem(`push-synced:${userKey}`,'1');button.remove()}catch(err){button.disabled=false;button.textContent=err instanceof Error?err.message:(isAdmin?'🔔 Enable admin phone notifications':'🔔 Enable application notifications')}}
   document.body.appendChild(button)
 }
 
