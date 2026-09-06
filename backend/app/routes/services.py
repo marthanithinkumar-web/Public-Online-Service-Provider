@@ -4,6 +4,7 @@ from ..utils.database import db
 from ..middleware.auth import require_admin
 from ..schemas.service_schema import ServiceSchema
 from ..utils.service_requirements import get_service_requirements, SERVICE_REQUIREMENT_PROFILE_BY_NAME
+from ..utils.specialized_service_requirements import get_specialized_requirements, SPECIALIZED_SERVICE_NAMES
 from sqlalchemy import and_, or_
 from ..utils.seo import application_service_name, legacy_application_service_name, slugify
 
@@ -19,6 +20,8 @@ RECHARGE_BILL_SERVICE_NAMES = (
 )
 for service_name in RECHARGE_BILL_SERVICE_NAMES:
     SERVICE_REQUIREMENT_PROFILE_BY_NAME[service_name] = 'utility'
+for service_name in SPECIALIZED_SERVICE_NAMES:
+    SERVICE_REQUIREMENT_PROFILE_BY_NAME[service_name] = 'specialized_safe'
 
 
 def current_assistance_fee():
@@ -108,7 +111,13 @@ def _recharge_bill_requirements(service_name):
 
 def _service_dict(service):
     data = service.to_dict()
-    data['requirements'] = _recharge_bill_requirements(service.name) if service.name in RECHARGE_BILL_SERVICE_NAMES else get_service_requirements(service)
+    specialized = get_specialized_requirements(service.name)
+    if specialized:
+        data['requirements'] = specialized
+    elif service.name in RECHARGE_BILL_SERVICE_NAMES:
+        data['requirements'] = _recharge_bill_requirements(service.name)
+    else:
+        data['requirements'] = get_service_requirements(service)
     return data
 
 
