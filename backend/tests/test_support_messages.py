@@ -26,6 +26,11 @@ def _admin_token(client):
     return response.get_json()['token']
 
 
+def test_support_chat_requires_registered_client(client):
+    assert client.get('/api/messages/mine').status_code == 401
+    assert client.post('/api/messages/mine', json={'message': 'Hello'}).status_code == 401
+
+
 def test_private_client_admin_messaging_and_notifications(client):
     first_token = _register(client, 'chat-one@example.com', 'Chat One')
     second_token = _register(client, 'chat-two@example.com', 'Chat Two')
