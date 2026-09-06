@@ -77,6 +77,6 @@ test('client session can load its authenticated workspace in Chromium', async ({
   await page.goto('/my-orders')
   await expect(page).toHaveURL(/\/my-orders$/)
   await expect(page.getByRole('heading', { name: /Welcome, E2E Client/i })).toBeVisible()
-  await expect(page.getByRole('link', { name: /Government Services/i })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Government Services', exact: true })).toBeVisible()
   await expect(page.getByText('No notifications.')).toBeVisible()
 })
