@@ -1,70 +1,70 @@
 {
-  "generated_at": "2026-09-06T17:32:05.739490+00:00",
+  "generated_at": "2026-09-06T18:06:34.580001+00:00",
   "count": 34,
   "official_count": 33,
   "private_count": 1,
   "stale_source_count": 0,
   "discovery": {
     "mode": "official_daily_discovery",
-    "checked_at": "2026-09-06T17:32:05.739490+00:00",
+    "checked_at": "2026-09-06T18:06:34.580001+00:00",
     "source_health": {
       "nsp": {
         "ok": true,
         "source_name": "National Scholarship Portal",
         "source_url": "https://scholarships.gov.in/All-Scholarships",
         "count": 26,
-        "checked_at": "2026-09-06T17:32:05.739490+00:00",
-        "elapsed_ms": 2023
+        "checked_at": "2026-09-06T18:06:34.580001+00:00",
+        "elapsed_ms": 1505
       },
       "tg_epass_postmatric": {
         "ok": true,
         "source_name": "Telangana ePASS - Post Matric",
         "source_url": "https://telanganaepass.cgg.gov.in/epassonlinelinks.jsp",
         "count": 3,
-        "checked_at": "2026-09-06T17:32:05.739490+00:00",
-        "elapsed_ms": 745
+        "checked_at": "2026-09-06T18:06:34.580001+00:00",
+        "elapsed_ms": 751
       },
       "tg_epass_prematric": {
         "ok": true,
         "source_name": "Telangana ePASS - Pre Matric",
         "source_url": "https://telanganaepass.cgg.gov.in/PrematricLinks.do",
         "count": 2,
-        "checked_at": "2026-09-06T17:32:05.739490+00:00",
-        "elapsed_ms": 2881
+        "checked_at": "2026-09-06T18:06:34.580001+00:00",
+        "elapsed_ms": 3291
       },
       "tg_epass_overseas": {
         "ok": true,
         "source_name": "Telangana ePASS - Overseas Scholarships",
         "source_url": "https://telanganaepass.cgg.gov.in/OverseasLinks.do",
         "count": 2,
-        "checked_at": "2026-09-06T17:32:05.739490+00:00",
-        "elapsed_ms": 314
+        "checked_at": "2026-09-06T18:06:34.580001+00:00",
+        "elapsed_ms": 360
       },
       "ap_jnanabhumi": {
         "ok": true,
         "source_name": "Andhra Pradesh JnanaBhumi",
         "source_url": "https://jnanabhumi.ap.gov.in/",
         "count": 0,
-        "checked_at": "2026-09-06T17:32:05.739490+00:00",
-        "elapsed_ms": 854
+        "checked_at": "2026-09-06T18:06:34.580001+00:00",
+        "elapsed_ms": 892
       },
       "social_justice": {
         "ok": false,
         "source_name": "Department of Social Justice & Empowerment",
         "source_url": "https://nosmsje.gov.in/public/",
         "count": 0,
-        "checked_at": "2026-09-06T17:32:05.739490+00:00",
+        "checked_at": "2026-09-06T18:06:34.580001+00:00",
         "error": "RuntimeError: social_justice fetch failed: ConnectTimeout",
-        "elapsed_ms": 28089
+        "elapsed_ms": 27798
       },
       "tribal_affairs": {
         "ok": false,
         "source_name": "Ministry of Tribal Affairs",
         "source_url": "https://overseas.tribal.gov.in/AboutUs.aspx",
         "count": 0,
-        "checked_at": "2026-09-06T17:32:05.739490+00:00",
+        "checked_at": "2026-09-06T18:06:34.580001+00:00",
         "error": "RuntimeError: tribal_affairs fetch failed: ConnectTimeout",
-        "elapsed_ms": 28200
+        "elapsed_ms": 28204
       }
     }
   },
@@ -81,7 +81,7 @@
       "region": "India",
       "education_level": "School / Pre Matric",
       "category": "Welfare Based",
-      "eligibility": "Student Application : NOT YET OPENED; Student Application Open till : 30-09-2026; Financial Assistance For Education To The Wards Of Beedi/Cine/Iomc/Lsdm- Post Matric (Welfare Based Scheme); Student Application Open till : 31-10-2026; PM YASASVI Central Sector Scheme Of Top Class Education In Schools For OBC, EBC And DNT Students (Merit Based Scheme); Student Application Open till (for Renewal): 30-09-2026; PM YASASVI Central Sector Scheme Of Top Class Education In College For OBC, EBC And DNT Students (Merit Based Scheme); Stipend Scheme For Under Graduate And Post Graduate Studies In Indian Statistical Institute-Kolkata (Merit Based Scheme)",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -89,9 +89,9 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
-      "eligibility_source": "official_source_page"
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "eligibility_source": "official_source_unstructured"
     },
     {
       "id": "tg_epass_overseas-mahatma-jyothiba-phule-overseas-vidya-nidhi-for-bc-ebc-students",
@@ -105,7 +105,7 @@
       "region": "Telangana",
       "education_level": "Higher Education / Overseas",
       "category": "Welfare Based",
-      "eligibility": "b. Countries Eligible: USA, UK, Australia, Canada, Singapore, Germany, New Zealand, Japan, France and South Korea.; d. Only 1 child from a family is eligible.; e. 60% in Graduation and Eligible score in GRE/GMAT and English Proficiency Test as per GO.; MINORITY :-; Utilisation Certificates; Mahatma Jyothiba Phule Overseas Vidya Nidhi for BC and EBC students; Certificate Verification August/September 2026 (Spring Session); * Click Here For Certificate Verification Schedule --->",
+      "eligibility": "Certificate Verification August/September 2026 (Spring Session); * Click Here For Certificate Verification Schedule --->; * Click here for a list of documents to bring for Certificate Verification; * Graduation- 60%, GRE/GMAT weightage -20%, TOEFL/ IELTS /PTE weighatge -20%. This weightage is must for generation of Merit List.; Hence student should have the above test marks, even if the score is not required in the foreign universities.; Results (2024 August/September Fall Session) * :; List of selected BC and EBC students for Fall Session (2024 August/September) :",
       "status": "active",
       "source_key": "tg_epass_overseas",
       "source_type": "official",
@@ -113,8 +113,8 @@
       "record_type": "scholarship",
       "academic_year": null,
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
       "eligibility_source": "official_source_page"
     },
     {
@@ -129,7 +129,7 @@
       "region": "India",
       "education_level": "Students",
       "category": "Merit Based",
-      "eligibility": "Scholarship For Top Class Education For Students With Disabilities (Welfare Based Scheme); Student Application Open till : 31-10-2026; Student Application Open till : 30-09-2026; PM-USP – Central Sector Scheme Of Scholarship For College And University Students (CSSS) (Merit Based Scheme); Student Application Open till (for Renewal): 30-09-2026; National Fellowship And Scholarship For Higher Education Of ST Students - Scholarship (Formally Top Class Education For Schedule Tribe Students) (Merit Based Scheme); Financial Support To The Students Of NER For Higher Professional Courses(NEC Merit Scholarship) (Merit Based Scheme); Student Application Open till (for Renewal): 31-10-2026",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -137,9 +137,9 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
-      "eligibility_source": "official_source_page"
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "eligibility_source": "official_source_unstructured"
     },
     {
       "id": "nsp-pm-usp-special-scholarship-scheme-for-jammu-kashmir-and-ladakh",
@@ -153,7 +153,7 @@
       "region": "Jammu & Kashmir / Ladakh",
       "education_level": "Students",
       "category": "Merit Based",
-      "eligibility": "AICTE - Swanath Scholarship Scheme ( Technical Degree) (Welfare Based Scheme); Student Application Open till : 31-10-2026; Student Application Open till (for Renewal): 30-09-2026; AICTE - Pragati Scholarship Scheme For Girl Students ( Technical Degree) (Merit Based Scheme); AICTE - Pragati Scholarship Scheme For Girl Students ( Technical Diploma) (Merit Based Scheme); AICTE - Saksham Scholarship Scheme For Specially Abled Student ( Technical Diploma) (Welfare Based Scheme); AICTE - Saksham Scholarship Scheme For Specially Abled Student ( Technical Degree) (Welfare Based Scheme); AICTE - Swanath Scholarship Scheme (Technical Diploma) (Welfare Based Scheme)",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -161,10 +161,10 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
       "provider_normalized": true,
-      "eligibility_source": "official_source_page"
+      "eligibility_source": "official_source_unstructured"
     },
     {
       "id": "nsp-pm-usp-central-sector-scheme-of-scholarship-for-college-and-university-students-csss",
@@ -178,7 +178,7 @@
       "region": "India",
       "education_level": "Higher Education",
       "category": "Merit Based",
-      "eligibility": "Detailed scheme conditions are not exposed in structured text by this source listing. Open the linked official scheme details before applying.",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -186,8 +186,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
       "eligibility_source": "official_source_unstructured"
     },
     {
@@ -202,7 +202,7 @@
       "region": "India",
       "education_level": "School / Pre Matric",
       "category": "Welfare Based",
-      "eligibility": "Student Application Open till : 31-10-2026; Department of Empowerment of Persons with Disabilities; Pre Matric Scholarship For Students With Disabilities (Welfare Based Scheme); Student Application Open till : 30-09-2026; Post Matric Scholarship For Students With Disabilities (Welfare Based Scheme); Scholarship For Top Class Education For Students With Disabilities (Welfare Based Scheme); PM-USP – Central Sector Scheme Of Scholarship For College And University Students (CSSS) (Merit Based Scheme); Student Application Open till (for Renewal): 30-09-2026",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -210,9 +210,9 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
-      "eligibility_source": "official_source_page"
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "eligibility_source": "official_source_unstructured"
     },
     {
       "id": "nsp-aicte-pragati-scholarship-scheme-for-girl-students-technical-degree",
@@ -226,7 +226,7 @@
       "region": "India",
       "education_level": "Degree / Technical Degree",
       "category": "Merit Based",
-      "eligibility": "Detailed scheme conditions are not exposed in structured text by this source listing. Open the linked official scheme details before applying.",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -234,8 +234,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
       "provider_normalized": true,
       "eligibility_source": "official_source_unstructured"
     },
@@ -251,7 +251,7 @@
       "region": "India",
       "education_level": "Technical Diploma",
       "category": "Merit Based",
-      "eligibility": "Detailed scheme conditions are not exposed in structured text by this source listing. Open the linked official scheme details before applying.",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -259,8 +259,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
       "provider_normalized": true,
       "eligibility_source": "official_source_unstructured"
     },
@@ -276,7 +276,7 @@
       "region": "India",
       "education_level": "Degree / Technical Degree",
       "category": "Welfare Based",
-      "eligibility": "Detailed scheme conditions are not exposed in structured text by this source listing. Open the linked official scheme details before applying.",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -284,8 +284,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
       "provider_normalized": true,
       "eligibility_source": "official_source_unstructured"
     },
@@ -301,7 +301,7 @@
       "region": "India",
       "education_level": "Technical Diploma",
       "category": "Welfare Based",
-      "eligibility": "Detailed scheme conditions are not exposed in structured text by this source listing. Open the linked official scheme details before applying.",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -309,8 +309,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
       "provider_normalized": true,
       "eligibility_source": "official_source_unstructured"
     },
@@ -326,7 +326,7 @@
       "region": "India",
       "education_level": "Degree / Technical Degree",
       "category": "Welfare Based",
-      "eligibility": "Detailed scheme conditions are not exposed in structured text by this source listing. Open the linked official scheme details before applying.",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -334,8 +334,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
       "eligibility_source": "official_source_unstructured"
     },
     {
@@ -350,7 +350,7 @@
       "region": "India",
       "education_level": "Technical Diploma",
       "category": "Welfare Based",
-      "eligibility": "Detailed scheme conditions are not exposed in structured text by this source listing. Open the linked official scheme details before applying.",
+      "eligibility": "National Scholarship For Post Graduate Studies (Merit Based Scheme)",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -358,10 +358,10 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
       "provider_normalized": true,
-      "eligibility_source": "official_source_unstructured"
+      "eligibility_source": "official_source_page"
     },
     {
       "id": "nsp-central-sector-scholarship-of-top-class-education-for-sc-students",
@@ -375,7 +375,7 @@
       "region": "India",
       "education_level": "Students",
       "category": "Merit Based",
-      "eligibility": "Student Application Open till : 31-10-2026; Central Sector Scholarship Of Top Class Education For SC Students (Merit Based Scheme); Department of Empowerment of Persons with Disabilities; Pre Matric Scholarship For Students With Disabilities (Welfare Based Scheme); Student Application Open till : 30-09-2026; Post Matric Scholarship For Students With Disabilities (Welfare Based Scheme); Scholarship For Top Class Education For Students With Disabilities (Welfare Based Scheme); PM-USP – Central Sector Scheme Of Scholarship For College And University Students (CSSS) (Merit Based Scheme)",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -383,9 +383,9 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
-      "eligibility_source": "official_source_page"
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "eligibility_source": "official_source_unstructured"
     },
     {
       "id": "nsp-financial-assistance-for-education-to-the-wards-of-beedi-cine-iomc-lsdm-post-matric",
@@ -399,7 +399,7 @@
       "region": "India",
       "education_level": "Post Matric",
       "category": "Welfare Based",
-      "eligibility": "Student Application : NOT YET OPENED; Student Application Open till : 30-09-2026; Financial Assistance For Education To The Wards Of Beedi/Cine/Iomc/Lsdm- Post Matric (Welfare Based Scheme); Student Application Open till : 31-10-2026; PM YASASVI Central Sector Scheme Of Top Class Education In Schools For OBC, EBC And DNT Students (Merit Based Scheme); Student Application Open till (for Renewal): 30-09-2026; PM YASASVI Central Sector Scheme Of Top Class Education In College For OBC, EBC And DNT Students (Merit Based Scheme); Stipend Scheme For Under Graduate And Post Graduate Studies In Indian Statistical Institute-Kolkata (Merit Based Scheme)",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -407,9 +407,9 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
-      "eligibility_source": "official_source_page"
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "eligibility_source": "official_source_unstructured"
     },
     {
       "id": "nsp-financial-support-to-the-students-of-ner-for-higher-professional-courses-nec-merit-scholarship",
@@ -423,7 +423,7 @@
       "region": "North Eastern Region",
       "education_level": "Students",
       "category": "Merit Based",
-      "eligibility": "National Fellowship And Scholarship For Higher Education Of ST Students - Scholarship (Formally Top Class Education For Schedule Tribe Students) (Merit Based Scheme); Student Application Open till : 31-10-2026; Financial Support To The Students Of NER For Higher Professional Courses(NEC Merit Scholarship) (Merit Based Scheme); Student Application Open till (for Renewal): 31-10-2026; Last update on June 2026",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -431,9 +431,9 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
-      "eligibility_source": "official_source_page"
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "eligibility_source": "official_source_unstructured"
     },
     {
       "id": "nsp-icar-junior-research-fellowships-jrf-and-senior-research-fellowships-srf",
@@ -447,7 +447,7 @@
       "region": "India",
       "education_level": "Students",
       "category": "Merit Based",
-      "eligibility": "Detailed scheme conditions are not exposed in structured text by this source listing. Open the linked official scheme details before applying.",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -455,8 +455,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
       "provider_normalized": true,
       "eligibility_source": "official_source_unstructured"
     },
@@ -472,7 +472,7 @@
       "region": "India",
       "education_level": "Students",
       "category": "Merit Based",
-      "eligibility": "Detailed scheme conditions are not exposed in structured text by this source listing. Open the linked official scheme details before applying.",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -480,8 +480,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
       "eligibility_source": "official_source_unstructured"
     },
     {
@@ -496,7 +496,7 @@
       "region": "India",
       "education_level": "Students",
       "category": "Merit Based",
-      "eligibility": "Detailed scheme conditions are not exposed in structured text by this source listing. Open the linked official scheme details before applying.",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -504,8 +504,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
       "eligibility_source": "official_source_unstructured"
     },
     {
@@ -520,7 +520,7 @@
       "region": "India",
       "education_level": "Post Graduate",
       "category": "Merit Based",
-      "eligibility": "Detailed scheme conditions are not exposed in structured text by this source listing. Open the linked official scheme details before applying.",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -528,8 +528,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
       "eligibility_source": "official_source_unstructured"
     },
     {
@@ -544,7 +544,7 @@
       "region": "India",
       "education_level": "Higher Education",
       "category": "Merit Based",
-      "eligibility": "PM-USP – Central Sector Scheme Of Scholarship For College And University Students (CSSS) (Merit Based Scheme); Student Application Open till (for Renewal): 30-09-2026; National Fellowship And Scholarship For Higher Education Of ST Students - Scholarship (Formally Top Class Education For Schedule Tribe Students) (Merit Based Scheme); Student Application Open till : 31-10-2026; Financial Support To The Students Of NER For Higher Professional Courses(NEC Merit Scholarship) (Merit Based Scheme); Student Application Open till (for Renewal): 31-10-2026; Last update on June 2026",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -552,9 +552,9 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
-      "eligibility_source": "official_source_page"
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "eligibility_source": "official_source_unstructured"
     },
     {
       "id": "nsp-national-renewable-energy-fellowship-scheme",
@@ -568,7 +568,7 @@
       "region": "India",
       "education_level": "Students",
       "category": "Merit Based",
-      "eligibility": "PM YASASVI Central Sector Scheme Of Top Class Education In College For OBC, EBC And DNT Students (Merit Based Scheme); Student Application Open till : 31-10-2026; Stipend Scheme For Under Graduate And Post Graduate Studies In Indian Statistical Institute-Kolkata (Merit Based Scheme); Icar Post Graduate Scholarship(Pgs) (Merit Based Scheme); Central Sector Scholarship Of Top Class Education For SC Students (Merit Based Scheme)",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -576,9 +576,9 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
-      "eligibility_source": "official_source_page"
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "eligibility_source": "official_source_unstructured"
     },
     {
       "id": "nsp-post-matric-scholarship-for-students-with-disabilities",
@@ -592,7 +592,7 @@
       "region": "India",
       "education_level": "Post Matric",
       "category": "Welfare Based",
-      "eligibility": "Department of Empowerment of Persons with Disabilities; Pre Matric Scholarship For Students With Disabilities (Welfare Based Scheme); Student Application Open till : 30-09-2026; Post Matric Scholarship For Students With Disabilities (Welfare Based Scheme); Student Application Open till : 31-10-2026; Scholarship For Top Class Education For Students With Disabilities (Welfare Based Scheme); PM-USP – Central Sector Scheme Of Scholarship For College And University Students (CSSS) (Merit Based Scheme); Student Application Open till (for Renewal): 30-09-2026",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -600,9 +600,9 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
-      "eligibility_source": "official_source_page"
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "eligibility_source": "official_source_unstructured"
     },
     {
       "id": "nsp-prime-minister-s-scholarship-scheme-for-central-armed-police-forces-and-assam-rifles",
@@ -616,7 +616,7 @@
       "region": "India",
       "education_level": "Students",
       "category": "Merit Based",
-      "eligibility": "Detailed scheme conditions are not exposed in structured text by this source listing. Open the linked official scheme details before applying.",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -624,8 +624,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
       "eligibility_source": "official_source_unstructured"
     },
     {
@@ -640,7 +640,7 @@
       "region": "India",
       "education_level": "Students",
       "category": "Merit Based",
-      "eligibility": "Detailed scheme conditions are not exposed in structured text by this source listing. Open the linked official scheme details before applying.",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -648,8 +648,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
       "eligibility_source": "official_source_unstructured"
     },
     {
@@ -664,7 +664,7 @@
       "region": "India",
       "education_level": "Students",
       "category": "Merit Based",
-      "eligibility": "Detailed scheme conditions are not exposed in structured text by this source listing. Open the linked official scheme details before applying.",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -672,8 +672,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
       "eligibility_source": "official_source_unstructured"
     },
     {
@@ -688,7 +688,7 @@
       "region": "India",
       "education_level": "Students",
       "category": "Welfare Based",
-      "eligibility": "Post Matric Scholarship For Students With Disabilities (Welfare Based Scheme); Student Application Open till : 31-10-2026; Scholarship For Top Class Education For Students With Disabilities (Welfare Based Scheme); Student Application Open till : 30-09-2026; PM-USP – Central Sector Scheme Of Scholarship For College And University Students (CSSS) (Merit Based Scheme); Student Application Open till (for Renewal): 30-09-2026; National Fellowship And Scholarship For Higher Education Of ST Students - Scholarship (Formally Top Class Education For Schedule Tribe Students) (Merit Based Scheme); Financial Support To The Students Of NER For Higher Professional Courses(NEC Merit Scholarship) (Merit Based Scheme)",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -696,9 +696,9 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
-      "eligibility_source": "official_source_page"
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "eligibility_source": "official_source_unstructured"
     },
     {
       "id": "nsp-stipend-scheme-for-under-graduate-and-post-graduate-studies-in-indian-statistical-institute-kolkata",
@@ -712,7 +712,7 @@
       "region": "India",
       "education_level": "Post Graduate",
       "category": "Merit Based",
-      "eligibility": "Student Application Open till : 31-10-2026; Stipend Scheme For Under Graduate And Post Graduate Studies In Indian Statistical Institute-Kolkata (Merit Based Scheme); Icar Post Graduate Scholarship(Pgs) (Merit Based Scheme); Central Sector Scholarship Of Top Class Education For SC Students (Merit Based Scheme)",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
       "status": "active",
       "source_key": "nsp",
       "source_type": "official",
@@ -720,9 +720,9 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00",
-      "eligibility_source": "official_source_page"
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "eligibility_source": "official_source_unstructured"
     },
     {
       "id": "tg_epass_overseas-ambedkar-overseas-vidya-nidhi-for-sc-students",
@@ -744,8 +744,8 @@
       "record_type": "scholarship",
       "academic_year": null,
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00"
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00"
     },
     {
       "id": "tg_epass_postmatric-telangana-epass-other-state-post-matric-scholarship-registration-2026-27",
@@ -767,8 +767,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00"
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00"
     },
     {
       "id": "tg_epass_postmatric-telangana-epass-post-matric-scholarship-fresh-registration-2026-27",
@@ -790,8 +790,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00"
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00"
     },
     {
       "id": "tg_epass_postmatric-telangana-epass-post-matric-scholarship-renewal-2026-27",
@@ -813,8 +813,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00"
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00"
     },
     {
       "id": "tg_epass_prematric-telangana-epass-pre-matric-scholarship-fresh-registration-2026-27",
@@ -836,8 +836,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00"
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00"
     },
     {
       "id": "tg_epass_prematric-telangana-epass-pre-matric-scholarship-renewal-2026-27",
@@ -859,8 +859,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T17:32:05.739490+00:00",
-      "last_seen_at": "2026-09-06T17:32:05.739490+00:00"
+      "verified_at": "2026-09-06T18:06:34.580001+00:00",
+      "last_seen_at": "2026-09-06T18:06:34.580001+00:00"
     },
     {
       "id": "b4s-support-2026",
