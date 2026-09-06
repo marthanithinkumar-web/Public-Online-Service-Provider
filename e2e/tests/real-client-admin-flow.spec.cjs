@@ -26,8 +26,8 @@ test('real client application can be processed to completion by an admin', async
   await clientPage.getByLabel('Name*').fill(client.name)
   await clientPage.getByLabel('Phone number*').fill(client.phone)
   await clientPage.getByLabel('Email address*').fill(client.email)
-  await clientPage.getByLabel('Password*').fill(client.password)
-  await clientPage.getByLabel('Confirm password*').fill(client.password)
+  await clientPage.getByLabel('Password*', { exact: true }).fill(client.password)
+  await clientPage.getByLabel('Confirm password*', { exact: true }).fill(client.password)
   await clientPage.getByRole('button', { name: 'Create account', exact: true }).click()
 
   await expect(clientPage).toHaveURL(/\/services\/residence-certificate$/)
