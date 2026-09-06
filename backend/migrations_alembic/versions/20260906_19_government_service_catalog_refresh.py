@@ -1,13 +1,13 @@
 """refresh verified government service catalogue
 
 Revision ID: 20260906_19
-Revises: 20260904_18
+Revises: 20260906_20
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = '20260906_19'
-down_revision = '20260904_18'
+down_revision = '20260906_20'
 branch_labels = None
 depends_on = None
 
