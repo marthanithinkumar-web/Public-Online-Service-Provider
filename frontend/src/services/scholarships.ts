@@ -21,13 +21,28 @@ const isActive=(item:Scholarship)=>{
   const end=new Date(`${item.deadline}T23:59:59`)
   return Number.isNaN(end.getTime())||end.getTime()>=Date.now()
 }
+function scholarshipPriority(item:Scholarship){
+  const hay=`${item.provider||''} ${item.source_name||''} ${item.source_key||''}`.toLowerCase()
+  if(hay.includes('life insurance corporation')||hay.includes('lic golden jubilee')||hay.includes(' lic '))return 0
+  if(hay.includes('hdfc')||hay.includes('parivartan ecss'))return 1
+  if(hay.includes('buddy4study'))return 2
+  if(item.is_official||item.source_type==='official')return 10
+  return 20
+}
+function compareScholarships(a:Scholarship,b:Scholarship){
+  const priority=scholarshipPriority(a)-scholarshipPriority(b)
+  if(priority)return priority
+  const aDeadline=Date.parse(a.deadline||'')||Number.MAX_SAFE_INTEGER
+  const bDeadline=Date.parse(b.deadline||'')||Number.MAX_SAFE_INTEGER
+  return aDeadline-bDeadline
+}
 function filter(data:ScholarshipFeed,q=''){
   const tokens=q.toLowerCase().replace(/[^a-z0-9]+/g,' ').split(' ').filter(Boolean)
   const items=(data.items||[]).filter(isActive).filter(item=>{
     if(!tokens.length)return true
     const hay=[item.title,item.provider,item.source_name,item.source_type,item.region,item.education_level,item.category,item.eligibility,item.academic_year].join(' ').toLowerCase()
     return tokens.every(token=>hay.includes(token))
-  })
+  }).sort(compareScholarships)
   return {...data,items,count:items.length}
 }
 async function snapshot(){
