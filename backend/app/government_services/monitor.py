@@ -8,11 +8,11 @@ from pathlib import Path
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
-from .catalog import load_verified_catalog
 from .sources import SERVICE_WORDS, SOURCES
 
 USER_AGENT = 'Public Online Service Provider government-service monitor/1.0'
 MAX_LINKS_PER_SOURCE = 120
+CATALOG_PATH = Path(__file__).with_name('verified_catalog.json')
 
 
 class LinkParser(HTMLParser):
@@ -37,6 +37,13 @@ class LinkParser(HTMLParser):
             self.links.append((text, self._href))
             self._href = None
             self._text = []
+
+
+def _load_verified_names():
+    data = json.loads(CATALOG_PATH.read_text(encoding='utf-8'))
+    if data.get('schema_version') != 1 or not isinstance(data.get('services'), list):
+        raise ValueError('Invalid verified government-service manifest.')
+    return data, {str(item.get('name') or '').strip().lower() for item in data['services']}
 
 
 def _fetch(url):
@@ -104,8 +111,7 @@ def scan_source(source):
 
 
 def build_snapshot():
-    verified = load_verified_catalog()
-    verified_names = {item['name'].lower() for item in verified['services']}
+    verified, verified_names = _load_verified_names()
     sources = []
     failures = []
     discovered = []
