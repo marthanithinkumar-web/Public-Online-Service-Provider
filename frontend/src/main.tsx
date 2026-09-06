@@ -40,7 +40,7 @@ const maybeOfferWebPush=async()=>{
   button.id='web-push-optin'
   button.textContent=isAdmin?'Enable admin phone notifications':'Enable application notifications'
   button.setAttribute('aria-label',button.textContent)
-  Object.assign(button.style,{position:'fixed',right:'16px',bottom:isAdmin?'16px':'82px',zIndex:isAdmin?'9999':'68',padding:'12px 16px',borderRadius:'10px',border:'1px solid currentColor',background:'Canvas',color:'CanvasText',boxShadow:'0 4px 16px rgba(0,0,0,.18)',fontWeight:'600',maxWidth:'calc(100vw - 32px)'})
+  Object.assign(button.style,{position:'fixed',right:'16px',bottom:'16px',zIndex:'9999',padding:'12px 16px',borderRadius:'10px',border:'1px solid currentColor',background:'Canvas',color:'CanvasText',boxShadow:'0 4px 16px rgba(0,0,0,.18)',fontWeight:'600'})
   button.onclick=async()=>{button.disabled=true;button.textContent='Enabling…';try{await enableWebPush();sessionStorage.setItem(`push-synced:${userKey}`,'1');button.remove()}catch(err){button.disabled=false;button.textContent=err instanceof Error?err.message:'Could not enable notifications'}}
   document.body.appendChild(button)
 }
