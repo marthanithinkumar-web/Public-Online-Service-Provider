@@ -6,7 +6,7 @@ import './styles/global.css'
 import './styles/admin-service-search.css'
 import './styles/latest-jobs-layout.css'
 import { getUser } from './services/localStorage'
-import { enableAdminWebPush, webPushSupported } from './services/webPush'
+import { enableWebPush, syncWebPushIfGranted, webPushSupported } from './services/webPush'
 
 // Requirement fields remain optional unless their existing validation marks them required.
 const cleanOptionalCopy=(root:ParentNode=document)=>{
@@ -20,11 +20,30 @@ observer.observe(document.body,{childList:true,subtree:true})
 createRoot(document.getElementById('root')!).render(<React.StrictMode><BrowserRouter><Routes><Route path="/*" element={<App />} /></Routes></BrowserRouter></React.StrictMode>)
 queueMicrotask(()=>cleanOptionalCopy())
 
-// Browsers require notification permission to follow a user gesture. For an admin who
-// has not chosen yet, show one small enable button after login instead of prompting on load.
-window.addEventListener('load',()=>{
-  if(!getUser()?.is_admin||!webPushSupported()||Notification.permission!=='default'||document.getElementById('admin-push-optin'))return
-  const button=document.createElement('button');button.id='admin-push-optin';button.textContent='Enable admin phone notifications';button.setAttribute('aria-label','Enable admin phone notifications');Object.assign(button.style,{position:'fixed',right:'16px',bottom:'16px',zIndex:'9999',padding:'12px 16px',borderRadius:'10px',border:'1px solid currentColor',background:'Canvas',color:'CanvasText',boxShadow:'0 4px 16px rgba(0,0,0,.18)',fontWeight:'600'})
-  button.onclick=async()=>{button.disabled=true;button.textContent='Enabling…';try{await enableAdminWebPush();button.remove()}catch(err){button.disabled=false;button.textContent=err instanceof Error?err.message:'Could not enable notifications'}}
+// Browsers require notification permission to follow a user gesture. Offer the same
+// zero-cost Web Push opt-in to clients and admins after login. If permission was already
+// granted on this device, silently bind the existing browser subscription to the current
+// signed-in account so account/session changes do not lose notifications.
+const maybeOfferWebPush=async()=>{
+  const user=getUser()
+  if(!user||!webPushSupported())return
+  const userKey=String((user as any).id||(user as any).email||((user as any).is_admin?'admin':'client'))
+  if(Notification.permission==='granted'){
+    const syncKey=`push-synced:${userKey}`
+    if(sessionStorage.getItem(syncKey))return
+    try{await syncWebPushIfGranted();sessionStorage.setItem(syncKey,'1')}catch{/* retry on a later pass */}
+    return
+  }
+  if(Notification.permission!=='default'||document.getElementById('web-push-optin'))return
+  const isAdmin=Boolean((user as any).is_admin)
+  const button=document.createElement('button')
+  button.id='web-push-optin'
+  button.textContent=isAdmin?'Enable admin phone notifications':'Enable application notifications'
+  button.setAttribute('aria-label',button.textContent)
+  Object.assign(button.style,{position:'fixed',right:'16px',bottom:'16px',zIndex:'9999',padding:'12px 16px',borderRadius:'10px',border:'1px solid currentColor',background:'Canvas',color:'CanvasText',boxShadow:'0 4px 16px rgba(0,0,0,.18)',fontWeight:'600'})
+  button.onclick=async()=>{button.disabled=true;button.textContent='Enabling…';try{await enableWebPush();sessionStorage.setItem(`push-synced:${userKey}`,'1');button.remove()}catch(err){button.disabled=false;button.textContent=err instanceof Error?err.message:'Could not enable notifications'}}
   document.body.appendChild(button)
-})
+}
+
+window.addEventListener('load',()=>{void maybeOfferWebPush()})
+setInterval(()=>{void maybeOfferWebPush()},2000)
