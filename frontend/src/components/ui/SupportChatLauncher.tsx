@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react'
-import {Link,useLocation} from 'react-router-dom'
+import {useLocation} from 'react-router-dom'
 import {getSession} from '../../services/session'
 import ClientSupportChat from './ClientSupportChat'
 
@@ -11,11 +11,9 @@ export default function SupportChatLauncher(){
   useEffect(()=>setOpen(false),[location.pathname])
 
   const path=location.pathname
-  if(session?.is_admin||path.startsWith('/admin')||path.startsWith('/messages'))return null
-
-  if(!session){
-    return <Link className="support-chat-launcher" to="/login?returnTo=%2Fmessages" aria-label="Sign in to chat with admin"><span aria-hidden="true">●</span> Chat with Admin</Link>
-  }
+  // Private support chat is available only to authenticated, registered clients.
+  // Guests never receive a chat composer; admins use the separate Messages workspace.
+  if(!session||session.is_admin||path.startsWith('/admin')||path.startsWith('/messages'))return null
 
   return <>
     <button className="support-chat-launcher" type="button" aria-expanded={open} aria-controls="floating-support-chat" onClick={()=>setOpen(value=>!value)}><span aria-hidden="true">●</span> {open?'Close chat':'Chat with Admin'}</button>
