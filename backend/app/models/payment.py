@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+from sqlalchemy import event, inspect, text
+
 from ..utils.database import db
 
 
@@ -41,3 +43,43 @@ class Payment(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'captured_at': self.captured_at.isoformat() if self.captured_at else None,
         }
+
+
+def _send_payment_alert(connection, target):
+    try:
+        row = connection.execute(text('''
+            SELECT o.order_code, o.client_name, s.name AS service_name
+            FROM orders o LEFT JOIN services s ON s.id = o.service_id
+            WHERE o.id = :order_id
+        '''), {'order_id': target.order_id}).mappings().first()
+        if not row:
+            return
+        status = (target.status or 'updated').lower()
+        labels = {
+            'created': 'Payment initiated',
+            'authorized': 'Payment authorized',
+            'captured': 'Payment completed',
+            'paid': 'Payment completed',
+            'failed': 'Payment failed',
+            'refunded': 'Payment refunded',
+        }
+        title = labels.get(status, 'Payment updated')
+        client = (row.get('client_name') or 'A client').strip()[:120]
+        service = (row.get('service_name') or 'service').strip()[:160]
+        code = (row.get('order_code') or f'#{target.order_id}').strip()[:80]
+        amount = round((target.amount_paise or 0) / 100, 2)
+        from ..utils.admin_alerts import send_admin_activity_alert
+        send_admin_activity_alert(title, f'{client}: {title.lower()} for {service}. Amount: INR {amount:.2f}. Reference: {code}.', target.order_id)
+    except Exception:
+        pass
+
+
+@event.listens_for(Payment, 'after_insert')
+def _alert_admin_payment_created(mapper, connection, target):
+    _send_payment_alert(connection, target)
+
+
+@event.listens_for(Payment, 'after_update')
+def _alert_admin_payment_updated(mapper, connection, target):
+    if inspect(target).attrs.status.history.has_changes():
+        _send_payment_alert(connection, target)
