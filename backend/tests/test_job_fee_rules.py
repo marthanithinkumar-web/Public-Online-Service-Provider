@@ -66,12 +66,13 @@ def test_fee_rules_choose_person_specific_exemption(client):
         assert standard['amount_inr'] == 100
 
 
-def test_fee_rules_require_every_notification_factor(client):
+def test_fee_rules_keep_missing_notification_factor_unconfirmed(client):
     _service_id, job_id, _slug = _job(client)
     with client.application.app_context():
         job = db.session.get(JobNotification, job_id)
         result = assess_official_fee(job, {'gender':'Male','category':'General'})
-        assert result['status'] == 'missing_factors'
+        assert result['status'] == 'unconfirmed'
+        assert result['amount_inr'] is None
         assert 'Person with benchmark disability (PwBD)' in result['missing']
 
 
@@ -90,7 +91,7 @@ def test_job_order_snapshots_calculated_official_fee(client):
     assert order['application_data']['job_official_fee_assessment']['matched_rule'] == 'Standard fee'
 
 
-def test_job_order_rejects_missing_fee_factor(client):
+def test_job_order_allows_missing_fee_factor_and_defers_official_fee(client):
     service_id, _job_id, slug = _job(client)
     registered = client.post('/api/auth/register', json={'name':'Missing Fee Applicant','phone':'9992223322','email':'missing-fee@example.com','password':'strong-pass2'})
     headers = {'Authorization': f"Bearer {registered.get_json()['token']}"}
@@ -98,5 +99,8 @@ def test_job_order_rejects_missing_fee_factor(client):
         'service_id': service_id,
         'application_data': {'job_slug':slug,'gender':'Male','category':'General'},
     })
-    assert response.status_code == 400
-    assert 'fee-determining details' in response.get_json()['error']
+    assert response.status_code == 201
+    order = response.get_json()['order']
+    assert order['official_fee_status'] == 'unconfirmed'
+    assert order['official_fee_inr'] is None
+    assert order['application_data']['job_official_fee_assessment']['status'] == 'unconfirmed'
