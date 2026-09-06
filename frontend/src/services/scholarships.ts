@@ -51,8 +51,9 @@ async function snapshot(){
   return await response.json() as ScholarshipFeed
 }
 export async function fetchScholarships(q=''){
-  try{return filter((await api.get('/scholarships/',{params:q?{q}:{}})).data as ScholarshipFeed,q)}
-  catch{return filter(await snapshot(),q)}
+  const apiRequest=api.get('/scholarships/',{params:q?{q}:{}}).then(response=>response.data as ScholarshipFeed)
+  try{return filter(await Promise.any([snapshot(),apiRequest]),q)}
+  catch{return filter(await apiRequest,q)}
 }
 export async function fetchScholarship(slug:string){
   const data=await fetchScholarships()
