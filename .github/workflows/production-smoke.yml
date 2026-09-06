@@ -12,7 +12,7 @@ on:
       - backend/app/routes/services.py
       - backend/app/routes/fees.py
       - backend/app/utils/readiness.py
-      - backend/migrations_alembic/versions/20260904_18_bill_payment_services.py
+      - 'backend/migrations_alembic/versions/**'
       - frontend/scripts/seo-catalog.mjs
       - render.yaml
 
