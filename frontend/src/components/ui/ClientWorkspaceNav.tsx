@@ -2,8 +2,10 @@ import React from 'react'
 import {Link} from 'react-router-dom'
 
 const links=[
+  ['/','Home'],
   ['/my-orders','Dashboard'],
   ['/government-services','Government Services'],
+  ['/certificates','MeeSeva Certificates'],
   ['/jobs','Jobs'],
   ['/scholarships','Scholarships'],
   ['/recharge-bills','Recharge & Bills'],
