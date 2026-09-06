@@ -1,70 +1,70 @@
 {
-  "generated_at": "2026-09-06T18:06:34.580001+00:00",
+  "generated_at": "2026-09-06T18:58:54.593009+00:00",
   "count": 34,
   "official_count": 33,
   "private_count": 1,
   "stale_source_count": 0,
   "discovery": {
     "mode": "official_daily_discovery",
-    "checked_at": "2026-09-06T18:06:34.580001+00:00",
+    "checked_at": "2026-09-06T18:58:54.593009+00:00",
     "source_health": {
       "nsp": {
         "ok": true,
         "source_name": "National Scholarship Portal",
         "source_url": "https://scholarships.gov.in/All-Scholarships",
         "count": 26,
-        "checked_at": "2026-09-06T18:06:34.580001+00:00",
-        "elapsed_ms": 1505
+        "checked_at": "2026-09-06T18:58:54.593009+00:00",
+        "elapsed_ms": 2134
       },
       "tg_epass_postmatric": {
         "ok": true,
         "source_name": "Telangana ePASS - Post Matric",
         "source_url": "https://telanganaepass.cgg.gov.in/epassonlinelinks.jsp",
         "count": 3,
-        "checked_at": "2026-09-06T18:06:34.580001+00:00",
-        "elapsed_ms": 751
+        "checked_at": "2026-09-06T18:58:54.593009+00:00",
+        "elapsed_ms": 1167
       },
       "tg_epass_prematric": {
         "ok": true,
         "source_name": "Telangana ePASS - Pre Matric",
         "source_url": "https://telanganaepass.cgg.gov.in/PrematricLinks.do",
         "count": 2,
-        "checked_at": "2026-09-06T18:06:34.580001+00:00",
-        "elapsed_ms": 3291
+        "checked_at": "2026-09-06T18:58:54.593009+00:00",
+        "elapsed_ms": 3381
       },
       "tg_epass_overseas": {
         "ok": true,
         "source_name": "Telangana ePASS - Overseas Scholarships",
         "source_url": "https://telanganaepass.cgg.gov.in/OverseasLinks.do",
         "count": 2,
-        "checked_at": "2026-09-06T18:06:34.580001+00:00",
-        "elapsed_ms": 360
+        "checked_at": "2026-09-06T18:58:54.593009+00:00",
+        "elapsed_ms": 414
       },
       "ap_jnanabhumi": {
         "ok": true,
         "source_name": "Andhra Pradesh JnanaBhumi",
         "source_url": "https://jnanabhumi.ap.gov.in/",
         "count": 0,
-        "checked_at": "2026-09-06T18:06:34.580001+00:00",
-        "elapsed_ms": 892
+        "checked_at": "2026-09-06T18:58:54.593009+00:00",
+        "elapsed_ms": 1020
       },
       "social_justice": {
         "ok": false,
         "source_name": "Department of Social Justice & Empowerment",
         "source_url": "https://nosmsje.gov.in/public/",
         "count": 0,
-        "checked_at": "2026-09-06T18:06:34.580001+00:00",
+        "checked_at": "2026-09-06T18:58:54.593009+00:00",
         "error": "RuntimeError: social_justice fetch failed: ConnectTimeout",
-        "elapsed_ms": 27798
+        "elapsed_ms": 27769
       },
       "tribal_affairs": {
         "ok": false,
         "source_name": "Ministry of Tribal Affairs",
         "source_url": "https://overseas.tribal.gov.in/AboutUs.aspx",
         "count": 0,
-        "checked_at": "2026-09-06T18:06:34.580001+00:00",
+        "checked_at": "2026-09-06T18:58:54.593009+00:00",
         "error": "RuntimeError: tribal_affairs fetch failed: ConnectTimeout",
-        "elapsed_ms": 28204
+        "elapsed_ms": 27507
       }
     }
   },
@@ -89,9 +89,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "tg_epass_overseas-mahatma-jyothiba-phule-overseas-vidya-nidhi-for-bc-ebc-students",
@@ -105,7 +107,7 @@
       "region": "Telangana",
       "education_level": "Higher Education / Overseas",
       "category": "Welfare Based",
-      "eligibility": "Certificate Verification August/September 2026 (Spring Session); * Click Here For Certificate Verification Schedule --->; * Click here for a list of documents to bring for Certificate Verification; * Graduation- 60%, GRE/GMAT weightage -20%, TOEFL/ IELTS /PTE weighatge -20%. This weightage is must for generation of Merit List.; Hence student should have the above test marks, even if the score is not required in the foreign universities.; Results (2024 August/September Fall Session) * :; List of selected BC and EBC students for Fall Session (2024 August/September) :",
+      "eligibility": "Certificate Verification August/September 2026 (Spring Session); * Click Here For Certificate Verification Schedule --->; * Click here for a list of documents to bring for Certificate Verification; * Graduation- 60%, GRE/GMAT weightage -20%, TOEFL/ IELTS /PTE weighatge -20%. This weightage is must for generation of Merit List.; Hence student should have the above test marks, even if the score is not required in the foreign universities.; Results (2024 August/September Fall Session) * :; List of selected BC and EBC students for Fall Session (2024 August/September) :; Merit List of BC and EBC students for 2024 August/September Fall Session :",
       "status": "active",
       "source_key": "tg_epass_overseas",
       "source_type": "official",
@@ -113,9 +115,15 @@
       "record_type": "scholarship",
       "academic_year": null,
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_page"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_page",
+      "documents": [
+        "Certificate Verification August/September 2026 (Spring Session)",
+        "* Click Here For Certificate Verification Schedule --->",
+        "* Click here for a list of documents to bring for Certificate Verification"
+      ],
+      "documents_source": "official_source_page"
     },
     {
       "id": "nsp-national-means-cum-merit-scholarship",
@@ -137,9 +145,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-pm-usp-special-scholarship-scheme-for-jammu-kashmir-and-ladakh",
@@ -161,10 +171,12 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
       "provider_normalized": true,
-      "eligibility_source": "official_source_unstructured"
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-pm-usp-central-sector-scheme-of-scholarship-for-college-and-university-students-csss",
@@ -186,9 +198,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-pre-matric-scholarship-for-students-with-disabilities",
@@ -210,9 +224,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-aicte-pragati-scholarship-scheme-for-girl-students-technical-degree",
@@ -234,10 +250,12 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
       "provider_normalized": true,
-      "eligibility_source": "official_source_unstructured"
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-aicte-pragati-scholarship-scheme-for-girl-students-technical-diploma",
@@ -259,10 +277,12 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
       "provider_normalized": true,
-      "eligibility_source": "official_source_unstructured"
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-aicte-saksham-scholarship-scheme-for-specially-abled-student-technical-degree",
@@ -284,10 +304,12 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
       "provider_normalized": true,
-      "eligibility_source": "official_source_unstructured"
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-aicte-saksham-scholarship-scheme-for-specially-abled-student-technical-diploma",
@@ -309,10 +331,12 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
       "provider_normalized": true,
-      "eligibility_source": "official_source_unstructured"
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-aicte-swanath-scholarship-scheme-technical-degree",
@@ -334,9 +358,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-aicte-swanath-scholarship-scheme-technical-diploma",
@@ -358,10 +384,12 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
       "provider_normalized": true,
-      "eligibility_source": "official_source_page"
+      "eligibility_source": "official_source_page",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-central-sector-scholarship-of-top-class-education-for-sc-students",
@@ -383,9 +411,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-financial-assistance-for-education-to-the-wards-of-beedi-cine-iomc-lsdm-post-matric",
@@ -407,9 +437,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-financial-support-to-the-students-of-ner-for-higher-professional-courses-nec-merit-scholarship",
@@ -431,9 +463,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-icar-junior-research-fellowships-jrf-and-senior-research-fellowships-srf",
@@ -455,10 +489,12 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
       "provider_normalized": true,
-      "eligibility_source": "official_source_unstructured"
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-icar-national-talent-scholarship-nts-pg",
@@ -480,9 +516,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-icar-national-talent-scholarship-nts-ug",
@@ -504,9 +542,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-icar-post-graduate-scholarship-pgs",
@@ -528,9 +568,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-national-fellowship-and-scholarship-for-higher-education-of-st-students-scholarship-formally-top-class-education-for-schedule-tribe-students",
@@ -552,9 +594,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-national-renewable-energy-fellowship-scheme",
@@ -576,9 +620,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-post-matric-scholarship-for-students-with-disabilities",
@@ -600,9 +646,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-prime-minister-s-scholarship-scheme-for-central-armed-police-forces-and-assam-rifles",
@@ -624,9 +672,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-prime-minister-s-scholarship-scheme-for-ministry-of-railways",
@@ -648,9 +698,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-prime-minister-s-scholarship-scheme-for-wards-of-states-uts-police-personnel-martyred-during-terror-naxal-attacks",
@@ -672,9 +724,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-scholarship-for-top-class-education-for-students-with-disabilities",
@@ -696,9 +750,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "nsp-stipend-scheme-for-under-graduate-and-post-graduate-studies-in-indian-statistical-institute-kolkata",
@@ -720,9 +776,11 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00",
-      "eligibility_source": "official_source_unstructured"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students"
     },
     {
       "id": "tg_epass_overseas-ambedkar-overseas-vidya-nidhi-for-sc-students",
@@ -744,8 +802,8 @@
       "record_type": "scholarship",
       "academic_year": null,
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00"
     },
     {
       "id": "tg_epass_postmatric-telangana-epass-other-state-post-matric-scholarship-registration-2026-27",
@@ -767,8 +825,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00"
     },
     {
       "id": "tg_epass_postmatric-telangana-epass-post-matric-scholarship-fresh-registration-2026-27",
@@ -790,8 +848,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00"
     },
     {
       "id": "tg_epass_postmatric-telangana-epass-post-matric-scholarship-renewal-2026-27",
@@ -813,8 +871,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00"
     },
     {
       "id": "tg_epass_prematric-telangana-epass-pre-matric-scholarship-fresh-registration-2026-27",
@@ -836,8 +894,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00"
     },
     {
       "id": "tg_epass_prematric-telangana-epass-pre-matric-scholarship-renewal-2026-27",
@@ -859,8 +917,8 @@
       "record_type": "scholarship",
       "academic_year": "2026-27",
       "discovery_method": "official_page",
-      "verified_at": "2026-09-06T18:06:34.580001+00:00",
-      "last_seen_at": "2026-09-06T18:06:34.580001+00:00"
+      "verified_at": "2026-09-06T18:58:54.593009+00:00",
+      "last_seen_at": "2026-09-06T18:58:54.593009+00:00"
     },
     {
       "id": "b4s-support-2026",
