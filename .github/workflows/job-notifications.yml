@@ -34,8 +34,8 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install official-source fetch dependency
-        run: python -m pip install --disable-pip-version-check requests==2.32.5
+      - name: Install official-source fetch dependencies
+        run: python -m pip install --disable-pip-version-check requests==2.32.5 pypdf==6.0.0
 
       - name: Build verified public job snapshot
         env:
