@@ -11,13 +11,10 @@ export function webPushSupported(){
   return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
 }
 
-export async function enableAdminWebPush(){
-  if(!webPushSupported())throw new Error('Push notifications are not supported on this browser.')
+async function ensureSubscription(){
   const keyResponse=await api.get('/push/public-key')
   const publicKey=keyResponse.data?.public_key
   if(!publicKey)throw new Error('Push notifications are not configured yet.')
-  const permission=await Notification.requestPermission()
-  if(permission!=='granted')throw new Error('Notification permission was not granted.')
   const registration=await navigator.serviceWorker.register('/push-sw.js')
   await navigator.serviceWorker.ready
   let subscription=await registration.pushManager.getSubscription()
@@ -26,7 +23,19 @@ export async function enableAdminWebPush(){
   return true
 }
 
-export async function disableAdminWebPush(){
+export async function enableWebPush(){
+  if(!webPushSupported())throw new Error('Push notifications are not supported on this browser.')
+  const permission=await Notification.requestPermission()
+  if(permission!=='granted')throw new Error('Notification permission was not granted.')
+  return ensureSubscription()
+}
+
+export async function syncWebPushIfGranted(){
+  if(!webPushSupported()||Notification.permission!=='granted')return false
+  return ensureSubscription()
+}
+
+export async function disableWebPush(){
   if(!webPushSupported())return
   const registration=await navigator.serviceWorker.getRegistration('/push-sw.js') || await navigator.serviceWorker.getRegistration()
   const subscription=await registration?.pushManager.getSubscription()
@@ -35,3 +44,7 @@ export async function disableAdminWebPush(){
     await subscription.unsubscribe()
   }
 }
+
+// Backwards-compatible aliases for any existing admin UI imports.
+export const enableAdminWebPush=enableWebPush
+export const disableAdminWebPush=disableWebPush
