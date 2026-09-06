@@ -7,8 +7,13 @@ import requests
 from .discovery import USER_AGENT, html_lines, is_official_url
 
 _GENERIC = re.compile(r'apply only if|review the current|official provider|current eligibility criteria|detailed scheme conditions', re.I)
-_FACT = re.compile(r'eligib|income|family income|class\s|course|degree|diploma|category|sc\b|st\b|obc\b|minority|disabil|domicile|resident|marks|percentage|documents?|certificate|award|amount|₹|rs\.?\s*\d', re.I)
+_FACT = re.compile(r'eligib|income|family income|class\s|course|degree|diploma|category|sc\b|st\b|obc\b|minority|disabil|domicile|resident|marks|percentage|documents?|certificate|award|amount|benefit|scholarship rate|₹|rs\.?\s*[\d,]+', re.I)
 _DEADLINE_ONLY = re.compile(r'^student application\s+(?:open|opened|not yet opened|open till|open until|open till \(for renewal\))', re.I)
+_INCOME = re.compile(r'(?:annual\s+)?(?:family\s+)?income.{0,80}?(?:₹|rs\.?|inr)\s*([\d,]+(?:\.\d+)?)', re.I)
+_AWARD = re.compile(r'(?:award|benefit|scholarship(?:\s+amount|\s+rate)?|financial assistance).{0,100}?((?:₹|rs\.?|inr)\s*[\d,]+(?:\.\d+)?(?:\s*(?:per|/)[^.;]{1,30})?)', re.I)
+_DOCUMENT = re.compile(r'documents?|certificate|marksheet|mark sheet|income certificate|caste certificate|domicile|bonafide|bank passbook|aadhaar', re.I)
+
+NSP_APPLICATION_NOTE = 'For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.'
 
 
 def _compact(value):
@@ -41,26 +46,19 @@ def _looks_like_title(line, title):
 
 
 def _scheme_context(text, title, other_titles=()):
-    """Return only the current scheme's block, stopping before the next scheme.
-
-    Listing pages such as NSP place many scholarship names next to one another.
-    A broad character window can therefore attach a neighbouring scheme's
-    eligibility to the wrong scholarship. This line-bounded extraction refuses
-    to cross a recognised title boundary.
-    """
+    """Return only the current scheme's block, stopping before the next scheme."""
     if not text or not title:
         return ''
     lines = [_compact(line) for line in text.splitlines() if _compact(line)]
     start = next((index for index, line in enumerate(lines) if _looks_like_title(line, title)), None)
     if start is None:
         return ''
-
     selected = [lines[start]]
-    for line in lines[start + 1 : start + 18]:
+    for line in lines[start + 1 : start + 24]:
         if any(_looks_like_title(line, other) for other in other_titles if other and other != title):
             break
         selected.append(line)
-        if len(selected) >= 10:
+        if len(selected) >= 14:
             break
     return '\n'.join(selected)
 
@@ -69,15 +67,30 @@ def _facts(context, title):
     lines = [_compact(x) for x in context.splitlines() if _compact(x)]
     selected = []
     for line in lines:
-        if _looks_like_title(line, title):
-            continue
-        if _DEADLINE_ONLY.search(line):
+        if _looks_like_title(line, title) or _DEADLINE_ONLY.search(line):
             continue
         if _FACT.search(line) and 8 <= len(line) <= 420 and line not in selected:
             selected.append(line)
-        if len(selected) >= 8:
+        if len(selected) >= 10:
             break
     return selected
+
+
+def _structured_facts(item, facts):
+    """Populate display fields only when the same scheme block states them."""
+    joined = ' '.join(facts)
+    income = _INCOME.search(joined)
+    if income and not item.get('income_limit'):
+        item['income_limit'] = f"₹{income.group(1)}"
+        item['income_limit_source'] = 'official_source_page'
+    award = _AWARD.search(joined)
+    if award and not item.get('award'):
+        item['award'] = _compact(award.group(1))
+        item['award_source'] = 'official_source_page'
+    documents = [line for line in facts if _DOCUMENT.search(line)]
+    if documents and not item.get('documents'):
+        item['documents'] = documents[:8]
+        item['documents_source'] = 'official_source_page'
 
 
 def enrich_scholarships(items, session=None):
@@ -91,7 +104,7 @@ def enrich_scholarships(items, session=None):
         try:
             text = _source_text(url, session=session)
         except requests.RequestException:
-            continue
+            text = ''
         titles = [_compact(item.get('title')) for item in group]
         for item in group:
             title = _compact(item.get('title'))
@@ -101,7 +114,11 @@ def enrich_scholarships(items, session=None):
             if facts:
                 item['eligibility'] = '; '.join(facts)
                 item['eligibility_source'] = 'official_source_page'
+                _structured_facts(item, facts)
             elif not existing or _GENERIC.search(existing) or item.get('source_key') == 'nsp':
                 item['eligibility'] = 'Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.'
                 item['eligibility_source'] = 'official_source_unstructured'
+            if item.get('source_key') == 'nsp':
+                item['application_requirements_note'] = NSP_APPLICATION_NOTE
+                item['application_requirements_source'] = 'https://scholarships.gov.in/Students'
     return items
