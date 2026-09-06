@@ -50,7 +50,7 @@ test('real client application can be processed to completion by an admin', async
   const adminPage = await adminContext.newPage()
   await adminPage.goto('/admin/login')
   await adminPage.getByLabel('Email address').fill(adminEmail)
-  await adminPage.getByLabel('Password').fill(adminPassword)
+  await adminPage.locator('input[type="password"][autocomplete="current-password"]').fill(adminPassword)
   await adminPage.getByRole('button', { name: 'Sign in securely', exact: true }).click()
 
   await expect(adminPage).toHaveURL(/\/admin\/dashboard$/)
