@@ -9,7 +9,8 @@ from .models.user import User
 from .models.service import Category, Service
 from .models.job import JobSource
 from .models.payment import Payment
-from .routes import auth, services, orders, admin, reviews, grievances, categories, notifications, messages, jobs, fees, payments, admin_payments, scholarships
+from .models.push_subscription import PushSubscription
+from .routes import auth, services, orders, admin, reviews, grievances, categories, notifications, messages, jobs, fees, payments, admin_payments, scholarships, push
 from .scholarships.payment_guard import register_scholarship_payment_guard
 from flask_cors import CORS
 from flask_migrate import Migrate
@@ -66,14 +67,7 @@ def ensure_default_services():
         else:service.category_id=service.category_id or cat.id
     residence=Service.query.filter_by(name='Residence Certificate').first()
     if residence:residence.official_fee_status='known';residence.official_fee_inr=80.0
-    recharge_bill_names=(
-        'Mobile Recharge',
-        'Mobile Postpaid Bill Payment Assistance',
-        'DTH Recharge Assistance',
-        'Broadband / Landline Bill Payment Assistance',
-        'FASTag Recharge Assistance',
-        'Piped Gas Bill Payment Assistance',
-    )
+    recharge_bill_names=('Mobile Recharge','Mobile Postpaid Bill Payment Assistance','DTH Recharge Assistance','Broadband / Landline Bill Payment Assistance','FASTag Recharge Assistance','Piped Gas Bill Payment Assistance')
     for recharge_bill in Service.query.filter(Service.name.in_(recharge_bill_names)).all():
         recharge_bill.official_fee_status='none';recharge_bill.official_fee_inr=0.0
     db.session.commit()
@@ -97,7 +91,7 @@ def create_app():
         if os.getenv('SKIP_DATABASE_BOOTSTRAP') != '1':
             db.create_all();ensure_user_schema(db);ensure_default_services();ensure_job_sources();ensure_admin_user()
     register_scholarship_payment_guard(app)
-    app.register_blueprint(auth.bp,url_prefix='/api/auth');app.register_blueprint(services.bp,url_prefix='/api/services');app.register_blueprint(orders.bp,url_prefix='/api/orders');app.register_blueprint(admin.bp,url_prefix='/api/admin');app.register_blueprint(reviews.bp,url_prefix='/api/reviews');app.register_blueprint(grievances.bp,url_prefix='/api/grievances');app.register_blueprint(categories.bp,url_prefix='/api/categories');app.register_blueprint(notifications.bp,url_prefix='/api/notifications');app.register_blueprint(messages.bp,url_prefix='/api/messages');app.register_blueprint(jobs.bp,url_prefix='/api/jobs');app.register_blueprint(scholarships.bp,url_prefix='/api/scholarships');app.register_blueprint(fees.bp,url_prefix='/api/fees');app.register_blueprint(payments.bp,url_prefix='/api/payments');app.register_blueprint(admin_payments.bp,url_prefix='/api/admin');app.register_blueprint(__import__('app.routes.uploads',fromlist=['bp']).bp,url_prefix='/api/uploads')
+    app.register_blueprint(auth.bp,url_prefix='/api/auth');app.register_blueprint(services.bp,url_prefix='/api/services');app.register_blueprint(orders.bp,url_prefix='/api/orders');app.register_blueprint(admin.bp,url_prefix='/api/admin');app.register_blueprint(reviews.bp,url_prefix='/api/reviews');app.register_blueprint(grievances.bp,url_prefix='/api/grievances');app.register_blueprint(categories.bp,url_prefix='/api/categories');app.register_blueprint(notifications.bp,url_prefix='/api/notifications');app.register_blueprint(messages.bp,url_prefix='/api/messages');app.register_blueprint(jobs.bp,url_prefix='/api/jobs');app.register_blueprint(scholarships.bp,url_prefix='/api/scholarships');app.register_blueprint(fees.bp,url_prefix='/api/fees');app.register_blueprint(payments.bp,url_prefix='/api/payments');app.register_blueprint(admin_payments.bp,url_prefix='/api/admin');app.register_blueprint(push.bp,url_prefix='/api/push');app.register_blueprint(__import__('app.routes.uploads',fromlist=['bp']).bp,url_prefix='/api/uploads')
     @app.get('/')
     def index():return jsonify({'message':'Public Online Service Provider API'})
     @app.get('/health')
@@ -108,17 +102,9 @@ def create_app():
         return jsonify({'status':'ok'}),200
     @app.get('/readiness')
     def readiness():
-        try:
-            db.session.execute(text('SELECT 1'))
+        try:db.session.execute(text('SELECT 1'))
         except Exception:
-            app.logger.exception('Database readiness check failed')
-            return jsonify({'status':'unavailable','checks':{'database':False}}),503
-        checks={'database':True,**production_readiness()}
-        checks['persistent_storage_connectivity']=persistent_storage_connectivity()
-        checks['shared_rate_limit_connectivity']=shared_rate_limit_connectivity()
-        checks['smtp_connectivity']=smtp_connectivity()
-        checks['razorpay_connectivity']=razorpay_connectivity()
-        status=readiness_status(checks)
-        strict=os.getenv('STRICT_PRODUCTION_READINESS','0')=='1'
+            app.logger.exception('Database readiness check failed');return jsonify({'status':'unavailable','checks':{'database':False}}),503
+        checks={'database':True,**production_readiness()};checks['persistent_storage_connectivity']=persistent_storage_connectivity();checks['shared_rate_limit_connectivity']=shared_rate_limit_connectivity();checks['smtp_connectivity']=smtp_connectivity();checks['razorpay_connectivity']=razorpay_connectivity();status=readiness_status(checks);strict=os.getenv('STRICT_PRODUCTION_READINESS','0')=='1'
         return jsonify({'status':status,'checks':checks}), (503 if strict and status!='ready' else 200)
     return app
