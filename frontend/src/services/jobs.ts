@@ -19,6 +19,27 @@ const api=axios.create({baseURL:apiBase,timeout:8000})
 let snapshotCache:JobFeedData|null=null
 let snapshotPromise:Promise<JobFeedData>|null=null
 
+const PRIORITY_JOB_SOURCES=['rrb','ssc','india_post_gds','india_post','upsc','sbi']
+function jobPriority(job:JobNotification){
+  const key=String(job.source?.key||'').toLowerCase()
+  const name=`${job.source?.name||''} ${job.organization||''}`.toLowerCase()
+  const direct=PRIORITY_JOB_SOURCES.indexOf(key)
+  if(direct>=0)return direct
+  if(name.includes('railway recruitment'))return 0
+  if(name.includes('staff selection commission'))return 1
+  if(name.includes('india post')||name.includes('department of posts'))return 2
+  if(name.includes('union public service commission')||name.includes('upsc'))return 3
+  if(name.includes('state bank of india')||name.includes('sbi'))return 4
+  return 100
+}
+function compareJobs(a:JobNotification,b:JobNotification){
+  const priority=jobPriority(a)-jobPriority(b)
+  if(priority)return priority
+  const aDate=Date.parse(a.deadline||a.issue_date||a.published_at||'')||0
+  const bDate=Date.parse(b.deadline||b.issue_date||b.published_at||'')||0
+  return bDate-aDate
+}
+
 async function fetchSnapshot(force=false){
   if(snapshotCache&&!force)return snapshotCache
   if(snapshotPromise&&!force)return snapshotPromise
@@ -47,7 +68,7 @@ function filterSnapshot(data:JobFeedData,params:Record<string,string|number|bool
     const searchable=[job.title,job.organization,job.qualification,job.location,job.source?.name,job.source?.key]
       .map(value=>String(value||'').toLowerCase()).join(' ')
     return tokens.every(token=>searchable.includes(token))
-  }).slice(0,limit)
+  }).sort(compareJobs).slice(0,limit)
   return {...data,items,count:items.length}
 }
 
@@ -66,7 +87,8 @@ export async function fetchJobs(params:Record<string,string|number|boolean>={}){
     void refreshJobsInBackground(params)
     return snapshot
   }catch{
-    return (await api.get('/jobs/',{params})).data as JobFeedData
+    const data=(await api.get('/jobs/',{params})).data as JobFeedData
+    return {...data,items:(data.items||[]).sort(compareJobs)}
   }
 }
 
