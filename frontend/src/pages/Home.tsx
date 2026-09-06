@@ -5,6 +5,7 @@ import LatestJobs from '../components/jobs/LatestJobs'
 import {fetchServiceCatalog,isHomepageHighlightEligible,readCachedServices,servicePath,slugifyServiceName} from '../services/serviceCatalog'
 import {fetchScholarships,Scholarship,scholarshipPath} from '../services/scholarships'
 import '../styles/home-modern.css'
+import '../styles/home-final-alignment.css'
 
 const serviceTerms=['caste','income','residence','aadhaar','pan','voter','ration','birth','death','driving','vehicle','passport','land','meeseva','education','legal','health','welfare','labour']
 const paymentTerms=['recharge','bill payment','electricity','dth','broadband','water bill','gas bill','fastag']
