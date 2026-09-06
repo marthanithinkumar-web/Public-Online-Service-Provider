@@ -12,11 +12,13 @@ import ActivityReports from './ActivityReports'
 import AdminSettings from './AdminSettings'
 import MessageManagement from './MessageManagement'
 import JobManagement from './JobManagement'
+import RechargeBillFeeManagement from './RechargeBillFeeManagement'
 
 const links=[
   ['/admin/dashboard','Dashboard'],
   ['/admin/orders','Applications'],
   ['/admin/jobs','Job Feed Management'],
+  ['/admin/recharge-bill-fees','Recharge & Bill Fees'],
   ['/admin/users','Clients'],
   ['/admin/services','Services & Fees'],
   ['/admin/notifications','Notifications'],
@@ -43,6 +45,7 @@ export default function AdminPanel(){
         <Route path="/orders" element={<OrderManagement/>}/>
         <Route path="/orders/:id" element={<AdminOrderDetail/>}/>
         <Route path="/jobs" element={<JobManagement/>}/>
+        <Route path="/recharge-bill-fees" element={<RechargeBillFeeManagement/>}/>
         <Route path="/services" element={<ServiceManagement/>}/>
         <Route path="/grievances" element={<GrievanceManagement/>}/>
         <Route path="/reviews" element={<ReviewManagement/>}/>
