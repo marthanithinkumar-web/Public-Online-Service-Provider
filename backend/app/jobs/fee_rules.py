@@ -81,15 +81,24 @@ def required_factor_answers(job, answers):
 
 
 def assess_official_fee(job, answers):
-    """Return a verified amount only when the notice has admin-reviewed rules."""
-    factors = job.fee_factors or []
+    """Return a verified amount only when enough verified information is available.
+
+    Missing fee factors never block an application. They keep the official fee
+    unconfirmed until the client supplies the information or an admin confirms it.
+    """
     rules = job.fee_rules or []
     if not job.fee_rules_verified_at or not rules:
         return {'status': 'unconfirmed', 'amount_inr': None, 'matched_rule': None}
 
     missing = required_factor_answers(job, answers)
     if missing:
-        return {'status': 'missing_factors', 'amount_inr': None, 'missing': missing, 'matched_rule': None}
+        return {
+            'status': 'unconfirmed',
+            'amount_inr': None,
+            'missing': missing,
+            'reason': 'Fee-determining details are incomplete; confirm the official fee before payment.',
+            'matched_rule': None,
+        }
 
     matches = []
     for order, rule in enumerate(rules):
