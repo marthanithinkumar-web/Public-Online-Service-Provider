@@ -9,6 +9,19 @@ CATALOG_PATH = Path(__file__).with_name('verified_catalog.json')
 ALLOWED_FEE_STATUSES = {'known', 'none', 'unconfirmed'}
 ALLOWED_STATES = {'active', 'retired'}
 
+# These aliases map names seeded by the catalogue-refresh migration to the
+# canonical names used by the continuously verified manifest. When a legacy
+# row exists, sync renames/reuses it rather than creating a duplicate service.
+LEGACY_NAME_ALIASES = {
+    'Aadhaar Mobile Number Update Assistance': 'Aadhaar - Mobile Number Update Assistance',
+    'Aadhaar Address Update Assistance': 'Aadhaar - Address Update Assistance',
+    'Aadhaar Email Update Assistance': 'Aadhaar - Email Update Assistance',
+    'Aadhaar Document Update Assistance': 'Aadhaar - Document Update Assistance',
+    'e-Aadhaar Download Assistance': 'Aadhaar - Download e-Aadhaar Assistance',
+    'Aadhaar Request Status Assistance': 'Aadhaar - Update / Request Status Assistance',
+    'Aadhaar Biometric Lock / Unlock Assistance': 'Aadhaar - Biometric Lock / Unlock Assistance',
+}
+
 
 def load_verified_catalog(path=CATALOG_PATH):
     data = json.loads(Path(path).read_text(encoding='utf-8'))
@@ -72,9 +85,17 @@ def sync_verified_catalog(path=CATALOG_PATH):
             db.session.add(category)
             db.session.flush()
 
-        service = Service.query.filter_by(name=entry['name']).first()
+        canonical_name = entry['name']
+        service = Service.query.filter_by(name=canonical_name).first()
         if service is None:
-            service = Service(name=entry['name'])
+            legacy_name = LEGACY_NAME_ALIASES.get(canonical_name)
+            if legacy_name:
+                service = Service.query.filter_by(name=legacy_name).first()
+                if service is not None:
+                    service.name = canonical_name
+                    changed += 1
+        if service is None:
+            service = Service(name=canonical_name)
             db.session.add(service)
 
         fee_status = entry.get('official_fee_status', 'unconfirmed')
@@ -102,7 +123,7 @@ def sync_verified_catalog(path=CATALOG_PATH):
 
         profile = str(entry.get('requirement_profile') or '').strip()
         if profile:
-            SERVICE_REQUIREMENT_PROFILE_BY_NAME[entry['name']] = profile
+            SERVICE_REQUIREMENT_PROFILE_BY_NAME[canonical_name] = profile
 
     if changed:
         db.session.commit()
