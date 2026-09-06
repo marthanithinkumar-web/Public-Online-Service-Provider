@@ -12,6 +12,7 @@ from .models.payment import Payment
 from .models.push_subscription import PushSubscription
 from .routes import auth, services, orders, admin, reviews, grievances, categories, notifications, messages, jobs, fees, payments, admin_payments, scholarships, push
 from .scholarships.payment_guard import register_scholarship_payment_guard
+from .government_services import sync_verified_catalog
 from flask_cors import CORS
 from flask_migrate import Migrate
 from flask_talisman import Talisman
@@ -89,7 +90,7 @@ def create_app():
     limiter._default_limits=['2000 per day','500 per hour'];limiter.init_app(app)
     with app.app_context():
         if os.getenv('SKIP_DATABASE_BOOTSTRAP') != '1':
-            db.create_all();ensure_user_schema(db);ensure_default_services();ensure_job_sources();ensure_admin_user()
+            db.create_all();ensure_user_schema(db);ensure_default_services();sync_verified_catalog();ensure_job_sources();ensure_admin_user()
     register_scholarship_payment_guard(app)
     app.register_blueprint(auth.bp,url_prefix='/api/auth');app.register_blueprint(services.bp,url_prefix='/api/services');app.register_blueprint(orders.bp,url_prefix='/api/orders');app.register_blueprint(admin.bp,url_prefix='/api/admin');app.register_blueprint(reviews.bp,url_prefix='/api/reviews');app.register_blueprint(grievances.bp,url_prefix='/api/grievances');app.register_blueprint(categories.bp,url_prefix='/api/categories');app.register_blueprint(notifications.bp,url_prefix='/api/notifications');app.register_blueprint(messages.bp,url_prefix='/api/messages');app.register_blueprint(jobs.bp,url_prefix='/api/jobs');app.register_blueprint(scholarships.bp,url_prefix='/api/scholarships');app.register_blueprint(fees.bp,url_prefix='/api/fees');app.register_blueprint(payments.bp,url_prefix='/api/payments');app.register_blueprint(admin_payments.bp,url_prefix='/api/admin');app.register_blueprint(push.bp,url_prefix='/api/push');app.register_blueprint(__import__('app.routes.uploads',fromlist=['bp']).bp,url_prefix='/api/uploads')
     @app.get('/')
