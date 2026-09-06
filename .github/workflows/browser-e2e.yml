@@ -16,11 +16,50 @@ concurrency:
 
 jobs:
   chromium-auth-routing:
-    name: Chromium authenticated routing
+    name: Chromium authenticated and client-admin workflow
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    env:
+      E2E_ADMIN_EMAIL: admin-e2e@example.test
+      E2E_ADMIN_PASSWORD: E2E-Admin-Password-2026!
+      DATABASE_URL: sqlite:////tmp/posp-browser-e2e.db
+      SECRET_KEY: browser-e2e-secret-key-that-is-long-enough-for-tests-only
+      ADMIN_EMAIL: admin-e2e@example.test
+      ADMIN_PASSWORD: E2E-Admin-Password-2026!
+      ADMIN_2FA_ENABLED: '0'
+      FORCE_HTTPS: '0'
+      FRONTEND_URL: http://127.0.0.1:4173
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Start local backend with isolated SQLite database
+        working-directory: backend
+        run: |
+          python -m flask --app app.main:create_app run --host 127.0.0.1 --port 5000 > /tmp/posp-backend.log 2>&1 &
+          echo $! > /tmp/posp-backend.pid
+
+      - name: Wait for backend
+        run: |
+          set -Eeuo pipefail
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent --show-error http://127.0.0.1:5000/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/posp-backend.log || true
+          exit 1
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -57,11 +96,15 @@ jobs:
           cat /tmp/posp-vite.log || true
           exit 1
 
-      - name: Run Chromium authenticated route tests
+      - name: Run Chromium authenticated route and real workflow tests
         env:
           E2E_BASE_URL: http://127.0.0.1:4173
         run: npx playwright test --config=e2e/playwright.config.cjs
 
-      - name: Show frontend log on failure
+      - name: Show service logs on failure
         if: failure()
-        run: cat /tmp/posp-vite.log || true
+        run: |
+          echo '--- Backend log ---'
+          cat /tmp/posp-backend.log || true
+          echo '--- Frontend log ---'
+          cat /tmp/posp-vite.log || true
