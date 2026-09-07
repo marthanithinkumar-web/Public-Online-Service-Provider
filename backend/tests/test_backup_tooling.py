@@ -96,6 +96,13 @@ def test_backup_workflow_and_shell_scripts_have_safety_controls():
     assert "backblazeb2\\.com" in backup_script
     assert "list-object-versions" in backup_script
     assert "--version-id" in backup_script
+    assert "Backup source does not contain the expected application schema" in backup_script
+    assert "public.users" in backup_script
+    assert "public.orders" in backup_script
+    assert "public.services" in backup_script
+    assert "public.alembic_version" in backup_script
+    assert 'grep -Eq " TABLE public ${core_table} "' in backup_script
+    assert "Source schema validation: passed" in backup_script
     assert "RESTORE_TO_NON_PRODUCTION_ONLY" in restore_script
     assert "check_restore_target.py" in restore_script
 
