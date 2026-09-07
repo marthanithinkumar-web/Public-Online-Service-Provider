@@ -1,7 +1,26 @@
 import pytest
+
+from app.jobs import snapshot as job_snapshot
+from app.jobs import sources as job_sources
+from app.jobs.sources import SourceDefinition, parse_employment_news
 from app.main import create_app
 from app.models.job import JobSource
 from app.utils.database import db
+
+
+# Keep the removed Employment News source available only inside pytest because
+# older generic sync/snapshot regression tests use it as a deterministic fixture.
+# Production SOURCE_DEFINITIONS remains free of this source.
+LEGACY_TEST_SOURCE = SourceDefinition(
+    'employment_news',
+    'Legacy test source',
+    'https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All',
+    parse_employment_news,
+)
+job_sources.SOURCE_BY_KEY.setdefault('employment_news', LEGACY_TEST_SOURCE)
+if not any(source.key == 'employment_news' for source in job_snapshot.SOURCE_DEFINITIONS):
+    job_snapshot.SOURCE_DEFINITIONS = (LEGACY_TEST_SOURCE, *job_snapshot.SOURCE_DEFINITIONS)
+
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
