@@ -1,0 +1,40 @@
+name: Generate Vite 6 lockfile
+
+on:
+  push:
+    branches:
+      - upgrade-vite-6-4-3
+    paths:
+      - 'frontend/package.json'
+      - '.github/workflows/vite-lock-refresh.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lockfile:
+    name: Refresh npm lockfile for Vite 6
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Refresh package lock only
+        working-directory: frontend
+        run: npm install --package-lock-only --ignore-scripts --no-fund --no-audit
+      - name: Confirm patched Vite and audit result
+        working-directory: frontend
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          node -e "const l=require('./package-lock.json'); const v=l.packages['node_modules/vite']?.version; if (!v) process.exit(2); const [a,b,c]=v.split('.').map(Number); if (a < 6 || (a === 6 && (b < 4 || (b === 4 && c < 3)))) process.exit(3); console.log('Resolved Vite', v)"
+          npm audit --audit-level=moderate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vite-6-package-lock
+          path: frontend/package-lock.json
+          if-no-files-found: error
+          retention-days: 1
