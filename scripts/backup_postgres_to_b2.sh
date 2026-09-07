@@ -65,13 +65,30 @@ if [[ -n "${POSTGRES_DOCKER_IMAGE:-}" ]]; then
     exit 2
   }
 else
-  for command_name in pg_dump pg_restore; do
+  for command_name in pg_dump pg_restore psql; do
     command -v "${command_name}" >/dev/null || {
       echo "Required command is not installed: ${command_name}" >&2
       exit 2
     }
   done
 fi
+
+source_health_query="SELECT CASE WHEN (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','S','f')) >= 10 AND to_regclass('public.users') IS NOT NULL AND to_regclass('public.orders') IS NOT NULL AND to_regclass('public.services') IS NOT NULL AND to_regclass('public.alembic_version') IS NOT NULL THEN 'ok' ELSE 'invalid' END;"
+if [[ -n "${POSTGRES_DOCKER_IMAGE:-}" ]]; then
+  source_health="$(docker run --rm \
+    -e BACKUP_DATABASE_URL \
+    -e SOURCE_HEALTH_QUERY="${source_health_query}" \
+    "${POSTGRES_DOCKER_IMAGE}" \
+    sh -ceu 'psql "$BACKUP_DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atqc "$SOURCE_HEALTH_QUERY"')"
+else
+  source_health="$(psql "${BACKUP_DATABASE_URL}" -X -v ON_ERROR_STOP=1 -Atqc "${source_health_query}")"
+fi
+if [[ "${source_health}" != "ok" ]]; then
+  echo "Backup source does not contain the expected application schema; refusing to create or upload an archive." >&2
+  exit 2
+fi
+
+echo "Backup source validation passed."
 
 public_grants="$(aws s3api get-bucket-acl \
   --bucket "${B2_BACKUP_BUCKET}" \
@@ -95,6 +112,7 @@ dump_file="${WORK_DIR}/database.dump"
 encrypted_file="${WORK_DIR}/${archive_name}"
 checksum_file="${encrypted_file}.sha256"
 verified_dump="${WORK_DIR}/verified.dump"
+toc_file="${WORK_DIR}/verified.toc"
 
 echo "Creating a consistent PostgreSQL custom-format backup..."
 if [[ -n "${POSTGRES_DOCKER_IMAGE:-}" ]]; then
@@ -134,11 +152,17 @@ printf '%s' "${BACKUP_ENCRYPTION_PASSPHRASE}" | gpg \
   --decrypt --output "${verified_dump}" "${encrypted_file}"
 if [[ -n "${POSTGRES_DOCKER_IMAGE:-}" ]]; then
   docker run --rm -v "${WORK_DIR}:/backup:ro" "${POSTGRES_DOCKER_IMAGE}" \
-    pg_restore --list /backup/verified.dump >/dev/null
+    pg_restore --list /backup/verified.dump > "${toc_file}"
 else
-  pg_restore --list "${verified_dump}" >/dev/null
+  pg_restore --list "${verified_dump}" > "${toc_file}"
 fi
-rm -f -- "${verified_dump}"
+for core_table in users orders services alembic_version; do
+  if ! grep -Eq " TABLE public ${core_table} " "${toc_file}"; then
+    echo "Backup archive is missing required table: public.${core_table}" >&2
+    exit 1
+  fi
+done
+rm -f -- "${verified_dump}" "${toc_file}"
 
 echo "Uploading the encrypted archive and checksum to the private B2 bucket..."
 aws s3 cp "${encrypted_file}" "s3://${B2_BACKUP_BUCKET}/${object_key}" \
@@ -186,6 +210,7 @@ if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
     echo "- Object: \`${object_key}\`"
     echo "- Retention: ${BACKUP_RETENTION_COUNT} daily backups"
     echo "- Expired object versions removed: ${deleted_versions}"
-    echo "- Local decrypt and \`pg_restore --list\` validation: passed"
+    echo "- Source schema validation: passed"
+    echo "- Local decrypt and core-table archive validation: passed"
   } >> "${GITHUB_STEP_SUMMARY}"
 fi
