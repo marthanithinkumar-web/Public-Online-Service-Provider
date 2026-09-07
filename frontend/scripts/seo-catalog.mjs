@@ -6,7 +6,7 @@ const scriptDir=path.dirname(fileURLToPath(import.meta.url))
 const seedPath=path.resolve(scriptDir,'../../backend/seed.py')
 
 export const siteUrl='https://public-online-service-provider-india.onrender.com'
-export const publicRoutes=['/','/jobs','/scholarships','/meeseva','/certificates','/schemes','/about','/contact','/privacy','/terms','/disclaimer']
+export const publicRoutes=['/','/government-services','/recharge-bills','/jobs','/scholarships','/meeseva','/certificates','/schemes','/about','/contact','/privacy','/terms','/disclaimer']
 
 const extraServices=[
   ['Mobile Recharge','Assistance with prepaid mobile recharge plan selection and request tracking for supported Indian operators. Operator plan amount is kept separate from the website assistance fee.','mobile recharge,recharge,prepaid,airtel,jio,vi,vodafone idea,bsnl,telecom,phone recharge,recharge plan,bill payment,bills','Recharge & Bill Payments'],
@@ -59,6 +59,13 @@ export function readCatalog(){
       existingSlugs.add(slug)
     }
   }
+  // Migration-created and original bootstrap services remain public even when
+  // they are not present in the later seed catalog.
+  const supplemental=JSON.parse(fs.readFileSync(path.join(scriptDir,'seo-extra-services.json'),'utf8'))
+  for(const service of supplemental){
+    if(!service.name||!service.description||!service.category||!service.slug)throw new Error('Incomplete supplemental SEO service')
+    if(!services.some(existing=>existing.slug===service.slug))services.push(service)
+  }
   if(services.length<80)throw new Error(`SEO catalog parser found only ${services.length} services; expected at least 80.`)
   const slugs=new Set()
   for(const service of services){
@@ -68,3 +75,4 @@ export function readCatalog(){
   }
   return services
 }
+

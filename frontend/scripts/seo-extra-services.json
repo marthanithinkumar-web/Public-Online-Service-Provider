@@ -1,0 +1,122 @@
+[
+  {
+    "name": "Apply Aadhaar - Address Update",
+    "description": "Guidance for eligible Aadhaar address updates through the UIDAI Aadhaar app or myAadhaar. The resident completes UIDAI authentication and submits the supporting address information directly on the official service.",
+    "keywords": "aadhaar address update,aadhar address change,uidai address update,myaadhaar address,aadhaar app address update,online aadhaar address",
+    "category": "Identity & Citizen Documents",
+    "slug": "apply-aadhaar-address-update"
+  },
+  {
+    "name": "Apply Aadhaar - Bank Account Seeding / DBT",
+    "description": "Guidance for linking Aadhaar with a bank account and requesting DBT/NPCI mapper seeding through the client bank. The bank performs the linking/seeding; clients complete OTP, biometric, bank login and final authorization only with the bank or official service.",
+    "keywords": "aadhaar seeding,aadhar seeding,bank aadhaar link,dbt,npcI mapper,bank seeding,benefit transfer",
+    "category": "Other Online Public Services",
+    "slug": "apply-aadhaar-bank-account-seeding-dbt"
+  },
+  {
+    "name": "Apply Aadhaar - Biometric Lock / Unlock",
+    "description": "Guidance for UIDAI biometric lock and unlock controls available through the Aadhaar app. The client performs Aadhaar authentication and security actions directly in the official app.",
+    "keywords": "aadhaar biometric lock,biometric unlock,aadhaar security,uidai biometric,aadhaar app lock biometrics",
+    "category": "Identity & Citizen Documents",
+    "slug": "apply-aadhaar-biometric-lock-unlock"
+  },
+  {
+    "name": "Apply Aadhaar - Document Update",
+    "description": "Guidance for the UIDAI Document Update service through myAadhaar for eligible residents. UIDAI has extended the online fee relaxation for Document Update through 14 June 2027. Clients upload documents and complete Aadhaar authentication only on the official UIDAI service.",
+    "keywords": "aadhaar document update,aadhar document update,myaadhaar document update,uidai documents,proof of identity,proof of address,online aadhaar document",
+    "category": "Identity & Citizen Documents",
+    "slug": "apply-aadhaar-document-update"
+  },
+  {
+    "name": "Apply Aadhaar - Download e-Aadhaar",
+    "description": "Guidance for downloading e-Aadhaar through official UIDAI services. e-Aadhaar is an official electronic form of Aadhaar. The client completes UIDAI authentication and receives the document directly from UIDAI.",
+    "keywords": "download aadhaar,e aadhaar,e-aadhaar,aadhaar pdf,uidai download,aadhar download,digital aadhaar",
+    "category": "Identity & Citizen Documents",
+    "slug": "apply-aadhaar-download-e-aadhaar"
+  },
+  {
+    "name": "Apply Aadhaar - Email Update",
+    "description": "Guidance for Aadhaar email-address update through the UIDAI Aadhaar mobile application where available. UIDAI has announced a temporary waiver of the email-update service charge from 1 July 2026 through 31 December 2026. Clients complete UIDAI authentication themselves.",
+    "keywords": "aadhaar email update,aadhar email link,uidai email update,aadhaar app email,link email aadhaar,change email aadhaar",
+    "category": "Identity & Citizen Documents",
+    "slug": "apply-aadhaar-email-update"
+  },
+  {
+    "name": "Apply Aadhaar - Generate / Retrieve VID",
+    "description": "Guidance for generating or retrieving a Virtual ID (VID) through official UIDAI services. Clients complete Aadhaar authentication directly with UIDAI.",
+    "keywords": "aadhaar vid,virtual id,generate vid,retrieve vid,uidai virtual id,aadhar vid",
+    "category": "Identity & Citizen Documents",
+    "slug": "apply-aadhaar-generate-retrieve-vid"
+  },
+  {
+    "name": "Apply Aadhaar - Mobile Number Update",
+    "description": "Guidance for the UIDAI Aadhaar app mobile-number update service. UIDAI currently supports mobile-number update through the Aadhaar app for eligible residents. If the old registered number is unavailable or no mobile number was previously registered, an Aadhaar Seva Kendra or authorised centre may still be required. Clients complete face authentication, OTP or other UIDAI authentication themselves.",
+    "keywords": "aadhaar mobile number update,aadhar phone number update,aadhaar phone link,uidai aadhaar app,mobile linking,aadhaar mobile change,phone number aadhaar",
+    "category": "Identity & Citizen Documents",
+    "slug": "apply-aadhaar-mobile-number-update"
+  },
+  {
+    "name": "Apply Aadhaar - Update / Request Status",
+    "description": "Guidance for checking Aadhaar update or request status through UIDAI online services, including requests submitted through the Aadhaar app or myAadhaar.",
+    "keywords": "aadhaar update status,aadhar status,track aadhaar request,uidai status,aadhaar request tracking",
+    "category": "Identity & Citizen Documents",
+    "slug": "apply-aadhaar-update-request-status"
+  },
+  {
+    "name": "Apply Online Fraud Complaint Raise",
+    "description": "Guidance for preparing and submitting an online cyber/fraud complaint through the official National Cyber Crime Reporting Portal. For ongoing or recent financial fraud, clients should immediately call 1930 and report through the official portal before using assistance. We never request OTPs, PINs, passwords or banking credentials.",
+    "keywords": "online fraud complaint,cyber crime,cybercrime,1930,financial fraud,upi fraud,bank fraud,online scam,complaint assistance",
+    "category": "Other Online Public Services",
+    "slug": "apply-online-fraud-complaint-raise"
+  },
+  {
+    "name": "Apply PAN - Aadhaar Linking",
+    "description": "Guidance for linking an existing PAN with Aadhaar through the Income Tax e-Filing portal. The service is available online for eligible taxpayers; exemptions and any applicable late-linking fee depend on the taxpayer case. Clients complete OTP, tax payment and final authorization directly on the Income Tax portal.",
+    "keywords": "pan aadhaar link,link pan aadhaar,aadhaar pan linking,income tax efiling,pan link status,pan aadhar,link aadhaar pan",
+    "category": "Identity & Citizen Documents",
+    "slug": "apply-pan-aadhaar-linking"
+  },
+  {
+    "name": "Online Document Upload",
+    "description": "Assistance with preparing and uploading eligible documents to official portals.",
+    "keywords": "document upload, online upload, application documents",
+    "category": "Other Online Public Services",
+    "slug": "online-document-upload"
+  },
+  {
+    "name": "Government Scheme Application Support",
+    "description": "Eligibility guidance and application assistance for government schemes",
+    "keywords": "scheme,government scheme,benefit,eligibility",
+    "category": "Government Schemes",
+    "slug": "government-scheme-application-support"
+  },
+  {
+    "name": "Apply Scholarship",
+    "description": "Guidance and application support for eligible scholarships",
+    "keywords": "scholarship,education,student,financial aid",
+    "category": "Scholarships",
+    "slug": "apply-scholarship"
+  },
+  {
+    "name": "Government Job Application",
+    "description": "Assistance to apply for government job openings",
+    "keywords": "job,application,recruitment,jobs",
+    "category": "Government Jobs",
+    "slug": "government-job-application"
+  },
+  {
+    "name": "Ration Card Services",
+    "description": "Help with Ration Card related applications",
+    "keywords": "ration,card,food,subsidy",
+    "category": "Certificates",
+    "slug": "ration-card-services"
+  },
+  {
+    "name": "Residence Certificate",
+    "description": "Assistance to apply for residence/domicile certificate",
+    "keywords": "residence,domicile,address,certificate",
+    "category": "Certificates",
+    "slug": "residence-certificate"
+  }
+]
+

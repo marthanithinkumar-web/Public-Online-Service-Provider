@@ -491,14 +491,29 @@ def discover_official_scholarships(session=None, now=None, sources=None):
     for source in sources or SOURCE_DEFINITIONS:
         started = time.monotonic()
         try:
-            document = fetch_source(source, session=session)
-            parsed = PARSERS[source['parser']](document, source, now=now)
+            fetched_source = source
+            try:
+                document = fetch_source(source, session=session)
+            except (RuntimeError, ValueError) as primary_error:
+                for fallback_url in source.get('fallback_urls', []):
+                    candidate = {**source, 'url': fallback_url}
+                    try:
+                        document = fetch_source(candidate, session=session, attempts=1)
+                        fetched_source = candidate
+                        break
+                    except (RuntimeError, ValueError):
+                        continue
+                else:
+                    raise primary_error
+            parsed = PARSERS[source['parser']](document, fetched_source, now=now)
             parsed = [item for item in parsed if item.get('title') and is_official_url(item.get('source_url')) and is_official_url(item.get('application_url'))]
             items.extend(parsed)
             health[source['key']] = {
                 'ok': True,
                 'source_name': source['name'],
                 'source_url': source['url'],
+                'fetched_url': fetched_source['url'],
+                'used_fallback': fetched_source['url'] != source['url'],
                 'count': len(parsed),
                 'checked_at': checked_at,
                 'elapsed_ms': int((time.monotonic() - started) * 1000),
@@ -514,3 +529,4 @@ def discover_official_scholarships(session=None, now=None, sources=None):
                 'elapsed_ms': int((time.monotonic() - started) * 1000),
             }
     return dedupe_items(items), health
+

@@ -16,6 +16,8 @@ _STABLE_SOURCE_URLS = {
 }
 
 _discovery.SOURCE_DEFINITIONS = tuple(
-    {**source, 'url': _STABLE_SOURCE_URLS.get(source['key'], source['url'])}
+    {**source, 'url': _STABLE_SOURCE_URLS.get(source['key'], source['url']),
+     **({'fallback_urls': [source['url']]} if source['key'] in _STABLE_SOURCE_URLS else {})}
     for source in _discovery.SOURCE_DEFINITIONS
 )
+
