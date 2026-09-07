@@ -102,16 +102,21 @@ jobs:
         env:
           JOBS_URL: https://public-online-service-provider-api.onrender.com/api/jobs/
           SOURCES_URL: https://public-online-service-provider-api.onrender.com/api/jobs/sources
+          SNAPSHOT_STATUS_URL: https://public-online-service-provider-api.onrender.com/api/jobs/snapshot-status
           SNAPSHOT_PATH: /tmp/verified-jobs.json
         run: |
           python - <<'PY'
+          import hashlib
           import json
           import os
           import time
           import urllib.request
           from pathlib import Path
 
-          snapshot = json.loads(Path(os.environ['SNAPSHOT_PATH']).read_text(encoding='utf-8'))
+          snapshot_path = Path(os.environ['SNAPSHOT_PATH'])
+          snapshot_bytes = snapshot_path.read_bytes()
+          snapshot = json.loads(snapshot_bytes.decode('utf-8'))
+          expected_sha = hashlib.sha256(snapshot_bytes).hexdigest()
           expected = len(snapshot['items'])
           expected_sources = max(1, len(snapshot.get('sources') or []))
           tolerance = max(3, round(expected * 0.005))
@@ -120,7 +125,7 @@ jobs:
               separator = '&' if '?' in url else '?'
               request = urllib.request.Request(
                   f'{url}{separator}probe={time.time_ns()}',
-                  headers={'User-Agent': 'POSP official job refresh/4.0', 'Cache-Control': 'no-cache'},
+                  headers={'User-Agent': 'POSP official job refresh/5.0', 'Cache-Control': 'no-cache'},
               )
               with urllib.request.urlopen(request, timeout=120) as response:
                   return json.load(response)
@@ -128,20 +133,32 @@ jobs:
           deadline = time.time() + 8 * 60
           last_total = None
           last_sources = 0
+          last_sha = None
           while time.time() < deadline:
               jobs = get_json(os.environ['JOBS_URL'])
               sources = get_json(os.environ['SOURCES_URL'])
+              status = get_json(os.environ['SNAPSHOT_STATUS_URL'])
               last_total = int(jobs.get('total') or 0)
               last_sources = len(sources.get('items', []))
+              last_sha = str(status.get('sha256') or '')
               drift = abs(last_total - expected)
-              print(f"Production verification: {last_total} active published job(s), {last_sources} source(s); snapshot {expected}, allowed drift {tolerance}.")
-              if last_total > 0 and last_sources >= max(1, expected_sources - 1) and drift <= tolerance:
+              exact_snapshot = bool(status.get('ready')) and last_sha == expected_sha
+              print(
+                  f"Production verification: {last_total} active published job(s), "
+                  f"{last_sources} source(s); snapshot {expected}, allowed drift {tolerance}; "
+                  f"exact snapshot deployed={exact_snapshot}."
+              )
+              if exact_snapshot and last_total > 0 and last_sources >= max(1, expected_sources - 1) and drift <= tolerance:
                   if drift:
-                      print(f"Production feed is healthy with a small {drift}-notice database/snapshot timing or de-duplication difference.")
+                      print(f"Production feed has the exact snapshot deployment with a small {drift}-notice query/de-duplication difference.")
                   else:
-                      print("Production database exactly matches the verified snapshot.")
+                      print("Production database exactly matches the verified snapshot deployment.")
                   break
               time.sleep(20)
           else:
-              raise SystemExit(f"Production job feed is outside the allowed verification range: got {last_total}, snapshot {expected}, sources={last_sources}/{expected_sources}.")
+              raise SystemExit(
+                  "Production job feed did not converge to the exact verified snapshot: "
+                  f"jobs={last_total}/{expected}, sources={last_sources}/{expected_sources}, "
+                  f"deployed_sha={last_sha or 'missing'}, expected_sha={expected_sha}."
+              )
           PY
