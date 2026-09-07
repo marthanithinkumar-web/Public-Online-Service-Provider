@@ -81,7 +81,7 @@ jobs:
           relation_count="$(docker run --rm \
             -e BACKUP_DATABASE_URL \
             "${POSTGRES_DOCKER_IMAGE}" \
-            sh -ceu 'psql "$BACKUP_DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=''public'' AND c.relkind IN (''r'',''p'',''v'',''m'',''S'',''f'');"')"
+            sh -ceu 'psql "$BACKUP_DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=$$public$$ AND c.relkind IN ($$r$$,$$p$$,$$v$$,$$m$$,$$S$$,$$f$$);"')"
           if (( relation_count < 10 )); then
             echo "::error::NEON_BACKUP_DATABASE_URL points to a database with only ${relation_count} public relations; refusing to create or upload an incomplete production backup."
             exit 1
@@ -89,7 +89,7 @@ jobs:
           core_table_count="$(docker run --rm \
             -e BACKUP_DATABASE_URL \
             "${POSTGRES_DOCKER_IMAGE}" \
-            sh -ceu 'psql "$BACKUP_DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM (VALUES (''public.users''),(''public.orders''),(''public.services''),(''public.alembic_version'')) AS expected(name) WHERE to_regclass(name) IS NOT NULL;"')"
+            sh -ceu 'psql "$BACKUP_DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM (VALUES ($$public.users$$),($$public.orders$$),($$public.services$$),($$public.alembic_version$$)) AS expected(name) WHERE to_regclass(name) IS NOT NULL;"')"
           if [[ "${core_table_count}" != '4' ]]; then
             echo '::error::NEON_BACKUP_DATABASE_URL is not the production application database: one or more core tables are missing.'
             exit 1
