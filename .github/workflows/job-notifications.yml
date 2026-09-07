@@ -79,11 +79,16 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             cp /tmp/verified-jobs.json frontend/public/data/jobs.json
-            if git diff --quiet -- frontend/public/data/jobs.json; then
+            snapshot_sha="$(sha256sum frontend/public/data/jobs.json | awk '{print $1}')"
+            printf '%s\n' "$snapshot_sha" > backend/app/jobs/verified_snapshot.sha256
+            if git diff --quiet -- frontend/public/data/jobs.json backend/app/jobs/verified_snapshot.sha256; then
               echo "No snapshot change to publish."
               exit 0
             fi
-            git add frontend/public/data/jobs.json
+            # The backend marker is deliberately committed with the snapshot.
+            # Render's API service is rooted at backend/, so this guarantees the
+            # database-backed feed redeploys and imports the exact daily snapshot.
+            git add frontend/public/data/jobs.json backend/app/jobs/verified_snapshot.sha256
             git commit -m "Refresh verified official job snapshot [skip ci]"
             if git push origin HEAD:main; then
               exit 0
