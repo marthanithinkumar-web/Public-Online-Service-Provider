@@ -91,6 +91,10 @@ def test_backup_workflow_and_shell_scripts_have_safety_controls():
     assert "NEON_BACKUP_DATABASE_URL" in workflow
     assert "BACKUP_ENCRYPTION_PASSPHRASE" in workflow
     assert "BACKUP_RETENTION_COUNT: '14'" in workflow
+    assert r"n.nspname=\$\$public\$\$" in workflow
+    assert "n.nspname=$$public$$" not in workflow
+    assert r"(\$\$public.users\$\$)" in workflow
+    assert r"(\$\$public.alembic_version\$\$)" in workflow
     assert "--cipher-algo AES256" in backup_script
     assert "get-bucket-acl" in backup_script
     assert "backblazeb2\\.com" in backup_script
