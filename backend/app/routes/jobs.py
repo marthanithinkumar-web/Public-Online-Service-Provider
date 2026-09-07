@@ -1,4 +1,6 @@
 from datetime import date
+from pathlib import Path
+import re
 
 from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy import and_, or_
@@ -7,6 +9,16 @@ from ..models.job import JobNotification, JobSource
 
 
 bp = Blueprint('jobs', __name__)
+_SNAPSHOT_MARKER = Path(__file__).resolve().parents[1] / 'jobs' / 'verified_snapshot.sha256'
+_SHA256_RE = re.compile(r'^[0-9a-f]{64}$')
+
+
+def _deployed_snapshot_sha256():
+    try:
+        value = _SNAPSHOT_MARKER.read_text(encoding='utf-8').strip().lower()
+    except OSError:
+        return None
+    return value if _SHA256_RE.fullmatch(value) else None
 
 
 def _public_query():
@@ -68,6 +80,15 @@ def list_sources():
         items.append(data)
     response = jsonify({'items': items})
     response.headers['Cache-Control'] = 'public, max-age=900, stale-while-revalidate=1800'
+    return response
+
+
+@bp.get('/snapshot-status')
+def snapshot_status():
+    """Expose only the deployed verified snapshot fingerprint for rollout checks."""
+    sha256 = _deployed_snapshot_sha256()
+    response = jsonify({'ready': bool(sha256), 'sha256': sha256})
+    response.headers['Cache-Control'] = 'no-store'
     return response
 
 
