@@ -33,3 +33,9 @@ def test_render_blueprint_stages_pospindia_frontend_with_environment_managed_ori
     assert 'value: https://pospindia.onrender.com' not in render_yaml
     assert 'name: posp\n    runtime: static' not in render_yaml
     assert 'name: public-online-service-provider-ui\n    runtime: static' not in render_yaml
+
+
+def test_render_blueprint_noindexes_exact_my_orders_route_and_children():
+    render_yaml = _render_yaml()
+    assert '- path: /my-orders\n        name: X-Robots-Tag\n        value: noindex, nofollow, noarchive' in render_yaml
+    assert '- path: /my-orders/*\n        name: X-Robots-Tag\n        value: noindex, nofollow, noarchive' in render_yaml
