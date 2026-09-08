@@ -89,9 +89,9 @@ jobs:
       - name: Typecheck frontend
         working-directory: frontend
         run: npm run typecheck
-      - name: Build frontend with future production origin
+      - name: Build frontend with production origin
         env:
-          VITE_SITE_URL: https://posp.onrender.com
+          VITE_SITE_URL: https://pospindia.onrender.com
         working-directory: frontend
         run: npm run build
 
