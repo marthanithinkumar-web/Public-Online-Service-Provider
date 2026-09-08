@@ -24,3 +24,10 @@ def test_render_static_site_uses_single_spa_fallback_for_deep_link_refreshes():
     assert 'source: /services/*' not in render_yaml
     assert 'destination: /services/*/index.html' not in render_yaml
     assert 'source: /jobs\n' not in render_yaml
+
+
+def test_render_blueprint_stages_posp_as_primary_frontend_origin():
+    render_yaml = _render_yaml()
+    assert 'name: posp\n    runtime: static' in render_yaml
+    assert 'key: VITE_SITE_URL\n        value: https://posp.onrender.com' in render_yaml
+    assert 'name: public-online-service-provider-ui\n    runtime: static' not in render_yaml
