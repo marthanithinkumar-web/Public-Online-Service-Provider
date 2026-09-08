@@ -23,7 +23,7 @@ OFFICIAL_HOSTS = {
     'www.tribal.nic.in',
 }
 
-USER_AGENT = 'PublicOnlineServiceProvider-ScholarshipDiscovery/1.0 (+https://public-online-service-provider-india.onrender.com)'
+USER_AGENT = 'PublicOnlineServiceProvider-ScholarshipDiscovery/1.0 (+https://pospindia.onrender.com)'
 
 SOURCE_DEFINITIONS = (
     {'key': 'nsp', 'name': 'National Scholarship Portal', 'url': 'https://scholarships.gov.in/All-Scholarships', 'parser': 'nsp'},

@@ -22,7 +22,9 @@ services:
       - key: FORCE_HTTPS
         value: "1"
       - key: FRONTEND_URL
-        sync: false
+        value: https://pospindia.onrender.com
+      - key: PUBLIC_APP_URL
+        value: https://pospindia.onrender.com
       - key: DATABASE_URL
         sync: false
       - key: SECRET_KEY
@@ -48,7 +50,7 @@ services:
       - key: SMTP_USE_TLS
         value: "1"
       - key: CORS_ORIGINS
-        sync: false
+        value: https://pospindia.onrender.com
       - key: MAX_UPLOAD_MB
         value: "10"
       - key: WEB_CONCURRENCY
@@ -159,6 +161,6 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        sync: false
+        value: https://public-online-service-provider-api.onrender.com
       - key: VITE_SITE_URL
-        sync: false
+        value: https://pospindia.onrender.com

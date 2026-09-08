@@ -4,9 +4,9 @@ import {fileURLToPath} from 'node:url'
 
 const scriptDir=path.dirname(fileURLToPath(import.meta.url))
 const seedPath=path.resolve(scriptDir,'../../backend/seed.py')
-const legacySiteUrl='https://public-online-service-provider-india.onrender.com'
+const defaultSiteUrl='https://pospindia.onrender.com'
 
-export const siteUrl=String(process.env.VITE_SITE_URL||legacySiteUrl).trim().replace(/\/+$/,'')||legacySiteUrl
+export const siteUrl=String(process.env.VITE_SITE_URL||defaultSiteUrl).trim().replace(/\/+$/,'')||defaultSiteUrl
 export const publicRoutes=['/','/jobs','/scholarships','/meeseva','/certificates','/schemes','/about','/contact','/privacy','/terms','/disclaimer']
 
 const extraServices=[
