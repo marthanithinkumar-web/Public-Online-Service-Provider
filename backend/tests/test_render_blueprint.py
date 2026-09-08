@@ -26,8 +26,9 @@ def test_render_static_site_uses_single_spa_fallback_for_deep_link_refreshes():
     assert 'source: /jobs\n' not in render_yaml
 
 
-def test_render_blueprint_stages_posp_as_primary_frontend_origin():
+def test_render_blueprint_stages_posp_frontend_with_environment_managed_origin():
     render_yaml = _render_yaml()
     assert 'name: posp\n    runtime: static' in render_yaml
-    assert 'key: VITE_SITE_URL\n        value: https://posp.onrender.com' in render_yaml
+    assert 'key: VITE_SITE_URL\n        sync: false' in render_yaml
+    assert 'value: https://posp.onrender.com' not in render_yaml
     assert 'name: public-online-service-provider-ui\n    runtime: static' not in render_yaml
