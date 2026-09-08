@@ -1,6 +1,7 @@
 import {useEffect} from 'react'
 
-const SITE_URL='https://public-online-service-provider-india.onrender.com'
+const LEGACY_SITE_URL='https://public-online-service-provider-india.onrender.com'
+const SITE_URL=String(import.meta.env.VITE_SITE_URL||LEGACY_SITE_URL).trim().replace(/\/+$/,'')||LEGACY_SITE_URL
 const SITE_NAME='Public Online Service Provider'
 const DEFAULT_DESCRIPTION='Independent assistance for PAN cards, certificates, government jobs, scholarships, schemes, MeeSeva and other public-service applications.'
 
