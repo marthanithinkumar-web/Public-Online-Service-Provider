@@ -83,7 +83,7 @@ services:
         sync: false
 
   - type: web
-    name: posp
+    name: pospindia
     runtime: static
     rootDir: frontend
     autoDeployTrigger: commit
