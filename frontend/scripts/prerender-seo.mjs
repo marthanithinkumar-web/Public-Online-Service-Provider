@@ -5,9 +5,14 @@ import {publicRoutes,siteUrl} from './seo-catalog.mjs'
 
 const scriptDir=path.dirname(fileURLToPath(import.meta.url))
 const distDir=path.resolve(scriptDir,'../dist')
-const template=fs.readFileSync(path.join(distDir,'index.html'),'utf8')
+const legacySiteUrl='https://public-online-service-provider-india.onrender.com'
+const template=fs.readFileSync(path.join(distDir,'index.html'),'utf8').replaceAll(legacySiteUrl,siteUrl)
 const services=JSON.parse(fs.readFileSync(path.join(distDir,'seo-catalog.json'),'utf8'))
-const escapeHtml=value=>String(value||'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]))
+const escapeHtml=value=>String(value||'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[char]))
+
+// Keep the crawlable homepage canonical, Open Graph URL and structured-data
+// URLs aligned with the same deployment-time site URL used by the sitemap.
+fs.writeFileSync(path.join(distDir,'index.html'),template)
 
 const categoryPages={
   '/jobs':{title:'Government Jobs & Recruitment Notices',description:'Review current government and private recruitment notices gathered from approved official sources, with deadlines and important details where available.',match:value=>/job|employment|exam/i.test(value)},
@@ -43,7 +48,7 @@ function pageHtml({route,title,description,body,schema}){
 
 for(const [route,page] of Object.entries(categoryPages)){
   const links=services.filter(service=>page.match(service.category)).map(service=>`<li><a href="/services/${service.slug}">${escapeHtml(service.name)}</a> — ${escapeHtml(service.description)}</li>`).join('')
-  const sourceLinks=route==='/jobs'?`<h2>Approved official job sources</h2><ul><li><a href="https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All">Employment News</a></li><li><a href="https://www.upsc.gov.in/recruitment/recruitment-advertisement">Union Public Service Commission</a></li><li><a href="https://www.ncs.gov.in/job-listing">National Career Service</a></li></ul><p>Notices are checked daily. Incomplete or ambiguous records are held for administrator review instead of being published.</p>`:''
+  const sourceLinks=route==='/jobs'?`<h2>Priority official job sources</h2><ul><li><a href="https://ssc.gov.in/">Staff Selection Commission</a></li><li><a href="https://rrcb.gov.in/">Railway Recruitment Control Board</a></li><li><a href="https://www.upsc.gov.in/recruitment/recruitment-advertisement">Union Public Service Commission</a></li><li><a href="https://opportunities.rbi.org.in/Scripts/Vacancies.aspx">Reserve Bank of India</a></li><li><a href="https://sbi.co.in/web/careers/current-openings">State Bank of India</a></li><li><a href="https://navodaya.gov.in/nvs/en/Recruitment/">Navodaya Vidyalaya Samiti</a></li><li><a href="https://sainikschoolsociety.in/">Sainik Schools Society</a></li></ul><p>Notices are checked daily. Incomplete or ambiguous records are held for administrator review instead of being published.</p>`:''
   const body=`<article><p>Independent private assistance platform — not a government department or official portal.</p><h1>${escapeHtml(page.title)}</h1><p>${escapeHtml(page.description)}</p>${sourceLinks}<h2>Available assistance services</h2><ul>${links}</ul><p><a href="/">Search all public services</a></p></article>`
   const schema={'@context':'https://schema.org','@type':'CollectionPage',name:page.title,url:`${siteUrl}${route}`,description:page.description,isPartOf:{'@type':'WebSite',name:'Public Online Service Provider',url:siteUrl}}
   const target=path.join(distDir,route.slice(1),'index.html');fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,pageHtml({route,...page,body,schema}))
@@ -64,4 +69,4 @@ for(const service of services){
   const target=path.join(distDir,'services',service.slug,'index.html');fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,pageHtml({route,title,description,body,schema}))
 }
 
-console.log(`Pre-rendered ${Object.keys(categoryPages).length+Object.keys(informationPages).length+services.length} crawlable public pages.`)
+console.log(`Pre-rendered ${Object.keys(categoryPages).length+Object.keys(informationPages).length+services.length} crawlable public pages for ${siteUrl}.`)
