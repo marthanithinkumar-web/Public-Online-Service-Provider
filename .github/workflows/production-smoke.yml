@@ -24,7 +24,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  UI_URL: https://public-online-service-provider-india.onrender.com
+  UI_URL: https://pospindia.onrender.com
   API_URL: https://public-online-service-provider-api.onrender.com
 
 jobs:
