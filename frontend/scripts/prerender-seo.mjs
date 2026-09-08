@@ -5,8 +5,8 @@ import {publicRoutes,siteUrl} from './seo-catalog.mjs'
 
 const scriptDir=path.dirname(fileURLToPath(import.meta.url))
 const distDir=path.resolve(scriptDir,'../dist')
-const legacySiteUrl='https://public-online-service-provider-india.onrender.com'
-const template=fs.readFileSync(path.join(distDir,'index.html'),'utf8').replaceAll(legacySiteUrl,siteUrl)
+const defaultSiteUrl='https://pospindia.onrender.com'
+const template=fs.readFileSync(path.join(distDir,'index.html'),'utf8').replaceAll(defaultSiteUrl,siteUrl)
 const services=JSON.parse(fs.readFileSync(path.join(distDir,'seo-catalog.json'),'utf8'))
 const escapeHtml=value=>String(value||'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]))
 

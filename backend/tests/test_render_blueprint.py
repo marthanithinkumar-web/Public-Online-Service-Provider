@@ -26,13 +26,38 @@ def test_render_static_site_uses_single_spa_fallback_for_deep_link_refreshes():
     assert 'source: /jobs\n' not in render_yaml
 
 
-def test_render_blueprint_stages_pospindia_frontend_with_environment_managed_origin():
+def test_render_blueprint_pins_the_only_production_frontend_and_api_origins():
     render_yaml = _render_yaml()
     assert 'name: pospindia\n    runtime: static' in render_yaml
-    assert 'key: VITE_SITE_URL\n        sync: false' in render_yaml
-    assert 'value: https://pospindia.onrender.com' not in render_yaml
+    assert 'key: FRONTEND_URL\n        value: https://pospindia.onrender.com' in render_yaml
+    assert 'key: PUBLIC_APP_URL\n        value: https://pospindia.onrender.com' in render_yaml
+    assert 'key: CORS_ORIGINS\n        value: https://pospindia.onrender.com' in render_yaml
+    assert 'key: VITE_SITE_URL\n        value: https://pospindia.onrender.com' in render_yaml
+    assert 'key: VITE_API_URL\n        value: https://public-online-service-provider-api.onrender.com' in render_yaml
     assert 'name: posp\n    runtime: static' not in render_yaml
     assert 'name: public-online-service-provider-ui\n    runtime: static' not in render_yaml
+
+
+def test_repository_has_no_retired_frontend_hostname():
+    repository_root = Path(__file__).resolve().parents[2]
+    retired_hosts = (
+        'public-online-service-provider-' + 'ui.onrender.com',
+        'public-online-service-provider-' + 'india.onrender.com',
+        'posp-' + 'aphu.onrender.com',
+    )
+    ignored_parts = {'.git', 'node_modules', '.venv', 'dist', 'build'}
+    matches = []
+    for path in repository_root.rglob('*'):
+        if not path.is_file() or ignored_parts.intersection(path.parts) or path.suffix == '.zip':
+            continue
+        try:
+            content = path.read_text(encoding='utf-8')
+        except (UnicodeDecodeError, OSError):
+            continue
+        for host in retired_hosts:
+            if host in content:
+                matches.append(f'{path.relative_to(repository_root)}: {host}')
+    assert not matches, 'Retired frontend hostnames remain:\n' + '\n'.join(matches)
 
 
 def test_render_blueprint_noindexes_exact_my_orders_route_and_children():

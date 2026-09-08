@@ -824,5 +824,47 @@
     "keywords": "bus pass, general bus pass, commuter pass, tgsrtc, tsrtc, apsrtc, renewal",
     "category": "Travel & Ticketing Assistance",
     "slug": "apply-general-bus-pass"
+  },
+  {
+    "name": "Mobile Recharge",
+    "description": "Assistance with prepaid mobile recharge plan selection and request tracking for supported Indian operators. Operator plan amount is kept separate from the website assistance fee.",
+    "keywords": "mobile recharge,recharge,prepaid,airtel,jio,vi,vodafone idea,bsnl,telecom,phone recharge,recharge plan,bill payment,bills",
+    "category": "Recharge & Bill Payments",
+    "slug": "mobile-recharge"
+  },
+  {
+    "name": "Apply Mobile Postpaid Bill Payment",
+    "description": "Assistance with postpaid mobile bill details and request tracking for supported Indian operators. The bill amount is separate from the website assistance fee and payment authorization remains with the client.",
+    "keywords": "mobile postpaid,postpaid bill,mobile bill,airtel postpaid,jio postpaid,vi postpaid,bsnl postpaid,telecom bill,bill payment",
+    "category": "Recharge & Bill Payments",
+    "slug": "apply-mobile-postpaid-bill-payment"
+  },
+  {
+    "name": "Apply DTH Recharge",
+    "description": "Assistance with DTH recharge details, plan selection and request tracking. The DTH recharge amount is separate from the website assistance fee and payment authorization remains with the client.",
+    "keywords": "dth recharge,tata play,airtel digital tv,dish tv,d2h,videocon d2h,sun direct,tv recharge,recharge",
+    "category": "Recharge & Bill Payments",
+    "slug": "apply-dth-recharge"
+  },
+  {
+    "name": "Apply Broadband / Landline Bill Payment",
+    "description": "Assistance with broadband or landline bill details and request tracking. The provider bill amount is separate from the website assistance fee and payment authorization remains with the client.",
+    "keywords": "broadband bill,landline bill,internet bill,fiber bill,airtel xstream,jiofiber,bsnl broadband,act fibernet,bill payment",
+    "category": "Recharge & Bill Payments",
+    "slug": "apply-broadband-landline-bill-payment"
+  },
+  {
+    "name": "Apply FASTag Recharge",
+    "description": "Assistance with FASTag recharge details and request tracking. The FASTag recharge amount is separate from the website assistance fee and payment authorization remains with the client.",
+    "keywords": "fastag recharge,fast tag,toll recharge,vehicle tag,nhai,highway toll,recharge",
+    "category": "Recharge & Bill Payments",
+    "slug": "apply-fastag-recharge"
+  },
+  {
+    "name": "Apply Piped Gas Bill Payment",
+    "description": "Assistance with piped-gas bill details and request tracking. The gas bill amount is separate from the website assistance fee and payment authorization remains with the client.",
+    "keywords": "piped gas bill,gas bill,png bill,city gas,consumer number,bill payment,utility",
+    "category": "Recharge & Bill Payments",
+    "slug": "apply-piped-gas-bill-payment"
   }
 ]
