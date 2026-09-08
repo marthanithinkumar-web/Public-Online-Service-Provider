@@ -8,7 +8,7 @@ const distDir=path.resolve(scriptDir,'../dist')
 const legacySiteUrl='https://public-online-service-provider-india.onrender.com'
 const template=fs.readFileSync(path.join(distDir,'index.html'),'utf8').replaceAll(legacySiteUrl,siteUrl)
 const services=JSON.parse(fs.readFileSync(path.join(distDir,'seo-catalog.json'),'utf8'))
-const escapeHtml=value=>String(value||'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[char]))
+const escapeHtml=value=>String(value||'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]))
 
 // Keep the crawlable homepage canonical, Open Graph URL and structured-data
 // URLs aligned with the same deployment-time site URL used by the sitemap.
