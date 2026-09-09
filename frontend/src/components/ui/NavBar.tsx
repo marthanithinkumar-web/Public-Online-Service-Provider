@@ -26,7 +26,7 @@ export default function NavBar(){
 
   return <header className="site-header">
     <div className="container site-header-inner">
-      <Link to={admin ? '/admin/dashboard' : '/'} className="brand-lockup" aria-label="Public Online Service Provider home"><img src={logo} alt="" className="brand-mark" /><span><strong className="brand">Public Online Service Provider</strong><small>{admin ? 'Administration portal' : 'Simple. Secure. Citizen-focused.'}</small></span></Link>
+      <Link to={admin ? '/admin/dashboard' : '/'} className="brand-lockup" aria-label="Public Online Service Provider home"><img src={logo} alt="Public Online Service Provider logo" className="brand-mark" /><span><strong className="brand">Public Online Service Provider</strong><small>{admin ? 'Administration portal' : 'Simple. Secure. Citizen-focused.'}</small></span></Link>
       <nav className="main-nav" aria-label="Primary navigation">
         <Link className={loc.pathname==='/'&&!loc.hash?'active':''} to="/">Home</Link>
         <Link className={isActive('/certificates')?'active':''} to="/certificates">MeeSeva Certificates</Link>
