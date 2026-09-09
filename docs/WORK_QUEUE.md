@@ -119,7 +119,7 @@ After the items above are complete and tested, continue the existing full improv
 18. Still required before public-launch sign-off:
    - Full authenticated browser E2E runs using isolated client/admin test accounts.
    - Production migration/deployment verification for this batch.
-   - Confirm persistent S3-compatible document storage, shared rate-limit storage, SMTP delivery, admin 2FA and database backups in Render.
+   - Confirm persistent S3-compatible document storage, shared rate-limit storage, SMTP delivery and database backups in Render.
    - Complete keyboard/mobile/browser/accessibility, slow-network, load/concurrency and recovery testing.
 
 ## Zero-fee and deployment-readiness checkpoint (2026-08-27)
@@ -133,13 +133,14 @@ After the items above are complete and tested, continue the existing full improv
 
 20. Completed locally: strengthened deployment health and readiness reporting.
    - Added a database-backed `/health` endpoint and configured Render to use it.
-   - Admin 2FA is no longer reported ready unless both the feature flag and SMTP delivery are configured.
+   - Superseded by owner instruction: administrator email-code verification has been removed and is no longer a readiness control.
    - Verified 49 backend tests, frontend TypeScript/build, clean migrations through `20260826_10`, a 123-service seed, and disable-state persistence across reseeding.
 
 21. Still required before claiming 100% public-launch readiness:
    - Publish and verify this checkpoint on Render.
    - Complete isolated authenticated client/admin browser E2E tests.
-   - Confirm production S3-compatible storage, SMTP, Redis-backed rate limits, admin 2FA, and database backup/restore.
+   - Confirm production S3-compatible storage, SMTP, Redis-backed rate limits and database backup/restore.
+   - Do not restore administrator email-code verification unless the owner explicitly requests it.
    - Complete keyboard, screen-reader, mobile/browser, slow-network, load, concurrency, cold-start and recovery testing.
 
 ## Encrypted backup checkpoint (2026-08-31)
