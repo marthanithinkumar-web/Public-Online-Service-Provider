@@ -49,13 +49,11 @@ jobs:
       - name: Verify production dependency readiness
         run: |
           set -Eeuo pipefail
-          : > /tmp/readiness-failures.txt
           curl --fail --silent --show-error --location \
             --retry 5 --retry-delay 5 --retry-all-errors \
             --max-time 30 "$API_URL/readiness" -o /tmp/readiness.json
           python - <<'PY'
           import json
-          from pathlib import Path
           with open('/tmp/readiness.json', encoding='utf-8') as handle:
               payload = json.load(handle)
           checks = payload.get('checks') or {}
@@ -72,107 +70,42 @@ jobs:
               'razorpay_connectivity',
           ]
           failed = [name for name in required if checks.get(name) is not True]
-          if failed:
-              message = 'Production readiness failed: ' + ', '.join(failed)
-              print(message)
-              Path('/tmp/readiness-failures.txt').write_text(message + '\n', encoding='utf-8')
-          else:
-              print('Launch-critical production dependency checks are ready.')
+          assert not failed, 'Production readiness failed: ' + ', '.join(failed)
+          print('Launch-critical production dependency checks are ready.')
           PY
 
-      - name: Verify public service catalog and search APIs
+      - name: Verify public APIs
         run: |
           set -Eeuo pipefail
-          curl --fail --silent --show-error --location \
-            --retry 5 --retry-delay 5 --retry-all-errors \
-            --max-time 30 "$API_URL/api/services" -o /tmp/services.json
-          curl --fail --silent --show-error --location \
-            --retry 5 --retry-delay 5 --retry-all-errors \
-            --max-time 30 "$API_URL/api/services/search?q=income%20certificate" -o /tmp/service-search.json
-          python - <<'PY'
-          import json
-          with open('/tmp/services.json', encoding='utf-8') as handle:
-              payload = json.load(handle)
-          assert isinstance(payload, list), type(payload)
-          assert len(payload) >= 100, f'Expected production catalog, found only {len(payload)} services'
-          assert all(item.get('id') and item.get('name') and item.get('slug') for item in payload[:10]), 'Catalog entries are incomplete'
-          with open('/tmp/service-search.json', encoding='utf-8') as handle:
-              results = json.load(handle)
-          assert isinstance(results, list) and results, 'Production service search returned no results'
-          assert any('income' in str(item.get('name', '')).lower() for item in results), results[:5]
-          PY
-
-      - name: Verify recharge and bill payment catalog
-        run: |
-          set -Eeuo pipefail
-          expected='Mobile Recharge|Mobile Postpaid Bill Payment Assistance|DTH Recharge Assistance|Broadband / Landline Bill Payment Assistance|FASTag Recharge Assistance|Piped Gas Bill Payment Assistance'
-          ready=0
-          for attempt in $(seq 1 18); do
-            curl --fail --silent --show-error --location --max-time 30 "$API_URL/api/services" -o /tmp/recharge-services.json
-            if EXPECTED="$expected" python - <<'PY'
-          import json, os, sys
-          expected=set(os.environ['EXPECTED'].split('|'))
-          with open('/tmp/recharge-services.json', encoding='utf-8') as handle:
-              items=json.load(handle)
-          names={item.get('catalog_name') for item in items}
-          sys.exit(0 if expected <= names else 1)
-          PY
-            then
-              ready=1
-              break
-            fi
-            echo "Waiting for recharge/bill catalog deployment (attempt $attempt/18)..."
-            sleep 10
-          done
-          test "$ready" = "1"
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 5 --retry-all-errors --max-time 30 "$API_URL/api/services" -o /tmp/services.json
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 5 --retry-all-errors --max-time 30 "$API_URL/api/services/search?q=income%20certificate" -o /tmp/search.json
           curl --fail --silent --show-error --location --max-time 30 "$API_URL/api/fees/recharge-bill-assistance" -o /tmp/recharge-fee.json
-          for term in 'postpaid%20bill' 'dth%20recharge' 'broadband%20bill' 'fastag' 'piped%20gas'; do
-            curl --fail --silent --show-error --location --max-time 30 "$API_URL/api/services/search?q=$term" -o "/tmp/search-${term//%20/-}.json"
-          done
-          EXPECTED="$expected" python - <<'PY'
-          import json, os
-          expected=set(os.environ['EXPECTED'].split('|'))
-          with open('/tmp/recharge-services.json', encoding='utf-8') as handle:
-              items=json.load(handle)
-          selected={item['catalog_name']:item for item in items if item.get('catalog_name') in expected}
-          assert set(selected) == expected, set(selected)
-          with open('/tmp/recharge-fee.json', encoding='utf-8') as handle:
-              fee=json.load(handle)
-          configured=float(fee['price_inr'])
-          for name,item in selected.items():
-              assert item['category']=='Recharge & Bill Payments', (name,item['category'])
-              assert item['official_fee_status']=='none', (name,item['official_fee_status'])
-              assert float(item['official_fee_inr'])==0.0, (name,item['official_fee_inr'])
-              assert float(item['price_inr'])==configured, (name,item['price_inr'],configured)
-          searches={
-              'postpaid-bill':'Mobile Postpaid Bill Payment Assistance',
-              'dth-recharge':'DTH Recharge Assistance',
-              'broadband-bill':'Broadband / Landline Bill Payment Assistance',
-              'fastag':'FASTag Recharge Assistance',
-              'piped-gas':'Piped Gas Bill Payment Assistance',
-          }
-          for key,name in searches.items():
-              with open(f'/tmp/search-{key}.json', encoding='utf-8') as handle:
-                  results=json.load(handle)
-              assert any(item.get('catalog_name')==name for item in results), (key,name)
-          PY
-
-      - name: Verify public jobs and scholarships APIs
-        run: |
-          set -Eeuo pipefail
-          curl --fail --silent --show-error --location --max-time 30 \
-            "$API_URL/api/jobs/?limit=5" -o /tmp/jobs.json
-          curl --fail --silent --show-error --location --max-time 30 \
-            "$API_URL/api/scholarships/" -o /tmp/scholarships.json
+          curl --fail --silent --show-error --location --max-time 30 "$API_URL/api/jobs/?limit=5" -o /tmp/jobs.json
+          curl --fail --silent --show-error --location --max-time 30 "$API_URL/api/scholarships/" -o /tmp/scholarships.json
           python - <<'PY'
           import json
-          with open('/tmp/jobs.json', encoding='utf-8') as handle:
-              jobs = json.load(handle)
-          assert isinstance(jobs, dict) and isinstance(jobs.get('items'), list), jobs
-          assert isinstance(jobs.get('count'), int), jobs
-          with open('/tmp/scholarships.json', encoding='utf-8') as handle:
-              scholarships = json.load(handle)
-          assert isinstance(scholarships, dict) and isinstance(scholarships.get('items'), list), scholarships
+          with open('/tmp/services.json', encoding='utf-8') as f: services=json.load(f)
+          with open('/tmp/search.json', encoding='utf-8') as f: search=json.load(f)
+          with open('/tmp/recharge-fee.json', encoding='utf-8') as f: recharge_fee=json.load(f)
+          with open('/tmp/jobs.json', encoding='utf-8') as f: jobs=json.load(f)
+          with open('/tmp/scholarships.json', encoding='utf-8') as f: scholarships=json.load(f)
+          assert isinstance(services, list) and len(services) >= 100
+          assert all(item.get('id') and item.get('name') and item.get('slug') for item in services[:10])
+          assert isinstance(search, list) and any('income' in str(item.get('name','')).lower() for item in search)
+          expected={
+              'Mobile Recharge','Mobile Postpaid Bill Payment Assistance','DTH Recharge Assistance',
+              'Broadband / Landline Bill Payment Assistance','FASTag Recharge Assistance','Piped Gas Bill Payment Assistance'
+          }
+          selected={item.get('catalog_name'):item for item in services if item.get('catalog_name') in expected}
+          assert set(selected) == expected, set(selected)
+          configured=float(recharge_fee['price_inr'])
+          for name,item in selected.items():
+              assert item.get('category') == 'Recharge & Bill Payments', name
+              assert item.get('official_fee_status') == 'none', name
+              assert float(item.get('official_fee_inr') or 0) == 0.0, name
+              assert float(item.get('price_inr')) == configured, name
+          assert isinstance(jobs, dict) and isinstance(jobs.get('items'), list) and isinstance(jobs.get('count'), int)
+          assert isinstance(scholarships, dict) and isinstance(scholarships.get('items'), list)
           PY
 
       - name: Verify homepage and public discovery pages
@@ -183,44 +116,45 @@ jobs:
             code="$(curl --silent --show-error --location --output "$output" --write-out '%{http_code}' --retry 5 --retry-delay 5 --retry-all-errors --max-time 30 "$UI_URL$path")"
             test "$code" = "200" || { echo "Unexpected HTTP $code for $path"; exit 1; }
           done
-          grep -qi 'Public Online Service Provider' /tmp/page_.html
+          grep -qi 'Public Online Service Provider' /tmp/page_.html || { echo 'Homepage branding is missing'; exit 1; }
 
       - name: Verify robots and sitemap use production host
         run: |
           set -Eeuo pipefail
-          curl --fail --silent --show-error --location --max-time 30 "$UI_URL/robots.txt" -o /tmp/robots.txt
-          curl --fail --silent --show-error --location --max-time 30 "$UI_URL/sitemap.xml" -o /tmp/sitemap.xml
-          grep -Fq "$UI_URL/sitemap.xml" /tmp/robots.txt
-          grep -Fq "$UI_URL/" /tmp/sitemap.xml
-          grep -Fq "$UI_URL/services/mobile-recharge" /tmp/sitemap.xml
-          grep -Fq "$UI_URL/services/apply-fastag-recharge" /tmp/sitemap.xml
-          for path in /login /register /account-settings /messages /grievances /submit-grievance /submit-review /reset-password; do
-            grep -Fq "Disallow: $path" /tmp/robots.txt || { echo "robots.txt does not block $path"; exit 1; }
+          probe="$(date +%s%N)"
+          curl --fail --silent --show-error --location --max-time 30 -H 'Cache-Control: no-cache' "$UI_URL/robots.txt?probe=$probe" -o /tmp/robots.txt
+          curl --fail --silent --show-error --location --max-time 30 -H 'Cache-Control: no-cache' "$UI_URL/sitemap.xml?probe=$probe" -o /tmp/sitemap.xml
+          require_text() {
+            file="$1"; text="$2"; label="$3"
+            if ! grep -Fq "$text" "$file"; then
+              echo "$label missing: $text"
+              echo "--- $file ---"
+              head -n 40 "$file"
+              exit 1
+            fi
+          }
+          require_text /tmp/robots.txt "$UI_URL/sitemap.xml" 'robots sitemap reference'
+          require_text /tmp/sitemap.xml "$UI_URL/" 'sitemap production host'
+          require_text /tmp/sitemap.xml "$UI_URL/services/mobile-recharge" 'mobile recharge sitemap entry'
+          require_text /tmp/sitemap.xml "$UI_URL/services/apply-fastag-recharge" 'FASTag sitemap entry'
+          for path in /login /register /account-settings /messages /grievances /submit-grievance /submit-review /reset-password /my-orders; do
+            require_text /tmp/robots.txt "Disallow: $path" "robots protection for $path"
           done
-          grep -Fq 'Disallow: /admin/' /tmp/robots.txt
-          grep -Fq 'Disallow: /my-orders' /tmp/robots.txt
+          if ! grep -Eq '^Disallow: /admin/?$' /tmp/robots.txt; then
+            echo 'robots protection for admin routes is missing'
+            cat /tmp/robots.txt
+            exit 1
+          fi
 
       - name: Verify private routes send noindex response headers
         run: |
           set -Eeuo pipefail
-          : > /tmp/noindex-failures.txt
+          failures=0
           for path in /login /register /account-settings /admin/login /my-orders /messages /grievances /submit-grievance /submit-review /request-reset /reset-password /verify; do
             headers="$(curl --silent --show-error --location --head --max-time 30 "$UI_URL$path")"
             if ! echo "$headers" | grep -qi 'x-robots-tag:.*noindex'; then
-              echo "Missing noindex header for $path" | tee -a /tmp/noindex-failures.txt
+              echo "Missing noindex header for $path"
+              failures=1
             fi
           done
-
-      - name: Fail on collected production blockers
-        run: |
-          set -Eeuo pipefail
-          blockers=0
-          if test -s /tmp/readiness-failures.txt; then
-            cat /tmp/readiness-failures.txt
-            blockers=1
-          fi
-          if test -s /tmp/noindex-failures.txt; then
-            cat /tmp/noindex-failures.txt
-            blockers=1
-          fi
-          test "$blockers" = "0"
+          test "$failures" = "0"
