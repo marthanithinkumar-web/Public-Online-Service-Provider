@@ -72,5 +72,7 @@ def test_repository_has_no_retired_frontend_hostname():
 
 def test_render_blueprint_noindexes_exact_my_orders_route_and_children():
     render_yaml = _render_yaml()
+    assert '- path: /admin\n        name: X-Robots-Tag\n        value: noindex, nofollow, noarchive' in render_yaml
+    assert '- path: /admin/*\n        name: X-Robots-Tag\n        value: noindex, nofollow, noarchive' in render_yaml
     assert '- path: /my-orders\n        name: X-Robots-Tag\n        value: noindex, nofollow, noarchive' in render_yaml
     assert '- path: /my-orders/*\n        name: X-Robots-Tag\n        value: noindex, nofollow, noarchive' in render_yaml

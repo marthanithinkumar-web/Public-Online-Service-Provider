@@ -33,6 +33,8 @@ if(jobsHtml.includes(legacyEmploymentNewsUrl)) throw new Error('Removed Employme
 
 const robots=fs.readFileSync(path.join(distDir,'robots.txt'),'utf8')
 if(!robots.includes(`Sitemap: ${siteUrl}/sitemap.xml`)) throw new Error('robots.txt sitemap does not use the configured site URL')
+if(!robots.includes('Disallow: /admin\n')) throw new Error('robots.txt does not protect the exact /admin route')
+if(robots.includes('Disallow: /admin/\n')) throw new Error('robots.txt only protects /admin children, not the exact route')
 
 const sitemap=fs.readFileSync(path.join(distDir,'sitemap.xml'),'utf8')
 if(!sitemap.includes(`<loc>${siteUrl}/</loc>`)) throw new Error('sitemap.xml does not use the configured site URL')
