@@ -16,7 +16,7 @@ const urls=[
 ]
 if(new Set(urls).size!==urls.length)throw new Error('Duplicate public URL generated for sitemap.xml')
 const xml=`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(route=>`  <url><loc>${siteUrl}${route}</loc></url>`).join('\n')}\n</urlset>\n`
-const robots=`User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /my-orders\nDisallow: /account-settings\nDisallow: /messages\nDisallow: /grievances\nDisallow: /submit-grievance\nDisallow: /submit-review\nDisallow: /reset-password\nDisallow: /login\nDisallow: /register\nDisallow: /request-reset\nDisallow: /verify\n\nSitemap: ${siteUrl}/sitemap.xml\n`
+const robots=`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /my-orders\nDisallow: /account-settings\nDisallow: /messages\nDisallow: /grievances\nDisallow: /submit-grievance\nDisallow: /submit-review\nDisallow: /reset-password\nDisallow: /login\nDisallow: /register\nDisallow: /request-reset\nDisallow: /verify\n\nSitemap: ${siteUrl}/sitemap.xml\n`
 
 fs.writeFileSync(path.join(publicDir,'sitemap.xml'),xml)
 fs.writeFileSync(path.join(publicDir,'robots.txt'),robots)

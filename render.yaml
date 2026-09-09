@@ -131,6 +131,9 @@ services:
       - path: /scholarships/*
         name: Content-Type
         value: text/html; charset=utf-8
+      - path: /admin
+        name: X-Robots-Tag
+        value: noindex, nofollow, noarchive
       - path: /admin/*
         name: X-Robots-Tag
         value: noindex, nofollow, noarchive
