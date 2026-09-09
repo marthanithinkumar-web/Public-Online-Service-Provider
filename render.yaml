@@ -33,8 +33,6 @@ services:
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
-      - key: ADMIN_2FA_ENABLED
-        sync: false
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT

@@ -51,7 +51,7 @@ This checklist collects the important production steps and minimal code/config c
 
 10) Optional hardening
 - Consider adding Content-Security-Policy nonces for inline scripts if required for analytics/ID tools.
-- Add two-factor auth for admin accounts.
+- Administrator email-code verification is intentionally not part of this product. Do not restore it unless the owner explicitly requests it; keep password rate limits, role checks, token revocation and password-reset protections intact.
 - Use secrets rotation and IAM roles for S3 access.
 
 Helpful commands (run where appropriate)

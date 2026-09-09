@@ -26,7 +26,6 @@ jobs:
       SECRET_KEY: browser-e2e-secret-key-that-is-long-enough-for-tests-only
       ADMIN_EMAIL: admin-e2e@example.test
       ADMIN_PASSWORD: E2E-Admin-Password-2026!
-      ADMIN_2FA_ENABLED: '0'
       FORCE_HTTPS: '0'
       FRONTEND_URL: http://127.0.0.1:4173
     steps:

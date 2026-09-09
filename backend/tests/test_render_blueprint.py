@@ -44,6 +44,7 @@ def test_render_blueprint_pins_the_only_production_frontend_and_api_origins():
     assert 'key: CORS_ORIGINS\n        value: https://pospindia.onrender.com' in render_yaml
     assert 'key: VITE_SITE_URL\n        value: https://pospindia.onrender.com' in render_yaml
     assert 'key: VITE_API_URL\n        value: https://public-online-service-provider-api.onrender.com' in render_yaml
+    assert 'ADMIN_2FA_ENABLED' not in render_yaml
     assert 'name: posp\n    runtime: static' not in render_yaml
     assert 'name: public-online-service-provider-ui\n    runtime: static' not in render_yaml
 

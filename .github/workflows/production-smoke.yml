@@ -67,7 +67,6 @@ jobs:
               'shared_rate_limit_connectivity',
               'smtp_delivery',
               'smtp_connectivity',
-              'admin_2fa',
               'razorpay_live_credentials',
               'razorpay_webhook',
               'razorpay_connectivity',

@@ -178,12 +178,10 @@ def razorpay_connectivity():
 
 def production_readiness():
     smtp_ready = smtp_configured()
-    admin_2fa_enabled = os.getenv('ADMIN_2FA_ENABLED', '0') == '1'
     checks = {
         'persistent_document_storage': persistent_storage_configured(),
         'shared_rate_limit_storage': shared_rate_limit_configured(),
         'smtp_delivery': smtp_ready,
-        'admin_2fa': admin_2fa_enabled and smtp_ready,
         'razorpay_live_credentials': razorpay_live_credentials_configured(),
         'razorpay_webhook': razorpay_webhook_configured(),
     }
