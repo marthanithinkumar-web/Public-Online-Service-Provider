@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /admin
+Disallow: /admin/
 Disallow: /my-orders
 Disallow: /account-settings
 Disallow: /messages
