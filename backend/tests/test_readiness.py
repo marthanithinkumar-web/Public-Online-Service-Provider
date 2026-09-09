@@ -15,7 +15,7 @@ def _clear_readiness_env(monkeypatch):
     for name in (
         'SMTP_HOST','SMTP_PORT','SMTP_USER','SMTP_PASS','SMTP_FROM_EMAIL',
         'SMTP_USE_TLS','SMTP_USE_SSL','MAIL_DEFAULT_SENDER','ADMIN_EMAIL',
-        'ADMIN_2FA_ENABLED','S3_BUCKET','S3_ENDPOINT_URL','AWS_ACCESS_KEY_ID',
+        'S3_BUCKET','S3_ENDPOINT_URL','AWS_ACCESS_KEY_ID',
         'AWS_SECRET_ACCESS_KEY','AWS_REGION','RATELIMIT_STORAGE_URI',
         'RAZORPAY_KEY_ID','RAZORPAY_KEY_SECRET','RAZORPAY_WEBHOOK_SECRET',
         'STRICT_PRODUCTION_READINESS',
@@ -29,7 +29,6 @@ def _set_complete_readiness_env(monkeypatch):
     monkeypatch.setenv('SMTP_USER', 'smtp-user')
     monkeypatch.setenv('SMTP_PASS', 'smtp-password')
     monkeypatch.setenv('SMTP_FROM_EMAIL', 'sender@example.test')
-    monkeypatch.setenv('ADMIN_2FA_ENABLED', '1')
     monkeypatch.setenv('S3_BUCKET', 'private-documents')
     monkeypatch.setenv('S3_ENDPOINT_URL', 'https://s3.example.test')
     monkeypatch.setenv('AWS_ACCESS_KEY_ID', 'access-key')
@@ -48,7 +47,6 @@ def test_readiness_reports_missing_launch_configuration(monkeypatch):
         'persistent_document_storage': False,
         'shared_rate_limit_storage': False,
         'smtp_delivery': False,
-        'admin_2fa': False,
         'razorpay_live_credentials': False,
         'razorpay_webhook': False,
     }

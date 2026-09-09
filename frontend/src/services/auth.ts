@@ -22,13 +22,6 @@ export async function login(email:string, password:string){
   return res.data
 }
 
-export async function verifyAdmin2FA(challenge_token:string, code:string){
-  const res = await api.post('/auth/verify-admin-2fa', {challenge_token, code})
-  if(res.data?.token) saveToken(res.data.token)
-  if(res.data?.user) saveUser(res.data.user)
-  return res.data
-}
-
 export async function fetchClientProfile(){
   return (await api.get('/auth/profile', {headers:authHeader()})).data
 }
