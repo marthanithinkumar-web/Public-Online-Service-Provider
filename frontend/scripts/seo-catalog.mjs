@@ -4,10 +4,11 @@ import {fileURLToPath} from 'node:url'
 
 const scriptDir=path.dirname(fileURLToPath(import.meta.url))
 const seedPath=path.resolve(scriptDir,'../../backend/seed.py')
+const publicDataDir=path.resolve(scriptDir,'../public/data')
 const defaultSiteUrl='https://pospindia.onrender.com'
 
 export const siteUrl=String(process.env.VITE_SITE_URL||defaultSiteUrl).trim().replace(/\/+$/,'')||defaultSiteUrl
-export const publicRoutes=['/','/jobs','/scholarships','/meeseva','/certificates','/schemes','/about','/contact','/privacy','/terms','/disclaimer']
+export const publicRoutes=['/','/government-services','/recharge-bills','/jobs','/scholarships','/meeseva','/certificates','/schemes','/about','/contact','/privacy','/terms','/disclaimer']
 
 const extraServices=[
   ['Mobile Recharge','Assistance with prepaid mobile recharge plan selection and request tracking for supported Indian operators. Operator plan amount is kept separate from the website assistance fee.','mobile recharge,recharge,prepaid,airtel,jio,vi,vodafone idea,bsnl,telecom,phone recharge,recharge plan,bill payment,bills','Recharge & Bill Payments'],
@@ -68,4 +69,24 @@ export function readCatalog(){
     slugs.add(service.slug)
   }
   return services
+}
+
+function readSnapshot(name){
+  const payload=JSON.parse(fs.readFileSync(path.join(publicDataDir,name),'utf8'))
+  return Array.isArray(payload?.items)?payload.items:[]
+}
+
+// Detail snapshots are emitted as extensionless files. Keep their names within
+// a conservative filesystem limit and exclude malformed snapshot records.
+const hasSafePublicSlug=item=>{
+  const slug=String(item?.slug||'')
+  return slug.length<=200&&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)&&Boolean(item?.title)
+}
+
+export function readJobs(){
+  return readSnapshot('jobs.json').filter(item=>item?.status==='published'&&hasSafePublicSlug(item))
+}
+
+export function readScholarships(){
+  return readSnapshot('scholarships.json').filter(item=>item?.status==='active'&&hasSafePublicSlug(item))
 }

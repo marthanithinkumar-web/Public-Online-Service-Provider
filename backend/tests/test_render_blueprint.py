@@ -18,12 +18,22 @@ def test_render_start_command_disables_bootstrap_for_entire_startup_chain():
     assert 'SKIP_DATABASE_BOOTSTRAP=1 flask' not in render_yaml
 
 
-def test_render_static_site_uses_single_spa_fallback_for_deep_link_refreshes():
+def test_render_static_site_serves_seo_snapshots_before_spa_fallback():
     render_yaml = _render_yaml()
     assert 'source: /*\n        destination: /index.html' in render_yaml
+    assert 'source: /government-services\n        destination: /government-services/index.html' in render_yaml
+    assert 'source: /recharge-bills\n        destination: /recharge-bills/index.html' in render_yaml
+    assert 'source: /jobs\n        destination: /jobs/index.html' in render_yaml
+    assert 'source: /scholarships\n        destination: /scholarships/index.html' in render_yaml
+    # Wildcard rewrites would turn an unknown dynamic slug into a static 404
+    # instead of allowing React Router to handle the deep link.
     assert 'source: /services/*' not in render_yaml
     assert 'destination: /services/*/index.html' not in render_yaml
-    assert 'source: /jobs\n' not in render_yaml
+    assert 'source: /jobs/*' not in render_yaml
+    assert 'source: /scholarships/*' not in render_yaml
+    assert '- path: /services/*\n        name: Content-Type\n        value: text/html; charset=utf-8' in render_yaml
+    assert '- path: /jobs/*\n        name: Content-Type\n        value: text/html; charset=utf-8' in render_yaml
+    assert '- path: /scholarships/*\n        name: Content-Type\n        value: text/html; charset=utf-8' in render_yaml
 
 
 def test_render_blueprint_pins_the_only_production_frontend_and_api_origins():
