@@ -119,6 +119,18 @@ services:
       - path: /assets/*
         name: Cache-Control
         value: public, max-age=31536000, immutable
+      # Generated detail snapshots are extensionless files so Render serves
+      # known crawlable URLs before the SPA fallback while unknown deep links
+      # still reach React Router.
+      - path: /services/*
+        name: Content-Type
+        value: text/html; charset=utf-8
+      - path: /jobs/*
+        name: Content-Type
+        value: text/html; charset=utf-8
+      - path: /scholarships/*
+        name: Content-Type
+        value: text/html; charset=utf-8
       - path: /admin/*
         name: X-Robots-Tag
         value: noindex, nofollow, noarchive
@@ -156,6 +168,44 @@ services:
         name: X-Robots-Tag
         value: noindex, nofollow, noarchive
     routes:
+      # Exact public landing pages have generated HTML snapshots. Detail-page
+      # snapshots are real extensionless resources and bypass these rules.
+      - type: rewrite
+        source: /government-services
+        destination: /government-services/index.html
+      - type: rewrite
+        source: /recharge-bills
+        destination: /recharge-bills/index.html
+      - type: rewrite
+        source: /jobs
+        destination: /jobs/index.html
+      - type: rewrite
+        source: /scholarships
+        destination: /scholarships/index.html
+      - type: rewrite
+        source: /meeseva
+        destination: /meeseva/index.html
+      - type: rewrite
+        source: /certificates
+        destination: /certificates/index.html
+      - type: rewrite
+        source: /schemes
+        destination: /schemes/index.html
+      - type: rewrite
+        source: /about
+        destination: /about/index.html
+      - type: rewrite
+        source: /contact
+        destination: /contact/index.html
+      - type: rewrite
+        source: /privacy
+        destination: /privacy/index.html
+      - type: rewrite
+        source: /terms
+        destination: /terms/index.html
+      - type: rewrite
+        source: /disclaimer
+        destination: /disclaimer/index.html
       - type: rewrite
         source: /*
         destination: /index.html
