@@ -9,7 +9,7 @@ import {fetchJob,JobNotification} from '../services/jobs'
 import {fetchScholarship,Scholarship} from '../services/scholarships'
 import {getToken,getUser} from '../services/localStorage'
 import {getSession} from '../services/session'
-import {readCachedServices,slugifyServiceName} from '../services/serviceCatalog'
+import {fetchServiceSnapshot,readCachedServices,readPrerenderedService,slugifyServiceName} from '../services/serviceCatalog'
 
 type Field={key:string;label:string;type?:'text'|'date'|'select';options?:string[];placeholder?:string}
 type Profile={match:RegExp;fields:Field[];documents:string[]}
@@ -40,7 +40,7 @@ const profiles:Profile[]=[
  {match:/electric|water|gas|broadband|landline|bill payment/i,fields:[{key:'consumer_number',label:'Consumer / account number'},{key:'provider',label:'Provider'},{key:'bill_month',label:'Bill month / billing period'},{key:'requested_amount_inr',label:'Bill amount'}],documents:['Latest bill / demand notice','Consumer or account page screenshot, if useful','Previous payment receipt, if useful']}
 ]
 const uniq=<T,>(items:T[])=>items.filter((item,index)=>items.indexOf(item)===index)
-function cachedService(id?:string,slug?:string){const n=slug?slugifyServiceName(slug):'';return readCachedServices(true).find((x:any)=>id?String(x.id)===String(id):n&&[x.slug,slugifyServiceName(x.name),slugifyServiceName(x.catalog_name||'')].filter(Boolean).includes(n))||null}
+function cachedService(id?:string,slug?:string){const n=slug?slugifyServiceName(slug):'';return readCachedServices(true).find((x:any)=>id?String(x.id)===String(id):n&&[x.slug,slugifyServiceName(x.name),slugifyServiceName(x.catalog_name||'')].filter(Boolean).includes(n))||readPrerenderedService(slug)}
 function profileFor(service:any){const text=[service?.name,service?.catalog_name,service?.category,service?.description,service?.keywords].filter(Boolean).join(' ');return profiles.find(p=>p.match.test(text))||null}
 function applicationName(value:string){const cleaned=String(value||'').replace(/^(?:apply(?:\s+for)?|pay|application(?:\s+for)?|request(?:\s+for)?)\s+/i,'').trim();return `${cleaned||'Service'} Application`}
 function show(value?:string|null){return String(value||'').trim()||'Not extracted yet — check the official notification'}
@@ -53,7 +53,7 @@ function OpportunityNotice({job,scholarship}:{job:JobNotification|null;scholarsh
 export default function UniversalServiceRequestV2(){
  const {id,slug}=useParams();const location=useLocation();const session=getSession();const localUser=getUser();const params=new URLSearchParams(location.search);const jobSlug=params.get('job')||'';const scholarshipSlug=params.get('scholarship')||''
  const initial=useMemo(()=>cachedService(id,slug),[id,slug]);const [service,setService]=useState<any>(initial);const [loading,setLoading]=useState(!initial);const [error,setError]=useState('');const [busy,setBusy]=useState(false);const [answers,setAnswers]=useState<Record<string,string>>({});const [notes,setNotes]=useState('');const [files,setFiles]=useState<File[]>([]);const [profile,setProfile]=useState<any>(localUser||null);const [job,setJob]=useState<JobNotification|null>(null);const [scholarship,setScholarship]=useState<Scholarship|null>(null);const [step,setStep]=useState<1|2|3>(1);const [order,setOrder]=useState<any>(null)
- useEffect(()=>{let active=true;if(initial){setService(initial);setLoading(false)}const endpoint=slug?`${apiBase}/services/by-slug/${encodeURIComponent(slug)}`:`${apiBase}/services/${id}`;axios.get(endpoint,{timeout:TIMEOUT}).then(r=>active&&setService(r.data)).catch(()=>{if(active&&!initial)setError('Unable to load this service right now.')}).finally(()=>active&&setLoading(false));return()=>{active=false}},[id,slug])
+ useEffect(()=>{let active=true;setError('');if(initial){setService(initial);setLoading(false)}const snapshotPromise=slug&&!initial?fetchServiceSnapshot(slug).catch(()=>null):Promise.resolve(null);if(!initial)snapshotPromise.then(value=>{if(active&&value){setService(value);setLoading(false)}});const endpoint=slug?`${apiBase}/services/by-slug/${encodeURIComponent(slug)}`:`${apiBase}/services/${id}`;axios.get(endpoint,{timeout:TIMEOUT}).then(r=>{if(active){setService(r.data);setError('')}}).catch(async()=>{const fallbackService=initial||await snapshotPromise;if(active&&!fallbackService)setError('Unable to load this service right now.')}).finally(()=>active&&setLoading(false));return()=>{active=false}},[id,slug,initial])
  useEffect(()=>{if(!session||session.is_admin)return;fetchClientProfile().then(r=>setProfile(r.user)).catch(()=>{})},[session?.user_id])
  useEffect(()=>{let active=true;if(!jobSlug){setJob(null);return()=>{active=false}}fetchJob(jobSlug).then(r=>active&&setJob(r.job)).catch(()=>active&&setError('The selected job notice is unavailable or has closed.'));return()=>{active=false}},[jobSlug])
  useEffect(()=>{let active=true;if(!scholarshipSlug){setScholarship(null);return()=>{active=false}}fetchScholarship(scholarshipSlug).then(r=>active&&setScholarship(r)).catch(()=>active&&setError('The selected scholarship is unavailable or has closed.'));return()=>{active=false}},[scholarshipSlug])
