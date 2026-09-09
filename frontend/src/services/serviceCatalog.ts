@@ -6,6 +6,55 @@ const MAX_AGE_MS=15*60*1000
 const STALE_MAX_AGE_MS=7*24*60*60*1000
 const REQUEST_TIMEOUT_MS=12000
 let request:Promise<any[]>|null=null
+let snapshotRequest:Promise<any[]>|null=null
+let snapshotItems:any[]|null=null
+
+function normalizeSnapshotService(item:any){
+  if(!item||typeof item.name!=='string')return null
+  const slug=slugifyServiceName(item.slug||item.name)
+  return {...item,slug,__seoSnapshot:true,requirements:item.requirements||{}}
+}
+
+function schemaTypeIncludes(value:any,type:string){
+  const types=Array.isArray(value)?value:[value]
+  return types.some(item=>String(item||'').toLowerCase()===type.toLowerCase())
+}
+
+export function readPrerenderedService(slug?:string){
+  if(typeof document==='undefined'||typeof window==='undefined'||!slug)return null
+  try{
+    const raw=document.getElementById('structured-data')?.textContent||''
+    const parsed=JSON.parse(raw)
+    const entries=Array.isArray(parsed)?parsed:[parsed]
+    const normalized=slugifyServiceName(slug)
+    const expectedPath=`/services/${normalized}`
+    const schema=entries.find(item=>{
+      if(!item||!schemaTypeIncludes(item['@type'],'Service'))return false
+      const path=new URL(String(item.url||''),window.location.origin).pathname.replace(/\/+$/,'')||'/'
+      return path===expectedPath
+    })
+    if(!schema?.name)return null
+    return normalizeSnapshotService({name:String(schema.name),description:String(schema.description||''),category:String(schema.serviceType||'Public Services'),slug:normalized})
+  }catch{return null}
+}
+
+async function fetchSnapshotCatalog(){
+  if(snapshotItems)return snapshotItems
+  if(snapshotRequest)return snapshotRequest
+  snapshotRequest=fetch('/seo-catalog.json',{cache:'default',headers:{Accept:'application/json'}}).then(async response=>{
+    if(!response.ok)throw new Error('Service snapshot is unavailable.')
+    const data=await response.json()
+    if(!Array.isArray(data))throw new Error('Service snapshot is invalid.')
+    snapshotItems=data.map(normalizeSnapshotService).filter(Boolean)
+    return snapshotItems
+  }).finally(()=>{snapshotRequest=null})
+  return snapshotRequest
+}
+
+export async function fetchServiceSnapshot(slug:string){
+  const normalized=slugifyServiceName(slug)
+  return (await fetchSnapshotCatalog()).find(item=>item.slug===normalized)||null
+}
 
 export function readCachedServices(allowStale=false):any[]{
   try{

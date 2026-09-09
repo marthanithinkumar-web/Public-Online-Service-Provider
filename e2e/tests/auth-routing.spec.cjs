@@ -54,6 +54,15 @@ test('unauthenticated admin workspace redirects to admin login', async ({ page }
   expect(current.searchParams.get('returnTo')).toBe('/admin/dashboard')
 })
 
+test('public service page remains crawlable when the live API lookup fails', async ({ page }) => {
+  await page.route('**/api/services/by-slug/pan-card-new-application', async (route) => {
+    await route.abort('failed')
+  })
+  await page.goto('/services/pan-card-new-application')
+  await expect(page.getByRole('heading', { name: 'PAN Card - New Application', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Service unavailable', exact: true })).toHaveCount(0)
+})
+
 test('client session cannot enter admin routes', async ({ page }) => {
   await installSession(page, { isAdmin: false })
   await mockClientWorkspace(page)
