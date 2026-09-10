@@ -7,6 +7,7 @@ import {
   updateScholarshipAssistanceFee,updateService,
 } from '../../services/admin'
 import FeeSummary from '../ui/FeeSummary'
+import RechargeBillFeeManagement from './RechargeBillFeeManagement'
 
 type OfficialStatus='known'|'none'|'unconfirmed'
 
@@ -224,6 +225,8 @@ export default function ServiceManagement(){
         <small>₹0 is allowed. Changes apply only to future scholarship assistance requests; existing submitted requests keep their agreed fee.</small>
       </div>
     </section>
+
+    <RechargeBillFeeManagement embedded/>
 
     <section className="dashboard-section" aria-labelledby="admin-catalog-search-title">
       <div className="section-header inline"><div><span className="eyebrow">Quick find</span><h3 id="admin-catalog-search-title">Search any service or job</h3><p>Find the exact item first instead of scrolling through the full catalog.</p></div></div>
