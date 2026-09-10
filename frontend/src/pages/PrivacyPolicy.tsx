@@ -3,6 +3,7 @@ import PublicInfoPage from '../components/ui/PublicInfoPage'
 
 export default function PrivacyPolicy(){
   return <PublicInfoPage eyebrow="Privacy & safety" title="Your information stays private" intro="We collect and use only the information needed to provide account and service-request assistance.">
+    <section><h2>Service operator</h2><p>Public Online Service Provider is operated under the trade name MNK Technologies. References to the provider in this policy mean the proprietor operating this platform under MNK Technologies.</p></section>
     <section><h2>Information we use</h2><p>Your account contact details, selected service information, application answers and documents are used to process and communicate about your requests.</p></section>
     <section><h2>Who can access it</h2><p>Backend ownership checks restrict client information to the account that submitted it. Authorized provider administrators may access the limited information required to process the request.</p></section>
     <section><h2>Information you must never provide</h2><ul><li>One-time passwords or OTPs</li><li>Account passwords, PINs or recovery codes</li><li>Banking-login credentials or card security codes</li></ul><p>When an official portal requires verification or payment, complete that step yourself on the official portal.</p></section>
