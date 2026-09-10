@@ -1,3 +1,5 @@
+from datetime import date
+
 from app.jobs import notice_enrichment as jobs
 from app.scholarships import source_enrichment as scholarships
 
@@ -6,6 +8,7 @@ def test_job_notice_extracts_client_facing_facts(monkeypatch):
     class Item:
         official_notice_url='https://ssc.gov.in/example.pdf'
         qualification=age_limit=application_fee=vacancies=salary=None
+        application_start_date=deadline=None
         summary='Official SSC recruitment notice.'
     text=('Essential Educational Qualification: Degree in Civil Engineering from a recognized University. '
           'Age limit: 18 to 30 years. Application Fee: Rs. 100. Payment mode online. '
@@ -21,16 +24,36 @@ def test_job_notice_extracts_client_facing_facts(monkeypatch):
     assert item.summary.startswith('Verified from the official notification.')
 
 
+def test_job_notice_extracts_explicit_application_window(monkeypatch):
+    class Item:
+        official_notice_url='https://ssc.gov.in/chsl.pdf'
+        qualification=age_limit=application_fee=vacancies=salary=None
+        application_start_date=deadline=None
+        summary='Official SSC recruitment notice.'
+    text=('Notice of Combined Higher Secondary Examination. Dates for submission of online applications: '
+          '07.09.2026 to 30.09.2026. Last date and time for receipt of online applications: 30.09.2026 23:00. '
+          'Candidates must read the complete official notice before applying.')
+    monkeypatch.setattr(jobs,'_download_pdf',lambda url,session=None:b'pdf')
+    monkeypatch.setattr(jobs,'_pdf_text',lambda data:text)
+    item=jobs.enrich_job_item(Item())
+    assert item.application_start_date==date(2026,9,7)
+    assert item.deadline==date(2026,9,30)
+
+
 def test_job_notice_never_overwrites_existing_verified_fact(monkeypatch):
     class Item:
         official_notice_url='https://ssc.gov.in/example.pdf'
         qualification='Existing qualification'
         age_limit=application_fee=vacancies=salary=None
+        application_start_date=date(2099,1,1)
+        deadline=date(2099,1,31)
         summary='Existing summary'
     monkeypatch.setattr(jobs,'_download_pdf',lambda url,session=None:b'pdf')
-    monkeypatch.setattr(jobs,'_pdf_text',lambda data:'Essential Educational Qualification: Other qualification. Age limit: 18 to 27 years.')
+    monkeypatch.setattr(jobs,'_pdf_text',lambda data:'Essential Educational Qualification: Other qualification. Age limit: 18 to 27 years. Dates for submission of online applications: 01.02.2099 to 28.02.2099.')
     item=jobs.enrich_job_item(Item())
     assert item.qualification=='Existing qualification'
+    assert item.application_start_date==date(2099,1,1)
+    assert item.deadline==date(2099,1,31)
     assert item.summary=='Existing summary'
 
 
