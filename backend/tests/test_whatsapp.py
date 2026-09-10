@@ -1,7 +1,7 @@
 import hashlib
 import hmac
 
-from app.services.whatsapp import build if False else normalize_recipient
+from app.services.whatsapp import normalize_recipient
 
 
 def _signature(secret, body):
