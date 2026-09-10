@@ -6,7 +6,7 @@ import {clearServiceCatalog} from '../../services/serviceCatalog'
 
 const api=axios.create({baseURL:apiBase,timeout:15000})
 
-export default function RechargeBillFeeManagement(){
+export default function RechargeBillFeeManagement({embedded=false}:{embedded?:boolean}){
   const [fee,setFee]=useState<number|''>('')
   const [busy,setBusy]=useState(false)
   const [error,setError]=useState('')
@@ -44,7 +44,7 @@ export default function RechargeBillFeeManagement(){
   }
 
   return <div>
-    <div className="section-header"><div><h2>Recharge & Bill Payments Fees</h2><p>Manage the assistance fee used for new recharge and bill-payment requests.</p></div></div>
+    {!embedded&&<div className="section-header"><div><h2>Recharge & Bill Payments Fees</h2><p>Manage the assistance fee used for new recharge and bill-payment requests.</p></div></div>}
     {error&&<p className="info" role="alert">{error}</p>}
     {message&&<p className="success-message" role="status">{message}</p>}
     <section className="dashboard-section global-fee-card" aria-labelledby="recharge-bill-fee-title">
