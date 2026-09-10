@@ -4,6 +4,7 @@ import {fileURLToPath} from 'node:url'
 
 const scriptDir=path.dirname(fileURLToPath(import.meta.url))
 const seedPath=path.resolve(scriptDir,'../../backend/seed.py')
+const startupPath=path.resolve(scriptDir,'../../backend/app/main.py')
 const publicDataDir=path.resolve(scriptDir,'../public/data')
 const defaultSiteUrl='https://pospindia.onrender.com'
 
@@ -36,6 +37,26 @@ export function applicationServiceName(value){
   return name
 }
 
+export function readStartupDefaultServices(){
+  const source=fs.readFileSync(startupPath,'utf8')
+  const section=source.match(/def ensure_default_services\(\):([\s\S]*?)\ndef ensure_job_sources\(\):/)?.[1]||''
+  const services=[]
+  const tuple=/\(\s*'((?:\\'|[^'])*)'\s*,\s*'((?:\\'|[^'])*)'\s*,\s*'((?:\\'|[^'])*)'\s*,\s*[0-9.]+\s*,\s*'((?:\\'|[^'])*)'\s*\)/g
+  for(const match of section.matchAll(tuple)){
+    const category=match[1].replace(/\\'/g,"'")
+    const name=applicationServiceName(match[2].replace(/\\'/g,"'"))
+    services.push({
+      name,
+      description:match[3].replace(/\\'/g,"'"),
+      keywords:match[4].replace(/\\'/g,"'"),
+      category,
+      slug:slugify(name),
+    })
+  }
+  if(services.length<10)throw new Error(`Startup service parser found only ${services.length} services; expected at least 10.`)
+  return services
+}
+
 export function readCatalog(){
   const source=fs.readFileSync(seedPath,'utf8')
   const services=[]
@@ -59,6 +80,12 @@ export function readCatalog(){
     if(!existingSlugs.has(slug)){
       services.push({name,description,keywords,category:extraCategory,slug})
       existingSlugs.add(slug)
+    }
+  }
+  for(const service of readStartupDefaultServices()){
+    if(!existingSlugs.has(service.slug)){
+      services.push(service)
+      existingSlugs.add(service.slug)
     }
   }
   if(services.length<80)throw new Error(`SEO catalog parser found only ${services.length} services; expected at least 80.`)

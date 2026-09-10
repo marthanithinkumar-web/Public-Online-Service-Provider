@@ -63,6 +63,16 @@ test('public service page remains crawlable when the live API lookup fails', asy
   await expect(page.getByRole('heading', { name: 'Service unavailable', exact: true })).toHaveCount(0)
 })
 
+test('startup-only service remains crawlable when the API is unavailable', async ({ page }) => {
+  await page.route('**/api/services/by-slug/residence-certificate', async (route) => {
+    await route.abort('failed')
+  })
+  await page.goto('/services/residence-certificate')
+  await expect(page.getByRole('heading', { name: 'Residence Certificate', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Service unavailable', exact: true })).toHaveCount(0)
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://pospindia.onrender.com/services/residence-certificate')
+})
+
 test('client session cannot enter admin routes', async ({ page }) => {
   await installSession(page, { isAdmin: false })
   await mockClientWorkspace(page)
