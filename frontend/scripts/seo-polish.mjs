@@ -5,7 +5,7 @@ import { siteUrl } from './seo-catalog.mjs'
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url))
 const distDir = path.resolve(scriptDir, '../dist')
-const logoUrl = `${siteUrl}/logo.svg`
+const logoUrl = `${siteUrl}/logo.jpg`
 
 const pageCopy = {
   '/': {
@@ -59,7 +59,7 @@ for (const [route, config] of Object.entries(pageCopy)) {
     html = html.replace('</article>', `${config.extra.replace('<section>', '<section data-seo-polish="true">')}</article>`)
   }
   if (route === '/') {
-    html = html.replace(/<link rel="icon"[^>]*>/, '<link rel="icon" href="/logo.svg" type="image/svg+xml" />')
+    html = html.replace(/<link rel="icon"[^>]*>/, '<link rel="icon" href="/logo.jpg" type="image/jpeg" />')
     html = html.replace(
       /<script id="structured-data" type="application\/ld\+json">.*?<\/script>/s,
       `<script id="structured-data" type="application/ld+json">${JSON.stringify([
