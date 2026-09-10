@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://mnk-technologies.onrender.com/sitemap.xml
+Sitemap: https://mnktechnologies.onrender.com/sitemap.xml
