@@ -51,7 +51,7 @@ export default function AdminLogin(){
         </label>
         {error&&<p className="info" role="alert">{error}</p>}
         {busy&&<p className="auth-hint" role="status">Signing in securely…</p>}
-        <button className="btn btn-primary btn-block" type="submit" disabled={busy}>{busy?'Checking…':'Admin Login'}</button>
+        <button className="btn btn-primary btn-block" type="submit" disabled={busy}>{busy?'Checking…':'Sign in securely'}</button>
       </form>
       <div className="auth-footer">
         <Link to="/admin/request-reset">Forgot administrator password?</Link>
