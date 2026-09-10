@@ -5,8 +5,10 @@ import os
 from sqlalchemy import event, select
 
 from ..models.notification import Notification
+from ..models.order import Order
 from ..models.push_subscription import PushSubscription
 from ..models.user import User
+from ..services.whatsapp import send_status_update
 from .email import send_email
 
 logger = logging.getLogger(__name__)
@@ -86,6 +88,23 @@ def _deliver_email(connection, notification):
         return False
 
 
+def _deliver_whatsapp(connection, notification):
+    """Future-ready status delivery; stays disabled until Cloud API is configured.
+
+    We send only when the request explicitly records WhatsApp as the preferred
+    contact method, so enabling the Cloud API later does not message every client.
+    """
+    if notification.title != 'Request status updated' or not notification.order_id:
+        return False
+    row = connection.execute(
+        select(Order.phone, Order.order_code, Order.status, Order.contact_method)
+        .where(Order.id == notification.order_id, Order.user_id == notification.user_id)
+    ).first()
+    if not row or str(row.contact_method or '').lower() != 'whatsapp':
+        return False
+    return send_status_update(row.phone, row.order_code, row.status, _client_link(notification))
+
+
 @event.listens_for(Notification, 'after_insert')
 def deliver_client_notification(mapper, connection, notification):
     """Best-effort client delivery for each persisted in-site notification.
@@ -100,5 +119,6 @@ def deliver_client_notification(mapper, connection, notification):
             return
         _deliver_push(connection, notification)
         _deliver_email(connection, notification)
+        _deliver_whatsapp(connection, notification)
     except Exception as exc:
         logger.warning('Client notification delivery failed (%s)', type(exc).__name__)
