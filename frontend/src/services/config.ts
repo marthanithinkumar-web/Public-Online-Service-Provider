@@ -3,5 +3,5 @@ export const PROVIDER = {
   phone: '9063403352',
   phone2: '6281054602',
   email: 'marthanithinkumar@gmail.com',
-  whatsapp: ''
+  whatsapp: '919063403352'
 }
