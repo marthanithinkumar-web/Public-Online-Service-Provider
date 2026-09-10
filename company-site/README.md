@@ -2,9 +2,7 @@
 
 Official website: https://mnktechnologies.onrender.com/
 
-This site is the public home for MNK Technologies and links its current products:
-- Public Online Service Provider — Live
-- FileWeave — Testing
-- Nova — In development
+The company website source of truth has moved to the dedicated repository:
+https://github.com/marthanithinkumar-web/MNK-Technologies
 
-The previous temporary hostname `mnk-technologies.onrender.com` is legacy and should not be used as the canonical company URL.
+This legacy deployment branch is retained only until the Render source is switched to the dedicated repository.
