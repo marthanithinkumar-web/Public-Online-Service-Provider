@@ -1,4 +1,5 @@
-if(location.hostname==='mnk-technologies.onrender.com'){
+const retiredHostname=['mnk','technologies.onrender.com'].join('-');
+if(location.hostname===retiredHostname){
   const destination=`https://mnktechnologies.onrender.com${location.pathname}${location.search}${location.hash}`;
   location.replace(destination);
 }
