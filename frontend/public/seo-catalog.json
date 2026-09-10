@@ -866,5 +866,47 @@
     "keywords": "piped gas bill,gas bill,png bill,city gas,consumer number,bill payment,utility",
     "category": "Recharge & Bill Payments",
     "slug": "apply-piped-gas-bill-payment"
+  },
+  {
+    "name": "Residence Certificate",
+    "description": "Assistance to apply for residence/domicile certificate",
+    "keywords": "residence,domicile,address,certificate",
+    "category": "Certificates",
+    "slug": "residence-certificate"
+  },
+  {
+    "name": "Ration Card Services",
+    "description": "Help with Ration Card related applications",
+    "keywords": "ration,card,food,subsidy",
+    "category": "Certificates",
+    "slug": "ration-card-services"
+  },
+  {
+    "name": "Government Job Application",
+    "description": "Assistance to apply for government job openings",
+    "keywords": "job,application,recruitment,jobs",
+    "category": "Government Jobs",
+    "slug": "government-job-application"
+  },
+  {
+    "name": "Apply Scholarship",
+    "description": "Guidance and application support for eligible scholarships",
+    "keywords": "scholarship,education,student,financial aid",
+    "category": "Scholarships",
+    "slug": "apply-scholarship"
+  },
+  {
+    "name": "Apply MeeSeva",
+    "description": "Assistance with common MeeSeva and public service applications",
+    "keywords": "meeseva,public service,government,application",
+    "category": "MeeSeva / Public Services",
+    "slug": "apply-meeseva"
+  },
+  {
+    "name": "Government Scheme Application Support",
+    "description": "Eligibility guidance and application assistance for government schemes",
+    "keywords": "scheme,government scheme,benefit,eligibility",
+    "category": "Government Schemes",
+    "slug": "government-scheme-application-support"
   }
 ]
