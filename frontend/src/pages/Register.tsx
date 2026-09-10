@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { register } from '../services/auth'
+import { register, warmAuthServer } from '../services/auth'
 import '../styles/auth.css'
 import AuthLayout from '../components/ui/AuthLayout'
 import {isValidEmail,normalizeEmail,normalizeIndianMobile} from '../services/contactValidation'
@@ -17,6 +17,8 @@ export default function Register(){
   const location=useLocation();const requestedReturn=new URLSearchParams(location.search).get('returnTo')
   const safeReturn=requestedReturn&&requestedReturn.startsWith('/')&&!requestedReturn.startsWith('//')?requestedReturn:'/my-orders'
 
+  useEffect(()=>{void warmAuthServer()},[])
+
   const submit = async (e: React.FormEvent)=>{
     e.preventDefault(); setError('')
     if(name.trim().length<2||name.trim().length>200){ setError('Name must be between 2 and 200 characters.'); return }
@@ -27,11 +29,12 @@ export default function Register(){
     if(!password){ setError('Password is required.'); return }
     if(password !== confirm){ setError('Passwords do not match.'); return }
     setBusy(true)
+    void import('./MyOrders')
     try{
       const res = await register(name.trim(), normalizedPhone, normalizedEmail, password)
       if(res?.token) nav(safeReturn,{replace:true})
       else setError(res?.error || 'Registration failed. Please check your details.')
-    }catch(err:any){ setError(err?.code==='ECONNABORTED'?'The secure server took too long to respond. Please try again.':err?.response?.data?.error || 'Unable to create your account right now.') }
+    }catch(err:any){ setError(err?.code==='ECONNABORTED'?'The secure server is still starting. Please try again.':err?.response?.data?.error || 'Unable to create your account right now.') }
     finally{ setBusy(false) }
   }
 
