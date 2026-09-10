@@ -1,8 +1,10 @@
 ﻿Public Online Service Provider
 
+A product of MNK Technologies.
+
 Overview
 
-Public Online Service Provider is a secure, privacy-first web application that helps busy people request assistance for government and public-service applications. This repository contains a frontend (React + TypeScript) and a backend (Flask + SQLAlchemy) with PostgreSQL as the recommended production database.
+Public Online Service Provider is a secure, privacy-first web application that helps busy people request assistance for government and public-service applications. It is developed and operated under MNK Technologies, an Udyam-registered proprietorship. This repository contains a frontend (React + TypeScript) and a backend (Flask + SQLAlchemy) with PostgreSQL as the recommended production database.
 
 Quickstart (development)
 
