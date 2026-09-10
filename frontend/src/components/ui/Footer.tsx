@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { PROVIDER } from '../../services/config'
-import logo from '../../assets/logo.svg'
+import logo from '../../assets/logo.jpg'
 
 export default function Footer(){
   return (
