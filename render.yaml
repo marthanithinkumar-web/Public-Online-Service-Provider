@@ -1,9 +1,3 @@
-databases:
-  - name: public-online-service-provider-db
-    databaseName: posp
-    user: posp
-    plan: free
-
 services:
   - type: web
     name: public-online-service-provider-api
