@@ -19,3 +19,10 @@ test('MNK Technologies product relationship is published consistently', async ({
   await page.goto('/terms', { waitUntil: 'domcontentloaded' })
   await expect(page.getByText(/not presented as a private limited or incorporated company/i)).toBeVisible()
 })
+
+test('public header permanently exposes Admin Login', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  const adminLogin = page.getByRole('link', { name: 'Admin Login', exact: true }).first()
+  await expect(adminLogin).toBeVisible()
+  await expect(adminLogin).toHaveAttribute('href', '/admin/login')
+})
