@@ -192,10 +192,11 @@ test('real client and admin can complete payment, documents, chat, grievance, an
 
   await adminPage.goto('/admin/messages')
   await adminPage.getByRole('button', { name: new RegExp(client.name) }).click()
-  await expect(adminPage.getByText('E2E client asks which address proof is acceptable.', { exact: true })).toBeVisible()
+  const adminConversation = adminPage.getByRole('article')
+  await expect(adminConversation.getByText('E2E client asks which address proof is acceptable.', { exact: true })).toBeVisible()
   await adminPage.getByLabel('Reply').fill('E2E admin confirms a recent utility bill is acceptable.')
   await adminPage.getByRole('button', { name: 'Send reply', exact: true }).click()
-  await expect(adminPage.getByText('E2E admin confirms a recent utility bill is acceptable.', { exact: true })).toBeVisible()
+  await expect(adminConversation.getByText('E2E admin confirms a recent utility bill is acceptable.', { exact: true })).toBeVisible()
 
   await clientPage.goto('/messages')
   await expect(clientPage.getByText('E2E admin confirms a recent utility bill is acceptable.', { exact: true })).toBeVisible()
