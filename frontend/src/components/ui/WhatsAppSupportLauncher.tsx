@@ -3,6 +3,7 @@ import {useLocation} from 'react-router-dom'
 import {buildWhatsAppUrl,currentPageUrl} from '../../services/whatsapp'
 import {getSession} from '../../services/session'
 import {readCachedServices,slugifyServiceName} from '../../services/serviceCatalog'
+import '../../styles/whatsapp.css'
 
 function serviceNameForPath(pathname:string){
   const services=readCachedServices(true)
