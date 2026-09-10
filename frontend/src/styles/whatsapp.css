@@ -1,0 +1,8 @@
+.whatsapp-support-launcher{position:fixed;right:22px;bottom:82px;z-index:70;display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:48px;padding:0 18px;border:1px solid rgba(255,255,255,.35);border-radius:999px;background:#0f8f62;color:#fff;font-weight:800;box-shadow:0 12px 32px rgba(7,72,50,.28);transition:transform .18s ease,background .18s ease}
+.whatsapp-support-launcher:hover,.whatsapp-support-launcher:focus-visible{background:#0a734f;color:#fff;transform:translateY(-1px)}
+.whatsapp-support-launcher>span{display:inline-flex;align-items:center;justify-content:center;width:25px;height:25px;border-radius:50%;background:#fff;color:#0a734f;font-size:.68rem;font-weight:900;letter-spacing:-.02em}
+.btn-whatsapp{background:#0f8f62!important;color:#fff!important;border-color:#0f8f62!important;box-shadow:0 10px 22px rgba(7,72,50,.16)}
+.btn-whatsapp:hover,.btn-whatsapp:focus-visible{background:#0a734f!important;color:#fff!important}
+@media(max-width:600px){.whatsapp-support-launcher{right:14px;bottom:72px;max-width:calc(100vw - 28px);min-height:44px;padding:0 14px;font-size:.9rem}}
+@media(prefers-reduced-motion:reduce){.whatsapp-support-launcher{transition:none}.whatsapp-support-launcher:hover{transform:none}}
+@media(forced-colors:active){.whatsapp-support-launcher,.btn-whatsapp{border:1px solid ButtonText}}
