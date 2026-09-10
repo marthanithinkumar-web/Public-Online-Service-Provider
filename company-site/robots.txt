@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://mnktechnologies.onrender.com/sitemap.xml
