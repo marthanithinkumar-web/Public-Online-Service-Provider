@@ -38,7 +38,7 @@ export default function NavBar(){
       </nav>
       <div className="header-actions">
         <Link className="header-search" to="/#service-search" aria-label="Search services"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.2 4.2"/></svg><span>Search</span></Link>
-        {!authenticated&&<><Link className="header-link" to="/login" onMouseEnter={preloadLogin} onFocus={preloadLogin}>Login</Link><Link className="header-signup" to="/register">Register</Link></>}
+        {!authenticated&&<><Link className="header-link" to="/login" onMouseEnter={preloadLogin} onFocus={preloadLogin}>Login</Link><Link className="header-link admin-login-link" to="/admin/login">Admin Login</Link><Link className="header-signup" to="/register">Register</Link></>}
         {authenticated&&!admin&&<><Link className="header-link" to="/my-orders" onMouseEnter={preloadDashboard} onFocus={preloadDashboard}>Dashboard</Link><Link className="header-signup" to="/account-settings">My Account</Link><button className="header-link" type="button" onClick={doLogout}>Logout</button></>}
         {authenticated&&admin&&<><Link className="header-link" to="/admin/dashboard">Dashboard</Link><Link className="header-signup" to="/admin/orders">Applications</Link><button className="header-link" type="button" onClick={doLogout}>Logout</button></>}
         <button className="mobile-menu-btn" type="button" onClick={()=>setOpen(true)} aria-label="Open navigation menu" aria-expanded={open} aria-controls="mobile-navigation"><span aria-hidden="true">☰</span></button>
