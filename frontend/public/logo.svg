@@ -1,12 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Public Online Service Provider</title>
+  <desc id="desc">Circular blue emblem with a citizen figure and tricolour service wings</desc>
   <defs>
-    <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="#0b5cff" />
-      <stop offset="1" stop-color="#10b7c5" />
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b4ea2"/>
+      <stop offset="0.55" stop-color="#0b78d1"/>
+      <stop offset="1" stop-color="#03b8e6"/>
     </linearGradient>
+    <linearGradient id="saffron" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffb11b"/>
+      <stop offset="1" stop-color="#f36f21"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#13b8ef"/>
+      <stop offset="1" stop-color="#0759c8"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#83d82f"/>
+      <stop offset="1" stop-color="#079447"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#062b61" flood-opacity="0.28"/>
+    </filter>
   </defs>
-  <rect width="64" height="64" rx="12" fill="url(#g)" />
-  <path d="M20 36c0-6.627 5.373-12 12-12s12 5.373 12 12" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-  <circle cx="32" cy="28" r="4" fill="#fff" />
-  <path d="M18 44c0-4.418 6.716-8 14-8s14 3.582 14 8" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9" />
+  <circle cx="64" cy="64" r="60" fill="#ffffff" stroke="url(#ring)" stroke-width="7"/>
+  <circle cx="64" cy="64" r="51" fill="#f8fcff" stroke="#cfefff" stroke-width="2"/>
+  <g filter="url(#shadow)">
+    <path d="M60 70C48 55 37 43 21 35c3 14 10 24 23 31-9-2-18-5-27-10 7 13 18 22 35 27z" fill="url(#saffron)"/>
+    <path d="M58 76C45 67 34 62 22 61c7 9 16 15 31 19z" fill="url(#blue)"/>
+    <path d="M68 70c12-15 23-27 39-35-3 14-10 24-23 31 9-2 18-5 27-10-7 13-18 22-35 27z" fill="url(#green)"/>
+    <path d="M70 76c13-9 24-14 36-15-7 9-16 15-31 19z" fill="#06b8cf"/>
+    <circle cx="64" cy="36" r="9" fill="url(#blue)"/>
+    <path d="M48 49c5 2 10 7 16 15 6-8 11-13 16-15-2 9-7 18-16 28-9-10-14-19-16-28z" fill="url(#blue)"/>
+  </g>
+  <path d="M34 94h60" stroke="#d9eaf7" stroke-width="2" stroke-linecap="round"/>
+  <path d="M43 101c8-5 16-7 23-7-4 3-8 5-12 7 8-1 16-1 23 0 5 0 10-1 15-4-5 7-14 10-25 9-8-1-16-2-24-5z" fill="#f58220"/>
+  <path d="M54 101c8-2 16-2 24 0 6 1 11 0 16-3-6 7-15 9-26 8-5-1-10-2-14-5z" fill="#0b78d1"/>
+  <path d="M66 103c8 0 15-1 23-5-4 6-11 9-20 9-4 0-7-1-10-2z" fill="#0a9b52"/>
 </svg>
