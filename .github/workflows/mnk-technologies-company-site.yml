@@ -1,0 +1,25 @@
+name: MNK Technologies company site
+
+on:
+  push:
+    branches: [mnk-technologies-company-site]
+    paths:
+      - 'company-site/**'
+      - '.github/workflows/mnk-technologies-company-site.yml'
+  pull_request:
+    paths:
+      - 'company-site/**'
+      - '.github/workflows/mnk-technologies-company-site.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: company-site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm run verify
