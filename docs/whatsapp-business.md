@@ -12,9 +12,9 @@ The public website uses WhatsApp click-to-chat for the provider number `+91 9063
 
 The click-to-chat number is centralized in `frontend/src/services/config.ts`, so a future WhatsApp Change Number migration only requires updating that configuration value.
 
-## Future Meta WhatsApp Business Platform / Cloud API
+## Meta WhatsApp Business Platform / Cloud API
 
-The backend is prepared but deliberately disabled by default. No Meta access token or app secret is stored in the repository.
+The backend Cloud API transport remains disabled by default and no Meta access token or app secret is stored in the repository.
 
 Production callback URL:
 
@@ -37,6 +37,30 @@ The status template sender expects body parameters in this order:
 2. request status
 3. secure request-tracking URL
 
-Only requests that explicitly record `contact_method=whatsapp` are eligible for automated WhatsApp status delivery. This prevents enabling the Cloud API later from messaging every existing client without an explicit WhatsApp preference.
+The webhook verifies Meta's `hub.verify_token` challenge for setup and validates `X-Hub-Signature-256` on POST requests before accepting events. The receiver intentionally does not persist or log inbound message content; it only acknowledges verified events and records aggregate event counts in application logs.
 
-The webhook verifies Meta's `hub.verify_token` challenge for setup and validates `X-Hub-Signature-256` on POST requests before accepting events. The current receiver intentionally does not persist or log inbound message content; it only acknowledges verified events and records aggregate event counts in application logs. A conversational bot/inbound workflow can be added later without changing the public click-to-chat implementation.
+## Stage 2: explicit client consent
+
+Automated request-status messages are opt-in, not automatic for every client.
+
+- `GET /api/whatsapp/config` exposes only whether automated status notifications are operational; it never exposes credentials.
+- The request-detail page shows the WhatsApp status-update control only after the Cloud API transport and status template are configured.
+- `POST /api/whatsapp/orders/<order_id>/preference` lets the authenticated owner explicitly enable or disable WhatsApp updates for that request.
+- The preference is stored using the existing `contact_method=whatsapp` field and every change is recorded in request history for an auditable consent trail.
+- Closed requests cannot newly opt in because they have no future status changes.
+- Turning the preference off stops future WhatsApp status sends without affecting in-site or email updates.
+
+## Production activation checklist
+
+1. Create or select the Meta app and WhatsApp Business Account that owns the intended business number.
+2. Add the production phone number and obtain the WhatsApp `phone_number_id`.
+3. Create a long-lived production access token with only the permissions needed for WhatsApp messaging.
+4. Configure the callback URL above and a private verification token in Meta, then store the same verification token in Render.
+5. Store the Meta app secret in Render so webhook signatures can be validated.
+6. Create and obtain approval for the request-status template with three body parameters: request reference, status and tracking link.
+7. Add the production environment variables to the API service in Render while keeping `WHATSAPP_CLOUD_API_ENABLED=0`.
+8. Verify the webhook challenge and signed webhook delivery.
+9. Send a controlled template test to an opted-in test number.
+10. Only after those checks succeed, change `WHATSAPP_CLOUD_API_ENABLED=1`.
+
+A conversational inbound WhatsApp bot can be added later without changing the public click-to-chat implementation or the request-level consent model.
