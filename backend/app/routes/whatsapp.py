@@ -7,7 +7,7 @@ from flask import Blueprint, jsonify, request
 
 from ..models.order import Order
 from ..models.order_history import OrderStatusHistory
-from ..services.whatsapp import verify_webhook_signature
+from ..services.whatsapp import cloud_api_configured, verify_webhook_signature
 from ..utils.database import db
 from ..utils.jwt_handler import get_request_user
 
@@ -18,6 +18,15 @@ TERMINAL_STATUSES = {'Completed', 'Cancelled', 'Rejected'}
 
 def _env(name):
     return (os.getenv(name) or '').strip()
+
+
+@bp.get('/config')
+def whatsapp_config():
+    ready = cloud_api_configured() and bool(_env('WHATSAPP_STATUS_TEMPLATE_NAME'))
+    return jsonify({
+        'cloud_api_enabled': cloud_api_configured(),
+        'status_notifications_available': ready,
+    }), 200
 
 
 @bp.get('/webhook')
