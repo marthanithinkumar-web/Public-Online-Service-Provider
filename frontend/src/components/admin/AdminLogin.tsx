@@ -1,6 +1,6 @@
-import React,{useState} from 'react'
+import React,{useEffect,useState} from 'react'
 import {Link,useLocation,useNavigate} from 'react-router-dom'
-import {login} from '../../services/auth'
+import {login,warmAuthServer} from '../../services/auth'
 import AuthLayout from '../ui/AuthLayout'
 
 export default function AdminLogin(){
@@ -14,17 +14,20 @@ export default function AdminLogin(){
   const requestedReturn=new URLSearchParams(location.search).get('returnTo')
   const safeReturn=requestedReturn&&requestedReturn.startsWith('/admin/')&&!requestedReturn.startsWith('//')?requestedReturn:'/admin/dashboard'
 
+  useEffect(()=>{void warmAuthServer()},[])
+
   const submit=async(e:React.FormEvent)=>{
     e.preventDefault()
     if(busy)return
     setError('')
     setBusy(true)
+    void import('./AdminPanel')
     try{
       const res=await login(email,password)
       if(res?.user?.is_admin)nav(safeReturn,{replace:true})
       else setError('This account does not have administrator access.')
     }catch(err:any){
-      setError(err?.code==='ECONNABORTED'?'The secure server took too long to respond. Please try again.':err?.response?.data?.error||'Unable to sign in. Please check your details.')
+      setError(err?.code==='ECONNABORTED'?'The secure server is still starting. Please try again once.':err?.response?.data?.error||'Unable to sign in. Please check your details.')
     }finally{
       setBusy(false)
     }
@@ -47,8 +50,8 @@ export default function AdminLogin(){
           </div>
         </label>
         {error&&<p className="info" role="alert">{error}</p>}
-        {busy&&<p className="auth-hint" role="status">Connecting securely… The server may take a few seconds on the first visit.</p>}
-        <button className="btn btn-primary btn-block" type="submit" disabled={busy}>{busy?'Checking…':'Sign in securely'}</button>
+        {busy&&<p className="auth-hint" role="status">Signing in securely…</p>}
+        <button className="btn btn-primary btn-block" type="submit" disabled={busy}>{busy?'Checking…':'Admin Login'}</button>
       </form>
       <div className="auth-footer">
         <Link to="/admin/request-reset">Forgot administrator password?</Link>
