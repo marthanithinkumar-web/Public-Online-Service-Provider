@@ -47,6 +47,16 @@ def _fallback_job_hash(job):
     return hashlib.sha256(json.dumps(payload,sort_keys=True,default=str).encode('utf-8')).hexdigest()
 
 
+def _deduplicate_job_identities(jobs):
+    """Keep one public record per final job identity, preserving the first stable URL."""
+    seen=set();deduplicated=[]
+    for job in jobs:
+        digest=str(job.get('content_hash') or '').strip() or _fallback_job_hash(job)
+        if digest in seen:continue
+        seen.add(digest);deduplicated.append(job)
+    return deduplicated
+
+
 def _ensure_unique_slugs(jobs):
     """Preserve valid public job URLs while deterministically repairing collisions."""
     seen=set()
@@ -102,6 +112,7 @@ def build_snapshot(existing=None,session=None,now=None):
             sources.append({'key':definition.key,'name':definition.name,'listing_url':definition.listing_url,'enabled':True,'last_sync_completed_at':checked_at,'last_sync_status':'failed','fetched_count':0,'published_count':0,'last_error':str(exc)[:300]})
         jobs.extend(source_jobs)
     jobs.sort(key=lambda job:(not bool(job.get('is_featured')),job.get('deadline') or '9999-12-31',job.get('title') or ''))
+    jobs=_deduplicate_job_identities(jobs)
     _ensure_unique_slugs(jobs)
     return {'schema_version':1,'generated_at':checked_at,'items':jobs,'sources':sources,'count':len(jobs),'review_count':review_count,'successful_sources':successful_sources}
 
