@@ -3,6 +3,7 @@ import {Link,useLocation} from 'react-router-dom'
 import {fetchServiceCatalog,readCachedServices,servicePath,slugifyServiceName} from '../services/serviceCatalog'
 import '../styles/home-modern.css'
 import '../styles/workspace-modern.css'
+import '../styles/service-directory.css'
 
 const CONFIG:Record<string,{title:string;description:string;terms:string[];quick:string[]}>= {
  '/government-services':{title:'Government Services',description:'Browse all available certificate, identity, education, land, welfare, transport, licence and other public-service assistance in one easy place.',terms:[],quick:['Certificates','Identity & ID','Education','Land & Revenue','Transport','Welfare','Business & Licences','Other Services']},
