@@ -74,8 +74,11 @@ function filterSnapshot(data:JobFeedData,params:Record<string,string|number|bool
 
 async function refreshJobsInBackground(params:Record<string,string|number|boolean>){
   try{
-    const fresh=(await api.get('/jobs/',{params,timeout:3500})).data as JobFeedData
-    if(!Object.keys(params).length||(!params.q&&!params.type&&!params.featured))snapshotCache=fresh
+    // Ping the live API so its background sync can run, but never replace the
+    // checked-in verified snapshot cache with a potentially lagging DB result.
+    // Keeping the snapshot stable guarantees that a job just shown in the list
+    // can still be resolved when the user opens its detail page.
+    await api.get('/jobs/',{params,timeout:3500})
   }catch{
     // The checked-in verified snapshot remains the last-known-good result.
   }
