@@ -187,9 +187,9 @@ test('admin sidebar, dashboard actions and mobile admin menu point to working ad
   }
 
   await page.goto('/admin/dashboard')
-  const commandGrid = page.getByRole('region', { name: 'Primary admin actions' }).or(page.locator('.admin-command-grid'))
-  await expect(page.locator('.admin-command-grid').getByRole('link', { name: /Recharge & Bill Fees/i })).toHaveAttribute('href', '/admin/services')
-  await page.locator('.admin-command-grid').getByRole('link', { name: /Recharge & Bill Fees/i }).click()
+  const rechargeFeeCard = page.locator('.admin-command-grid').getByRole('link', { name: /Recharge & Bill Fees/i })
+  await expect(rechargeFeeCard).toHaveAttribute('href', '/admin/services')
+  await rechargeFeeCard.click()
   await expect(page).toHaveURL(/\/admin\/services$/)
 
   await page.setViewportSize({ width: 390, height: 844 })
