@@ -24,7 +24,7 @@ jobs:
   refresh:
     name: Refresh verified public job data
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - name: Check out current website
         uses: actions/checkout@v4
@@ -130,7 +130,9 @@ jobs:
               with urllib.request.urlopen(request, timeout=120) as response:
                   return json.load(response)
 
-          deadline = time.time() + 8 * 60
+          # Keep exact snapshot verification strict, but allow enough time for a
+          # queued/cold Render deployment to finish and import the committed data.
+          deadline = time.time() + 20 * 60
           last_total = None
           last_sources = 0
           last_sha = None
