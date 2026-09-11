@@ -110,8 +110,20 @@ const hasSafePublicSlug=item=>{
   return slug.length<=200&&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)&&Boolean(item?.title)
 }
 
+function uniqueBySlug(items){
+  const seen=new Set()
+  return items.filter(item=>{
+    const slug=String(item?.slug||'')
+    if(seen.has(slug))return false
+    seen.add(slug)
+    return true
+  })
+}
+
 export function readJobs(){
-  return readSnapshot('jobs.json').filter(item=>item?.status==='published'&&hasSafePublicSlug(item))
+  // Older snapshots can carry forward a legacy duplicate slug. Keep one
+  // canonical public URL until the next backend refresh repairs the source.
+  return uniqueBySlug(readSnapshot('jobs.json').filter(item=>item?.status==='published'&&hasSafePublicSlug(item)))
 }
 
 export function readScholarships(){
