@@ -26,6 +26,7 @@ export default function NavBar(){
   const doLogout = () => { logout(); setSession(null); setOpen(false); nav('/') }
   const authenticated = !!session
   const admin = !!session?.is_admin
+  const trackTarget = authenticated && !admin ? '/my-orders#track' : `/login?returnTo=${encodeURIComponent('/my-orders#track')}`
 
   return <header className="site-header">
     <div className="container site-header-inner">
@@ -35,8 +36,8 @@ export default function NavBar(){
         <Link className={isActive('/certificates')?'active':''} to="/certificates">MeeSeva Certificates</Link>
         <Link className={isActive('/jobs')?'active':''} to="/jobs" onMouseEnter={preloadJobs} onFocus={preloadJobs}>Jobs</Link>
         <Link className={isActive('/scholarships')?'active':''} to="/scholarships" onMouseEnter={preloadScholarships} onFocus={preloadScholarships}>Scholarships</Link>
-        <Link to="/#services">Services</Link>
-        {!admin&&<Link to={authenticated?'/my-orders':'/login'} onMouseEnter={authenticated?preloadDashboard:preloadLogin} onFocus={authenticated?preloadDashboard:preloadLogin}>Track Request</Link>}
+        <Link className={isActive('/government-services')?'active':''} to="/government-services">Services</Link>
+        {!admin&&<Link to={trackTarget} onMouseEnter={authenticated?preloadDashboard:preloadLogin} onFocus={authenticated?preloadDashboard:preloadLogin}>Track Request</Link>}
         <Link className={isActive('/contact')?'active':''} to="/contact">Help</Link>
       </nav>
       <div className="header-actions">
@@ -50,7 +51,7 @@ export default function NavBar(){
       </div>
     </div>
     {open&&<><button className="mobile-drawer-backdrop" type="button" onClick={()=>setOpen(false)} aria-label="Close navigation menu"/><nav id="mobile-navigation" className="mobile-drawer" aria-label="Mobile navigation"><div className="mobile-drawer-header"><div><strong>Menu</strong><small>Quick access</small></div><button type="button" onClick={()=>setOpen(false)} aria-label="Close navigation menu">×</button></div><div className="mobile-drawer-inner">
-      <section className="mobile-drawer-section"><strong>Top options</strong><div className="mobile-drawer-links"><Link to="/">Home</Link><Link to="/certificates">MeeSeva Certificates</Link><Link to="/jobs" onMouseEnter={preloadJobs}>Jobs</Link><Link to="/scholarships" onMouseEnter={preloadScholarships}>Scholarships</Link><Link to="/#service-search">Search Services</Link><Link to={authenticated&&!admin?'/my-orders':'/login'}>{authenticated&&!admin?'Track My Request':'Client Login to Track Request'}</Link></div></section>
+      <section className="mobile-drawer-section"><strong>Top options</strong><div className="mobile-drawer-links"><Link to="/">Home</Link><Link to="/certificates">MeeSeva Certificates</Link><Link to="/jobs" onMouseEnter={preloadJobs}>Jobs</Link><Link to="/scholarships" onMouseEnter={preloadScholarships}>Scholarships</Link><Link to="/government-services">Services</Link><Link to="/#service-search">Search Services</Link>{!admin&&<Link to={trackTarget} onMouseEnter={authenticated?preloadDashboard:preloadLogin}>{authenticated?'Track My Request':'Client Login to Track Request'}</Link>}</div></section>
       <section className="mobile-drawer-section"><strong>Account</strong><div className="mobile-drawer-links">{authenticated ? (admin ? <><Link to="/admin/dashboard">Dashboard</Link><Link to="/admin/orders">Applications</Link><Link to="/admin/messages">Client Messages</Link><Link to="/admin/services">Services & Fees</Link><button type="button" onClick={doLogout}>Logout</button></> : <><Link to="/my-orders">Dashboard</Link><Link to="/account-settings">My Account</Link><Link to="/messages">Messages</Link><Link to="/admin/login" onMouseEnter={preloadAdminLogin}>Admin Login</Link><button type="button" onClick={doLogout}>Logout</button></>) : <><Link className="drawer-primary-action" to="/login" onMouseEnter={preloadLogin}>Client Login</Link><Link to="/admin/login" onMouseEnter={preloadAdminLogin}>Admin Login</Link><Link className="drawer-register-action" to="/register" onMouseEnter={preloadRegister}>Create Account</Link></>}</div></section>
       <section className="mobile-drawer-section"><strong>Services & information</strong><div className="mobile-drawer-links"><Link to="/schemes">Schemes</Link><Link to="/about">About</Link><Link to="/contact">Contact & Help</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link></div></section>
     </div></nav></>}
