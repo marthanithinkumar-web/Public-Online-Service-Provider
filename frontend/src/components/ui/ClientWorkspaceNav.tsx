@@ -5,7 +5,7 @@ const links=[
   ['/','Home'],
   ['/my-orders','Dashboard'],
   ['/government-services','Government Services'],
-  ['/government-services?q=Aadhaar%20Seeding','Aadhaar Seeding / DBT'],
+  ['/services/aadhaar-bank-account-seeding-dbt-assistance','Aadhaar Seeding / DBT'],
   ['/certificates','MeeSeva Certificates'],
   ['/jobs','Jobs'],
   ['/scholarships','Scholarships'],
