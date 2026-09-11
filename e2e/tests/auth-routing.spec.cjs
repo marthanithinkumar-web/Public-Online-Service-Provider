@@ -103,3 +103,34 @@ test('client session can load its authenticated workspace in Chromium', async ({
   await expect(page.getByRole('heading', { name: 'Notifications', exact: true, level: 1 })).toBeVisible()
   await expect(page.getByText('No notifications.')).toBeVisible()
 })
+
+test('primary Services navigation opens the service directory and Track Request preserves the tracking destination', async ({ page }) => {
+  await page.goto('/')
+  const primary = page.getByRole('navigation', { name: 'Primary navigation' })
+  await primary.getByRole('link', { name: 'Services', exact: true }).click()
+  await expect(page).toHaveURL(/\/government-services$/)
+  await expect(page.getByRole('heading', { name: 'Government Services', level: 1 })).toBeVisible()
+
+  await page.goto('/')
+  await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Track Request', exact: true }).click()
+  await expect(page).toHaveURL(/\/login\?returnTo=/)
+  const current = new URL(page.url())
+  expect(current.searchParams.get('returnTo')).toBe('/my-orders#track')
+})
+
+test('authenticated desktop and mobile Track Request links open the tracking view instead of the dashboard home', async ({ page }) => {
+  await installSession(page, { isAdmin: false })
+  await mockClientWorkspace(page)
+  await page.goto('/')
+
+  await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Track Request', exact: true }).click()
+  await expect(page).toHaveURL(/\/my-orders#track$/)
+  await expect(page.getByRole('heading', { name: 'Track My Request', exact: true, level: 1 })).toBeVisible()
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Open navigation menu' }).click()
+  await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('link', { name: 'Track My Request', exact: true }).click()
+  await expect(page).toHaveURL(/\/my-orders#track$/)
+  await expect(page.getByRole('heading', { name: 'Track My Request', exact: true, level: 1 })).toBeVisible()
+})
