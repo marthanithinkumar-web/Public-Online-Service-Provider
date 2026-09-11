@@ -1,4 +1,4 @@
-from app.jobs.snapshot import _ensure_unique_slugs
+from app.jobs.snapshot import _deduplicate_job_identities, _ensure_unique_slugs
 
 
 def test_duplicate_legacy_slug_keeps_first_url_and_repairs_later_collision():
@@ -48,3 +48,26 @@ def test_missing_slug_gets_a_deterministic_public_slug():
 
     assert first == second
     assert first.endswith('-cccccccccc')
+
+
+def test_duplicate_content_hash_keeps_first_stable_public_url():
+    digest = '4e99be63' + ('d' * 56)
+    jobs = [
+        {
+            'slug': 'staff-selection-commission-capf-2026-4e99be63',
+            'title': 'CAPF 2026',
+            'organization': 'SSC',
+            'content_hash': digest,
+        },
+        {
+            'slug': 'staff-selection-commission-capf-2026-4e99be6363',
+            'title': 'CAPF 2026',
+            'organization': 'SSC',
+            'content_hash': digest,
+        },
+    ]
+
+    deduplicated = _deduplicate_job_identities(jobs)
+
+    assert len(deduplicated) == 1
+    assert deduplicated[0]['slug'] == 'staff-selection-commission-capf-2026-4e99be63'
