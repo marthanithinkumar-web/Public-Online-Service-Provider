@@ -11,12 +11,29 @@ import json
 from datetime import date, datetime
 from pathlib import Path
 
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 
 from ..models.job import JobNotification, JobSource
 from ..utils.database import db
 from .official_fetch import validate_official_url
 from .sources import SOURCE_BY_KEY, SOURCE_DEFINITIONS
+
+
+# Render can start more than one instance during a deploy. Those instances
+# share the same production database, so importing the same snapshot in
+# parallel can deadlock while both transactions update job_notifications.
+# A transaction-scoped PostgreSQL advisory lock makes snapshot imports
+# mutually exclusive without affecting SQLite/local test environments.
+_SNAPSHOT_IMPORT_LOCK_ID = 728_173_401
+
+
+def _acquire_snapshot_import_lock():
+    bind = db.session.get_bind()
+    if bind.dialect.name == 'postgresql':
+        db.session.execute(
+            text('SELECT pg_advisory_xact_lock(:lock_id)'),
+            {'lock_id': _SNAPSHOT_IMPORT_LOCK_ID},
+        )
 
 
 def _parse_date(value):
@@ -46,6 +63,7 @@ def _load_snapshot(path):
 
 def import_verified_snapshot(path):
     data = _load_snapshot(path)
+    _acquire_snapshot_import_lock()
     snapshot_sources = {item.get('key'): item for item in data['sources'] if item.get('key')}
     configured_keys = {definition.key for definition in SOURCE_DEFINITIONS}
     unknown = set(snapshot_sources) - configured_keys
