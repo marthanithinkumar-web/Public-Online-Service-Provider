@@ -44,7 +44,7 @@ async function expectRealPage(page) {
 
 test('public header, search and footer links click through to real destinations', async ({ page }) => {
   await page.goto('/about')
-  await page.getByRole('link', { name: 'Search services' }).click()
+  await page.locator('header.site-header').getByRole('link', { name: 'Search services', exact: true }).click()
   await expect(page).toHaveURL(/\/#service-search$/)
   await expect(page.getByRole('searchbox', { name: 'Search services' })).toBeVisible()
 
