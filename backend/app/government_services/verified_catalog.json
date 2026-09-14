@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_at": "2026-09-06",
+  "verified_at": "2026-09-14",
   "policy": "Only services verified from first-party government sources may be promoted into this manifest. Conflicting official information must be represented conservatively and never guessed.",
   "services": [
     {
@@ -43,26 +43,28 @@
     {
       "name": "Aadhaar Email Update Assistance",
       "category": "Identity & Citizen Documents",
-      "description": "Guidance for Aadhaar email-address update when the current official Aadhaar mobile-app flow is available. UIDAI publications are evolving, so availability and charges must be rechecked before the client proceeds.",
+      "description": "Guidance for Aadhaar email-address update through the official Aadhaar mobile application where the service is available. UIDAI has waived the charge for email-address update through the Aadhaar mobile application through 31 December 2026; other channels or later dates must be rechecked before proceeding.",
       "keywords": "aadhaar email update,aadhar email change,uidai email,aadhaar app,email address",
-      "official_fee_status": "unconfirmed",
+      "official_fee_status": "known",
+      "official_fee_inr": 0.0,
       "state": "active",
       "requirement_profile": "identity",
-      "source_name": "UIDAI circulars and memorandums",
-      "source_url": "https://uidai.gov.in/en/media-resources/uidai-documents/circulars-memorandums-notification-01.html",
-      "verified_at": "2026-09-06"
+      "source_name": "UIDAI email update fee-waiver notification",
+      "source_url": "https://uidai.gov.in/en/notification-latest/19893-charges-waived-off-for-availing-service-of-email-address-update-through-aadhaar-mobile-application-till-31-12-2026.html",
+      "verified_at": "2026-09-14"
     },
     {
       "name": "Aadhaar Document Update Assistance",
       "category": "Identity & Citizen Documents",
-      "description": "Guidance for UIDAI's online document-update process where eligible. Current fee relaxation and eligibility are rechecked against UIDAI before submission.",
+      "description": "Guidance for UIDAI's Document Update service. UIDAI has extended the fee relaxation for Document Update through the SSUP (myAadhaar) portal through 14 June 2027; Aadhaar-centre charges and any later online fee must be rechecked before proceeding.",
       "keywords": "aadhaar document update,my aadhaar,ssup,proof of identity,proof of address,uidai document update",
-      "official_fee_status": "unconfirmed",
+      "official_fee_status": "known",
+      "official_fee_inr": 0.0,
       "state": "active",
       "requirement_profile": "identity",
-      "source_name": "UIDAI circulars and memorandums",
-      "source_url": "https://uidai.gov.in/en/media-resources/uidai-documents/circulars-memorandums-notification-01.html",
-      "verified_at": "2026-09-06"
+      "source_name": "UIDAI Document Update fee-relaxation notification",
+      "source_url": "https://www.uidai.gov.in/en/notification-latest.html",
+      "verified_at": "2026-09-14"
     },
     {
       "name": "e-Aadhaar Download Assistance",
