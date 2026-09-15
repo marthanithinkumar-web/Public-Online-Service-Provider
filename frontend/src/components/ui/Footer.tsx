@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { PROVIDER } from '../../services/config'
 import logo from '../../assets/logo.jpg'
 
-const MNK_TECHNOLOGIES_URL='https://mnktechnologies.onrender.com/'
+const MNK_TECHNOLOGIES_URL='https://mnk-tech.onrender.com/'
 
 export default function Footer(){
   return (
