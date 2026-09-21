@@ -1,8 +1,8 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { PROVIDER } from '../../services/config'
-import logo from '../../assets/logo.jpg'
 
+const logo='/posp-logo.png'
 const MNK_TECHNOLOGIES_URL='https://mnk-tech.onrender.com/'
 
 export default function Footer(){
