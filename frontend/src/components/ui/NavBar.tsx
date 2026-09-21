@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import logoHorizontal from '../../assets/posp-logo-horizontal.png'
+import logo from '../../assets/logo.jpg'
 import { getSession } from '../../services/session'
 import { logout, warmAuthServer } from '../../services/auth'
 import '../../styles/brand-logo-circle.css'
@@ -30,7 +30,7 @@ export default function NavBar(){
 
   return <header className="site-header">
     <div className="container site-header-inner">
-      <Link to={admin ? '/admin/dashboard' : '/'} className="brand-lockup brand-logo-lockup" aria-label="Public Online Service Provider home"><img src={logoHorizontal} alt="Public Online Service Provider" className="brand-logo-horizontal" /><span className="brand-context"><small>{admin ? 'Administration portal' : 'Simple. Secure. Citizen-focused.'}</small></span></Link>
+      <Link to={admin ? '/admin/dashboard' : '/'} className="brand-lockup" aria-label="Public Online Service Provider home"><img src={logo} alt="Public Online Service Provider logo" className="brand-mark" /><span><strong className="brand">Public Online Service Provider</strong><small>{admin ? 'Administration portal' : 'Simple. Secure. Citizen-focused.'}</small></span></Link>
       <nav className="main-nav" aria-label="Primary navigation">
         <Link className={loc.pathname==='/'&&!loc.hash?'active':''} to="/">Home</Link>
         <Link className={isActive('/certificates')?'active':''} to="/certificates">MeeSeva Certificates</Link>
