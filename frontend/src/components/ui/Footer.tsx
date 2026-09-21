@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { PROVIDER } from '../../services/config'
-import logo from '../../assets/logo.jpg'
+import logoHorizontal from '../../assets/posp-logo-horizontal.png'
 
 const MNK_TECHNOLOGIES_URL='https://mnk-tech.onrender.com/'
 
@@ -10,7 +10,8 @@ export default function Footer(){
     <footer className="site-footer">
       <div className="container footer-grid">
         <div>
-          <Link to="/" className="brand-lockup footer-lockup"><img src={logo} alt="Public Online Service Provider" className="brand-mark"/><span><strong className="brand footer-brand">Public Online Service Provider</strong><small>Simple. Secure. Citizen-focused.</small></span></Link>
+          <Link to="/" className="brand-lockup footer-lockup footer-logo-lockup"><img src={logoHorizontal} alt="Public Online Service Provider" className="brand-logo-horizontal footer-logo-horizontal"/></Link>
+          <p className="footer-brand-tagline">Simple. Secure. Citizen-focused.</p>
           <p className="footer-text"><a href={MNK_TECHNOLOGIES_URL} target="_blank" rel="noopener noreferrer"><strong>A product of MNK Technologies.</strong></a> Private assistance for public-service applications, delivered with clarity, privacy and trusted support.</p>
           <p className="footer-disclaimer">Independent private assistance provider. Not a government department or official government portal.</p>
         </div>
