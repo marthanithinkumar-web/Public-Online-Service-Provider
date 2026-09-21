@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import logo from '../../assets/logo.jpg'
 import { getSession } from '../../services/session'
 import { logout, warmAuthServer } from '../../services/auth'
 import '../../styles/brand-logo-circle.css'
 
+const logo='/posp-logo.png'
 const preloadJobs=()=>{import('../../pages/Jobs')}
 const preloadScholarships=()=>{import('../../pages/Scholarships')}
 const preloadLogin=()=>{void warmAuthServer();import('../../pages/Login')}
