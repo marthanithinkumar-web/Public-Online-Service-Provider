@@ -24,7 +24,7 @@ export default function Footer(){
         </div>
         <div>
           <h4>Contact</h4>
-          <address className="footer-contact"><strong>{PROVIDER.name}</strong><a href={`tel:${PROVIDER.phone}`}>{PROVIDER.phone}</a><a href={`tel:${PROVIDER.phone2}`}>{PROVIDER.phone2}</a><a href={`mailto:${PROVIDER.email}`}>{PROVIDER.email}</a></address>
+          <address className="footer-contact"><strong>{PROVIDER.name}</strong><a href={`tel:${PROVIDER.phone}`}>{PROVIDER.phone}</a><a href={`mailto:${PROVIDER.email}`}>{PROVIDER.email}</a></address>
         </div>
       </div>
       <div className="container footer-bottom"><div className="footer-bottom-inner"><span>© 2026 Public Online Service Provider · MNK Technologies</span><span>Independent assistance platform · Not a government department</span></div></div>
