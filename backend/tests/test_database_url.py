@@ -11,6 +11,6 @@ def test_database_url_normalizes_legacy_postgres_scheme(monkeypatch):
     assert _database_url() == "postgresql+psycopg2://user:pass@example.neon.tech/app"
 
 
-def test_database_url_preserves_standard_postgresql_scheme(monkeypatch):
+def test_database_url_forces_psycopg2_for_standard_postgresql_scheme(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@example.neon.tech/app")
-    assert _database_url() == "postgresql://user:pass@example.neon.tech/app"
+    assert _database_url() == "postgresql+psycopg2://user:pass@example.neon.tech/app"
