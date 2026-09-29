@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "node scripts/generate-seo.mjs && vite build && node scripts/prerender-seo.mjs && node scripts/seo-polish.mjs && node scripts/seo-last-mile.mjs && node scripts/verify-refresh-shell.mjs",
     "typecheck": "tsc --noEmit",
-    "start": "vite"
+    "start": "vite",
+    "postbuild": "node scripts/indexnow-submit.mjs"
   },
   "dependencies": {
     "axios": "^1.4.0",
