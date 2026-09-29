@@ -12,6 +12,8 @@ def _database_url():
     url = os.getenv('DATABASE_URL', 'sqlite:///psp.db')
     if url.startswith('postgresql+psycopg://'):
         return 'postgresql+psycopg2://' + url[len('postgresql+psycopg://'):]
+    if url.startswith('postgresql://'):
+        return 'postgresql+psycopg2://' + url[len('postgresql://'):]
     if url.startswith('postgres://'):
         return 'postgresql+psycopg2://' + url[len('postgres://'):]
     return url
