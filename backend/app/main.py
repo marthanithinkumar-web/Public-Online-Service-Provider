@@ -3,6 +3,7 @@ from flask import Flask, jsonify
 from sqlalchemy import text
 from dotenv import load_dotenv
 from .utils.database import db
+from .config import _database_url
 from .utils.schema_compat import ensure_user_schema
 from .utils.readiness import production_readiness, readiness_status, persistent_storage_connectivity, shared_rate_limit_connectivity, smtp_connectivity, razorpay_connectivity
 from .models.user import User
@@ -29,7 +30,7 @@ def validate_runtime_security():
 
 def database_engine_options(uri):
     options={'pool_pre_ping':True,'pool_recycle':280}
-    if uri.startswith(('postgresql://','postgres://')):
+    if uri.startswith(('postgresql://','postgresql+psycopg2://','postgres://')):
         options.update(pool_size=max(1,int(os.getenv('DB_POOL_SIZE','5'))),max_overflow=max(0,int(os.getenv('DB_MAX_OVERFLOW','5'))),pool_timeout=max(5,int(os.getenv('DB_POOL_TIMEOUT','20'))),connect_args={'connect_timeout':max(3,int(os.getenv('DB_CONNECT_TIMEOUT','10'))),'options':'-c statement_timeout='+str(max(1000,int(os.getenv('DB_STATEMENT_TIMEOUT_MS','20000'))))})
     return options
 
@@ -79,7 +80,7 @@ def ensure_job_sources():
 
 def create_app():
     validate_runtime_security()
-    database_uri=os.getenv('DATABASE_URL','sqlite:///psp.db')
+    database_uri=_database_url()
     app=Flask(__name__);app.config.from_mapping(SECRET_KEY=os.getenv('SECRET_KEY','dev-key'),SQLALCHEMY_DATABASE_URI=database_uri,SQLALCHEMY_TRACK_MODIFICATIONS=False,SQLALCHEMY_ENGINE_OPTIONS=database_engine_options(database_uri),MAIL_SERVER=os.getenv('SMTP_HOST',''),MAIL_PORT=int(os.getenv('SMTP_PORT') or 0),MAIL_USERNAME=os.getenv('SMTP_USER'),MAIL_PASSWORD=os.getenv('SMTP_PASS'),MAIL_USE_TLS=True,MAIL_USE_SSL=False)
     Talisman(app,content_security_policy={'default-src':"'none'",'base-uri':"'none'",'frame-ancestors':"'none'"},force_https=os.getenv('FORCE_HTTPS','0')=='1',referrer_policy='no-referrer');db.init_app(app)
     configured_origins=os.getenv('CORS_ORIGINS');frontends=configured_origins or os.getenv('FRONTEND_URL','http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173');allowed_origins=[o.strip().rstrip('/') for o in frontends.split(',') if o.strip()]
