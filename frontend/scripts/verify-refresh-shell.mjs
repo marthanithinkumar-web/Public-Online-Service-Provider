@@ -35,8 +35,10 @@ if(jobsHtml.includes(legacyEmploymentNewsUrl)) throw new Error('Removed Employme
 
 const robots=fs.readFileSync(path.join(distDir,'robots.txt'),'utf8')
 if(!robots.includes(`Sitemap: ${siteUrl}/sitemap.xml`)) throw new Error('robots.txt sitemap does not use the configured site URL')
-if(!robots.includes('Disallow: /admin\n')) throw new Error('robots.txt does not protect the exact /admin route')
-if(robots.includes('Disallow: /admin/\n')) throw new Error('robots.txt only protects /admin children, not the exact route')
+const noindexRoutes=['/admin','/my-orders','/account-settings','/messages','/grievances','/submit-grievance','/submit-review','/reset-password','/login','/register','/request-reset','/verify']
+for(const route of noindexRoutes){
+  if(robots.includes(`Disallow: ${route}\\n`)) throw new Error(`robots.txt blocks ${route} and prevents crawlers from reading its X-Robots-Tag noindex header`)
+}
 
 const sitemap=fs.readFileSync(path.join(distDir,'sitemap.xml'),'utf8')
 if(!sitemap.includes(`<loc>${siteUrl}/</loc>`)) throw new Error('sitemap.xml does not use the configured site URL')
