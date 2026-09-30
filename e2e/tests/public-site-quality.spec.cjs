@@ -146,7 +146,10 @@ test('mobile navigation, static SEO files, Bing marker, and official-only URLs r
   const catalog = await catalogResponse.json()
 
   expect(robots).toContain(`Sitemap: ${OFFICIAL_ORIGIN}/sitemap.xml`)
-  expect(robots).toContain('Disallow: /admin\n')
+  // Keep private routes crawlable so search engines can read their X-Robots-Tag noindex headers.
+  for (const route of ['/admin', '/my-orders', '/account-settings', '/messages', '/grievances', '/submit-grievance', '/submit-review', '/reset-password', '/login', '/register', '/request-reset', '/verify']) {
+    expect(robots).not.toContain('Disallow: ' + route + '\n')
+  }
   expect(robots).not.toContain('Disallow: /admin/\n')
   expect(catalog.some((service) => service.slug === 'residence-certificate')).toBe(true)
 

@@ -9,7 +9,7 @@ const logoUrl = `${siteUrl}/posp-logo.png`
 
 const pageCopy = {
   '/': {
-    title: 'Public Online Service Provider — Application Assistance',
+    title: 'Public Online Service Provider | Apply Online Services in India',
     extra: `<section><h2>How Public Online Service Provider helps</h2><p>Public Online Service Provider is an independent private assistance platform for people who need help understanding and completing eligible online public-service processes in India. The website brings together service guidance, government recruitment notices, scholarship information, certificates, schemes, MeeSeva-related assistance and request tracking in one place.</p><p>Before sending a request, clients can review the purpose of a service, available requirements, assistance fees and the next step. Official eligibility, government charges, approval decisions and deadlines remain governed by the responsible authority. Where the website links to an official notice or portal, clients should use that authoritative source for the final rules.</p><h2>Find the right service</h2><p>Use the service search or browse the dedicated jobs, scholarships, certificates, schemes and MeeSeva sections. Recruitment and scholarship pages are refreshed from approved sources and are designed to keep official links visible. Public Online Service Provider does not represent a government department and does not guarantee approval, selection or benefit eligibility.</p><h2>Safer application assistance</h2><p>Clients can submit an assistance request, review fees, track progress and receive updates through their account. Never share an OTP, password, PIN, CVV or banking-login credential with the platform or with anyone claiming to act on its behalf.</p><h2>Verify important details before submission</h2><p>Names, dates of birth, identification numbers, contact information and uploaded documents should be checked carefully before a request is submitted. Keep official acknowledgements and receipts for your records, and use the website account to follow the progress of requests. When a government portal or recruiting authority publishes a correction, extension or revised requirement, the responsible authority's latest notice takes priority.</p></section>`
   },
   '/scholarships': {
@@ -68,7 +68,7 @@ for (const [route, config] of Object.entries(pageCopy)) {
           '@type': 'WebSite',
           name: 'Public Online Service Provider',
           url: `${siteUrl}/`,
-          description: 'Independent assistance for public-service applications.'
+          description: 'Directory and independent private application support for supported public online services in India.'
         },
         {
           '@context': 'https://schema.org',
@@ -76,7 +76,7 @@ for (const [route, config] of Object.entries(pageCopy)) {
           name: 'Public Online Service Provider',
           url: `${siteUrl}/`,
           logo: logoUrl,
-          description: 'Independent private assistance provider for public-service applications.'
+          description: 'Independent private provider helping users find and apply for supported public online services in India.'
         }
       ]).replace(/</g, '\\u003c')}</script>`
     )
