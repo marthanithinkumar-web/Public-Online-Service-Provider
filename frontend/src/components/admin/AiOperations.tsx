@@ -67,6 +67,24 @@ export default function AiOperations(){
     </article>
 
     <article className="admin-card" style={{marginTop:16}}>
+      <div className="section-header"><div><strong>AI health findings</strong><p>Read-only checks that tell you what needs attention before any change is made.</p></div></div>
+      <div style={{display:'grid',gap:8}}>
+        {(overview?.findings||[]).length===0?<div>✓ No current findings from the available operational checks.</div>:
+          (overview?.findings||[]).map((finding:any,i:number)=><div key={i} style={{padding:'10px 12px',border:'1px solid var(--border-color,#ddd)',borderRadius:8}}>
+            <strong>{String(finding.severity||'info').toUpperCase()}</strong> · {finding.area}<div>{finding.message}</div>
+          </div>)}
+      </div>
+    </article>
+
+    <article className="admin-card" style={{marginTop:16}}>
+      <div className="section-header"><div><strong>AI status</strong><p>Client AI can be enabled separately; this screen never exposes API credentials.</p></div></div>
+      <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
+        <span>Operations AI: {overview?.ai?.operations_ai_configured?'Configured':'Not configured'}</span>
+        <span>Client AI: {overview?.ai?.client_ai_enabled?'Enabled':'Disabled'}</span>
+      </div>
+    </article>
+
+    <article className="admin-card" style={{marginTop:16}}>
       <div className="section-header"><div><strong>Ask POSP AI</strong><p>Ask what changed, what is failing, what needs review, or what should be checked next.</p></div></div>
       <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:12}}>
         {['What needs attention right now?','Check job and scholarship source health.','Summarize the current POSP operational status.'].map(q=><button key={q} className="btn btn-secondary" onClick={()=>ask(q)}>{q}</button>)}
