@@ -103,6 +103,13 @@ def _call_openai(instructions, prompt, max_output_tokens=900):
     except requests.RequestException:
         return None, 'AI provider could not be reached.'
 
+def _parse_client_ai_response(raw):
+    lines = raw.splitlines()
+    first_line = lines[0].strip().upper() if lines else ''
+    handoff = first_line == 'HANDOFF=YES'
+    answer = raw.split('ANSWER=', 1)[1].strip() if 'ANSWER=' in raw else raw.strip()
+    return answer, handoff
+
 def generate_client_reply(user, current_message):
     if os.getenv('POSP_CLIENT_AI_ENABLED', 'false').strip().lower() != 'true':
         return None, False, 'Client AI is disabled.'
@@ -129,9 +136,7 @@ Latest client message:
     raw, error = _call_openai(CLIENT_AI_PROMPT, prompt, 500)
     if error:
         return None, True, error
-    first_line = raw.splitlines()[0].strip().upper() if raw.splitlines() else ''
-    handoff = first_line == 'HANDOFF=YES'
-    answer = raw.split('ANSWER=', 1)[1].strip() if 'ANSWER=' in raw else raw.strip()
+    answer, handoff = _parse_client_ai_response(raw)
     if not answer:
         return None, True, 'AI produced an empty client answer.'
     return answer, handoff, None
