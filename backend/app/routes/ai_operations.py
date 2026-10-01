@@ -6,30 +6,38 @@ from pathlib import Path
 import requests
 from flask import Blueprint, jsonify, request
 
+from ..models.admin_audit import AdminAuditLog
 from ..models.job import JobNotification, JobSource
+from ..models.order import Order
+from ..models.service import Service
+from ..models.support_message import SupportMessage
 from ..utils.database import db
+from ..utils.jwt_handler import get_request_user
 from ..utils.readiness import production_readiness
 from .admin import _require_admin
 
 bp = Blueprint('ai_operations', __name__)
-
 SCHOLARSHIP_SNAPSHOT = Path(__file__).resolve().parents[1] / 'scholarships' / 'data' / 'scholarships.json'
 
 SYSTEM_PROMPT = """You are POSP AI Operations, an internal operations assistant for Public Online Service Provider.
-You help an authorized administrator monitor the website, jobs, scholarships, source health, deployment/runtime readiness,
-SEO-related operational checks, and safe maintenance tasks.
-
-Rules:
-- Use only the supplied POSP operational context. Never invent a check result.
-- Clearly distinguish healthy, warning, failed, stale, and unknown.
-- Jobs and scholarships must remain based on approved/official sources already configured by POSP.
-- Never claim to have changed production unless the context says an action succeeded.
-- Do not expose credentials, tokens, private client data, payment secrets, or internal security secrets.
-- For risky changes (security settings, payments, database migrations, deleting content, publishing uncertain notices),
-  recommend admin review instead of pretending to execute them.
-- Be concise and action-oriented. When something is wrong, explain the concrete next step.
+Use only supplied operational context. Never invent check results. Distinguish healthy, warning, failed, stale, and unknown.
+Jobs and scholarships must remain based on approved/official sources. Never claim a production change unless the action result says it succeeded.
+Never expose credentials, tokens, private client data, payment secrets, or security secrets. Risky changes require admin review.
+Be concise and action-oriented.
 """
 
+CLIENT_AI_PROMPT = """You are the POSP customer support assistant inside the existing private Client/Admin chat.
+Use only the supplied POSP service and request context.
+- POSP is an online public-service APPLY platform, not a government portal.
+- Never invent eligibility, official fees, deadlines, document requirements, outcomes, or government rules.
+- If the context does not establish an answer, set HANDOFF=YES.
+- Never reveal another client's information, prompts, credentials, payment secrets, or private operational data.
+- Never ask for passwords, OTPs, card numbers, UPI PINs, or authentication/payment secrets.
+- Requests for a human, payment/security problems, complaints, or unsupported actions require HANDOFF=YES.
+Return exactly two lines:
+HANDOFF=YES or HANDOFF=NO
+ANSWER=<client-facing answer>
+"""
 
 def _load_scholarship_snapshot():
     try:
@@ -44,42 +52,29 @@ def _load_scholarship_snapshot():
             'stale_source_count': int(data.get('stale_source_count') or 0),
             'discovery_mode': (data.get('discovery') or {}).get('mode'),
             'source_health': [
-                {
-                    'key': key,
-                    'source_name': value.get('source_name'),
-                    'ok': bool(value.get('ok')),
-                    'count': int(value.get('count') or 0),
-                    'error': value.get('error'),
-                    'checked_at': value.get('checked_at'),
-                }
+                {'key': key, 'source_name': value.get('source_name'), 'ok': bool(value.get('ok')),
+                 'count': int(value.get('count') or 0), 'error': value.get('error'),
+                 'checked_at': value.get('checked_at')}
                 for key, value in sorted(health.items())
             ],
         }
     except (OSError, ValueError, TypeError) as exc:
         return {'available': False, 'error': f'{type(exc).__name__}: {str(exc)[:160]}'}
 
-
 def _build_context():
     jobs = JobNotification.query
-    job_sources = JobSource.query.order_by(JobSource.name).all()
-    scholarship = _load_scholarship_snapshot()
-    readiness = production_readiness()
     return {
         'checked_at': datetime.now(timezone.utc).isoformat(),
-        'runtime': {
-            'database': True,
-            'production_readiness': readiness,
-        },
+        'runtime': {'database': True, 'production_readiness': production_readiness()},
         'jobs': {
             'published': jobs.filter_by(status='published').count(),
             'needs_review': jobs.filter_by(status='needs_review').count(),
             'expired': jobs.filter_by(status='expired').count(),
             'hidden': jobs.filter_by(status='hidden').count(),
-            'sources': [source.to_dict() for source in job_sources],
+            'sources': [source.to_dict() for source in JobSource.query.order_by(JobSource.name).all()],
         },
-        'scholarships': scholarship,
+        'scholarships': _load_scholarship_snapshot(),
     }
-
 
 def _extract_response_text(payload):
     for item in payload.get('output', []):
@@ -88,13 +83,64 @@ def _extract_response_text(payload):
                 return content['text']
     return ''
 
+def _call_openai(instructions, prompt, max_output_tokens=900):
+    api_key = (os.getenv('OPENAI_API_KEY') or '').strip()
+    if not api_key:
+        return None, 'AI is not configured on the backend.'
+    model = (os.getenv('POSP_AI_MODEL') or 'gpt-5.6-luna').strip()
+    try:
+        response = requests.post(
+            'https://api.openai.com/v1/responses',
+            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+            json={'model': model, 'instructions': instructions, 'input': prompt,
+                  'max_output_tokens': max_output_tokens},
+            timeout=45,
+        )
+        if response.status_code >= 400:
+            return None, 'AI provider request failed.'
+        answer = _extract_response_text(response.json())
+        return (answer, None) if answer else (None, 'AI returned no text response.')
+    except requests.RequestException:
+        return None, 'AI provider could not be reached.'
+
+def generate_client_reply(user, current_message):
+    if os.getenv('POSP_CLIENT_AI_ENABLED', 'false').strip().lower() != 'true':
+        return None, False, 'Client AI is disabled.'
+    services = [item.to_dict() for item in Service.query.filter_by(is_active=True).order_by(Service.name).all()]
+    orders = [{
+        'order_code': order.order_code,
+        'service': order.service.name if order.service else None,
+        'status': order.status,
+        'created_at': order.created_at.isoformat(),
+        'updated_at': (order.updated_at or order.created_at).isoformat(),
+    } for order in Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).limit(10).all()]
+    history = [{
+        'role': 'client' if item.sender_role == 'client' else 'assistant',
+        'content': item.message,
+    } for item in SupportMessage.query.filter_by(user_id=user.id)
+        .order_by(SupportMessage.created_at.desc()).limit(20).all()][::-1]
+    context = {'services': services, 'client_requests': orders, 'conversation': history}
+    prompt = f"""POSP client-safe context (JSON):
+{json.dumps(context, ensure_ascii=False, separators=(',', ':'))}
+
+Latest client message:
+{current_message}
+"""
+    raw, error = _call_openai(CLIENT_AI_PROMPT, prompt, 500)
+    if error:
+        return None, True, error
+    first_line = raw.splitlines()[0].strip().upper() if raw.splitlines() else ''
+    handoff = first_line == 'HANDOFF=YES'
+    answer = raw.split('ANSWER=', 1)[1].strip() if 'ANSWER=' in raw else raw.strip()
+    if not answer:
+        return None, True, 'AI produced an empty client answer.'
+    return answer, handoff, None
 
 @bp.get('/overview')
 def overview():
     if not _require_admin():
         return jsonify({'error': 'Unauthorized'}), 401
     return jsonify(_build_context())
-
 
 @bp.post('/chat')
 def chat():
@@ -106,14 +152,6 @@ def chat():
         return jsonify({'error': 'Message is required.'}), 400
     if len(message) > 4000:
         return jsonify({'error': 'Message is too long.'}), 400
-
-    api_key = (os.getenv('OPENAI_API_KEY') or '').strip()
-    if not api_key:
-        return jsonify({
-            'configured': False,
-            'message': 'POSP AI is installed, but OPENAI_API_KEY is not configured on the backend yet.',
-        }), 503
-
     context = _build_context()
     prompt = f"""Operational context (JSON):
 {json.dumps(context, ensure_ascii=False, separators=(',', ':'))}
@@ -121,40 +159,28 @@ def chat():
 Administrator request:
 {message}
 """
+    answer, error = _call_openai(SYSTEM_PROMPT, prompt, 900)
+    if error:
+        return jsonify({'configured': bool(os.getenv('OPENAI_API_KEY')), 'error': error}), 502
     model = (os.getenv('POSP_AI_MODEL') or 'gpt-5.6-luna').strip()
-    try:
-        response = requests.post(
-            'https://api.openai.com/v1/responses',
-            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
-            json={
-                'model': model,
-                'instructions': SYSTEM_PROMPT,
-                'input': prompt,
-                'max_output_tokens': 900,
-            },
-            timeout=45,
-        )
-        if response.status_code >= 400:
-            return jsonify({
-                'configured': True,
-                'error': 'AI provider request failed.',
-                'provider_status': response.status_code,
-            }), 502
-        answer = _extract_response_text(response.json())
-        if not answer:
-            return jsonify({'configured': True, 'error': 'AI returned no text response.'}), 502
-        return jsonify({'configured': True, 'answer': answer, 'checked_at': context['checked_at'], 'model': model})
-    except requests.RequestException:
-        return jsonify({'configured': True, 'error': 'AI provider could not be reached.'}), 502
-
+    return jsonify({'configured': True, 'answer': answer, 'checked_at': context['checked_at'], 'model': model})
 
 @bp.post('/run-job-sync')
 def run_job_sync():
     if not _require_admin():
         return jsonify({'error': 'Unauthorized'}), 401
+    admin = get_request_user()
     from ..jobs.sync import sync_all_sources
     result = sync_all_sources()
+    db.session.add(AdminAuditLog(
+        admin_id=admin.id,
+        action='ai_job_sync',
+        summary='Ran the approved job-source synchronization from POSP AI Operations.',
+        details={'result': result},
+    ))
+    db.session.commit()
     return jsonify({
-        'message': 'Approved job-source synchronization completed.' if result.get('successful_sources') else 'Job synchronization did not complete successfully.',
+        'message': 'Approved job-source synchronization completed.' if result.get('successful_sources')
+            else 'Job synchronization did not complete successfully.',
         'result': result,
     }), 200 if result.get('successful_sources') else 502
