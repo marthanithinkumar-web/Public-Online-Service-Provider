@@ -63,9 +63,15 @@ def _load_scholarship_snapshot():
 
 def _build_context():
     jobs = JobNotification.query
+    readiness = production_readiness()
+    scholarship = _load_scholarship_snapshot()
     return {
         'checked_at': datetime.now(timezone.utc).isoformat(),
-        'runtime': {'database': True, 'production_readiness': production_readiness()},
+        'runtime': {
+            'database': True,
+            'production_readiness': readiness,
+            'production_readiness_status': 'ready' if all(readiness.values()) else 'needs_configuration',
+        },
         'jobs': {
             'published': jobs.filter_by(status='published').count(),
             'needs_review': jobs.filter_by(status='needs_review').count(),
@@ -73,8 +79,26 @@ def _build_context():
             'hidden': jobs.filter_by(status='hidden').count(),
             'sources': [source.to_dict() for source in JobSource.query.order_by(JobSource.name).all()],
         },
-        'scholarships': _load_scholarship_snapshot(),
+        'scholarships': scholarship,
+        'ai': {
+            'client_ai_enabled': os.getenv('POSP_CLIENT_AI_ENABLED', 'false').strip().lower() == 'true',
+            'operations_ai_configured': bool(os.getenv('OPENAI_API_KEY')),
+        },
     }
+
+def _operations_findings(context):
+    findings = []
+    for name, ok in context['runtime']['production_readiness'].items():
+        if not ok:
+            findings.append({'severity': 'warning', 'area': name, 'message': 'Production configuration check is not ready.'})
+    scholarship = context['scholarships']
+    if not scholarship.get('available'):
+        findings.append({'severity': 'failed', 'area': 'scholarships', 'message': 'Scholarship snapshot is unavailable.'})
+    elif scholarship.get('stale_source_count', 0):
+        findings.append({'severity': 'warning', 'area': 'scholarships', 'message': f"{scholarship['stale_source_count']} scholarship source(s) are stale."})
+    if context['jobs']['needs_review']:
+        findings.append({'severity': 'warning', 'area': 'jobs', 'message': f"{context['jobs']['needs_review']} job notice(s) need review."})
+    return findings
 
 def _extract_response_text(payload):
     for item in payload.get('output', []):
@@ -145,7 +169,7 @@ Latest client message:
 def overview():
     if not _require_admin():
         return jsonify({'error': 'Unauthorized'}), 401
-    return jsonify(_build_context())
+    context = _build_context()\n    return jsonify({**context, 'findings': _operations_findings(context)})
 
 @bp.post('/chat')
 def chat():
