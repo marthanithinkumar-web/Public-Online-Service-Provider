@@ -55,3 +55,8 @@ export async function fetchAdminMessageThreads(){ return (await api.get('/messag
 export async function fetchAdminMessageThread(userId:number){ return (await api.get(`/messages/admin/${userId}`,{headers:authHeader()})).data }
 export async function markAdminMessageThreadRead(userId:number){ return (await api.post(`/messages/admin/${userId}/read`,{},{headers:authHeader()})).data }
 export async function sendAdminSupportMessage(userId:number,message:string){ return (await api.post(`/messages/admin/${userId}`,{message},{headers:authHeader()})).data }
+
+
+export async function fetchAiOperationsOverview(){ return (await api.get('/admin/ai/overview',{headers:authHeader()})).data }
+export async function chatWithAiOperations(message:string){ return (await api.post('/admin/ai/chat',{message},{headers:authHeader(),timeout:60000})).data }
+export async function runAiJobSync(){ return (await api.post('/admin/ai/run-job-sync',{}, {headers:authHeader(),timeout:90000})).data }
