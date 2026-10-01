@@ -1,4 +1,6 @@
-import os\n\nfrom flask import Blueprint, jsonify, request
+import os
+
+from flask import Blueprint, jsonify, request
 from sqlalchemy import func
 
 from ..middleware.auth import require_admin
