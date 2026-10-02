@@ -111,7 +111,7 @@ def _call_openai(instructions, prompt, max_output_tokens=900):
     api_key = (os.getenv('OPENAI_API_KEY') or '').strip()
     if not api_key:
         return None, 'AI is not configured on the backend.'
-    model = (os.getenv('POSP_AI_MODEL') or 'gpt-5.6-luna').strip()
+    model = (os.getenv('POSP_AI_MODEL') or 'gpt-6-luna').strip()
     try:
         response = requests.post(
             'https://api.openai.com/v1/responses',
@@ -192,7 +192,7 @@ Administrator request:
     answer, error = _call_openai(SYSTEM_PROMPT, prompt, 900)
     if error:
         return jsonify({'configured': bool(os.getenv('OPENAI_API_KEY')), 'error': error}), 502
-    model = (os.getenv('POSP_AI_MODEL') or 'gpt-5.6-luna').strip()
+    model = (os.getenv('POSP_AI_MODEL') or 'gpt-6-luna').strip()
     return jsonify({'configured': True, 'answer': answer, 'checked_at': context['checked_at'], 'model': model})
 
 @bp.post('/run-job-sync')
