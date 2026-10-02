@@ -169,7 +169,8 @@ Latest client message:
 def overview():
     if not _require_admin():
         return jsonify({'error': 'Unauthorized'}), 401
-    context = _build_context()\n    return jsonify({**context, 'findings': _operations_findings(context)})
+    context = _build_context()
+    return jsonify({**context, 'findings': _operations_findings(context)})
 
 @bp.post('/chat')
 def chat():
