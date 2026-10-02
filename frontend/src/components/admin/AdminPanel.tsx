@@ -12,9 +12,11 @@ import ActivityReports from './ActivityReports'
 import AdminSettings from './AdminSettings'
 import MessageManagement from './MessageManagement'
 import JobManagement from './JobManagement'
+import AiOperations from './AiOperations'
 
 const links=[
   ['/admin/dashboard','Dashboard'],
+  ['/admin/ai-operations','AI Operations'],
   ['/admin/orders','Applications'],
   ['/admin/jobs','Job Feed Management'],
   ['/admin/users','Clients'],
@@ -40,6 +42,7 @@ export default function AdminPanel(){
       <Routes>
         <Route index element={<Navigate to="/admin/dashboard" replace/>}/>
         <Route path="/dashboard" element={<AdminDashboard/>}/>
+        <Route path="/ai-operations" element={<AiOperations/>}/>
         <Route path="/orders" element={<OrderManagement/>}/>
         <Route path="/orders/:id" element={<AdminOrderDetail/>}/>
         <Route path="/jobs" element={<JobManagement/>}/>
