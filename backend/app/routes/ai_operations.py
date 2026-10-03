@@ -39,6 +39,7 @@ HANDOFF=YES or HANDOFF=NO
 ANSWER=<client-facing answer>
 """
 
+
 def _load_scholarship_snapshot():
     try:
         data = json.loads(SCHOLARSHIP_SNAPSHOT.read_text(encoding='utf-8'))
@@ -52,14 +53,20 @@ def _load_scholarship_snapshot():
             'stale_source_count': int(data.get('stale_source_count') or 0),
             'discovery_mode': (data.get('discovery') or {}).get('mode'),
             'source_health': [
-                {'key': key, 'source_name': value.get('source_name'), 'ok': bool(value.get('ok')),
-                 'count': int(value.get('count') or 0), 'error': value.get('error'),
-                 'checked_at': value.get('checked_at')}
+                {
+                    'key': key,
+                    'source_name': value.get('source_name'),
+                    'ok': bool(value.get('ok')),
+                    'count': int(value.get('count') or 0),
+                    'error': value.get('error'),
+                    'checked_at': value.get('checked_at'),
+                }
                 for key, value in sorted(health.items())
             ],
         }
     except (OSError, ValueError, TypeError) as exc:
         return {'available': False, 'error': f'{type(exc).__name__}: {str(exc)[:160]}'}
+
 
 def _build_context():
     jobs = JobNotification.query
@@ -86,19 +93,37 @@ def _build_context():
         },
     }
 
+
 def _operations_findings(context):
     findings = []
     for name, ok in context['runtime']['production_readiness'].items():
         if not ok:
-            findings.append({'severity': 'warning', 'area': name, 'message': 'Production configuration check is not ready.'})
+            findings.append({
+                'severity': 'warning',
+                'area': name,
+                'message': 'Production configuration check is not ready.',
+            })
     scholarship = context['scholarships']
     if not scholarship.get('available'):
-        findings.append({'severity': 'failed', 'area': 'scholarships', 'message': 'Scholarship snapshot is unavailable.'})
+        findings.append({
+            'severity': 'failed',
+            'area': 'scholarships',
+            'message': 'Scholarship snapshot is unavailable.',
+        })
     elif scholarship.get('stale_source_count', 0):
-        findings.append({'severity': 'warning', 'area': 'scholarships', 'message': f"{scholarship['stale_source_count']} scholarship source(s) are stale."})
+        findings.append({
+            'severity': 'warning',
+            'area': 'scholarships',
+            'message': f"{scholarship['stale_source_count']} scholarship source(s) are stale.",
+        })
     if context['jobs']['needs_review']:
-        findings.append({'severity': 'warning', 'area': 'jobs', 'message': f"{context['jobs']['needs_review']} job notice(s) need review."})
+        findings.append({
+            'severity': 'warning',
+            'area': 'jobs',
+            'message': f"{context['jobs']['needs_review']} job notice(s) need review.",
+        })
     return findings
+
 
 def _extract_response_text(payload):
     for item in payload.get('output', []):
@@ -106,6 +131,7 @@ def _extract_response_text(payload):
             if content.get('type') in {'output_text', 'text'} and content.get('text'):
                 return content['text']
     return ''
+
 
 def _call_openai(instructions, prompt, max_output_tokens=900):
     api_key = (os.getenv('OPENAI_API_KEY') or '').strip()
@@ -116,8 +142,12 @@ def _call_openai(instructions, prompt, max_output_tokens=900):
         response = requests.post(
             'https://api.openai.com/v1/responses',
             headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
-            json={'model': model, 'instructions': instructions, 'input': prompt,
-                  'max_output_tokens': max_output_tokens},
+            json={
+                'model': model,
+                'instructions': instructions,
+                'input': prompt,
+                'max_output_tokens': max_output_tokens,
+            },
             timeout=45,
         )
         if response.status_code >= 400:
@@ -127,6 +157,7 @@ def _call_openai(instructions, prompt, max_output_tokens=900):
     except requests.RequestException:
         return None, 'AI provider could not be reached.'
 
+
 def _parse_client_ai_response(raw):
     lines = raw.splitlines()
     first_line = lines[0].strip().upper() if lines else ''
@@ -134,22 +165,38 @@ def _parse_client_ai_response(raw):
     answer = raw.split('ANSWER=', 1)[1].strip() if 'ANSWER=' in raw else raw.strip()
     return answer, handoff
 
+
 def generate_client_reply(user, current_message):
     if os.getenv('POSP_CLIENT_AI_ENABLED', 'false').strip().lower() != 'true':
         return None, False, 'Client AI is disabled.'
-    services = [item.to_dict() for item in Service.query.filter_by(is_active=True).order_by(Service.name).all()]
-    orders = [{
-        'order_code': order.order_code,
-        'service': order.service.name if order.service else None,
-        'status': order.status,
-        'created_at': order.created_at.isoformat(),
-        'updated_at': (order.updated_at or order.created_at).isoformat(),
-    } for order in Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).limit(10).all()]
-    history = [{
-        'role': 'client' if item.sender_role == 'client' else 'assistant',
-        'content': item.message,
-    } for item in SupportMessage.query.filter_by(user_id=user.id)
-        .order_by(SupportMessage.created_at.desc()).limit(20).all()][::-1]
+
+    services = [
+        item.to_dict()
+        for item in Service.query.filter_by(is_active=True).order_by(Service.name).all()
+    ]
+    orders = [
+        {
+            'order_code': order.order_code,
+            'service': order.service.name if order.service else None,
+            'status': order.status,
+            'created_at': order.created_at.isoformat(),
+            'updated_at': (order.updated_at or order.created_at).isoformat(),
+        }
+        for order in Order.query.filter_by(user_id=user.id)
+        .order_by(Order.created_at.desc())
+        .limit(10)
+        .all()
+    ]
+    history = [
+        {
+            'role': 'client' if item.sender_role == 'client' else 'assistant',
+            'content': item.message,
+        }
+        for item in SupportMessage.query.filter_by(user_id=user.id)
+        .order_by(SupportMessage.created_at.desc())
+        .limit(20)
+        .all()
+    ][::-1]
     context = {'services': services, 'client_requests': orders, 'conversation': history}
     prompt = f"""POSP client-safe context (JSON):
 {json.dumps(context, ensure_ascii=False, separators=(',', ':'))}
@@ -165,12 +212,14 @@ Latest client message:
         return None, True, 'AI produced an empty client answer.'
     return answer, handoff, None
 
+
 @bp.get('/overview')
 def overview():
     if not _require_admin():
         return jsonify({'error': 'Unauthorized'}), 401
     context = _build_context()
     return jsonify({**context, 'findings': _operations_findings(context)})
+
 
 @bp.post('/chat')
 def chat():
@@ -193,7 +242,13 @@ Administrator request:
     if error:
         return jsonify({'configured': bool(os.getenv('OPENAI_API_KEY')), 'error': error}), 502
     model = (os.getenv('POSP_AI_MODEL') or 'gpt-5.6-luna').strip()
-    return jsonify({'configured': True, 'answer': answer, 'checked_at': context['checked_at'], 'model': model})
+    return jsonify({
+        'configured': True,
+        'answer': answer,
+        'checked_at': context['checked_at'],
+        'model': model,
+    })
+
 
 @bp.post('/run-job-sync')
 def run_job_sync():
@@ -201,6 +256,7 @@ def run_job_sync():
         return jsonify({'error': 'Unauthorized'}), 401
     admin = get_request_user()
     from ..jobs.sync import sync_all_sources
+
     result = sync_all_sources()
     db.session.add(AdminAuditLog(
         admin_id=admin.id,
@@ -211,6 +267,6 @@ def run_job_sync():
     db.session.commit()
     return jsonify({
         'message': 'Approved job-source synchronization completed.' if result.get('successful_sources')
-            else 'Job synchronization did not complete successfully.',
+        else 'Job synchronization did not complete successfully.',
         'result': result,
     }), 200 if result.get('successful_sources') else 502
