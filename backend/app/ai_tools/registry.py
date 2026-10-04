@@ -18,6 +18,7 @@ class ToolDefinition:
     description: str
     permission: PermissionLevel
     handler: Callable[[Mapping[str, Any]], Mapping[str, Any]] | None = None
+    verifier: Callable[[Mapping[str, Any], Mapping[str, Any]], Mapping[str, Any]] | None = None
     input_schema: Mapping[str, Any] = field(default_factory=dict)
     reversible: bool = True
 
@@ -28,6 +29,7 @@ class ToolResult:
     status: str
     tool: str
     data: Mapping[str, Any] = field(default_factory=dict)
+    verification: Mapping[str, Any] = field(default_factory=dict)
     error: str | None = None
 
 
@@ -66,6 +68,7 @@ class ToolRegistry:
         arguments: Mapping[str, Any] | None = None,
         *,
         approved: bool = False,
+        autonomous: bool = True,
     ) -> ToolResult:
         tool = self.get(name)
         if tool is None:
@@ -80,10 +83,24 @@ class ToolRegistry:
                 data={'proposal': {'tool': name, 'arguments': dict(arguments or {})}},
                 error='Explicit admin approval is required before execution.',
             )
+        if autonomous and tool.permission == PermissionLevel.APPROVAL and not approved:
+            return ToolResult(False, 'approval_required', name, error='Approval-required tools cannot run autonomously.')
+        if tool.permission == PermissionLevel.SAFE_FIX and autonomous and not tool.reversible:
+            return ToolResult(False, 'rejected', name, error='Autonomous execution requires a reversible safe-fix tool.')
         if tool.handler is None:
             return ToolResult(False, 'unavailable', name, error='Tool has no executable handler.')
         try:
             data = tool.handler(arguments or {})
-            return ToolResult(True, 'verified', name, data=data)
         except Exception as exc:
             return ToolResult(False, 'failed', name, error=f'{type(exc).__name__}: {str(exc)[:200]}')
+
+        if tool.permission == PermissionLevel.READ or tool.verifier is None:
+            return ToolResult(True, 'completed', name, data=data)
+
+        try:
+            verification = tool.verifier(arguments or {}, data)
+        except Exception as exc:
+            return ToolResult(False, 'verification_failed', name, data=data, error=f'{type(exc).__name__}: {str(exc)[:200]}')
+        if not bool(verification.get('verified')):
+            return ToolResult(False, 'verification_failed', name, data=data, verification=verification, error='Action completed but independent verification failed.')
+        return ToolResult(True, 'verified', name, data=data, verification=verification)
