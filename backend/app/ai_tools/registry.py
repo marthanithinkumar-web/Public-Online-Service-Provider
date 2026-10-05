@@ -52,41 +52,28 @@ class ToolRegistry:
 
     def public_schemas(self) -> list[dict[str, Any]]:
         return [
-            {
-                'name': tool.name,
-                'description': tool.description,
-                'permission': tool.permission.value,
-                'input_schema': dict(tool.input_schema),
-            }
-            for tool in self._tools.values()
-            if tool.permission != PermissionLevel.BLOCKED
+            {'name': tool.name, 'description': tool.description, 'permission': tool.permission.value,
+             'input_schema': dict(tool.input_schema)}
+            for tool in self._tools.values() if tool.permission != PermissionLevel.BLOCKED
         ]
 
-    def execute(
-        self,
-        name: str,
-        arguments: Mapping[str, Any] | None = None,
-        *,
-        approved: bool = False,
-        autonomous: bool = True,
-    ) -> ToolResult:
+    def execute(self, name: str, arguments: Mapping[str, Any] | None = None, *, approved: bool = False,
+                autonomous: bool = True) -> ToolResult:
         tool = self.get(name)
         if tool is None:
             return ToolResult(False, 'rejected', name, error='Tool is not allowlisted.')
         if tool.permission == PermissionLevel.BLOCKED:
             return ToolResult(False, 'blocked', name, error='Tool is blocked by POSP AI policy.')
         if tool.permission == PermissionLevel.APPROVAL and not approved:
-            return ToolResult(
-                False,
-                'approval_required',
-                name,
-                data={'proposal': {'tool': name, 'arguments': dict(arguments or {})}},
-                error='Explicit admin approval is required before execution.',
-            )
-        if autonomous and tool.permission == PermissionLevel.APPROVAL and not approved:
-            return ToolResult(False, 'approval_required', name, error='Approval-required tools cannot run autonomously.')
-        if tool.permission == PermissionLevel.SAFE_FIX and autonomous and not tool.reversible:
-            return ToolResult(False, 'rejected', name, error='Autonomous execution requires a reversible safe-fix tool.')
+            return ToolResult(False, 'approval_required', name,
+                              data={'proposal': {'tool': name, 'arguments': dict(arguments or {})}},
+                              error='Explicit admin approval is required before execution.')
+        if tool.permission == PermissionLevel.SAFE_FIX and autonomous:
+            if not tool.reversible:
+                return ToolResult(False, 'rejected', name, error='Autonomous execution requires a reversible safe-fix tool.')
+            if tool.verifier is None:
+                return ToolResult(False, 'verification_required', name,
+                                  error='Autonomous safe fixes require an independent verifier.')
         if tool.handler is None:
             return ToolResult(False, 'unavailable', name, error='Tool has no executable handler.')
         try:
@@ -94,13 +81,17 @@ class ToolRegistry:
         except Exception as exc:
             return ToolResult(False, 'failed', name, error=f'{type(exc).__name__}: {str(exc)[:200]}')
 
-        if tool.permission == PermissionLevel.READ or tool.verifier is None:
+        if tool.permission == PermissionLevel.READ:
             return ToolResult(True, 'completed', name, data=data)
-
+        if tool.verifier is None:
+            return ToolResult(False, 'verification_required', name, data=data,
+                              error='Action cannot be reported successful without independent verification.')
         try:
             verification = tool.verifier(arguments or {}, data)
         except Exception as exc:
-            return ToolResult(False, 'verification_failed', name, data=data, error=f'{type(exc).__name__}: {str(exc)[:200]}')
+            return ToolResult(False, 'verification_failed', name, data=data,
+                              error=f'{type(exc).__name__}: {str(exc)[:200]}')
         if not bool(verification.get('verified')):
-            return ToolResult(False, 'verification_failed', name, data=data, verification=verification, error='Action completed but independent verification failed.')
+            return ToolResult(False, 'verification_failed', name, data=data, verification=verification,
+                              error='Action completed but independent verification failed.')
         return ToolResult(True, 'verified', name, data=data, verification=verification)
