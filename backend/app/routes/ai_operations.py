@@ -22,11 +22,11 @@ bp = Blueprint('ai_operations', __name__)
 SCHOLARSHIP_SNAPSHOT = Path(__file__).resolve().parents[1] / 'scholarships' / 'data' / 'scholarships.json'
 
 SYSTEM_PROMPT = """You are POSP AI Operations, an internal operations assistant for Public Online Service Provider.
-Use only supplied operational context. Never invent check results. Distinguish healthy, warning, failed, stale, and unknown.
-Jobs and scholarships must remain based on approved/official sources. Never claim a production change unless the action result says it succeeded.
-Never expose credentials, tokens, private client data, payment secrets, or security secrets. Risky changes require admin review.
-The server-side tool registry, not the model, is the authority for permissions and execution.
-Be concise and action-oriented."""
+Use only supplied operational context and the allowlisted tools. Never invent check results.
+The server-side tool registry is the authority for permissions and verification; never bypass it.
+Jobs and scholarships must remain based on approved/official sources. Never claim a production change unless a tool result says it succeeded.
+Never expose credentials, tokens, private client data, payment secrets, or security secrets.
+Higher-risk actions must remain approval-controlled. Be concise and action-oriented."""
 
 CLIENT_AI_PROMPT = """You are the POSP customer support assistant inside the existing private Client/Admin chat.
 Use only the supplied POSP service and request context.
@@ -72,7 +72,7 @@ def _build_context():
                      'sources': [source.to_dict() for source in JobSource.query.order_by(JobSource.name).all()]},
             'scholarships': _load_scholarship_snapshot(),
             'ai': {'client_ai_enabled': os.getenv('POSP_CLIENT_AI_ENABLED', 'false').strip().lower() == 'true',
-                   'operations_ai_configured': bool(os.getenv('OPENAI_API_KEY')),}}
+                   'operations_ai_configured': bool(os.getenv('OPENAI_API_KEY') and os.getenv('POSP_AI_MODEL'))}}
 
 
 def _operations_findings(context):
@@ -114,6 +114,61 @@ def _call_openai(instructions, prompt, max_output_tokens=900):
         return (answer, None) if answer else (None, 'AI returned no text response.')
     except requests.RequestException:
         return None, 'AI provider could not be reached.'
+
+
+def _function_tools(registry):
+    tools = []
+    for schema in registry.public_schemas():
+        parameters = schema.get('input_schema') or {'type': 'object', 'properties': {}, 'additionalProperties': False}
+        tools.append({'type': 'function', 'name': schema['name'], 'description': schema['description'],
+                      'parameters': parameters, 'strict': True})
+    return tools
+
+
+def _run_operations_agent(message, context, admin):
+    api_key = (os.getenv('OPENAI_API_KEY') or '').strip()
+    model = (os.getenv('POSP_AI_MODEL') or '').strip()
+    if not api_key or not model:
+        return None, [], 'AI is not configured on the backend. Set OPENAI_API_KEY and POSP_AI_MODEL.'
+    registry = build_posp_ai_registry()
+    tools = _function_tools(registry)
+    prompt = f"Operational context (JSON):\n{json.dumps(context, ensure_ascii=False, separators=(',', ':'))}\n\nAdministrator request:\n{message}"
+    headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
+    payload = {'model': model, 'instructions': SYSTEM_PROMPT, 'input': prompt, 'tools': tools,
+               'tool_choice': 'auto', 'parallel_tool_calls': False, 'max_output_tokens': 900}
+    executed = []
+    try:
+        for _ in range(3):
+            response = requests.post('https://api.openai.com/v1/responses', headers=headers, json=payload, timeout=60)
+            if response.status_code >= 400:
+                return None, executed, 'AI provider request failed.'
+            body = response.json()
+            calls = [item for item in body.get('output', []) if item.get('type') == 'function_call']
+            if not calls:
+                return _extract_response_text(body) or 'AI returned no text response.', executed, None
+            call = calls[0]
+            name = str(call.get('name') or '')
+            try:
+                arguments = json.loads(call.get('arguments') or '{}')
+            except (TypeError, ValueError):
+                arguments = {}
+            result = registry.execute(name, arguments, approved=False, autonomous=True)
+            correlation_id = str(uuid4())
+            executed.append({'correlation_id': correlation_id, 'tool': name, 'status': result.status,
+                             'ok': result.ok, 'verification': result.verification, 'error': result.error,
+                             'data': result.data})
+            db.session.add(AdminAuditLog(admin_id=admin.id, action='ai_tool_execution',
+                                         summary=f'POSP AI decision-loop tool {name}: {result.status}.',
+                                         details=executed[-1]))
+            db.session.commit()
+            payload = {'model': model, 'instructions': SYSTEM_PROMPT,
+                       'previous_response_id': body.get('id'),
+                       'input': [{'type': 'function_call_output', 'call_id': call.get('call_id'),
+                                  'output': json.dumps(executed[-1], ensure_ascii=False, default=str)}],
+                       'tools': tools, 'tool_choice': 'auto', 'parallel_tool_calls': False, 'max_output_tokens': 900}
+        return 'Tool loop stopped after the maximum number of safe steps.', executed, None
+    except requests.RequestException:
+        return None, executed, 'AI provider could not be reached.'
 
 
 def _parse_client_ai_response(raw):
@@ -160,8 +215,7 @@ def overview():
 def tools():
     if not _require_admin():
         return jsonify({'error': 'Unauthorized'}), 401
-    registry = build_posp_ai_registry()
-    return jsonify({'tools': registry.public_schemas(), 'checked_at': _utc()})
+    return jsonify({'tools': build_posp_ai_registry().public_schemas(), 'checked_at': _utc()})
 
 
 @bp.post('/run-tool')
@@ -176,17 +230,13 @@ def run_tool():
     if not name:
         return jsonify({'error': 'Tool is required.'}), 400
     correlation_id = str(uuid4())
-    registry = build_posp_ai_registry()
-    result = registry.execute(name, arguments, approved=approved, autonomous=autonomous)
+    result = build_posp_ai_registry().execute(name, arguments, approved=approved, autonomous=autonomous)
     admin = get_request_user()
     db.session.add(AdminAuditLog(admin_id=admin.id, action='ai_tool_execution',
                                  summary=f'POSP AI tool {name}: {result.status}.',
-                                 details={'correlation_id': correlation_id, 'tool': name, 'status': result.status,
-                                          'ok': result.ok, 'verification': result.verification, 'error': result.error,
-                                          'data': result.data}))
+                                 details={'correlation_id': correlation_id, **_serialize_result(result)}))
     db.session.commit()
-    status_code = 200 if result.ok else (409 if result.status == 'approval_required' else 422)
-    return jsonify({'correlation_id': correlation_id, **_serialize_result(result)}), status_code
+    return jsonify({'correlation_id': correlation_id, **_serialize_result(result)}), 200 if result.ok else (409 if result.status == 'approval_required' else 422)
 
 
 @bp.post('/chat')
@@ -199,20 +249,21 @@ def chat():
         return jsonify({'error': 'Message is required.'}), 400
     if len(message) > 4000:
         return jsonify({'error': 'Message is too long.'}), 400
+    admin = get_request_user()
     context = _build_context()
-    prompt = f"Operational context (JSON):\n{json.dumps(context, ensure_ascii=False, separators=(',', ':'))}\n\nAdministrator request:\n{message}"
-    answer, error = _call_openai(SYSTEM_PROMPT, prompt, 900)
+    answer, tool_runs, error = _run_operations_agent(message, context, admin)
     if error:
-        return jsonify({'configured': bool(os.getenv('OPENAI_API_KEY') and os.getenv('POSP_AI_MODEL')), 'error': error}), 502
-    return jsonify({'configured': True, 'answer': answer, 'checked_at': context['checked_at'], 'model': os.getenv('POSP_AI_MODEL')})
+        return jsonify({'configured': bool(os.getenv('OPENAI_API_KEY') and os.getenv('POSP_AI_MODEL')), 'error': error,
+                        'tool_runs': tool_runs}), 502
+    return jsonify({'configured': True, 'answer': answer, 'tool_runs': tool_runs, 'checked_at': context['checked_at'],
+                    'model': os.getenv('POSP_AI_MODEL')})
 
 
 @bp.post('/run-job-sync')
 def run_job_sync():
     if not _require_admin():
         return jsonify({'error': 'Unauthorized'}), 401
-    registry = build_posp_ai_registry()
-    result = registry.execute('sync_jobs', {}, approved=False, autonomous=True)
+    result = build_posp_ai_registry().execute('sync_jobs', {}, approved=False, autonomous=True)
     admin = get_request_user()
     db.session.add(AdminAuditLog(admin_id=admin.id, action='ai_job_sync',
                                  summary=f'Controlled POSP AI job synchronization: {result.status}.',
