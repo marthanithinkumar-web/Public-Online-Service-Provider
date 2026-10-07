@@ -1,12 +1,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import {fileURLToPath} from 'node:url'
-import {publicRoutes,readCatalog,readJobs,readScholarships,siteUrl} from './seo-catalog.mjs'
+import {publicRoutes,readCatalog,readIndexableJobs,readScholarships,siteUrl} from './seo-catalog.mjs'
 
 const scriptDir=path.dirname(fileURLToPath(import.meta.url))
 const publicDir=path.resolve(scriptDir,'../public')
 const services=readCatalog()
-const jobs=readJobs()
+const jobs=readIndexableJobs()
 const scholarships=readScholarships()
 const urls=[
   ...publicRoutes,
@@ -21,4 +21,4 @@ const robots=`User-agent: *\nAllow: /\n\nSitemap: ${siteUrl}/sitemap.xml\n`
 fs.writeFileSync(path.join(publicDir,'sitemap.xml'),xml)
 fs.writeFileSync(path.join(publicDir,'robots.txt'),robots)
 fs.writeFileSync(path.join(publicDir,'seo-catalog.json'),`${JSON.stringify(services,null,2)}\n`)
-console.log(`Generated sitemap with ${urls.length} public URLs for ${siteUrl}.`)
+console.log(`Generated sitemap with ${urls.length} canonical public URLs.`)
