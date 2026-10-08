@@ -1,11 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import {fileURLToPath} from 'node:url'
-import {readCatalog,readJobs,readScholarships,readStartupDefaultServices,siteUrl} from './seo-catalog.mjs'
+import {readCatalog,readIndexableJobs,readScholarships,readStartupDefaultServices,siteUrl} from './seo-catalog.mjs'
 
 const scriptDir=path.dirname(fileURLToPath(import.meta.url))
 const distDir=path.resolve(scriptDir,'../dist')
-const [sampleJob]=readJobs()
+const [sampleJob]=readIndexableJobs()
 const [sampleScholarship]=readScholarships()
 const startupServices=readStartupDefaultServices()
 const requiredPages=[

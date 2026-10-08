@@ -126,6 +126,12 @@ export function readJobs(){
   return uniqueBySlug(readSnapshot('jobs.json').filter(item=>item?.status==='published'&&hasSafePublicSlug(item)))
 }
 
+// Only government recruitment detail pages are part of the SEO index surface.
+// Private employer listings remain available in the jobs UI but are noindex.
+export function readIndexableJobs(){
+  return readJobs().filter(item=>String(item?.job_type||'').toLowerCase()==='government')
+}
+
 export function readScholarships(){
   return readSnapshot('scholarships.json').filter(item=>item?.status==='active'&&hasSafePublicSlug(item))
 }

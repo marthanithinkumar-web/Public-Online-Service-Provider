@@ -1,14 +1,14 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import {fileURLToPath} from 'node:url'
-import {publicRoutes,readJobs,readScholarships,siteUrl} from './seo-catalog.mjs'
+import {publicRoutes,readIndexableJobs,readScholarships,siteUrl} from './seo-catalog.mjs'
 
 const scriptDir=path.dirname(fileURLToPath(import.meta.url))
 const distDir=path.resolve(scriptDir,'../dist')
 const defaultSiteUrl='https://pospindia.onrender.com'
 const template=fs.readFileSync(path.join(distDir,'index.html'),'utf8').replaceAll(defaultSiteUrl,siteUrl)
 const services=JSON.parse(fs.readFileSync(path.join(distDir,'seo-catalog.json'),'utf8'))
-const jobs=readJobs()
+const jobs=readIndexableJobs()
 const scholarships=readScholarships()
 const escapeHtml=value=>String(value||'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]))
 const safeHttpsUrl=value=>{try{const url=new URL(String(value||''));return url.protocol==='https:'?url.href:'#'}catch{return '#'}}
