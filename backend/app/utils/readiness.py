@@ -33,9 +33,12 @@ def smtp_configured():
     parsed_sender = parseaddr(sender)[1]
     if not parsed_sender or '\n' in parsed_sender or '\r' in parsed_sender:
         return False
+    # Production SMTP is authenticated in POSP (e.g. Brevo). The previous
+    # boolean comparison accidentally returned True when both credentials were
+    # missing, and False whenever both were correctly configured.
     user = _present('SMTP_USER')
     password = _present('SMTP_PASS')
-    return user == password
+    return user and password
 
 
 def smtp_connectivity():
