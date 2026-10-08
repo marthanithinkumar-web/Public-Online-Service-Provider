@@ -1,5 +1,6 @@
 import sys
 import threading
+import time
 from datetime import date, datetime, timedelta, timezone
 
 import requests
@@ -14,6 +15,10 @@ from .sources import SOURCE_BY_KEY, SOURCE_DEFINITIONS, JobItem
 
 JOB_SYNC_LOCK_ID = 20260831
 _background_lock = threading.Lock()
+_due_cache_lock = threading.Lock()
+_due_cache_at = 0.0
+_due_cache_value = False
+DUE_CHECK_CACHE_SECONDS = 60
 
 
 def utc_now():
@@ -137,6 +142,18 @@ def sync_all_sources(session=None):
 
 
 def sync_is_due(hours=20):
+    """Return whether a refresh is due, with a short cache to protect the API.
+
+    The public jobs endpoints call this function on normal reads. A one-minute
+    per-worker cache avoids repeatedly scanning source rows under traffic while
+    preserving the existing due-check and PostgreSQL advisory-lock safeguards.
+    """
+    global _due_cache_at, _due_cache_value
+    now_monotonic = time.monotonic()
+    with _due_cache_lock:
+        if now_monotonic - _due_cache_at < DUE_CHECK_CACHE_SECONDS:
+            return _due_cache_value
+
     running_cutoff = utc_now() - timedelta(hours=1)
     if JobSource.query.filter(JobSource.enabled.is_(True), JobSource.last_sync_status == 'running', JobSource.last_sync_started_at >= running_cutoff).count():
         return False
@@ -150,20 +167,40 @@ def sync_is_due(hours=20):
         # rows, newly added sources, and changed official listing URLs must force
         # a refresh so the database cannot silently lag behind the code registry.
         if source is None:
-            return True
+            result = True
+            with _due_cache_lock:
+                _due_cache_at = time.monotonic()
+                _due_cache_value = result
+            return result
         if source.name != definition.name or source.listing_url != definition.listing_url:
-            return True
+            result = True
+            with _due_cache_lock:
+                _due_cache_at = time.monotonic()
+                _due_cache_value = result
+            return result
         if not source.enabled:
             continue
         # A source row can be created just before an instance is terminated. Such
         # a never-run source must not be treated as fresh merely because another
         # source completed recently.
         if source.last_sync_completed_at is None:
-            return True
+            result = True
+            with _due_cache_lock:
+                _due_cache_at = time.monotonic()
+                _due_cache_value = result
+            return result
         if source.last_sync_completed_at < stale_cutoff:
-            return True
+            result = True
+            with _due_cache_lock:
+                _due_cache_at = time.monotonic()
+                _due_cache_value = result
+            return result
 
-    return False
+    result = False
+    with _due_cache_lock:
+        _due_cache_at = time.monotonic()
+        _due_cache_value = result
+    return result
 
 
 def trigger_background_sync(app):
