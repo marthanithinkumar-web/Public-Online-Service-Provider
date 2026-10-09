@@ -141,16 +141,13 @@ test('every client workspace navigation item is actually clickable and reaches i
   }
 })
 
-test('a signed-in client can deliberately open Admin Login instead of being bounced back to the client dashboard', async ({ page }) => {
+test('signed-in clients have no separate Admin Login header link while the footer admin portal remains available', async ({ page }) => {
   await installClientSession(page)
   await mockClientWorkspace(page)
   await page.goto('/')
 
-  await page.getByRole('link', { name: 'Admin Login', exact: true }).click()
-  await expect(page).toHaveURL(/\/admin\/login$/)
-  await expect(page.getByRole('heading', { name: 'Admin Login', level: 1 })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Admin Login', exact: true })).toHaveCount(0)
 
-  await page.goto('/')
   await page.locator('footer').getByRole('link', { name: 'Admin Portal', exact: true }).click()
   await expect(page).toHaveURL(/\/admin\/login$/)
   await expect(page.getByRole('heading', { name: 'Admin Login', level: 1 })).toBeVisible()
