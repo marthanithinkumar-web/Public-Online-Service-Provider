@@ -7,6 +7,7 @@ import {fetchScholarships,Scholarship,scholarshipPath} from '../services/scholar
 import '../styles/home-modern.css'
 import '../styles/home-final-alignment.css'
 import '../styles/home-mobile.css'
+import '../styles/home-glass.css'
 
 const serviceTerms=['bank account seeding','dbt assistance','caste','income','residence','aadhaar','pan','voter','ration','birth','death','driving','vehicle','passport','land','meeseva','education','legal','health','welfare','labour']
 const paymentTerms=['recharge','bill payment','electricity','dth','broadband','water bill','gas bill','fastag']
