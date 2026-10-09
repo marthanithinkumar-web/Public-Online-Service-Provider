@@ -10,13 +10,13 @@ import requests
 
 def configured_model():
     """Return the configured OpenAI model, defaulting to the migration target."""
-    return (os.getenv("POSP_AI_MODEL") or "gpt-5.5").strip()
+    return (os.getenv("POSP_AI_MODEL") or "gpt-6.1-sol").strip()
 
 
 def configured_reasoning_effort():
     """Return a supported reasoning-effort setting for Responses API calls."""
     effort = (os.getenv("POSP_AI_REASONING_EFFORT") or "medium").strip().lower()
-    return effort if effort in {"none", "low", "medium", "high", "xhigh"} else "medium"
+    return effort if effort in {"low", "medium", "high", "xhigh", "max"} else "medium"
 
 
 def is_configured():
