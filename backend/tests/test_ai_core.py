@@ -1,9 +1,9 @@
 from app import ai_core
 
 
-def test_configured_model_defaults_to_gpt_55(monkeypatch):
+def test_configured_model_defaults_to_gpt_61_sol(monkeypatch):
     monkeypatch.delenv("POSP_AI_MODEL", raising=False)
-    assert ai_core.configured_model() == "gpt-5.5"
+    assert ai_core.configured_model() == "gpt-6.1-sol"
 
 
 def test_configured_model_respects_environment(monkeypatch):
