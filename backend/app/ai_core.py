@@ -9,8 +9,14 @@ import requests
 
 
 def configured_model():
-    """Return the configured model name, retaining POSP's existing fallback."""
-    return (os.getenv("POSP_AI_MODEL") or "gpt-6-luna").strip()
+    """Return the configured OpenAI model, defaulting to the migration target."""
+    return (os.getenv("POSP_AI_MODEL") or "gpt-5.5").strip()
+
+
+def configured_reasoning_effort():
+    """Return a supported reasoning-effort setting for Responses API calls."""
+    effort = (os.getenv("POSP_AI_REASONING_EFFORT") or "medium").strip().lower()
+    return effort if effort in {"none", "low", "medium", "high", "xhigh"} else "medium"
 
 
 def is_configured():
@@ -42,6 +48,7 @@ def call_model(instructions, prompt, max_output_tokens=900):
                 "model": configured_model(),
                 "instructions": instructions,
                 "input": prompt,
+                "reasoning": {"effort": configured_reasoning_effort()},
                 "max_output_tokens": max_output_tokens,
             },
             timeout=45,
