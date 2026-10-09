@@ -12,6 +12,15 @@ const jobs=readIndexableJobs()
 const scholarships=readScholarships()
 const escapeHtml=value=>String(value||'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]))
 const safeHttpsUrl=value=>{try{const url=new URL(String(value||''));return url.protocol==='https:'?url.href:'#'}catch{return '#'}}
+const normalizeDescription=(value,fallback)=>{
+  const clean=String(value||'').replace(/\\s+/g,' ').trim()
+  const fallbackText=String(fallback||'').replace(/\\s+/g,' ').trim()
+  const description=clean.length>=25?clean:fallbackText
+  if(description.length<=160)return description
+  const prefix=description.slice(0,157)
+  const boundary=prefix.lastIndexOf(' ')
+  return `${(boundary>=100?prefix.slice(0,boundary):prefix).trim()}…`
+}
 
 // Keep the crawlable homepage canonical, Open Graph URL and structured-data
 // URLs aligned with the same deployment-time site URL used by the sitemap.
@@ -68,7 +77,7 @@ for(const [route,page] of Object.entries(informationPages)){
 for(const service of services){
   const route=`/services/${service.slug}`
   const title=`${service.name} Assistance`
-  const description=`${service.description} Review assistance requirements, documents, fees and the request process.`
+  const description=normalizeDescription(`${service.description} Review assistance requirements, documents, fees and the request process.`,`Find requirements, documents, fees and application steps for ${service.name} in India.`)
   const body=`<article><p><a href="/">Home</a> / ${escapeHtml(service.category)}</p><h1>${escapeHtml(service.name)} Assistance</h1><p>${escapeHtml(service.description)}</p><h2>Purpose and eligibility</h2><p>We provide independent form-filling and application guidance. Eligibility, availability and approval are decided under the applicable official rules.</p><h2>Documents and fees</h2><p>Review the relevant identity, eligibility or supporting documents before applying. The website shows our assistance fee separately from any government or official charge.</p><h2>Application process</h2><ol><li>Create or sign in to your client account.</li><li>Review the service information and provide relevant details.</li><li>Review fees and submit the request.</li><li>Track updates using your request reference.</li></ol><p>Never share OTPs, passwords, PINs, CVV or banking-login credentials.</p><p><a href="${route}">Open this service and continue</a></p></article>`
   const schema=[{'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:'Home',item:siteUrl},{'@type':'ListItem',position:2,name:service.category,item:`${siteUrl}/#services`},{'@type':'ListItem',position:3,name:service.name,item:`${siteUrl}${route}`}]},{'@context':'https://schema.org','@type':'Service',name:service.name,description:service.description,serviceType:service.category,provider:{'@type':'Organization',name:'Public Online Service Provider',url:siteUrl},areaServed:{'@type':'Country',name:'India'},url:`${siteUrl}${route}`}]
   const target=path.join(distDir,'services',service.slug);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,pageHtml({route,title,description,body,schema}))
@@ -77,7 +86,7 @@ for(const service of services){
 for(const job of jobs){
   const route=`/jobs/${job.slug}`
   const title=`${job.title} — ${job.organization||'Recruitment notice'}`
-  const description=job.summary||`Review this verified recruitment notice from ${job.organization||'the published official source'}.`
+  const description=normalizeDescription(job.summary,`Review eligibility, deadlines and official application details for ${job.organization||'this recruitment notice'}.`)
   const facts=[['Organization',job.organization],['Location',job.location],['Qualification',job.qualification],['Age limit',job.age_limit],['Vacancies',job.vacancies],['Salary',job.salary],['Deadline',job.deadline]].filter(([,value])=>Boolean(value)).map(([label,value])=>`<li><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</li>`).join('')
   const officialUrl=safeHttpsUrl(job.official_notice_url)
   const body=`<article><p><a href="/">Home</a> / <a href="/jobs">Jobs</a></p><h1>${escapeHtml(job.title)}</h1><p><strong>${escapeHtml(job.organization)}</strong></p><p>${escapeHtml(description)}</p><h2>Notice details</h2><ul>${facts}</ul><p>Read the authoritative eligibility, reservation, fee and document requirements in the linked official notice before applying.</p>${officialUrl==='#'?'':`<p><a href="${escapeHtml(officialUrl)}">View official notification</a></p>`}<p><a href="${route}">Open this job notice</a></p></article>`
@@ -88,7 +97,7 @@ for(const job of jobs){
 for(const item of scholarships){
   const route=`/scholarships/${item.slug}`
   const title=item.title
-  const description=`${item.provider||item.source_name||'Scholarship provider'} scholarship eligibility, deadline and application assistance.`
+  const description=normalizeDescription(`${item.provider||item.source_name||'Scholarship provider'} scholarship eligibility, deadline and application assistance.`,`Check eligibility, deadlines and official application details for ${item.title||'this scholarship'}.`)
   const facts=[['Provider',item.provider],['Study level',item.education_level],['Region',item.region],['Category',item.category],['Academic year',item.academic_year],['Deadline',item.deadline]].filter(([,value])=>Boolean(value)).map(([label,value])=>`<li><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</li>`).join('')
   const sourceUrl=safeHttpsUrl(item.source_url)
   const body=`<article><p><a href="/">Home</a> / <a href="/scholarships">Scholarships</a></p><h1>${escapeHtml(item.title)}</h1><p>${escapeHtml(description)}</p><h2>Eligibility and details</h2><ul>${facts}</ul><p>${escapeHtml(item.eligibility||'Confirm the current scheme-specific eligibility conditions in the linked source before applying.')}</p>${sourceUrl==='#'?'':`<p><a href="${escapeHtml(sourceUrl)}">View source details</a></p>`}<p><a href="${route}">Open this scholarship</a></p></article>`
