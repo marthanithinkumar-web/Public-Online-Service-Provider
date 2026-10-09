@@ -4,6 +4,7 @@ import time
 from datetime import date, datetime, timedelta, timezone
 
 import requests
+from flask import current_app
 from sqlalchemy import text
 
 from ..models.job import JobNotification, JobSource
@@ -151,7 +152,7 @@ def sync_is_due(hours=20):
     global _due_cache_at, _due_cache_value
     now_monotonic = time.monotonic()
     with _due_cache_lock:
-        if now_monotonic - _due_cache_at < DUE_CHECK_CACHE_SECONDS:
+        if not current_app.config.get('TESTING') and now_monotonic - _due_cache_at < DUE_CHECK_CACHE_SECONDS:
             return _due_cache_value
 
     running_cutoff = utc_now() - timedelta(hours=1)
