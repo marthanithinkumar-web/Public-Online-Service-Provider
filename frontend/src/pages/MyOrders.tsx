@@ -11,6 +11,7 @@ import ClientWorkspaceNav from '../components/ui/ClientWorkspaceNav'
 import RequestFeedback from '../components/ui/RequestFeedback'
 import JobRecommendations from '../components/jobs/JobRecommendations'
 import '../styles/workspace-modern.css'
+import '../styles/workspace-glass.css'
 
 const REQUEST_TIMEOUT_MS = 15000
 const CLOSED = ['Completed','Cancelled','Rejected']
