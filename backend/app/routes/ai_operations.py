@@ -14,6 +14,7 @@ from ..models.support_message import SupportMessage
 from ..utils.database import db
 from ..utils.jwt_handler import get_request_user
 from ..utils.readiness import production_readiness
+from ..ai_core import call_model as _call_openai, configured_model as _configured_model
 from .admin import _require_admin
 
 bp = Blueprint('ai_operations', __name__)
@@ -100,33 +101,6 @@ def _operations_findings(context):
         findings.append({'severity': 'warning', 'area': 'jobs', 'message': f"{context['jobs']['needs_review']} job notice(s) need review."})
     return findings
 
-def _extract_response_text(payload):
-    for item in payload.get('output', []):
-        for content in item.get('content', []) or []:
-            if content.get('type') in {'output_text', 'text'} and content.get('text'):
-                return content['text']
-    return ''
-
-def _call_openai(instructions, prompt, max_output_tokens=900):
-    api_key = (os.getenv('OPENAI_API_KEY') or '').strip()
-    if not api_key:
-        return None, 'AI is not configured on the backend.'
-    model = (os.getenv('POSP_AI_MODEL') or 'gpt-6-luna').strip()
-    try:
-        response = requests.post(
-            'https://api.openai.com/v1/responses',
-            headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
-            json={'model': model, 'instructions': instructions, 'input': prompt,
-                  'max_output_tokens': max_output_tokens},
-            timeout=45,
-        )
-        if response.status_code >= 400:
-            return None, 'AI provider request failed.'
-        answer = _extract_response_text(response.json())
-        return (answer, None) if answer else (None, 'AI returned no text response.')
-    except requests.RequestException:
-        return None, 'AI provider could not be reached.'
-
 def _parse_client_ai_response(raw):
     lines = raw.splitlines()
     first_line = lines[0].strip().upper() if lines else ''
@@ -192,7 +166,7 @@ Administrator request:
     answer, error = _call_openai(SYSTEM_PROMPT, prompt, 900)
     if error:
         return jsonify({'configured': bool(os.getenv('OPENAI_API_KEY')), 'error': error}), 502
-    model = (os.getenv('POSP_AI_MODEL') or 'gpt-6-luna').strip()
+    model = _configured_model()
     return jsonify({'configured': True, 'answer': answer, 'checked_at': context['checked_at'], 'model': model})
 
 @bp.post('/run-job-sync')
