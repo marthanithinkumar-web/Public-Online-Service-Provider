@@ -13,8 +13,8 @@ const scholarships=readScholarships()
 const escapeHtml=value=>String(value||'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]))
 const safeHttpsUrl=value=>{try{const url=new URL(String(value||''));return url.protocol==='https:'?url.href:'#'}catch{return '#'}}
 const normalizeDescription=(value,fallback)=>{
-  const clean=String(value||'').replace(/\\s+/g,' ').trim()
-  const fallbackText=String(fallback||'').replace(/\\s+/g,' ').trim()
+  const clean=String(value||'').replace(/\s+/g,' ').trim()
+  const fallbackText=String(fallback||'').replace(/\s+/g,' ').trim()
   const description=clean.length>=25?clean:fallbackText
   if(description.length<=160)return description
   const prefix=description.slice(0,157)
@@ -79,7 +79,7 @@ for(const service of services){
   const title=`${service.name} Assistance`
   const description=normalizeDescription(`${service.description} Review assistance requirements, documents, fees and the request process.`,`Find requirements, documents, fees and application steps for ${service.name} in India.`)
   const body=`<article><p><a href="/">Home</a> / ${escapeHtml(service.category)}</p><h1>${escapeHtml(service.name)} Assistance</h1><p>${escapeHtml(service.description)}</p><h2>Purpose and eligibility</h2><p>We provide independent form-filling and application guidance. Eligibility, availability and approval are decided under the applicable official rules.</p><h2>Documents and fees</h2><p>Review the relevant identity, eligibility or supporting documents before applying. The website shows our assistance fee separately from any government or official charge.</p><h2>Application process</h2><ol><li>Create or sign in to your client account.</li><li>Review the service information and provide relevant details.</li><li>Review fees and submit the request.</li><li>Track updates using your request reference.</li></ol><p>Never share OTPs, passwords, PINs, CVV or banking-login credentials.</p><p><a href="${route}">Open this service and continue</a></p></article>`
-  const schema=[{'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:'Home',item:siteUrl},{'@type':'ListItem',position:2,name:service.category,item:`${siteUrl}/#services`},{'@type':'ListItem',position:3,name:service.name,item:`${siteUrl}${route}`}]},{'@context':'https://schema.org','@type':'Service',name:service.name,description:service.description,serviceType:service.category,provider:{'@type':'Organization',name:'Public Online Service Provider',url:siteUrl},areaServed:{'@type':'Country',name:'India'},url:`${siteUrl}${route}`}]
+  const schema=[{'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:'Home',item:siteUrl},{'@type':'ListItem',position:2,name:service.category,item:`${siteUrl}/#services`},{'@type':'ListItem',position:3,name:service.name,item:`${siteUrl}${route}`}]},{'@context':'https://schema.org','@type':'Service',name:service.name,description,serviceType:service.category,provider:{'@type':'Organization',name:'Public Online Service Provider',url:siteUrl},areaServed:{'@type':'Country',name:'India'},url:`${siteUrl}${route}`}]
   const target=path.join(distDir,'services',service.slug);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,pageHtml({route,title,description,body,schema}))
 }
 
