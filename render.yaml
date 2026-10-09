@@ -78,7 +78,9 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       - key: POSP_AI_MODEL
-        sync: false
+        value: gpt-6-astra
+      - key: POSP_AI_REASONING_EFFORT
+        value: low
       - key: POSP_CLIENT_AI_ENABLED
         value: "false"
 

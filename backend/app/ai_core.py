@@ -8,9 +8,19 @@ import os
 import requests
 
 
+DEFAULT_MODEL = "gpt-6-astra"
+SUPPORTED_REASONING_EFFORTS = {"low", "medium", "high", "xhigh", "max"}
+
+
 def configured_model():
-    """Return the configured model name, retaining POSP's existing fallback."""
-    return (os.getenv("POSP_AI_MODEL") or "gpt-6-luna").strip()
+    """Return the configured OpenAI model, defaulting to the current flagship."""
+    return (os.getenv("POSP_AI_MODEL") or DEFAULT_MODEL).strip()
+
+
+def configured_reasoning_effort():
+    """Return a valid GPT-6 Astra reasoning effort, with a cost-aware default."""
+    effort = (os.getenv("POSP_AI_REASONING_EFFORT") or "low").strip().lower()
+    return effort if effort in SUPPORTED_REASONING_EFFORTS else "low"
 
 
 def is_configured():
@@ -19,11 +29,13 @@ def is_configured():
 
 
 def _extract_response_text(payload):
+    """Extract all text blocks returned by the Responses API."""
+    chunks = []
     for item in payload.get("output", []):
         for content in item.get("content", []) or []:
             if content.get("type") in {"output_text", "text"} and content.get("text"):
-                return content["text"]
-    return ""
+                chunks.append(content["text"])
+    return "\n".join(chunks).strip()
 
 
 def call_model(instructions, prompt, max_output_tokens=900):
@@ -42,11 +54,13 @@ def call_model(instructions, prompt, max_output_tokens=900):
                 "model": configured_model(),
                 "instructions": instructions,
                 "input": prompt,
+                "reasoning": {"effort": configured_reasoning_effort()},
                 "max_output_tokens": max_output_tokens,
             },
             timeout=45,
         )
         if response.status_code >= 400:
+            # Do not return provider response bodies: they may contain sensitive details.
             return None, "AI provider request failed."
         answer = _extract_response_text(response.json())
         return (answer, None) if answer else (None, "AI returned no text response.")
