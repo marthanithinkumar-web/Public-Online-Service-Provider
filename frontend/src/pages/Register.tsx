@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { register, warmAuthServer } from '../services/auth'
 import '../styles/auth.css'
+import '../styles/auth-glass.css'
 import AuthLayout from '../components/ui/AuthLayout'
 import {isValidEmail,normalizeEmail,normalizeIndianMobile} from '../services/contactValidation'
 
