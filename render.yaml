@@ -75,6 +75,12 @@ services:
         sync: false
       - key: RAZORPAY_WEBHOOK_SECRET
         sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: POSP_AI_MODEL
+        sync: false
+      - key: POSP_CLIENT_AI_ENABLED
+        value: "false"
 
   - type: web
     name: pospindia
