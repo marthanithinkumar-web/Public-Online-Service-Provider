@@ -20,9 +20,10 @@ def configured_provider():
 def configured_model():
     """Return the configured model, with a provider-appropriate default."""
     model = (os.getenv("POSP_AI_MODEL") or "").strip()
-    if model:
-        return model
-    return "gemini-2.5-flash" if configured_provider() == "gemini" else "gpt-6-luna"
+    provider = configured_provider()
+    if provider == "gemini":
+        return model if model.startswith("gemini-") else "gemini-2.5-flash"
+    return model if model and not model.startswith("gemini-") else "gpt-6-luna"
 
 
 def is_configured():
