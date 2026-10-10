@@ -1,3 +1,4 @@
+import logging
 import os
 
 from flask import Blueprint, jsonify, request
@@ -14,6 +15,7 @@ from ..utils.jwt_handler import get_request_user
 from ..utils.limiter import limiter
 
 bp = Blueprint('messages', __name__)
+logger = logging.getLogger(__name__)
 MAX_MESSAGE_LENGTH = 2000
 
 def _client_user():
@@ -64,8 +66,14 @@ def send_client_message():
     try:
         from .ai_operations import generate_client_reply
         ai_answer, ai_handoff, ai_error = generate_client_reply(user, value)
-    except Exception:
+    except Exception as exc:
+        logger.exception('POSP client AI call raised an exception (client_id=%s, error_type=%s)', user.id, type(exc).__name__)
         ai_answer, ai_handoff, ai_error = None, True, 'Client AI failed safely.'
+
+    if ai_error:
+        # Log only the safe provider error returned by ai_core; never log the
+        # client's message, API key, authorization headers, or provider payload.
+        logger.warning('POSP client AI did not answer (client_id=%s, reason=%s)', user.id, ai_error)
 
     if ai_answer:
         ai_admin = User.query.filter_by(is_admin=True, is_active=True).order_by(User.id.asc()).first()
