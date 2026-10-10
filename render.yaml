@@ -84,7 +84,7 @@ services:
       - key: POSP_AI_MODEL
         value: gemini-2.5-flash
       - key: POSP_CLIENT_AI_ENABLED
-        value: "false"
+        value: "true"
 
   - type: web
     name: pospindia
