@@ -14,7 +14,7 @@ from ..models.support_message import SupportMessage
 from ..utils.database import db
 from ..utils.jwt_handler import get_request_user
 from ..utils.readiness import production_readiness
-from ..ai_core import call_model as _call_openai, configured_model as _configured_model
+from ..ai_core import call_model as _call_model, configured_model as _configured_model, configured_provider as _configured_provider, is_configured as _ai_is_configured, _extract_openai_text as _extract_response_text
 from .admin import _require_admin
 
 bp = Blueprint('ai_operations', __name__)
@@ -83,7 +83,9 @@ def _build_context():
         'scholarships': scholarship,
         'ai': {
             'client_ai_enabled': os.getenv('POSP_CLIENT_AI_ENABLED', 'false').strip().lower() == 'true',
-            'operations_ai_configured': bool(os.getenv('OPENAI_API_KEY')),
+            'operations_ai_configured': _ai_is_configured(),
+            'provider': _configured_provider(),
+            'model': _configured_model(),
         },
     }
 
@@ -131,7 +133,7 @@ def generate_client_reply(user, current_message):
 Latest client message:
 {current_message}
 """
-    raw, error = _call_openai(CLIENT_AI_PROMPT, prompt, 500)
+    raw, error = _call_model(CLIENT_AI_PROMPT, prompt, 500)
     if error:
         return None, True, error
     answer, handoff = _parse_client_ai_response(raw)
@@ -163,11 +165,11 @@ def chat():
 Administrator request:
 {message}
 """
-    answer, error = _call_openai(SYSTEM_PROMPT, prompt, 900)
+    answer, error = _call_model(SYSTEM_PROMPT, prompt, 900)
     if error:
-        return jsonify({'configured': bool(os.getenv('OPENAI_API_KEY')), 'error': error}), 502
+        return jsonify({'configured': _ai_is_configured(), 'provider': _configured_provider(), 'error': error}), 502
     model = _configured_model()
-    return jsonify({'configured': True, 'answer': answer, 'checked_at': context['checked_at'], 'model': model})
+    return jsonify({'configured': True, 'provider': _configured_provider(), 'answer': answer, 'checked_at': context['checked_at'], 'model': model})
 
 @bp.post('/run-job-sync')
 def run_job_sync():

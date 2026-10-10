@@ -77,10 +77,14 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
-      - key: POSP_AI_MODEL
+      - key: GEMINI_API_KEY
         sync: false
+      - key: POSP_AI_PROVIDER
+        value: gemini
+      - key: POSP_AI_MODEL
+        value: gemini-2.5-flash
       - key: POSP_CLIENT_AI_ENABLED
-        value: "false"
+        value: "true"
 
   - type: web
     name: pospindia
