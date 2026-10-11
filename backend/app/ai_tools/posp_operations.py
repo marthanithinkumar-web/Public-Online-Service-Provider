@@ -62,20 +62,72 @@ def notification_status(_: Mapping[str, Any]) -> Mapping[str, Any]:
 
 
 def seo_health(_: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Inspect the checked-in public SEO files; never mutate production SEO settings."""
+    import xml.etree.ElementTree as ET
+
     public_dir = Path(__file__).resolve().parents[3] / 'frontend' / 'public'
     robots = public_dir / 'robots.txt'
     sitemap = public_dir / 'sitemap.xml'
-    robots_text = robots.read_text(encoding='utf-8') if robots.exists() else ''
-    sitemap_text = sitemap.read_text(encoding='utf-8') if sitemap.exists() else ''
-    return {'checked_at': _utc(), 'robots_exists': robots.exists(), 'sitemap_exists': sitemap.exists(),
-            'robots_allows_root': 'Allow: /' in robots_text, 'robots_has_sitemap': 'Sitemap: https://pospindia.onrender.com/sitemap.xml' in robots_text,
-            'sitemap_is_xml': sitemap_text.lstrip().startswith('<?xml') and '<urlset' in sitemap_text,
-            'sitemap_url_count': sitemap_text.count('<url><loc>'),
-            'site_url': 'https://pospindia.onrender.com',
-            'issues': [name for name, ok in {
-                'robots_missing': robots.exists(), 'sitemap_missing': sitemap.exists(), 'robots_root_blocked': 'Allow: /' in robots_text,
-                'robots_sitemap_missing': 'Sitemap: https://pospindia.onrender.com/sitemap.xml' in robots_text,
-                'sitemap_invalid': sitemap_text.lstrip().startswith('<?xml') and '<urlset' in sitemap_text}.items() if not ok]}
+    issues: list[str] = []
+    try:
+        robots_text = robots.read_text(encoding='utf-8') if robots.is_file() else ''
+    except OSError:
+        robots_text = ''
+        issues.append('robots_unreadable')
+    try:
+        sitemap_text = sitemap.read_text(encoding='utf-8') if sitemap.is_file() else ''
+    except OSError:
+        sitemap_text = ''
+        issues.append('sitemap_unreadable')
+
+    robots_exists = robots.is_file()
+    sitemap_exists = sitemap.is_file()
+    expected_sitemap = 'https://pospindia.onrender.com/sitemap.xml'
+    robots_lines = [line.strip() for line in robots_text.splitlines() if line.strip() and not line.lstrip().startswith('#')]
+    robots_has_sitemap = any(line.lower().startswith('sitemap:') and line.split(':', 1)[1].strip().rstrip('/') == expected_sitemap
+                             for line in robots_lines)
+    # Absence of an Allow directive does not block crawling; an explicit
+    # Disallow: / under User-agent: * does.
+    in_wildcard_group = False
+    robots_root_blocked = False
+    for line in robots_lines:
+        key, separator, value = line.partition(':')
+        if not separator:
+            continue
+        if key.strip().lower() == 'user-agent':
+            in_wildcard_group = value.strip() == '*'
+        elif in_wildcard_group and key.strip().lower() == 'disallow' and value.strip() == '/':
+            robots_root_blocked = True
+
+    sitemap_is_xml = False
+    sitemap_url_count = 0
+    if sitemap_exists and sitemap_text.strip():
+        try:
+            root = ET.fromstring(sitemap_text)
+            sitemap_is_xml = root.tag.rsplit('}', 1)[-1] == 'urlset'
+            if sitemap_is_xml:
+                sitemap_url_count = sum(1 for child in root if child.tag.rsplit('}', 1)[-1] == 'url')
+        except ET.ParseError:
+            sitemap_is_xml = False
+
+    if not robots_exists:
+        issues.append('robots_missing')
+    if not sitemap_exists:
+        issues.append('sitemap_missing')
+    if robots_root_blocked:
+        issues.append('robots_root_blocked')
+    if not robots_has_sitemap:
+        issues.append('robots_sitemap_missing')
+    if sitemap_exists and not sitemap_is_xml:
+        issues.append('sitemap_invalid')
+    if sitemap_is_xml and sitemap_url_count == 0:
+        issues.append('sitemap_empty')
+
+    return {'checked_at': _utc(), 'robots_exists': robots_exists, 'sitemap_exists': sitemap_exists,
+            'robots_allows_root': not robots_root_blocked, 'robots_root_blocked': robots_root_blocked,
+            'robots_has_sitemap': robots_has_sitemap, 'sitemap_is_xml': sitemap_is_xml,
+            'sitemap_url_count': sitemap_url_count, 'site_url': 'https://pospindia.onrender.com',
+            'healthy': not issues, 'issues': issues}
 
 
 def refresh_notifications(_: Mapping[str, Any]) -> Mapping[str, Any]:
