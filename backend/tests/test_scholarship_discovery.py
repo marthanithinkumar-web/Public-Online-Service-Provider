@@ -218,3 +218,62 @@ def test_strict_snapshot_refuses_unhealthy_primary_source(tmp_path):
 
     with pytest.raises(RuntimeError, match='National Scholarship Portal discovery failed'):
         refresh_snapshot(path, today=date(2026, 9, 4), now=NOW, discovery_func=discoverer, strict=True)
+
+
+def test_strict_snapshot_publishes_only_official_deduplicated_unexpired_entries(tmp_path, monkeypatch):
+    from app.scholarships.snapshot import refresh_snapshot
+
+    monkeypatch.setattr('app.scholarships.snapshot.enrich_scholarships', lambda items: items)
+    path = tmp_path / 'strict-scholarships.json'
+    path.write_text('{"items": []}', encoding='utf-8')
+    official = []
+    for index in range(5):
+        official.append({
+            'id': f'official-{index}', 'slug': f'official-{index}',
+            'title': f'Official Scholarship {index}', 'provider': 'Government of India',
+            'source_name': 'National Scholarship Portal',
+            'source_url': 'https://scholarships.gov.in/All-Scholarships',
+            'application_url': 'https://scholarships.gov.in/Students',
+            'deadline': '2026-11-30', 'status': 'active', 'source_key': 'nsp',
+            'source_type': 'official', 'is_official': True, 'record_type': 'scholarship',
+            'verified_at': NOW.isoformat(), 'last_seen_at': NOW.isoformat(),
+            'region': 'India',
+        })
+    duplicate = {
+        **official[0], 'id': 'duplicate-official-id', 'slug': 'duplicate-official',
+        'source_key': 'tg_epass_postmatric',
+        'source_url': 'https://telanganaepass.cgg.gov.in/epassonlinelinks.jsp',
+        'source_name': 'Telangana ePASS',
+    }
+    private = {
+        'id': 'partner-entry', 'slug': 'partner-entry', 'title': 'Partner Only Scholarship',
+        'provider': 'Private Foundation', 'source_name': 'Partner Listing',
+        'source_url': 'https://partner.example/scholarship',
+        'application_url': 'https://partner.example/apply',
+        'deadline': '2026-11-30', 'status': 'active', 'source_type': 'private',
+        'is_official': False, 'record_type': 'scholarship', 'region': 'India',
+        'verified_at': NOW.isoformat(), 'last_seen_at': NOW.isoformat(),
+    }
+    expired = {
+        **official[0], 'id': 'expired-entry', 'slug': 'expired-entry',
+        'title': 'Expired Official Scholarship', 'deadline': '2026-08-01',
+    }
+
+    def discoverer(now=None):
+        return [*official, duplicate, private, expired], {
+            'nsp': {'ok': True, 'count': 7, 'checked_at': now.isoformat()},
+            'tg_epass_postmatric': {'ok': True, 'count': 1, 'checked_at': now.isoformat()},
+        }
+
+    payload = refresh_snapshot(
+        path, today=date(2026, 9, 4), now=NOW,
+        discovery_func=discoverer, strict=True,
+    )
+
+    assert payload['official_count'] == 5
+    assert payload['private_count'] == 0
+    assert payload['count'] == 5
+    assert all(item['source_type'] == 'official' for item in payload['items'])
+    assert 'Partner Only Scholarship' not in {item['title'] for item in payload['items']}
+    assert 'Expired Official Scholarship' not in {item['title'] for item in payload['items']}
+    assert len({item['title'] for item in payload['items']}) == payload['count']
