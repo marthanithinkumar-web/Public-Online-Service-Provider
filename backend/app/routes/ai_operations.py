@@ -14,7 +14,7 @@ from ..models.support_message import SupportMessage
 from ..utils.database import db
 from ..utils.jwt_handler import get_request_user
 from ..utils.readiness import production_readiness
-from ..ai_core import call_model as _call_model, configured_model as _configured_model, configured_provider as _configured_provider, is_configured as _ai_is_configured, _extract_openai_text as _extract_response_text
+from ..ai_core import call_model as _call_model, configured_model as _configured_model, configured_provider as _configured_provider, is_configured as _ai_is_configured, probe_provider_access as _probe_provider_access, _extract_openai_text as _extract_response_text
 from .admin import _require_admin
 
 bp = Blueprint('ai_operations', __name__)
@@ -66,6 +66,40 @@ def _build_context():
     jobs = JobNotification.query
     readiness = production_readiness()
     scholarship = _load_scholarship_snapshot()
+    job_counts = {
+        'published': jobs.filter_by(status='published').count(),
+        'needs_review': jobs.filter_by(status='needs_review').count(),
+        'expired': jobs.filter_by(status='expired').count(),
+        'hidden': jobs.filter_by(status='hidden').count(),
+    }
+    client_ai_enabled = os.getenv('POSP_CLIENT_AI_ENABLED', 'false').strip().lower() == 'true'
+    ai_configured = _ai_is_configured()
+    provider = _configured_provider()
+    model = _configured_model()
+    scholarship_status = (
+        'unavailable' if not scholarship.get('available') else
+        'stale' if scholarship.get('stale_source_count', 0) else 'available'
+    )
+    operations = [
+        {'key': 'ai_provider', 'name': 'AI provider access',
+         'status': 'configured_unverified' if ai_configured else 'not_configured',
+         'message': 'Credentials are configured; model access has not been checked.' if ai_configured
+             else 'No provider API key is configured.'},
+        {'key': 'client_support_ai', 'name': 'Client support AI',
+         'status': 'enabled' if client_ai_enabled else 'disabled',
+         'message': 'Customer replies are enabled.' if client_ai_enabled
+             else 'Customer replies are disabled; messages still go to the service team.'},
+        {'key': 'job_sources', 'name': 'Official job sources',
+         'status': 'needs_review' if job_counts['needs_review'] else 'available',
+         'count': job_counts['needs_review'],
+         'message': 'Some job notices need review.' if job_counts['needs_review']
+             else 'No job notices are currently flagged for review.'},
+        {'key': 'scholarship_sources', 'name': 'Official scholarship sources',
+         'status': scholarship_status, 'count': scholarship.get('stale_source_count', 0),
+         'message': ('Scholarship snapshot is unavailable.' if scholarship_status == 'unavailable' else
+             'Some scholarship sources are stale.' if scholarship_status == 'stale' else
+             'Scholarship snapshot is available and has no stale sources reported.')},
+    ]
     return {
         'checked_at': datetime.now(timezone.utc).isoformat(),
         'runtime': {
@@ -73,19 +107,14 @@ def _build_context():
             'production_readiness': readiness,
             'production_readiness_status': 'ready' if all(readiness.values()) else 'needs_configuration',
         },
-        'jobs': {
-            'published': jobs.filter_by(status='published').count(),
-            'needs_review': jobs.filter_by(status='needs_review').count(),
-            'expired': jobs.filter_by(status='expired').count(),
-            'hidden': jobs.filter_by(status='hidden').count(),
-            'sources': [source.to_dict() for source in JobSource.query.order_by(JobSource.name).all()],
-        },
+        'jobs': {**job_counts, 'sources': [source.to_dict() for source in JobSource.query.order_by(JobSource.name).all()]},
         'scholarships': scholarship,
+        'operations': operations,
         'ai': {
-            'client_ai_enabled': os.getenv('POSP_CLIENT_AI_ENABLED', 'false').strip().lower() == 'true',
-            'operations_ai_configured': _ai_is_configured(),
-            'provider': _configured_provider(),
-            'model': _configured_model(),
+            'client_ai_enabled': client_ai_enabled,
+            'operations_ai_configured': ai_configured,
+            'provider': provider, 'model': model,
+            'provider_status': 'configured_unverified' if ai_configured else 'not_configured',
         },
     }
 
@@ -101,6 +130,8 @@ def _operations_findings(context):
         findings.append({'severity': 'warning', 'area': 'scholarships', 'message': f"{scholarship['stale_source_count']} scholarship source(s) are stale."})
     if context['jobs']['needs_review']:
         findings.append({'severity': 'warning', 'area': 'jobs', 'message': f"{context['jobs']['needs_review']} job notice(s) need review."})
+    if not context['ai']['operations_ai_configured']:
+        findings.append({'severity': 'warning', 'area': 'ai_provider', 'message': 'No AI provider API key is configured; AI chat replies are unavailable.'})
     return findings
 
 def _parse_client_ai_response(raw):
@@ -147,6 +178,14 @@ def overview():
         return jsonify({'error': 'Unauthorized'}), 401
     context = _build_context()
     return jsonify({**context, 'findings': _operations_findings(context)})
+
+@bp.post('/diagnostics')
+def provider_diagnostics():
+    if not _require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    result = _probe_provider_access()
+    return jsonify({**result, 'checked_at': datetime.now(timezone.utc).isoformat()})
+
 
 @bp.post('/chat')
 def chat():

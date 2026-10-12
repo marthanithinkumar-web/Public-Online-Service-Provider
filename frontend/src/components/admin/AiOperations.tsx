@@ -1,4 +1,7 @@
 import React,{useEffect,useState} from 'react'
+import axios from 'axios'
+import {apiBase} from '../../services/apiBase'
+import {authHeader} from '../../services/auth'
 import {fetchAiOperationsOverview,chatWithAiOperations,runAiJobSync} from '../../services/admin'
 
 type Message={role:'admin'|'ai';text:string}
@@ -10,6 +13,8 @@ export default function AiOperations(){
   const [loading,setLoading]=useState(false)
   const [actionLoading,setActionLoading]=useState(false)
   const [error,setError]=useState('')
+  const [providerCheck,setProviderCheck]=useState<any>(null)
+  const [checkingProvider,setCheckingProvider]=useState(false)
 
   async function refresh(){
     try{setError('');setOverview(await fetchAiOperationsOverview())}
@@ -43,7 +48,16 @@ export default function AiOperations(){
     finally{setActionLoading(false)}
   }
 
+  async function checkProvider(){
+    if(checkingProvider)return
+    setCheckingProvider(true);setError('')
+    try{const response=await axios.post(`${apiBase}/admin/ai/diagnostics`,{}, {headers:authHeader(),timeout:15000});setProviderCheck(response.data)}
+    catch(e:any){setProviderCheck(null);setError(e?.response?.data?.error||'Provider access check failed.')}
+    finally{setCheckingProvider(false)}
+  }
+
   const sourceHealth=overview?.scholarships?.source_health||[]
+  const operations=Array.isArray(overview?.operations)?overview.operations:[]
   return <section className="admin-section">
     <div className="section-header">
       <div><span className="eyebrow">POSP AI</span><h2>AI Operations</h2><p>One place to understand jobs, scholarships, source health and runtime issues.</p></div>
@@ -77,10 +91,30 @@ export default function AiOperations(){
     </article>
 
     <article className="admin-card" style={{marginTop:16}}>
-      <div className="section-header"><div><strong>AI status</strong><p>Client AI can be enabled separately; this screen never exposes API credentials.</p></div></div>
-      <div style={{display:'flex',gap:16,flexWrap:'wrap'}}>
+      <div className="section-header"><div><strong>AI status</strong><p>Connection checks read model metadata only; they do not generate content or expose API credentials.</p></div></div>
+      <div style={{display:'flex',gap:16,flexWrap:'wrap',alignItems:'center'}}>
         <span>Operations AI: {overview?.ai?.operations_ai_configured?'Configured':'Not configured'}</span>
         <span>Client AI: {overview?.ai?.client_ai_enabled?'Enabled':'Disabled'}</span>
+        <span>Provider: {overview?.ai?.provider||'—'}</span>
+        <span>Model: {overview?.ai?.model||'—'}</span>
+        <span>Access: {providerCheck?.status||overview?.ai?.provider_status||'Not checked'}</span>
+        <button className="btn btn-secondary" type="button" onClick={checkProvider} disabled={checkingProvider}>{checkingProvider?'Checking provider…':'Check provider access'}</button>
+      </div>
+      {providerCheck&&<div role="status" style={{marginTop:12,padding:12,border:'1px solid var(--border-color,#ddd)',borderRadius:8}}>
+        <strong>{providerCheck.ready?'Connection ready':'Connection status: '+providerCheck.status}</strong>
+        <p>{providerCheck.message}</p>
+        {!!providerCheck.supported_methods?.length&&<p>Supported methods: {providerCheck.supported_methods.join(', ')}</p>}
+        {!!providerCheck.available_models?.length&&<div><p>Text models available to this key that support generateContent (no model changed automatically):</p><ul>{providerCheck.available_models.map((model:string)=><li key={model}><code>{model}</code></li>)}</ul></div>}
+      </div>}
+    </article>
+
+    <article className="admin-card" style={{marginTop:16}}>
+      <div className="section-header"><div><strong>Operation status</strong><p>Explicit states from current server-side checks; unverified provider access is not reported as healthy.</p></div></div>
+      <div style={{display:'grid',gap:8}}>
+        {operations.map((operation:any)=><div key={operation.key} style={{padding:'10px 12px',border:'1px solid var(--border-color,#ddd)',borderRadius:8}}>
+          <strong>{operation.name}</strong> · {String(operation.status||'unknown').replaceAll('_',' ')}
+          <div>{operation.message||'No status detail is available.'}</div>
+        </div>)}
       </div>
     </article>
 
