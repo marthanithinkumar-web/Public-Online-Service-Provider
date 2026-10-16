@@ -20,7 +20,7 @@ const isActive=(item:Scholarship)=>{
   if(item.stale_source||item.status&&item.status!=='active')return false
   if(!item.deadline)return true
   const deadline=String(item.deadline).slice(0,10)
-  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(deadline))return false
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(deadline))return false
   const parsed=new Date(deadline+'T00:00:00Z')
   return !Number.isNaN(parsed.getTime())&&parsed.toISOString().slice(0,10)===deadline&&deadline>=indiaToday()
 }
