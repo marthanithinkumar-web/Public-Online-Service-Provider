@@ -110,6 +110,22 @@ const hasSafePublicSlug=item=>{
   return slug.length<=200&&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)&&Boolean(item?.title)
 }
 
+function currentIndiaDate(){
+  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date())
+  const values=Object.fromEntries(parts.map(part=>[part.type,part.value]))
+  return `${values.year}-${values.month}-${values.day}`
+}
+
+export function isDeadlineActive(item,today=currentIndiaDate()){
+  const raw=String(item?.deadline||'').trim()
+  if(!raw)return true
+  const deadline=raw.slice(0,10)
+  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(deadline))return false
+  const parsed=new Date(`${deadline}T00:00:00Z`)
+  if(Number.isNaN(parsed.getTime())||parsed.toISOString().slice(0,10)!==deadline)return false
+  return deadline>=today
+}
+
 function uniqueBySlug(items){
   const seen=new Set()
   return items.filter(item=>{
@@ -123,7 +139,7 @@ function uniqueBySlug(items){
 export function readJobs(){
   // Older snapshots can carry forward a legacy duplicate slug. Keep one
   // canonical public URL until the next backend refresh repairs the source.
-  return uniqueBySlug(readSnapshot('jobs.json').filter(item=>item?.status==='published'&&hasSafePublicSlug(item)))
+  return uniqueBySlug(readSnapshot('jobs.json').filter(item=>item?.status==='published'&&hasSafePublicSlug(item)&&isDeadlineActive(item)))
 }
 
 // Only government recruitment detail pages are part of the SEO index surface.
@@ -133,5 +149,5 @@ export function readIndexableJobs(){
 }
 
 export function readScholarships(){
-  return readSnapshot('scholarships.json').filter(item=>item?.status==='active'&&hasSafePublicSlug(item))
+  return readSnapshot('scholarships.json').filter(item=>item?.status==='active'&&hasSafePublicSlug(item)&&isDeadlineActive(item))
 }
