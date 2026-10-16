@@ -51,6 +51,6 @@ def load_catalog(query='', today=None):
         'generated_at': payload.get('generated_at') or datetime.now(timezone.utc).isoformat(),
         'official_count': sum(1 for item in items if item.get('source_type') == 'official' or item.get('is_official') is True),
         'private_count': sum(1 for item in items if item.get('source_type') == 'private' or item.get('is_official') is False),
-        'stale_source_count': sum(1 for item in items if item.get('stale_source')),
+        'stale_source_count': int(payload.get('stale_source_count') or 0),
         'discovery': payload.get('discovery') or {},
     }
