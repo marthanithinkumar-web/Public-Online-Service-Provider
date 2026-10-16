@@ -9,6 +9,9 @@ CATALOG_PATH = LOCAL_CATALOG_PATH if LOCAL_CATALOG_PATH.exists() else LEGACY_CAT
 
 
 def _active(item, today=None):
+    # A failed official-source check must not leave stale records advertised as active.
+    if item.get('stale_source'):
+        return False
     if str(item.get('status') or 'active').lower() != 'active':
         return False
     deadline = item.get('deadline')
