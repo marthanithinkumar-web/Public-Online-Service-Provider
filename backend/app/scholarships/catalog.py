@@ -8,9 +8,9 @@ LEGACY_CATALOG_PATH = Path(__file__).resolve().parents[3] / 'frontend' / 'public
 CATALOG_PATH = LOCAL_CATALOG_PATH if LOCAL_CATALOG_PATH.exists() else LEGACY_CATALOG_PATH
 
 
-def _active(item, today=None):
-    # A failed official-source check must not leave stale records advertised as active.
-    if item.get('stale_source'):
+def _active(item, today=None, include_stale=False):
+    # Public API callers hide stale records; snapshot retention may keep them for audit/recovery.
+    if item.get('stale_source') and not include_stale:
         return False
     if str(item.get('status') or 'active').lower() != 'active':
         return False
