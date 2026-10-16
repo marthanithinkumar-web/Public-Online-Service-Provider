@@ -120,7 +120,7 @@ export function isDeadlineActive(item,today=currentIndiaDate()){
   const raw=String(item?.deadline||'').trim()
   if(!raw)return true
   const deadline=raw.slice(0,10)
-  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(deadline))return false
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(deadline))return false
   const parsed=new Date(`${deadline}T00:00:00Z`)
   if(Number.isNaN(parsed.getTime())||parsed.toISOString().slice(0,10)!==deadline)return false
   return deadline>=today
