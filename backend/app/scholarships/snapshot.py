@@ -66,7 +66,7 @@ def refresh_snapshot(path=CATALOG_PATH,today=None,*,discover=True,strict=False,n
         if not discover or _preserve_previous(item,health,now,check_date):
             if discover and item.get('source_type')=='official':item['stale_source']=True
             preserved.append(item)
-    items=dedupe_items([*discovered,*preserved]);items=[item for item in items if _active(item,check_date)];items.sort(key=lambda item:(0 if item.get('source_type')=='official' else 1,item.get('deadline') or '9999-12-31',item.get('title') or ''))
+    items=dedupe_items([*discovered,*preserved]);items=[item for item in items if _active(item,check_date,include_stale=True)];items.sort(key=lambda item:(0 if item.get('source_type')=='official' else 1,item.get('deadline') or '9999-12-31',item.get('title') or ''))
     official_count=sum(1 for item in items if item.get('source_type')=='official');private_count=sum(1 for item in items if item.get('source_type')=='private');stale_source_count=sum(1 for item in items if item.get('stale_source'))
     refreshed={'generated_at':now.isoformat(),'count':len(items),'official_count':official_count,'private_count':private_count,'stale_source_count':stale_source_count,'discovery':{'mode':'official_daily_discovery' if discover else 'expiry_only','checked_at':now.isoformat(),'source_health':health},'items':items};path.write_text(json.dumps(refreshed,ensure_ascii=False,indent=2)+'\n',encoding='utf-8');return refreshed
 
