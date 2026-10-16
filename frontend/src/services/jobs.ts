@@ -53,7 +53,7 @@ async function fetchSnapshot(force=false){
   try{return await snapshotPromise}finally{snapshotPromise=null}
 }
 
-function activeDeadline(value?:string|null){if(!value)return true;const deadline=String(value).slice(0,10);if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(deadline))return false;const parsed=new Date(deadline+'T00:00:00Z');if(Number.isNaN(parsed.getTime())||parsed.toISOString().slice(0,10)!==deadline)return false;const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());return deadline>=today}
+function activeDeadline(value?:string|null){if(!value)return true;const deadline=String(value).slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(deadline))return false;const parsed=new Date(deadline+'T00:00:00Z');if(Number.isNaN(parsed.getTime())||parsed.toISOString().slice(0,10)!==deadline)return false;const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());return deadline>=today}
 
 function filterSnapshot(data:JobFeedData,params:Record<string,string|number|boolean>){
   const term=String(params.q||'').trim().toLowerCase()
