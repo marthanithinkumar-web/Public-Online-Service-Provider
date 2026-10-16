@@ -102,6 +102,7 @@ export async function fetchJob(slug:string){
   try{
     const data=await fetchSnapshot()
     const job=(data.items||[]).find(item=>item.slug===slug)
+    if(job&&!activeDeadline(job.deadline))throw new Error('This job notice has expired or contains an invalid deadline.')
     if(job){void api.get(`/jobs/${encodeURIComponent(slug)}`,{timeout:3500}).catch(()=>undefined);return {job}}
   }catch{
     // Fall through to the live API when the snapshot cannot be loaded.
