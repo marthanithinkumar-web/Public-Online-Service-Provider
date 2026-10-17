@@ -92,6 +92,26 @@ def _record_source_failure(source_id, message, detail=''):
     return {'source': current.key, 'fetched': 0, 'published': int(current.published_count or 0), 'duplicates': 0, 'status': current.last_sync_status, 'error': detail}
 
 
+def _expire_missing_published_jobs(source_id, seen_external_ids):
+    """Hide published records that disappeared from a successful, non-empty source refresh.
+
+    A source fetch/parse failure or an empty parse must never expire the existing
+    feed. Successful non-empty snapshots are the only evidence used here.
+    """
+    if not seen_external_ids:
+        return 0
+    missing = JobNotification.query.filter_by(source_id=source_id, status='published').all()
+    expired = 0
+    for job in missing:
+        identity = str(job.external_id or job.content_hash or '')[:300]
+        if identity not in seen_external_ids:
+            job.status = 'expired'
+            expired += 1
+    if expired:
+        db.session.commit()
+    return expired
+
+
 def sync_source(source, session=None):
     definition = SOURCE_BY_KEY[source.key]
     source.last_sync_started_at = utc_now(); source.last_sync_status = 'running'; source.last_error = None; db.session.commit()
@@ -99,10 +119,16 @@ def sync_source(source, session=None):
         html = fetch_official_page(definition.listing_url, session=session)
         items = definition.parser(html, definition.listing_url)
         published = 0; duplicates = 0
+        seen_external_ids = set()
         for item in items:
             job, _, duplicate = upsert_item(source, item, allow_missing_deadline=definition.allow_missing_deadline, missing_deadline_max_age_days=definition.missing_deadline_max_age_days)
+            seen_external_ids.add(str(item.external_id or item_hash(item))[:300])
             duplicates += int(duplicate); published += int(job.status == 'published')
-        source.fetched_count = len(items); source.published_count = published; source.last_sync_completed_at = utc_now(); source.last_sync_status = 'success'; source.last_error = f'{duplicates} duplicate notice(s) skipped.' if duplicates else None
+        # A successful, non-empty official listing is the source's current set.
+        # Hide prior published entries absent from it (including undated jobs);
+        # fetch failures and empty parses preserve the previous feed for review.
+        missing_expired = _expire_missing_published_jobs(source.id, seen_external_ids) if items else 0
+        source.fetched_count = len(items); source.published_count = published; source.last_sync_completed_at = utc_now(); source.last_sync_status = 'success'; source.last_error = f'{duplicates} duplicate notice(s) skipped; {missing_expired} missing listing(s) expired.' if duplicates or missing_expired else None
         db.session.commit()
         return {'source': source.key, 'fetched': len(items), 'published': published, 'duplicates': duplicates, 'status': 'success'}
     except OfficialSourceUnavailable as exc:

@@ -53,6 +53,8 @@ async function fetchSnapshot(force=false){
   try{return await snapshotPromise}finally{snapshotPromise=null}
 }
 
+function activeDeadline(value?:string|null){if(!value)return true;const deadline=String(value).slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(deadline))return false;const parsed=new Date(deadline+'T00:00:00Z');if(Number.isNaN(parsed.getTime())||parsed.toISOString().slice(0,10)!==deadline)return false;const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());return deadline>=today}
+
 function filterSnapshot(data:JobFeedData,params:Record<string,string|number|boolean>){
   const term=String(params.q||'').trim().toLowerCase()
   const aliases:Record<string,string>={govt:'government',railways:'railway'}
@@ -62,6 +64,7 @@ function filterSnapshot(data:JobFeedData,params:Record<string,string|number|bool
   const requested=Number(params.limit||30)
   const limit=Number.isFinite(requested)?Math.min(100,Math.max(1,requested)):30
   const items=(data.items||[]).filter(job=>{
+    if(!activeDeadline(job.deadline))return false
     if(type&&job.job_type!==type)return false
     if(featured&&!job.is_featured)return false
     if(!tokens.length)return true
@@ -99,6 +102,7 @@ export async function fetchJob(slug:string){
   try{
     const data=await fetchSnapshot()
     const job=(data.items||[]).find(item=>item.slug===slug)
+    if(job&&!activeDeadline(job.deadline))throw new Error('This job notice has expired or contains an invalid deadline.')
     if(job){void api.get(`/jobs/${encodeURIComponent(slug)}`,{timeout:3500}).catch(()=>undefined);return {job}}
   }catch{
     // Fall through to the live API when the snapshot cannot be loaded.
