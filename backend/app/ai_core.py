@@ -71,7 +71,7 @@ def call_model(instructions, prompt, max_output_tokens=900, use_google_search=Fa
                     "generationConfig": {"maxOutputTokens": max_output_tokens, "temperature": 0.2},
                     **({"tools": [{"google_search": {}}]} if use_google_search else {}),
                 },
-                timeout=45,
+                timeout=(3, 15),
             )
             if response.status_code >= 400:
                 # Keep credentials and provider response details out of client-visible errors.
