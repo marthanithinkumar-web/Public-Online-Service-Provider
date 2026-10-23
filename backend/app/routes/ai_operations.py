@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
+from sqlalchemy.orm import joinedload
 from flask import Blueprint, jsonify, request
 
 from ..models.admin_audit import AdminAuditLog
@@ -165,7 +166,8 @@ def generate_client_reply(user, current_message):
     message_terms = {term for term in ''.join(
         char.lower() if char.isalnum() else ' ' for char in current_message
     ).split() if len(term) > 2}
-    candidates = Service.query.filter_by(is_active=True).order_by(Service.name).all()
+    # Eager-load categories to avoid a lazy-load database query per service (N+1).
+    candidates = Service.query.options(joinedload(Service.category)).filter_by(is_active=True).order_by(Service.name).all()
     ranked_services = []
     for service in candidates:
         searchable = f"{service.name or ''} {service.description or ''} {service.keywords or ''} {service.category.name if service.category else ''}".lower()
