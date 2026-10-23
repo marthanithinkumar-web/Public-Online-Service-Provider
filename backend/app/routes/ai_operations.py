@@ -119,7 +119,7 @@ def _should_use_google_search(message, relevant_services):
     text = (message or "").lower()
     terms = set(re.findall(r"[a-z0-9]+", text))
     current_intent = {
-        "latest", "current", "today", "tomorrow", "now", "recent", "newest",
+        "latest", "current", "today", "tomorrow", "now", "recent", "new", "newest",
         "deadline", "lastdate", "news", "notification", "recruitment", "opening",
         "openings", "vacancy", "vacancies", "result", "results", "2026", "2027"
     }
