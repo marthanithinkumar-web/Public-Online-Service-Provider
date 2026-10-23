@@ -115,21 +115,41 @@ def _parse_client_ai_response(raw):
     return answer, handoff
 
 def _should_use_google_search(message, relevant_services):
-    """Use grounded search for explicit lookup/current-info requests or unknown factual questions."""
-    text = message.lower()
+    """Use web grounding only when the user clearly needs current/external information."""
+    text = (message or "").lower()
     terms = set(re.findall(r"[a-z0-9]+", text))
-    lookup_terms = {
-        "search", "find", "latest", "current", "today", "official", "website",
-        "deadline", "lastdate", "scholarship", "scholarships", "job", "jobs",
-        "recruitment", "notification", "eligibility", "documents",
-        "government", "govt", "scheme", "schemes", "news", "update", "updates",
-        "fee", "fees", "rule", "rules", "apply", "application", "required", "requirements",
-        "current", "latest", "search", "official"
+    current_intent = {
+        "latest", "current", "today", "tomorrow", "now", "recent", "newest",
+        "deadline", "lastdate", "news", "notification", "recruitment", "opening",
+        "openings", "vacancy", "vacancies", "result", "results", "2026", "2027"
     }
-    if terms & lookup_terms:
+    explicit_web_intent = {
+        "search", "google", "online", "source", "sources", "link", "links",
+        "website", "websites", "official"
+    }
+    public_program_topics = {
+        "scholarship", "scholarships", "job", "jobs", "recruitment", "government",
+        "govt", "scheme", "schemes", "exam", "exams", "admission", "admissions"
+    }
+    time_sensitive_topics = {
+        "deadline", "lastdate", "notification", "recruitment", "vacancy", "vacancies",
+        "opening", "openings", "result", "results", "latest", "current", "today", "now"
+    }
+    # Clear requests for current updates or an external search always use grounding.
+    if terms & current_intent:
         return True
-    # If no local service matched and the message looks like a real question, search the web.
-    return not relevant_services and len(terms) >= 5 and ("?" in message or len(terms) >= 8)
+    if terms & explicit_web_intent and not (terms & {"request", "track", "status", "application"}):
+        return True
+    # Public-sector opportunities and schemes often change; search when the question
+    # asks about eligibility, fees, documents, dates, or applying to a named program.
+    if terms & public_program_topics and terms & {
+        "eligibility", "eligible", "documents", "fees", "fee", "deadline", "lastdate",
+        "apply", "application", "notification", "official", "required", "requirements"
+    }:
+        return True
+    # Do not web-search ordinary POSP FAQs or unknown questions by default. Ask Gemini
+    # to answer from existing context, and let its handoff rules handle uncertainty.
+    return False
 
 
 def _quick_client_reply(message):
