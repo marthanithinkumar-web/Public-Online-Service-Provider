@@ -69,3 +69,15 @@ def test_client_ai_avoids_search_for_local_service_question():
 def test_client_ai_still_searches_explicit_official_lookup():
     from app.routes.ai_operations import _should_use_google_search
     assert _should_use_google_search("find latest official scholarship deadline", [{"name": "Scholarship service"}]) is True
+
+
+
+def test_client_ai_does_not_search_for_ordinary_application_faq():
+    from app.routes.ai_operations import _should_use_google_search
+    assert _should_use_google_search("how to apply for pan", [{"name": "PAN application"}]) is False
+    assert _should_use_google_search("what documents do I need for this POSP request", [{"name": "Track My Request"}]) is False
+
+
+def test_client_ai_searches_for_current_public_openings():
+    from app.routes.ai_operations import _should_use_google_search
+    assert _should_use_google_search("current government job openings", []) is True
