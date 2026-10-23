@@ -8,7 +8,10 @@ LEGACY_CATALOG_PATH = Path(__file__).resolve().parents[3] / 'frontend' / 'public
 CATALOG_PATH = LOCAL_CATALOG_PATH if LOCAL_CATALOG_PATH.exists() else LEGACY_CATALOG_PATH
 
 
-def _active(item, today=None):
+def _active(item, today=None, include_stale=False):
+    # Public API callers hide stale records; snapshot retention may keep them for audit/recovery.
+    if item.get('stale_source') and not include_stale:
+        return False
     if str(item.get('status') or 'active').lower() != 'active':
         return False
     deadline = item.get('deadline')
@@ -48,6 +51,6 @@ def load_catalog(query='', today=None):
         'generated_at': payload.get('generated_at') or datetime.now(timezone.utc).isoformat(),
         'official_count': sum(1 for item in items if item.get('source_type') == 'official' or item.get('is_official') is True),
         'private_count': sum(1 for item in items if item.get('source_type') == 'private' or item.get('is_official') is False),
-        'stale_source_count': sum(1 for item in items if item.get('stale_source')),
+        'stale_source_count': int(payload.get('stale_source_count') or 0),
         'discovery': payload.get('discovery') or {},
     }
