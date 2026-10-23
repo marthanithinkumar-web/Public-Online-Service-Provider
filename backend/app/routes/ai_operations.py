@@ -1,3 +1,4 @@
+import difflib
 import json
 import os
 from datetime import datetime, timezone
@@ -115,6 +116,8 @@ def generate_client_reply(user, current_message):
         return None, False, 'Client AI is disabled.'
     # Keep the prompt small: sending the full service catalogue and long chat history
     # increases latency and can distract the model from the client's actual question.
+    # Lightweight fuzzy token matching helps route misspelled service names without
+    # spending a second model call just to rewrite the client's question.
     message_terms = {term for term in ''.join(
         char.lower() if char.isalnum() else ' ' for char in current_message
     ).split() if len(term) > 2}
@@ -126,6 +129,10 @@ def generate_client_reply(user, current_message):
             char if char.isalnum() else ' ' for char in searchable
         ).split() if len(term) > 2}
         score = len(message_terms & searchable_terms)
+        if message_terms and searchable_terms:
+            for term in message_terms - searchable_terms:
+                if len(term) >= 4 and difflib.get_close_matches(term, searchable_terms, n=1, cutoff=0.82):
+                    score += 1
         if score:
             ranked_services.append((score, service))
     ranked_services.sort(key=lambda pair: (-pair[0], pair[1].name.lower()))
@@ -151,11 +158,12 @@ def generate_client_reply(user, current_message):
         .order_by(SupportMessage.created_at.desc()).limit(8).all()][::-1]
     context = {'relevant_services': services, 'client_requests': orders, 'recent_conversation': history}
     prompt = f"""Answer the client's latest POSP support question directly, accurately, and in plain simple English.
-Keep the answer to 1–4 short sentences or a few steps. Do not repeat the question or explain internal reasoning.
-Use only the supplied context. If the exact fee, rule, eligibility, deadline, or requirement is not confirmed in context, say you cannot verify it and set HANDOFF=YES.
+Interpret spelling mistakes, typos, missing letters or words, phonetic spellings, shorthand, grammar errors, mixed-up word order, and silly or incomplete questions charitably. Infer the likely intent from the whole message and recent conversation; do not criticize the user or ask them to retype if the intent is reasonably clear. Do this in this same call; never request a separate correction/rewriting call.
+For general questions, greetings, thanks, and casual or silly messages, respond naturally when safe. Use POSP context for POSP-specific facts. Keep the answer to 1–4 short sentences or a few steps. Do not repeat the question or explain internal reasoning.
+Use only the supplied context for POSP-specific facts. If the exact fee, rule, eligibility, deadline, or requirement is not confirmed in context, say you cannot verify it and set HANDOFF=YES.
 POSP helps people APPLY for public services; it is not a government portal.
 Context JSON: {json.dumps(context, ensure_ascii=False, separators=(',', ':'))}
-Latest client message: {current_message}
+Latest client message (may contain typos, missing words, or scrambled phrasing): {current_message}
 """
     raw, error = _call_model(CLIENT_AI_PROMPT, prompt, 220)
     if error:
