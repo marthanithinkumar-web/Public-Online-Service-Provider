@@ -58,3 +58,14 @@ def test_client_ai_quick_reply_does_not_swallow_real_questions():
     from app.routes.ai_operations import _quick_client_reply
     assert _quick_client_reply("hi i need scholarship") is None
     assert _quick_client_reply("how to apply for pan") is None
+
+
+
+def test_client_ai_avoids_search_for_local_service_question():
+    from app.routes.ai_operations import _should_use_google_search
+    assert _should_use_google_search("how can I track my request", [{"name": "Track My Request"}]) is False
+
+
+def test_client_ai_still_searches_explicit_official_lookup():
+    from app.routes.ai_operations import _should_use_google_search
+    assert _should_use_google_search("find latest official scholarship deadline", [{"name": "Scholarship service"}]) is True
