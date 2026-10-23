@@ -1,5 +1,7 @@
+import difflib
 import json
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -28,7 +30,8 @@ Be concise and action-oriented.
 """
 
 CLIENT_AI_PROMPT = """You are the POSP customer support assistant inside the existing private Client/Admin chat.
-Use only the supplied POSP service and request context.
+Understand the user's intent even when the message is silly, informal, misspelled, grammatically incorrect, missing words, has swapped letters, repeated letters, speech-to-text errors, or jumbled word order. Silently correct likely typos when intent is clear; do not criticize spelling. If there are multiple plausible meanings, ask one short clarifying question instead of guessing.
+Use the supplied POSP service and request context first. When Google Search results are supplied, use them for current or external facts and prefer official sources for government schemes, jobs, scholarships, deadlines, fees, eligibility, and required documents. Cite source URLs included in the search results. Never pretend to have searched if no search results are supplied.
 - POSP is an online public-service APPLY platform, not a government portal.
 - Never invent eligibility, official fees, deadlines, document requirements, outcomes, or government rules.
 - If the context does not establish an answer, set HANDOFF=YES.
@@ -110,6 +113,24 @@ def _parse_client_ai_response(raw):
     answer = raw.split('ANSWER=', 1)[1].strip() if 'ANSWER=' in raw else raw.strip()
     return answer, handoff
 
+def _should_use_google_search(message, relevant_services):
+    """Use grounded search for explicit lookup/current-info requests or unknown factual questions."""
+    text = message.lower()
+    terms = set(re.findall(r"[a-z0-9]+", text))
+    lookup_terms = {
+        "search", "find", "latest", "current", "today", "official", "website",
+        "deadline", "lastdate", "scholarship", "scholarships", "job", "jobs",
+        "recruitment", "notification", "eligibility", "documents",
+        "government", "govt", "scheme", "schemes", "news", "update", "updates",
+        "fee", "fees", "rule", "rules", "apply", "application", "when", "where",
+        "who", "which", "what", "how", "why"
+    }
+    if terms & lookup_terms:
+        return True
+    # If no local service matched and the message looks like a real question, search the web.
+    return not relevant_services and len(terms) >= 5 and ("?" in message or len(terms) >= 8)
+
+
 def generate_client_reply(user, current_message):
     if os.getenv('POSP_CLIENT_AI_ENABLED', 'false').strip().lower() != 'true':
         return None, False, 'Client AI is disabled.'
@@ -126,6 +147,11 @@ def generate_client_reply(user, current_message):
             char if char.isalnum() else ' ' for char in searchable
         ).split() if len(term) > 2}
         score = len(message_terms & searchable_terms)
+        # Recover service matches when the client misspells a service keyword.
+        for term in message_terms - searchable_terms:
+            if len(term) >= 4 and searchable_terms:
+                if difflib.get_close_matches(term, searchable_terms, n=1, cutoff=0.76):
+                    score += 1
         if score:
             ranked_services.append((score, service))
     ranked_services.sort(key=lambda pair: (-pair[0], pair[1].name.lower()))
@@ -150,14 +176,16 @@ def generate_client_reply(user, current_message):
     } for item in SupportMessage.query.filter_by(user_id=user.id)
         .order_by(SupportMessage.created_at.desc()).limit(8).all()][::-1]
     context = {'relevant_services': services, 'client_requests': orders, 'recent_conversation': history}
-    prompt = f"""Answer the client's latest POSP support question directly, accurately, and in plain simple English.
-Keep the answer to 1–4 short sentences or a few steps. Do not repeat the question or explain internal reasoning.
-Use only the supplied context. If the exact fee, rule, eligibility, deadline, or requirement is not confirmed in context, say you cannot verify it and set HANDOFF=YES.
-POSP helps people APPLY for public services; it is not a government portal.
+    use_google_search = _should_use_google_search(current_message, services)
+    prompt = f"""Answer the client's latest message by understanding their intended meaning, not by judging their spelling or grammar.
+The message may contain typos, missing letters/words, phonetic spelling, mixed-up word order, slang, repeated characters, or a silly/very short question. Try to infer the most likely meaning from context. If the meaning is clear, answer normally without mentioning the typo. If genuinely ambiguous, ask one brief clarification question and do not hand off merely because of spelling.
+Be accurate, quick, friendly, and easy to understand. Prefer 1–4 short sentences or a few steps. Use simple English and do not repeat the question or reveal internal reasoning.
+Use supplied POSP service/request context first. For current or external factual questions, use any grounded Google Search results provided with this request. Prefer official government or organization sources for fees, eligibility, deadlines, jobs, scholarships, rules, and required documents. If a fact cannot be confirmed by context or search, say so clearly and set HANDOFF=YES rather than inventing it.
+POSP helps people APPLY for public services; it is not a government portal. Treat greetings and harmless silly questions politely; hand off only when a human is requested, a sensitive issue is raised, or the question needs an administrator.
 Context JSON: {json.dumps(context, ensure_ascii=False, separators=(',', ':'))}
-Latest client message: {current_message}
+Latest client message (interpret generously): {current_message}
 """
-    raw, error = _call_model(CLIENT_AI_PROMPT, prompt, 220)
+    raw, error = _call_model(CLIENT_AI_PROMPT, prompt, 300, use_google_search=use_google_search)
     if error:
         return None, True, error
     answer, handoff = _parse_client_ai_response(raw)
