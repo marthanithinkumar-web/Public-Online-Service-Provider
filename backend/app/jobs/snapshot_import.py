@@ -99,6 +99,15 @@ def import_verified_snapshot(path):
             validate_official_url(item.get('application_url'))
         seen_hashes.add(digest)
         seen_slugs.add(slug)
+
+        # The verified snapshot can be a few hours or days old by the time a
+        # queued Render deploy starts. Keep validating the complete snapshot,
+        # but never import an application whose deadline has passed since the
+        # snapshot was generated. The database-backed public feed is date-aware
+        # and the refresh workflow permits small deadline-driven count drift.
+        deadline = _parse_date(item.get('deadline'))
+        if deadline is not None and deadline < date.today():
+            continue
         normalized_items.append((item, digest, slug, source_key))
 
     snapshot_sources = {item.get('key'): item for item in data['sources'] if item.get('key')}
@@ -259,7 +268,7 @@ def import_verified_snapshot(path):
     # whole import instead of leaving a partially accepted production snapshot.
     db.session.flush()
     published_total = JobNotification.query.filter(JobNotification.status == 'published').count()
-    expected = len(data['items'])
+    expected = len(normalized_items)
     if published_total != expected:
         db.session.rollback()
         raise RuntimeError(f'Imported production job count mismatch: got {published_total}, expected {expected}.')
@@ -273,7 +282,12 @@ def import_verified_snapshot(path):
         raise RuntimeError(f'Imported active production job count mismatch: got {active_total}, expected {expected}.')
 
     db.session.commit()
-    return {'imported': expected, 'active_total': active_total, 'sources': len(configured_keys)}
+    return {
+        'imported': expected,
+        'active_total': active_total,
+        'expired_snapshot_items_skipped': len(data['items']) - expected,
+        'sources': len(configured_keys),
+    }
 
 
 def main(argv=None):
