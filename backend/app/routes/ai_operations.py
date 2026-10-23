@@ -131,9 +131,35 @@ def _should_use_google_search(message, relevant_services):
     return not relevant_services and len(terms) >= 5 and ("?" in message or len(terms) >= 8)
 
 
+def _quick_client_reply(message):
+    """Answer unambiguous greetings/thanks without DB queries or a model round-trip."""
+    normalized = re.sub(r"[^a-z0-9\\s]", " ", (message or "").lower())
+    normalized = re.sub(r"(.)\\1{2,}", r"\\1\\1", normalized)
+    normalized = " ".join(normalized.split())
+    replies = {
+        "hi": "Hi! How can I help you with your application or request today?",
+        "hello": "Hello! How can I help you with your application or request today?",
+        "hey": "Hey! What can I help you with today?",
+        "hii": "Hi! How can I help you with your application or request today?",
+        "heyy": "Hey! What can I help you with today?",
+        "good morning": "Good morning! How can I help you with a service or request today?",
+        "good afternoon": "Good afternoon! How can I help you with a service or request today?",
+        "good evening": "Good evening! How can I help you with a service or request today?",
+        "thanks": "You're welcome! Let me know if you need help with a service or request.",
+        "thank you": "You're welcome! Let me know if you need help with a service or request.",
+        "thx": "You're welcome! Let me know if you need help with a service or request.",
+        "ok thanks": "You're welcome! Let me know if you need help with a service or request.",
+        "bye": "Goodbye! You can message us here again whenever you need help.",
+    }
+    return replies.get(normalized)
+
+
 def generate_client_reply(user, current_message):
     if os.getenv('POSP_CLIENT_AI_ENABLED', 'false').strip().lower() != 'true':
         return None, False, 'Client AI is disabled.'
+    quick_reply = _quick_client_reply(current_message)
+    if quick_reply:
+        return quick_reply, False, None
     # Keep the prompt small: sending the full service catalogue and long chat history
     # increases latency and can distract the model from the client's actual question.
     message_terms = {term for term in ''.join(
