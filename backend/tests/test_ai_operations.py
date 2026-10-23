@@ -28,3 +28,20 @@ def test_parse_client_ai_response_keeps_safe_answer():
     answer, handoff = _parse_client_ai_response('HANDOFF=NO\nANSWER=You can track your request from your dashboard.')
     assert handoff is False
     assert answer == 'You can track your request from your dashboard.'
+
+
+
+def test_client_ai_searches_for_current_jobs_and_scholarships():
+    from app.routes.ai_operations import _should_use_google_search
+    assert _should_use_google_search("latest scholarship deadline", [])
+    assert _should_use_google_search("official job notification", [])
+
+
+def test_client_ai_does_not_search_for_simple_greeting():
+    from app.routes.ai_operations import _should_use_google_search
+    assert _should_use_google_search("hello", []) is False
+
+
+def test_client_ai_searches_unknown_factual_question():
+    from app.routes.ai_operations import _should_use_google_search
+    assert _should_use_google_search("what is the process for this new scheme?", []) is True
