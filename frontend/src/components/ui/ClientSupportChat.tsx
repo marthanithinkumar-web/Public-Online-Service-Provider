@@ -14,12 +14,13 @@ export default function ClientSupportChat(){
  return <section className="dashboard-section support-chat" id="support-messages" aria-labelledby="support-chat-title">
   <div className="section-header inline"><div><span className="eyebrow">Private support</span><h2 id="support-chat-title">Message the service team</h2><p>POSP AI can answer routine questions here; a human administrator can take over when needed.</p></div><button className="btn btn-secondary small" type="button" onClick={()=>{setLoading(true);setError('');load()}} disabled={loading}>Refresh</button></div>
   <div className="chat-safety-note"><strong>Keep your account safe:</strong> Never send OTPs, passwords, PINs, CVV numbers or banking-login details.</div>
-  <div className="chat-thread" aria-live="polite">
+  <div className="chat-thread" aria-live="polite" aria-busy={busy}>
    {loading?<p className="chat-empty">Loading messages…</p>:items.length===0?<p className="chat-empty">No messages yet. Ask a question and POSP AI or the service team will reply here.</p>:items.map(item=><article key={item.id} className={`chat-bubble ${item.sender_role==='client'?'chat-client':'chat-admin'}`}><strong>{item.sender_role==='client'?'You':item.sender_role==='ai'?'POSP AI':'Service team'}</strong><p>{item.message}</p><small>{new Date(item.created_at).toLocaleString()}</small></article>)}
+   {busy&&<div className="chat-bubble chat-admin chat-ai-pending" role="status" aria-live="polite"><strong>POSP AI</strong><p>Reading your message and preparing a reply…</p><span className="chat-typing-dots" aria-hidden="true"><i/><i/><i/></span></div>}
    <div ref={endRef}/>
   </div>
   {error&&<p className="info" role="alert">{error}</p>}
   {notice&&<p className="info" role="status">{notice}</p>}
-  <form className="chat-composer" onSubmit={send}><label htmlFor="client-support-message">Your message</label><div><textarea id="client-support-message" rows={3} maxLength={2000} value={message} onChange={event=>setMessage(event.target.value)} placeholder="How can we help?"/><button type="submit" disabled={busy||!message.trim()}>{busy?'Waiting for reply…':'Send message'}</button></div><small>{message.length}/2000</small></form>
+  <form className="chat-composer" onSubmit={send}><label htmlFor="client-support-message">Your message</label><div><textarea id="client-support-message" rows={3} maxLength={2000} value={message} onChange={event=>setMessage(event.target.value)} placeholder="Ask in your own words — typos are okay."/><button type="submit" disabled={busy||!message.trim()}>{busy?'Waiting for reply…':'Send message'}</button></div><small>{message.length}/2000</small></form>
  </section>
 }
