@@ -68,7 +68,7 @@ def call_model(instructions, prompt, max_output_tokens=900):
                 json={
                     "systemInstruction": {"parts": [{"text": instructions}]},
                     "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-                    "generationConfig": {"maxOutputTokens": max_output_tokens},
+                    "generationConfig": {"maxOutputTokens": max_output_tokens, "temperature": 0.2},
                 },
                 timeout=45,
             )

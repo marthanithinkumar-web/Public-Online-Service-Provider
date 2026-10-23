@@ -113,27 +113,51 @@ def _parse_client_ai_response(raw):
 def generate_client_reply(user, current_message):
     if os.getenv('POSP_CLIENT_AI_ENABLED', 'false').strip().lower() != 'true':
         return None, False, 'Client AI is disabled.'
-    services = [item.to_dict() for item in Service.query.filter_by(is_active=True).order_by(Service.name).all()]
+    # Keep the prompt small: sending the full service catalogue and long chat history
+    # increases latency and can distract the model from the client's actual question.
+    message_terms = {term for term in ''.join(
+        char.lower() if char.isalnum() else ' ' for char in current_message
+    ).split() if len(term) > 2}
+    candidates = Service.query.filter_by(is_active=True).order_by(Service.name).all()
+    ranked_services = []
+    for service in candidates:
+        searchable = f"{service.name or ''} {service.description or ''} {service.keywords or ''} {service.category.name if service.category else ''}".lower()
+        searchable_terms = {term for term in ''.join(
+            char if char.isalnum() else ' ' for char in searchable
+        ).split() if len(term) > 2}
+        score = len(message_terms & searchable_terms)
+        if score:
+            ranked_services.append((score, service))
+    ranked_services.sort(key=lambda pair: (-pair[0], pair[1].name.lower()))
+    services = [{
+        'name': service.name,
+        'category': service.category.name if service.category else None,
+        'description': (service.description or '')[:220],
+        'application_fee_inr': float(service.price_inr or 0),
+        'official_fee_inr': float(service.official_fee_inr) if service.official_fee_inr is not None else None,
+        'official_fee_status': service.official_fee_status or 'unconfirmed',
+        'keywords': (service.keywords or '')[:160],
+    } for _, service in ranked_services[:8]]
     orders = [{
         'order_code': order.order_code,
         'service': order.service.name if order.service else None,
         'status': order.status,
-        'created_at': order.created_at.isoformat(),
         'updated_at': (order.updated_at or order.created_at).isoformat(),
-    } for order in Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).limit(10).all()]
+    } for order in Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).limit(5).all()]
     history = [{
         'role': 'client' if item.sender_role == 'client' else 'assistant',
-        'content': item.message,
+        'content': item.message[:500],
     } for item in SupportMessage.query.filter_by(user_id=user.id)
-        .order_by(SupportMessage.created_at.desc()).limit(20).all()][::-1]
-    context = {'services': services, 'client_requests': orders, 'conversation': history}
-    prompt = f"""POSP client-safe context (JSON):
-{json.dumps(context, ensure_ascii=False, separators=(',', ':'))}
-
-Latest client message:
-{current_message}
+        .order_by(SupportMessage.created_at.desc()).limit(8).all()][::-1]
+    context = {'relevant_services': services, 'client_requests': orders, 'recent_conversation': history}
+    prompt = f"""Answer the client's latest POSP support question directly, accurately, and in plain simple English.
+Keep the answer to 1–4 short sentences or a few steps. Do not repeat the question or explain internal reasoning.
+Use only the supplied context. If the exact fee, rule, eligibility, deadline, or requirement is not confirmed in context, say you cannot verify it and set HANDOFF=YES.
+POSP helps people APPLY for public services; it is not a government portal.
+Context JSON: {json.dumps(context, ensure_ascii=False, separators=(',', ':'))}
+Latest client message: {current_message}
 """
-    raw, error = _call_model(CLIENT_AI_PROMPT, prompt, 500)
+    raw, error = _call_model(CLIENT_AI_PROMPT, prompt, 220)
     if error:
         return None, True, error
     answer, handoff = _parse_client_ai_response(raw)
