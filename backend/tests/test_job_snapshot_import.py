@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from app.jobs.snapshot_import import import_verified_snapshot
 from app.jobs.sources import SOURCE_DEFINITIONS
@@ -103,3 +103,22 @@ def test_verified_snapshot_import_is_idempotent(client, tmp_path):
         second = import_verified_snapshot(path)
         assert first['active_total'] == second['active_total'] == 1
         assert JobNotification.query.filter_by(content_hash='d' * 64).count() == 1
+
+def test_verified_snapshot_skips_deadlines_that_expire_before_render_import(client, tmp_path):
+    source = SOURCE_DEFINITIONS[0]
+    still_open = _item(source, 'e' * 64, 'still-open', 'Still Open')
+    expired = _item(source, 'f' * 64, 'expired-between-build-and-deploy', 'Expired Between Build And Deploy')
+    expired['deadline'] = (date.today() - timedelta(days=1)).isoformat()
+    path = tmp_path / 'jobs.json'
+    path.write_text(json.dumps(_snapshot(source, [still_open, expired])), encoding='utf-8')
+
+    with client.application.app_context():
+        result = import_verified_snapshot(path)
+
+        assert result['imported'] == 1
+        assert result['active_total'] == 1
+        assert result['expired_snapshot_items_skipped'] == 1
+        assert JobNotification.query.filter_by(status='published').count() == 1
+        assert JobNotification.query.filter_by(slug='still-open').one().status == 'published'
+        assert JobNotification.query.filter_by(slug='expired-between-build-and-deploy').count() == 0
+
