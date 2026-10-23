@@ -133,8 +133,8 @@ def _should_use_google_search(message, relevant_services):
 
 def _quick_client_reply(message):
     """Answer unambiguous greetings/thanks without DB queries or a model round-trip."""
-    normalized = re.sub(r"[^a-z0-9\\s]", " ", (message or "").lower())
-    normalized = re.sub(r"(.)\\1{2,}", r"\\1\\1", normalized)
+    normalized = re.sub(r"[^a-z0-9\s]", " ", (message or "").lower())
+    normalized = re.sub(r"(.)\1{2,}", r"\1\1", normalized)
     normalized = " ".join(normalized.split())
     replies = {
         "hi": "Hi! How can I help you with your application or request today?",
