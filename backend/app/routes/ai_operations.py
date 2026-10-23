@@ -122,8 +122,8 @@ def _should_use_google_search(message, relevant_services):
         "deadline", "lastdate", "scholarship", "scholarships", "job", "jobs",
         "recruitment", "notification", "eligibility", "documents",
         "government", "govt", "scheme", "schemes", "news", "update", "updates",
-        "fee", "fees", "rule", "rules", "apply", "application", "when", "where",
-        "who", "which", "what", "how", "why"
+        "fee", "fees", "rule", "rules", "apply", "application", "required", "requirements",
+        "current", "latest", "search", "official"
     }
     if terms & lookup_terms:
         return True
