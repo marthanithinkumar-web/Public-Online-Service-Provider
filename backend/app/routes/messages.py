@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 
 from flask import Blueprint, jsonify, request
 from sqlalchemy import func
@@ -63,12 +64,17 @@ def send_client_message():
     ai_answer = None
     ai_handoff = True
     ai_error = None
+    ai_started = time.perf_counter()
     try:
         from .ai_operations import generate_client_reply
         ai_answer, ai_handoff, ai_error = generate_client_reply(user, value)
     except Exception as exc:
         logger.exception('POSP client AI call raised an exception (client_id=%s, error_type=%s)', user.id, type(exc).__name__)
         ai_answer, ai_handoff, ai_error = None, True, 'Client AI failed safely.'
+
+    ai_elapsed_ms = round((time.perf_counter() - ai_started) * 1000)
+    logger.info('POSP client AI timing: elapsed_ms=%s answered=%s handoff=%s error=%s',
+                ai_elapsed_ms, bool(ai_answer), bool(ai_handoff), bool(ai_error))
 
     if ai_error:
         # Log only the safe provider error returned by ai_core; never log the
