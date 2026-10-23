@@ -50,7 +50,7 @@ def _extract_gemini_text(payload):
     return ""
 
 
-def call_model(instructions, prompt, max_output_tokens=900):
+def call_model(instructions, prompt, max_output_tokens=900, use_google_search=False):
     """Call the selected provider and return (answer, safe_error)."""
     provider = configured_provider()
     if not is_configured():
@@ -69,13 +69,27 @@ def call_model(instructions, prompt, max_output_tokens=900):
                     "systemInstruction": {"parts": [{"text": instructions}]},
                     "contents": [{"role": "user", "parts": [{"text": prompt}]}],
                     "generationConfig": {"maxOutputTokens": max_output_tokens, "temperature": 0.2},
+                    **({"tools": [{"google_search": {}}]} if use_google_search else {}),
                 },
                 timeout=45,
             )
             if response.status_code >= 400:
                 # Keep credentials and provider response details out of client-visible errors.
                 return None, f"Gemini request failed (HTTP {response.status_code})."
-            answer = _extract_gemini_text(response.json())
+            payload = response.json()
+            answer = _extract_gemini_text(payload)
+            if use_google_search:
+                grounding = (payload.get("candidates") or [{}])[0].get("groundingMetadata") or {}
+                chunks = grounding.get("groundingChunks") or []
+                sources = []
+                for chunk in chunks:
+                    web = chunk.get("web") or {}
+                    uri = web.get("uri")
+                    title = web.get("title") or uri
+                    if uri and uri.startswith("https://") and uri not in [item[1] for item in sources]:
+                        sources.append((title, uri))
+                if sources:
+                    answer += "\n\nSources:\n" + "\n".join(f"- {title}: {uri}" for title, uri in sources[:4])
         else:
             api_key = os.getenv("OPENAI_API_KEY", "").strip()
             response = requests.post(
