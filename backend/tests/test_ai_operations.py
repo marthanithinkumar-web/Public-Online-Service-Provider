@@ -45,3 +45,16 @@ def test_client_ai_does_not_search_for_simple_greeting():
 def test_client_ai_searches_unknown_factual_question():
     from app.routes.ai_operations import _should_use_google_search
     assert _should_use_google_search("what is the process for this new scheme?", []) is True
+
+
+
+def test_client_ai_quick_replies_to_simple_greetings_without_model_call():
+    from app.routes.ai_operations import _quick_client_reply
+    assert _quick_client_reply("Hiii!!!") == "Hi! How can I help you with your application or request today?"
+    assert _quick_client_reply("good morning") == "Good morning! How can I help you with a service or request today?"
+
+
+def test_client_ai_quick_reply_does_not_swallow_real_questions():
+    from app.routes.ai_operations import _quick_client_reply
+    assert _quick_client_reply("hi i need scholarship") is None
+    assert _quick_client_reply("how to apply for pan") is None
