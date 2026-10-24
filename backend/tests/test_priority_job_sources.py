@@ -92,13 +92,12 @@ def test_snapshot_skips_result_only_notices(monkeypatch):
     source = next(item for item in SOURCE_DEFINITIONS if item.key == 'sbi')
     item = JobItem(
         external_id='sbi-result-test', title='Recruitment for Specialist Officer',
-        organization='State Bank of India', official_notice_url='https://sbi.bank.in/web/careers/current-openings/notice-2026.pdf', confidence=0.95,
+        organization='State Bank of India', official_notice_url='https://sbi.bank.in/web/careers/current-openings/notice-2026.pdf', deadline=date(2026, 11, 9), confidence=0.95,
     )
     source = replace(source, parser=lambda html, url: [item])
     monkeypatch.setattr(snapshot, 'SOURCE_DEFINITIONS', (source,))
     monkeypatch.setattr(snapshot, 'fetch_official_page', lambda url, session=None: '<html>listing</html>')
     def enrich(candidate, session=None):
-        candidate.deadline = date(2026, 11, 9)
         candidate.warnings.append('notice_excluded_result_only')
         return candidate
     monkeypatch.setattr(snapshot, 'enrich_job_item', enrich)
