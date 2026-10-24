@@ -66,9 +66,11 @@ function filterSnapshot(data:JobFeedData,params:Record<string,string|number|bool
   const term=String(params.q||'').trim().toLowerCase()
   const aliases:Record<string,string>={govt:'government',railways:'railway'}
   const tokens=Array.from(new Set(term.replace(/[^a-z0-9]+/g,' ').split(' ').filter(Boolean).map(token=>aliases[token]||token)))
-  const type=String(params.type||'').trim().toLowerCase()
+  const requestedType=String(params.type||'').trim().toLowerCase()
+  const type=['government','private'].includes(requestedType)?requestedType:''
   const featured=['1','true','yes'].includes(String(params.featured||'').toLowerCase())
-  const requested=Number(params.limit||30)
+  const rawLimit=params.limit
+  const requested=rawLimit===undefined||rawLimit===null||rawLimit===''?30:Number(rawLimit)
   const limit=Number.isFinite(requested)?Math.min(100,Math.max(1,requested)):30
   const items=(data.items||[]).filter(job=>{
     if(job.status!=='published'||!hasCurrentDeadline(job.deadline))return false
