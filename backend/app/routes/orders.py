@@ -290,6 +290,12 @@ def cancel_order(order_id):
         return jsonify({'error': 'You can cancel only your own request.'}), 403
     if order.status not in CLIENT_CANCELLABLE_STATUSES:
         return jsonify({'error': 'This request can no longer be cancelled directly. Contact the provider or submit a grievance for help.', 'status': order.status}), 409
+    active_payment = Payment.query.filter(
+        Payment.order_id == order.id,
+        Payment.status.in_(['created', 'authorized', 'captured', 'paid']),
+    ).first()
+    if active_payment:
+        return jsonify({'error': 'A payment is pending or has been received for this request. Contact the administrator to resolve the payment before cancelling.'}), 409
     data = request.get_json(silent=True) or {}
     reason = str(data.get('reason') or 'Cancelled by the client before processing.').strip()[:500]
     previous = order.status
