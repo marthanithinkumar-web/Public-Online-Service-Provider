@@ -51,7 +51,7 @@ def parse_date(value):
         return None
     for pattern in (
         r'(?<!\d)(20\d{2})-(\d{1,2})-(\d{1,2})(?!\d)',
-        r'\b(\d{1,2})[/-](\d{1,2})[/-](20\d{2})\b',
+        r'\b(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\b',
         r'\b(\d{1,2})\s+([A-Za-z]{3,9})\s+(20\d{2})\b',
         r'\b([A-Za-z]{3,9})\s+(\d{1,2})\s+(20\d{2})\b',
     ):
@@ -70,7 +70,7 @@ def parse_date(value):
 def parse_all_dates(value):
     text = clean(value).replace(',', ' ')
     candidates = re.findall(
-        r'20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[/-]\d{1,2}[/-]20\d{2}|'
+        r'20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]20\d{2}|'
         r'\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}|[A-Za-z]{3,9}\s+\d{1,2}\s+20\d{2}',
         text,
         re.I,
