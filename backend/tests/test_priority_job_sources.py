@@ -1,5 +1,5 @@
 from app.jobs import sources
-from app.jobs.priority_sources import parse_rbi, parse_sbi
+from app.jobs.priority_sources import parse_drdo, parse_kvs, parse_rbi, parse_sbi
 from app.jobs import snapshot, notice_enrichment
 from app.jobs.sources import JobItem, SOURCE_DEFINITIONS, parse_all_dates, parse_date, parse_explicit_deadline
 from datetime import date, datetime, timezone
