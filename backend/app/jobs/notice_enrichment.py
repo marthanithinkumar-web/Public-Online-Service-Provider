@@ -78,7 +78,7 @@ def _vacancies(text):
 def enrich_job_item(item,session=None):
     """Inspect a linked allowlisted official HTML/PDF notice before publication."""
     url=str(getattr(item,'official_notice_url','') or '')
-    if not url:
+    if not url or 'notice_is_listing_page' in (item.warnings or []):
         return item
     try:
         if urlparse(url).path.lower().endswith('.pdf'):
