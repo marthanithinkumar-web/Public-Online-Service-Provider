@@ -120,7 +120,7 @@ def sync_source(source, session=None):
             # in a linked PDF/HTML notice, and result-only pages must not publish.
             notice_url = str(item.official_notice_url or '').rstrip('/')
             listing_url = str(definition.listing_url or '').rstrip('/')
-            if item.confidence >= 0.8 and not item.deadline and notice_url and notice_url != listing_url and notice_enrichments < max_notice_enrichments_per_source:
+            if item.confidence >= 0.8 and notice_url and notice_url != listing_url and notice_enrichments < max_notice_enrichments_per_source:
                 item = enrich_job_item(item, session=session)
                 notice_enrichments += 1
             if 'notice_excluded_result_only' in (item.warnings or []):

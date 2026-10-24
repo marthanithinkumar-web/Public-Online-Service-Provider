@@ -79,20 +79,34 @@ def parse_all_dates(value):
 
 
 def parse_explicit_deadline(value):
-    """Return only a date directly labelled as the application closing date."""
+    """Extract only application dates attached to explicit deadline language."""
     text = clean(value)
-    token = r'(?:20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]20\d{2}|\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}|[A-Za-z]{3,9}\s+\d{1,2}\s+20\d{2})'
-    closing = re.search(
-        rf'(?:last date(?: and time)?(?:\s+for\s+(?:receipt|submission|applying|online application|filling|registration|applications?)(?:\s+of\s+(?:online\s+)?applications?))?|last date to apply|closing date(?: for applications?)?|application deadline|applications? close(?:s)? on|apply by)\s*[:\-]?\s*({token})',
-        text, re.I,
+    token = r'(?:20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]20\d{2}|\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}|[A-Za-z]{3,9}\s+\d{1,2},?\s+20\d{2})'
+    time_clause = r'(?:\s+\d{1,2}[.:]\d{2}\s*(?:hrs?|hours?)\s+on)?'
+    closing_patterns = (
+        rf'(?:last date(?: and time)?(?:\s+for\s+(?:receipt|submission|applying|online application|filling|registration|applications?)(?:\s+of\s+(?:online\s+)?applications?)?)?|last date to apply|closing date(?: for applications?)?|application deadline|applications? close(?:s)? on|apply by)\s*[:\-]?\s*({token})',
+        rf'\bapplications?\b[^.;]{{0,250}}\bon or before{time_clause}\s*({token})',
+        rf'\b(?:online\s+)?registration(?:\s+for\s+(?:online\s+)?applications?)?\s+(?:has been\s+)?extended\s+(?:to|till|until|up to)\s*({token})',
+        rf'\bapplication window\b[^.;]{{0,100}}\b(?:ends?|closes?|extended to|extended till|extended until)\s*({token})',
     )
-    if closing:
-        return parse_date(closing.group(1))
-    window = re.search(
+    for pattern in closing_patterns:
+        match = re.search(pattern, text, re.I)
+        if match:
+            parsed = parse_date(match.group(1))
+            if parsed:
+                return parsed
+
+    window_patterns = (
         rf'(?:online application(?:s)?|application period|registration period)\s*(?:will be accepted )?(?:from|between)\s*({token})\s*(?:to|till|through|[-–—])\s*({token})',
-        text, re.I,
+        rf'\b(?:apply online|online registration|online application(?:s)?)\b[^.;]{{0,60}}?({token})\s*(?:to|till|through|[-–—])\s*({token})',
     )
-    return parse_date(window.group(2)) if window else None
+    for pattern in window_patterns:
+        match = re.search(pattern, text, re.I)
+        if match:
+            deadline = parse_date(match.group(2))
+            if deadline:
+                return deadline
+    return None
 
 
 class OfficialHTMLParser(HTMLParser):

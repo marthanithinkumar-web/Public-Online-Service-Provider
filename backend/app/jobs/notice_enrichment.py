@@ -87,7 +87,7 @@ def enrich_job_item(item,session=None):
     if not url or 'notice_is_listing_page' in (getattr(item,'warnings',[]) or []):
         return item
     try:
-        if urlparse(url).path.lower().endswith('.pdf'):
+        if re.search(r'\.pdf(?:/|$)', urlparse(url).path, re.I):
             text=_pdf_text(_download_pdf(url,session=session))
         else:
             html=fetch_official_page(url,session=session)

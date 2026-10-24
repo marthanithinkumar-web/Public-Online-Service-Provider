@@ -64,3 +64,24 @@ def test_scholarship_source_context_replaces_generic_eligibility(monkeypatch):
     assert '4.5 lakh' in result['eligibility']
     assert 'Domicile certificate' in result['eligibility']
     assert result['eligibility_source']=='official_source_page'
+
+
+
+def test_pdf_notice_with_document_id_path_extracts_explicit_deadline(monkeypatch):
+    class Item:
+        official_notice_url='https://sbi.bank.in/documents/notice.pdf/document-id?t=1'
+        title='Engagement of Specialist Cadre Officers'
+        qualification=age_limit=application_fee=vacancies=salary=None
+        application_start_date=deadline=None
+        summary='Official SBI recruitment notice.'
+
+    downloaded = []
+    monkeypatch.setattr(jobs,'_download_pdf',lambda url,session=None: downloaded.append(url) or b'pdf')
+    monkeypatch.setattr(
+        jobs,'_pdf_text',
+        lambda data:'Applications are invited from eligible candidates on or before 17.00 hrs on November 13, 2026. '
+                    'Candidates must submit the application in the prescribed format.',
+    )
+    item=jobs.enrich_job_item(Item())
+    assert downloaded == [Item.official_notice_url]
+    assert item.deadline == date(2026, 11, 13)

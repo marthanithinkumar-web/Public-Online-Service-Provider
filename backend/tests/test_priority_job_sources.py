@@ -1,5 +1,5 @@
 from app.jobs import sources
-from app.jobs.priority_sources import parse_rbi
+from app.jobs.priority_sources import parse_rbi, parse_sbi
 from app.jobs import snapshot, notice_enrichment
 from app.jobs.sources import JobItem, SOURCE_DEFINITIONS, parse_all_dates, parse_date, parse_explicit_deadline
 from datetime import date, datetime, timezone
@@ -92,13 +92,12 @@ def test_snapshot_skips_result_only_notices(monkeypatch):
     source = next(item for item in SOURCE_DEFINITIONS if item.key == 'sbi')
     item = JobItem(
         external_id='sbi-result-test', title='Recruitment for Specialist Officer',
-        organization='State Bank of India', official_notice_url='https://sbi.bank.in/web/careers/current-openings/notice-2026.pdf', confidence=0.95,
+        organization='State Bank of India', official_notice_url='https://sbi.bank.in/web/careers/current-openings/notice-2026.pdf', deadline=date(2026, 11, 9), confidence=0.95,
     )
     source = replace(source, parser=lambda html, url: [item])
     monkeypatch.setattr(snapshot, 'SOURCE_DEFINITIONS', (source,))
     monkeypatch.setattr(snapshot, 'fetch_official_page', lambda url, session=None: '<html>listing</html>')
     def enrich(candidate, session=None):
-        candidate.deadline = date(2026, 11, 9)
         candidate.warnings.append('notice_excluded_result_only')
         return candidate
     monkeypatch.setattr(snapshot, 'enrich_job_item', enrich)
@@ -117,3 +116,58 @@ def test_application_portal_url_is_not_mislabelled_as_notice_url():
     assert items[0].official_notice_url == listing
     assert items[0].application_url == 'https://opportunities.rbi.org.in/Scripts/ApplyOnline.aspx'
     assert 'notice_is_listing_page' in items[0].warnings
+
+
+
+def test_application_deadline_formats_seen_in_official_notices():
+    assert parse_explicit_deadline(
+        'Applications are invited on or before 17.00 hrs on November 13, 2026'
+    ) == date(2026, 11, 13)
+    assert parse_explicit_deadline(
+        'Online Registration Extended till 31.10.2026'
+    ) == date(2026, 10, 31)
+    assert parse_explicit_deadline(
+        'APPLY ONLINE (19.10.2026 TO 09.11.2026)'
+    ) == date(2026, 11, 9)
+    assert parse_explicit_deadline(
+        'The written examination will be held on November 13, 2026'
+    ) is None
+
+
+
+def test_sbi_grouped_parser_preserves_titles_notice_urls_and_application_urls():
+    html = '''
+      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM EMPLOYMENT BASIS (Apply Online from 19.10.2026 TO 09.11.2026)</p>
+      <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/30</p>
+      <ul>
+        <li><a href="/documents/adv30.pdf/abc123">DOWNLOAD ADVERTISEMENT English</a></li>
+        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply">APPLY ONLINE (19.10.2026 TO 09.11.2026)</a></li>
+      </ul>
+      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON CONTRACT BASIS (Online Registration Extended till 31.10.2026)</p>
+      <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/25</p>
+      <ul>
+        <li><a href="/documents/adv25.pdf/abc125">DOWNLOAD ADVERTISEMENT English</a></li>
+        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-25/apply">APPLY ONLINE (Online Registration Extended till 31.10.2026)</a></li>
+      </ul>
+      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON CONTRACT BASIS (Registration Extended till 16.10.2026)</p>
+      <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/20</p>
+      <ul>
+        <li><a href="/documents/adv20.pdf/abc120">DOWNLOAD ADVERTISEMENT English</a></li>
+        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-20/apply">APPLY ONLINE</a></li>
+      </ul>
+      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICER ON CONTRACT BASIS (INTERVIEW SCHEDULE ANNOUNCED)</p>
+      <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/21</p>
+      <ul><li><a href="/documents/adv21.pdf/abc121">DOWNLOAD ADVERTISEMENT English</a></li></ul>
+    '''
+
+    items = parse_sbi(html, 'https://sbi.bank.in/web/careers/current-openings')
+
+    assert len(items) == 2
+    fixed_term = next(item for item in items if item.deadline == date(2026, 11, 9))
+    extension = next(item for item in items if item.deadline == date(2026, 10, 31))
+    assert fixed_term.title.startswith('ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM')
+    assert fixed_term.official_notice_url == 'https://sbi.bank.in/documents/adv30.pdf/abc123'
+    assert fixed_term.application_url == 'https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply'
+    assert extension.title.startswith('ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON CONTRACT BASIS')
+    assert extension.official_notice_url == 'https://sbi.bank.in/documents/adv25.pdf/abc125'
+    assert extension.application_url == 'https://recruitment.sbi.bank.in/crpd-sco-2026-27-25/apply'

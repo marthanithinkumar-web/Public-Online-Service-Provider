@@ -1,4 +1,5 @@
 import re
+from html.parser import HTMLParser
 from datetime import date
 from urllib.parse import urljoin
 
@@ -20,6 +21,149 @@ _RECRUITMENT = re.compile(
     r'faculty posts?|staff recruitment)\b',
     re.I,
 )
+
+
+class _GroupedOfficialListingsParser(HTMLParser):
+    """Pair recruitment heading paragraphs with links in the following list."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.paragraphs = []
+        self.sections = []
+        self.paragraph = None
+        self.list_items = None
+        self.list_depth = 0
+        self.list_item = None
+        self.anchor = None
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag in {'p', 'h2', 'h3', 'h4'}:
+            self.paragraph = []
+        elif tag == 'ul':
+            if self.list_depth == 0:
+                self.list_items = []
+            self.list_depth += 1
+        elif tag == 'li' and self.list_depth > 0:
+            self.list_item = {'text': [], 'links': []}
+        elif tag == 'a':
+            self.anchor = {'href': attrs.get('href', ''), 'text': []}
+
+    def handle_data(self, data):
+        if self.paragraph is not None:
+            self.paragraph.append(data)
+        if self.list_item is not None:
+            self.list_item['text'].append(data)
+        if self.anchor is not None:
+            self.anchor['text'].append(data)
+
+    def handle_endtag(self, tag):
+        if tag == 'a' and self.anchor is not None:
+            label = clean(' '.join(self.anchor['text']))
+            if self.list_item is not None and self.anchor.get('href'):
+                self.list_item['links'].append((self.anchor['href'], label))
+            self.anchor = None
+        elif tag == 'li' and self.list_item is not None:
+            self.list_item['text'] = clean(' '.join(self.list_item['text']))
+            if self.list_items is not None:
+                self.list_items.append(self.list_item)
+            self.list_item = None
+        elif tag in {'p', 'h2', 'h3', 'h4'} and self.paragraph is not None:
+            paragraph = clean(' '.join(self.paragraph))
+            if paragraph and self.list_depth == 0:
+                self.paragraphs.append(paragraph)
+            self.paragraph = None
+        elif tag == 'ul' and self.list_depth:
+            self.list_depth -= 1
+            if self.list_depth == 0:
+                if self.list_items:
+                    self.sections.append({
+                        'context': list(self.paragraphs),
+                        'items': list(self.list_items),
+                    })
+                self.list_items = None
+                self.paragraphs = []
+
+
+def _grouped_official_parser(organization, summary, fallback=None):
+    def parse(html, base_url):
+        document = _GroupedOfficialListingsParser()
+        document.feed(html)
+        document.close()
+        items = []
+        today = date.today()
+        recognized_section = False
+
+        for index, section in enumerate(document.sections, start=1):
+            context = section['context']
+            title = next((
+                text for text in reversed(context)
+                if _RECRUITMENT.search(text)
+                and not re.search(r'\badvertisement\s*(?:no|number)\s*:', text, re.I)
+                and len(text) >= 12
+            ), None)
+            if not title:
+                continue
+
+            links = [link for row in section['items'] for link in row.get('links', [])]
+            application_candidates = [
+                (href, label) for href, label in links
+                if re.search(r'\b(apply online|apply now|online application|online registration|registration portal)\b', label, re.I)
+            ]
+            notice_candidates = [
+                (href, label) for href, label in links
+                if re.search(r'\b(download\s+advertisement|advertisement|download\s+notification|notification|official\s+notice|notice)\b', label, re.I)
+                and not any(term in label.lower() for term in _EXCLUDED)
+            ]
+            if not application_candidates and not notice_candidates:
+                continue
+            recognized_section = True
+            if not _RECRUITMENT.search(title) or any(term in title.lower() for term in _EXCLUDED):
+                continue
+
+            def allowed_candidate(candidates):
+                for href, label in candidates:
+                    absolute = urljoin(base_url, href)
+                    try:
+                        validate_official_url(absolute)
+                    except ValueError:
+                        continue
+                    return absolute
+                return None
+
+            application_url = allowed_candidate(application_candidates)
+            official_notice_url = allowed_candidate(notice_candidates) or base_url
+            deadline = parse_explicit_deadline(title)
+            if deadline is None:
+                for _, label in application_candidates:
+                    deadline = parse_explicit_deadline(label)
+                    if deadline:
+                        break
+            if deadline is not None and deadline < today:
+                continue
+
+            ad_number = next((
+                re.sub(r'\s+', '', re.sub(r'^.*?advertisement\s*(?:no|number)\s*:\s*', '', text, flags=re.I))
+                for text in reversed(context)
+                if re.search(r'\badvertisement\s*(?:no|number)\s*:', text, re.I)
+            ), '')
+            items.append(JobItem(
+                external_id=f'{organization.lower().replace(" ", "-")}-{ad_number or index}-{title[:80]}',
+                title=title[:500],
+                organization=organization,
+                official_notice_url=official_notice_url,
+                location='India',
+                deadline=deadline,
+                application_url=application_url,
+                summary=summary,
+                confidence=0.96,
+                warnings=[] if deadline else ['Confirm the closing date in the official recruitment notice.'],
+            ))
+
+        if recognized_section or fallback is None:
+            return items
+        return fallback(html, base_url)
+
+    return parse
 
 
 def _generic_official_parser(organization, summary):
@@ -78,9 +222,13 @@ parse_rbi = _generic_official_parser(
     'Reserve Bank of India (RBI)',
     'Official RBI recruitment opportunity. Confirm eligibility, vacancies, fee, dates and application instructions on the RBI opportunities portal.',
 )
-parse_sbi = _generic_official_parser(
+parse_sbi = _grouped_official_parser(
     'State Bank of India (SBI)',
     'Official SBI recruitment opening. Confirm cadre, eligibility, vacancies, fee, dates and application instructions on SBI Careers.',
+    fallback=_generic_official_parser(
+        'State Bank of India (SBI)',
+        'Official SBI recruitment opening. Confirm cadre, eligibility, vacancies, fee, dates and application instructions on SBI Careers.',
+    ),
 )
 parse_nvs = _generic_official_parser(
     'Navodaya Vidyalaya Samiti (NVS)',
