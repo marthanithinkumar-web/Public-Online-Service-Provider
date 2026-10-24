@@ -79,20 +79,20 @@ def parse_all_dates(value):
 
 
 def parse_explicit_deadline(value):
-    """Return only a date tied to an explicit application closing label/window."""
+    """Return only a date directly labelled as the application closing date."""
     text = clean(value)
-    patterns = (
-        r'(?:last date(?: and time)?(?:\s+for\s+(?:receipt|submission|applying|online application|filling|registration|applications?))?|last date to apply|closing date(?: for applications?)?|application deadline|applications? close(?:s)? on|apply by)\s*[:\-]?\s*([^;|]{1,100})',
-        r'(?:online application(?:s)?|application period|registration period)\s*(?:will be accepted )?(?:from|between)\s+([^;|]{1,100})',
+    token = r'(?:20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]20\d{2}|\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}|[A-Za-z]{3,9}\s+\d{1,2}\s+20\d{2})'
+    closing = re.search(
+        rf'(?:last date(?: and time)?(?:\s+for\s+(?:receipt|submission|applying|online application|filling|registration|applications?))?|last date to apply|closing date(?: for applications?)?|application deadline|applications? close(?:s)? on|apply by)\s*[:\-]?\s*({token})',
+        text, re.I,
     )
-    for pattern in patterns:
-        match = re.search(pattern, text, re.I)
-        if not match:
-            continue
-        dates = parse_all_dates(match.group(1))
-        if dates:
-            return dates[-1]
-    return None
+    if closing:
+        return parse_date(closing.group(1))
+    window = re.search(
+        rf'(?:online application(?:s)?|application period|registration period)\s*(?:will be accepted )?(?:from|between)\s*({token})\s*(?:to|till|through|[-–—])\s*({token})',
+        text, re.I,
+    )
+    return parse_date(window.group(2)) if window else None
 
 
 class OfficialHTMLParser(HTMLParser):
