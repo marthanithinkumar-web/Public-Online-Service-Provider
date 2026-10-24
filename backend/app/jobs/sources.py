@@ -78,6 +78,23 @@ def parse_all_dates(value):
     return [parsed for parsed in (parse_date(candidate) for candidate in candidates) if parsed]
 
 
+def parse_explicit_deadline(value):
+    """Return only a date tied to an explicit application closing label/window."""
+    text = clean(value)
+    patterns = (
+        r'(?:last date(?: and time)?\s+for\s+(?:receipt|submission|applying|online application|filling|registration)|last date to apply|closing date(?: for applications?)?|application deadline|applications? close(?:s)? on|apply by)\s*[:\-]?\s*([^.;|]{1,100})',
+        r'(?:online application(?:s)?|application period|registration period)\s*(?:will be accepted )?(?:from|between)\s+([^.;|]{1,100})',
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text, re.I)
+        if not match:
+            continue
+        dates = parse_all_dates(match.group(1))
+        if dates:
+            return dates[-1]
+    return None
+
+
 class OfficialHTMLParser(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
