@@ -1,10 +1,10 @@
 import re
 from html.parser import HTMLParser
 from datetime import date
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 from .official_fetch import validate_official_url
-from .sources import JobItem, SourceDefinition, clean, parse_all_dates, parse_explicit_deadline, parse_html
+from .sources import JobItem, SourceDefinition, _first, _looks_like_initial_recruitment, _row_url, _table_records, clean, parse_all_dates, parse_date, parse_explicit_deadline, parse_html
 
 _EXCLUDED = (
     'result', 'results', 'admit card', 'call letter', 'answer key', 'interview schedule',
@@ -15,7 +15,7 @@ _EXCLUDED = (
 
 _RECRUITMENT = re.compile(
     r'\b(recruitment|vacanc(?:y|ies)|current openings?|career opportunities?|'
-    r'engagement of|applications? invited|apply online|advertisement|advt\.?|'
+    r'engagement of|invites? applications?|applications? invited|apply online|advertisement|advt\.?|'
     r'probationary officer|junior associate|specialist cadre|officer grade|'
     r'assistant manager|manager grade|teaching posts?|non[- ]teaching posts?|'
     r'faculty posts?|staff recruitment)\b',
@@ -61,11 +61,16 @@ class _GroupedOfficialListingsParser(HTMLParser):
         elif tag == 'li' and self.list_depth > 0:
             self.list_item = {'text': [], 'links': []}
         elif tag == 'a':
-            self.anchor = {'href': attrs.get('href', ''), 'text': [], 'context': list(self.paragraphs)}
-        # Some official CMS download controls use href="#" and keep the actual
-        # file location in data-* or onclick attributes. Preserve those only
-        # inside the same vacancy list item so the label/title stays paired.
-        if self.list_item is not None:
+            self.anchor = {
+                'href': attrs.get('href', ''),
+                'text': [],
+                'context': list(self.paragraphs),
+                'extra_urls': self._extra_urls(attrs),
+            }
+        # Keep non-anchor CMS download controls attached to their current row.
+        # Anchor data-* and onclick URLs are added with the anchor's label below,
+        # even when the control sits just outside the list item.
+        if self.list_item is not None and tag != 'a':
             for url in self._extra_urls(attrs):
                 self.list_item['links'].append((url, ''))
 
@@ -80,10 +85,15 @@ class _GroupedOfficialListingsParser(HTMLParser):
     def handle_endtag(self, tag):
         if tag == 'a' and self.anchor is not None:
             label = clean(' '.join(self.anchor['text']))
+            context = self.anchor.get('context', [])
             if self.anchor.get('href'):
-                self.all_links.append((self.anchor['href'], label, self.anchor.get('context', [])))
+                self.all_links.append((self.anchor['href'], label, context))
                 if self.list_item is not None:
                     self.list_item['links'].append((self.anchor['href'], label))
+            for extra_url in self.anchor.get('extra_urls', []):
+                self.all_links.append((extra_url, label, context))
+                if self.list_item is not None and (extra_url, label) not in self.list_item['links']:
+                    self.list_item['links'].append((extra_url, label))
             self.anchor = None
         elif tag == 'li' and self.list_item is not None:
             self.list_item['text'] = clean(' '.join(self.list_item['text']))
@@ -146,7 +156,18 @@ def _grouped_official_parser(organization, summary, fallback=None):
                 if re.search(r'\b(download\s+advertisement|advertisement|download\s+notification|notification|official\s+notice|notice)\b', label, re.I)
                 and not any(term in label.lower() for term in _EXCLUDED)
             ]
-            if not application_candidates and not notice_candidates:
+            auxiliary_pdf = re.compile(
+                r'biodata|bio.?data|ctc|undertaking|guideline|scribe|result|'
+                r'answer.?key|admit.?card|hindi|faq|format|call.?letter|'
+                r'selection|syllabus|handbook|brochure',
+                re.I,
+            )
+            pdf_candidates = [
+                (href, label) for href, label in links
+                if re.search(r'\.pdf(?:/|$)', urlparse(urljoin(base_url, href)).path, re.I)
+                and not auxiliary_pdf.search(f'{label} {href}')
+            ]
+            if not application_candidates and not notice_candidates and not pdf_candidates:
                 continue
             recognized_section = True
             if not _RECRUITMENT.search(title) or any(term in title.lower() for term in _EXCLUDED):
@@ -168,7 +189,7 @@ def _grouped_official_parser(organization, summary, fallback=None):
                 return None
 
             application_url = allowed_candidate(application_candidates)
-            official_notice_url = allowed_candidate(notice_candidates) or base_url
+            official_notice_url = allowed_candidate(pdf_candidates) or allowed_candidate(notice_candidates) or base_url
             deadline = parse_explicit_deadline(title)
             if deadline is None:
                 for _, label in application_candidates:
@@ -275,10 +296,42 @@ parse_sainik = _generic_official_parser(
     'Sainik Schools Society',
     'Official Sainik Schools recruitment notice. Confirm school/post-specific eligibility, employment terms and closing date in the official notice.',
 )
-parse_kvs = _generic_official_parser(
-    'Kendriya Vidyalaya Sangathan (KVS)',
-    'Official KVS recruitment notice. Confirm teaching/non-teaching eligibility, vacancies, fee and dates in the official notice.',
-)
+def parse_kvs(html, base_url):
+    """Read KVS recruitment rows and preserve their direct official PDF notices."""
+    document = parse_html(html)
+    items = []
+    seen = set()
+    for index, record in enumerate(_table_records(document), start=1):
+        title = _first(record, ('name', 'title', 'subject', 'document'))
+        if not title or not _looks_like_initial_recruitment(title):
+            continue
+        notice_url = _row_url(record, base_url)
+        if not notice_url or notice_url in seen:
+            continue
+        try:
+            validate_official_url(notice_url)
+        except ValueError:
+            continue
+        seen.add(notice_url)
+        published_text = _first(record, ('published on', 'published date', 'publication date', 'date'))
+        issue_date = parse_date(published_text)
+        deadline = parse_explicit_deadline(title)
+        if deadline is not None and deadline < date.today():
+            continue
+        slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')[:72]
+        items.append(JobItem(
+            external_id=f'kvs-{slug or index}',
+            title=title[:500],
+            organization='Kendriya Vidyalaya Sangathan (KVS)',
+            official_notice_url=notice_url,
+            location='India',
+            issue_date=issue_date,
+            deadline=deadline,
+            summary='Official KVS recruitment notice. Confirm post-specific eligibility, closing date and application instructions in the linked official notice.',
+            confidence=0.95 if deadline else 0.9,
+            warnings=[] if deadline else ['Closing date must be confirmed in the linked official KVS notice.'],
+        ))
+    return items
 parse_sebi = _generic_official_parser(
     'Securities and Exchange Board of India (SEBI)',
     'Official SEBI recruitment opportunity. Confirm stream, eligibility, vacancies, fee, dates and application instructions in the official notice.',
@@ -288,8 +341,8 @@ parse_ibps = _generic_official_parser(
     'Official IBPS recruitment process notice. Confirm participating organisations, eligibility, vacancies, fee and dates in the official notification.',
 )
 parse_drdo = _generic_official_parser(
-    'DRDO Recruitment and Assessment Centre (RAC)',
-    'Official DRDO/RAC recruitment opportunity. Confirm discipline, eligibility, vacancies, fee and dates in the official notice.',
+    'Defence Research and Development Organisation (DRDO)',
+    'Official DRDO vacancy notice. Confirm discipline, eligibility, vacancies, application deadline and instructions in the linked official notice.',
 )
 
 
@@ -298,8 +351,8 @@ PRIORITY_OFFICIAL_SOURCES = (
     SourceDefinition('sbi', 'State Bank of India — Careers', 'https://sbi.bank.in/web/careers/current-openings', parse_sbi, allow_missing_deadline=True, missing_deadline_max_age_days=60),
     SourceDefinition('nvs', 'Navodaya Vidyalaya Samiti', 'https://navodaya.gov.in/nvs/en/Recruitment/', parse_nvs, allow_missing_deadline=True, missing_deadline_max_age_days=60),
     SourceDefinition('sainik_schools', 'Sainik Schools Society', 'https://sainikschoolsociety.in/', parse_sainik, allow_missing_deadline=True, missing_deadline_max_age_days=60),
-    SourceDefinition('kvs', 'Kendriya Vidyalaya Sangathan', 'https://kvsangathan.nic.in/en/recruitment/', parse_kvs, allow_missing_deadline=True, missing_deadline_max_age_days=60),
+    SourceDefinition('kvs', 'Kendriya Vidyalaya Sangathan', 'https://kvs.gov.in/en/interview-notice/', parse_kvs, allow_missing_deadline=True, missing_deadline_max_age_days=60),
     SourceDefinition('sebi', 'Securities and Exchange Board of India', 'https://www.sebi.gov.in/sebiweb/other/careerdetail.jsp?careerId=1', parse_sebi, allow_missing_deadline=True, missing_deadline_max_age_days=60),
     SourceDefinition('ibps', 'Institute of Banking Personnel Selection', 'https://www.ibps.in/', parse_ibps, allow_missing_deadline=True, missing_deadline_max_age_days=45),
-    SourceDefinition('drdo_rac', 'DRDO Recruitment and Assessment Centre', 'https://rac.gov.in/', parse_drdo, allow_missing_deadline=True, missing_deadline_max_age_days=60),
+    SourceDefinition('drdo_rac', 'Defence Research and Development Organisation (DRDO) — Vacancies', 'https://drdo.gov.in/drdo/offerings/vacancies', parse_drdo, allow_missing_deadline=True, missing_deadline_max_age_days=60),
 )
