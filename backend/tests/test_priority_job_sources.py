@@ -171,3 +171,30 @@ def test_sbi_grouped_parser_preserves_titles_notice_urls_and_application_urls():
     assert extension.title.startswith('ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON CONTRACT BASIS')
     assert extension.official_notice_url == 'https://sbi.bank.in/documents/adv25.pdf/abc125'
     assert extension.application_url == 'https://recruitment.sbi.bank.in/crpd-sco-2026-27-25/apply'
+
+
+
+def test_rbi_application_arrival_deadline_after_prior_sentence():
+    text = (
+        "Applications are invited from eligible candidates to fill up two posts of Part-Time "
+        "Bank’s Medical Consultant on contract basis in Thiruvananthapuram. "
+        "Application in a sealed cover should reach the Regional Director, Human Resource "
+        "Management Department, Reserve Bank of India, Bakery Junction, PB No.6507, "
+        "Thiruvananthapuram – 695 033 on or before 17.00 hrs on November 13, 2026."
+    )
+    assert parse_explicit_deadline(text) == date(2026, 11, 13)
+
+
+def test_sbi_grouped_parser_finds_advertisement_anchor_outside_list_item():
+    html = '''
+      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM EMPLOYMENT BASIS (Apply Online from 19.10.2026 TO 09.11.2026)</p>
+      <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/30</p>
+      <div><a href="https://sbi.bank.in/documents/adv30.pdf/document-id?t=1">DOWNLOAD ADVERTISEMENT English</a></div>
+      <ul>
+        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply">APPLY ONLINE (19.10.2026 TO 09.11.2026)</a></li>
+      </ul>
+    '''
+    items = parse_sbi(html, 'https://sbi.bank.in/web/careers/current-openings')
+    assert len(items) == 1
+    assert items[0].official_notice_url == 'https://sbi.bank.in/documents/adv30.pdf/document-id?t=1'
+    assert items[0].application_url == 'https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply'
