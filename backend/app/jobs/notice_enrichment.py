@@ -14,6 +14,11 @@ from pypdf import PdfReader
 from .official_fetch import BROWSER_HEADERS, validate_official_url
 
 MAX_NOTICE_BYTES=8*1024*1024
+MAX_DEADLINE_ENRICHMENTS_PER_SOURCE=2
+
+def needs_deadline_enrichment(item):
+    url=str(getattr(item,'official_notice_url','') or '').strip()
+    return not getattr(item,'deadline',None) and bool(url) and urlparse(url).path.lower().endswith('.pdf')
 
 def _clean(value):return re.sub(r'\s+',' ',str(value or '')).strip()
 def _download_pdf(url,session=None):

@@ -161,8 +161,8 @@ def test_sync_publishes_complete_notice_and_queues_uncertain_notice(client, monk
         assert JobNotification.query.filter_by(external_id='notice-2').one().status == 'needs_review'
 
 
-def test_active_official_source_keeps_undated_notice_in_review(client, monkeypatch):
-    current = _item(external_id='active-undated', deadline=None, confidence=0.84)
+def test_active_official_private_source_can_publish_undated_notice(client, monkeypatch):
+    current = _item(external_id='active-undated', job_type='private', deadline=None, confidence=0.84)
     definition = SourceDefinition(
         'employment_news', 'Active Official Board', 'https://employmentnews.gov.in/jobs',
         lambda *_: [current], allow_missing_deadline=True,
@@ -172,8 +172,41 @@ def test_active_official_source_keeps_undated_notice_in_review(client, monkeypat
     with client.application.app_context():
         source = JobSource.query.filter_by(key='employment_news').one()
         assert sync_source(source)['status'] == 'success'
-        assert JobNotification.query.filter_by(external_id='active-undated').one().status == 'needs_review'
+        assert JobNotification.query.filter_by(external_id='active-undated').one().status == 'published'
 
+
+
+
+def test_sync_enriches_undated_official_pdf_before_publication(client, monkeypatch):
+    current = _item(external_id='active-pdf', official_notice_url='https://ssc.gov.in/example.pdf', deadline=None, confidence=0.84)
+    definition = SourceDefinition('employment_news', 'Official Recruitment Board', 'https://employmentnews.gov.in/jobs', lambda *_: [current])
+    monkeypatch.setitem(__import__('app.jobs.sync', fromlist=['SOURCE_BY_KEY']).SOURCE_BY_KEY, 'employment_news', definition)
+    monkeypatch.setattr('app.jobs.sync.fetch_official_page', lambda *_args, **_kwargs: '<html/>')
+    def enrich(item, session=None):
+        item.deadline = date(2099, 9, 30)
+        return item
+    monkeypatch.setattr('app.jobs.sync.enrich_job_item', enrich)
+    with client.application.app_context():
+        source = JobSource.query.filter_by(key='employment_news').one()
+        result = sync_source(source)
+        stored = JobNotification.query.filter_by(external_id='active-pdf').one()
+        assert result['status'] == 'success'
+        assert stored.status == 'published'
+        assert stored.deadline == date(2099, 9, 30)
+
+
+def test_snapshot_enriches_undated_official_pdf_before_publication(monkeypatch):
+    current = _item(external_id='snapshot-pdf', official_notice_url='https://ssc.gov.in/example.pdf', deadline=None, confidence=0.84)
+    definition = SourceDefinition('employment_news', 'Official Recruitment Board', 'https://employmentnews.gov.in/jobs', lambda *_: [current])
+    monkeypatch.setattr('app.jobs.snapshot.SOURCE_DEFINITIONS', [definition])
+    monkeypatch.setattr('app.jobs.snapshot.fetch_official_page', lambda *_args, **_kwargs: '<html/>')
+    def enrich(item, session=None):
+        item.deadline = date(2099, 9, 30)
+        return item
+    monkeypatch.setattr('app.jobs.snapshot.enrich_job_item', enrich)
+    snapshot = build_snapshot(now=datetime(2099, 8, 1, tzinfo=timezone.utc))
+    assert snapshot['count'] == 1
+    assert snapshot['items'][0]['deadline'] == '2099-09-30'
 
 def test_public_job_feed_excludes_review_hidden_and_expired(client):
     with client.application.app_context():

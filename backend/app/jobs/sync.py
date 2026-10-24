@@ -11,6 +11,7 @@ from sqlalchemy import text
 from ..models.job import JobNotification, JobSource
 from ..utils.database import db
 from .official_fetch import OfficialSourceUnavailable, fetch_official_page, validate_official_url
+from .notice_enrichment import MAX_DEADLINE_ENRICHMENTS_PER_SOURCE, enrich_job_item, needs_deadline_enrichment
 from .rules import item_hash, target_status, unique_slug
 from .sources import SOURCE_BY_KEY, SOURCE_DEFINITIONS, JobItem
 
@@ -112,8 +113,11 @@ def sync_source(source, session=None):
                 'Official source returned no parseable listings. Existing verified notices are preserved while the source is retried.',
                 'empty or incomplete official-source parse',
             )
-        published = 0; duplicates = 0
+        published = 0; duplicates = 0; deadline_enrichment_budget = MAX_DEADLINE_ENRICHMENTS_PER_SOURCE
         for item in items:
+            if deadline_enrichment_budget > 0 and needs_deadline_enrichment(item):
+                item = enrich_job_item(item, session=session)
+                deadline_enrichment_budget -= 1
             job, _, duplicate = upsert_item(source, item, allow_missing_deadline=definition.allow_missing_deadline, missing_deadline_max_age_days=definition.missing_deadline_max_age_days)
             duplicates += int(duplicate); published += int(job.status == 'published')
         source.fetched_count = len(items); source.published_count = published; source.last_sync_completed_at = utc_now(); source.last_sync_status = 'success'; source.last_error = f'{duplicates} duplicate notice(s) skipped.' if duplicates else None
