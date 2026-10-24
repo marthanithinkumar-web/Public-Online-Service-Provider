@@ -92,7 +92,7 @@ def enrich_job_item(item,session=None):
             html=fetch_official_page(url,session=session)
             title_match=re.search(r'<title\b[^>]*>(.*?)</title>',html,re.I|re.S)
             page_title=_clean(re.sub(r'<[^>]+>',' ',title_match.group(1))) if title_match else ''
-            if re.search(r'\b(final result|result of|selection list|selected candidates|admit card|call letter|answer key|score card|marks list|cancelled recruitment|recruitment cancelled)\\b', f'{item.title} {page_title}', re.I):
+            if re.search(r'\b(final result|result of|selection list|selected candidates|admit card|call letter|answer key|score card|marks list|cancelled recruitment|recruitment cancelled)\b', f'{item.title} {page_title}', re.I):
                 item.warnings.append('notice_excluded_result_only')
                 return item
             text=_clean(re.sub(r'<[^>]+>',' ',re.sub(r'<(?:script|style)\b[^>]*>.*?</(?:script|style)>',' ',html,flags=re.I|re.S)))
