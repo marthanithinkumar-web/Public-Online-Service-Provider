@@ -36,6 +36,20 @@ class _GroupedOfficialListingsParser(HTMLParser):
         self.anchor = None
         self.all_links = []
 
+    @staticmethod
+    def _extra_urls(attrs):
+        urls = []
+        for key in ('data-href', 'data-url', 'data-file-url', 'data-download-url', 'data-document-url', 'data-resource-url'):
+            value = clean(attrs.get(key, ''))
+            if value and value != '#' and not value.lower().startswith('javascript:'):
+                urls.append(value)
+        onclick = str(attrs.get('onclick') or '')
+        for value in re.findall(r'''[\"']([^\"']+)[\"']''', onclick):
+            value = clean(value)
+            if value and (value.startswith(('https://', 'http://', '/', '../')) or re.search(r'\.pdf(?:/|$|\?)', value, re.I)) and value != '#':
+                urls.append(value)
+        return list(dict.fromkeys(urls))
+
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
         if tag in {'p', 'h2', 'h3', 'h4'}:
@@ -48,6 +62,12 @@ class _GroupedOfficialListingsParser(HTMLParser):
             self.list_item = {'text': [], 'links': []}
         elif tag == 'a':
             self.anchor = {'href': attrs.get('href', ''), 'text': [], 'context': list(self.paragraphs)}
+        # Some official CMS download controls use href="#" and keep the actual
+        # file location in data-* or onclick attributes. Preserve those only
+        # inside the same vacancy list item so the label/title stays paired.
+        if self.list_item is not None:
+            for url in self._extra_urls(attrs):
+                self.list_item['links'].append((url, ''))
 
     def handle_data(self, data):
         if self.paragraph is not None:
@@ -107,7 +127,10 @@ def _grouped_official_parser(organization, summary, fallback=None):
             if not title:
                 continue
 
-            links = [link for row in section['items'] for link in row.get('links', [])]
+            links = [
+                (href, label or row.get('text', ''))
+                for row in section['items'] for href, label in row.get('links', [])
+            ]
             # Some SBI CMS components place the advertisement anchors outside the
             # <li> node even though their text appears with the group. Retain all
             # anchors carrying this group's surrounding title/ad-number context.
@@ -131,7 +154,12 @@ def _grouped_official_parser(organization, summary, fallback=None):
 
             def allowed_candidate(candidates):
                 for href, label in candidates:
-                    absolute = urljoin(base_url, href)
+                    raw_href = str(href or '').strip()
+                    if not raw_href or raw_href == '#' or raw_href.startswith('#') or raw_href.lower().startswith(('javascript:', 'data:')):
+                        continue
+                    absolute = urljoin(base_url, raw_href)
+                    if absolute.split('#', 1)[0].rstrip('/') == base_url.split('#', 1)[0].rstrip('/') and not re.search(r'\.pdf(?:/|$|\?)', absolute, re.I):
+                        continue
                     try:
                         validate_official_url(absolute)
                     except ValueError:

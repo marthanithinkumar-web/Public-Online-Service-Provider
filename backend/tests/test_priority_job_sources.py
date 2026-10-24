@@ -198,3 +198,19 @@ def test_sbi_grouped_parser_finds_advertisement_anchor_outside_list_item():
     assert len(items) == 1
     assert items[0].official_notice_url == 'https://sbi.bank.in/documents/adv30.pdf/document-id?t=1'
     assert items[0].application_url == 'https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply'
+
+
+
+def test_sbi_dynamic_download_button_uses_onclick_pdf_url_not_placeholder():
+    html = '''
+      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM EMPLOYMENT BASIS (Apply Online from 19.10.2026 TO 09.11.2026)</p>
+      <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/30</p>
+      <ul>
+        <li><a href="#" onclick="window.open('https://sbi.bank.in/documents/adv30.pdf/document-id?t=1')">DOWNLOAD ADVERTISEMENT English (796 KB)</a></li>
+        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply">APPLY ONLINE (19.10.2026 TO 09.11.2026)</a></li>
+      </ul>
+    '''
+    items = parse_sbi(html, 'https://sbi.bank.in/web/careers/current-openings')
+    assert len(items) == 1
+    assert items[0].official_notice_url == 'https://sbi.bank.in/documents/adv30.pdf/document-id?t=1'
+    assert items[0].application_url == 'https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply'
