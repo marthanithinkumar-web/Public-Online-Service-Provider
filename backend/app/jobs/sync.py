@@ -113,15 +113,16 @@ def sync_source(source, session=None):
                 'Official source returned no parseable listings. Existing verified notices are preserved while the source is retried.',
                 'empty or incomplete official-source parse',
             )
-        published = 0; duplicates = 0
+        published = 0; duplicates = 0; notice_enrichments = 0; max_notice_enrichments_per_source = 12
         for item in items:
             # Inspect high-confidence official notices before applying the same
             # deadline rule used by the static snapshot. The date may exist only
             # in a linked PDF/HTML notice, and result-only pages must not publish.
             notice_url = str(item.official_notice_url or '').rstrip('/')
             listing_url = str(definition.listing_url or '').rstrip('/')
-            if item.confidence >= 0.8 and notice_url and notice_url != listing_url:
+            if item.confidence >= 0.8 and not item.deadline and notice_url and notice_url != listing_url and notice_enrichments < max_notice_enrichments_per_source:
                 item = enrich_job_item(item, session=session)
+                notice_enrichments += 1
             if 'notice_excluded_result_only' in (item.warnings or []):
                 continue
             job, _, duplicate = upsert_item(source, item, allow_missing_deadline=definition.allow_missing_deadline, missing_deadline_max_age_days=definition.missing_deadline_max_age_days)
