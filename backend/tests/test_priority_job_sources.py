@@ -117,3 +117,19 @@ def test_application_portal_url_is_not_mislabelled_as_notice_url():
     assert items[0].official_notice_url == listing
     assert items[0].application_url == 'https://opportunities.rbi.org.in/Scripts/ApplyOnline.aspx'
     assert 'notice_is_listing_page' in items[0].warnings
+
+
+
+def test_application_deadline_formats_seen_in_official_notices():
+    assert parse_explicit_deadline(
+        'Applications are invited on or before 17.00 hrs on November 13, 2026'
+    ) == date(2026, 11, 13)
+    assert parse_explicit_deadline(
+        'Online Registration Extended till 31.10.2026'
+    ) == date(2026, 10, 31)
+    assert parse_explicit_deadline(
+        'APPLY ONLINE (19.10.2026 TO 09.11.2026)'
+    ) == date(2026, 11, 9)
+    assert parse_explicit_deadline(
+        'The written examination will be held on November 13, 2026'
+    ) is None
