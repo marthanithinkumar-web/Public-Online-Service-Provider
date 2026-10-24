@@ -92,10 +92,10 @@ test('government, recharge, jobs and scholarship cards open their actual detail/
   if (await jobCards.count()) {
     const jobCard = jobCards.first()
     await jobCard.getByRole('link', { name: 'View Details & Apply', exact: true }).click()
-    await expect(page).toHaveURL(/\\/jobs\\//)
+    await expect(page).toHaveURL(/\/jobs\//)
     await expect(page.getByRole('link', { name: /Apply with assistance/i })).toBeVisible()
     await page.getByRole('link', { name: /Apply with assistance/i }).click()
-    await expect(page).toHaveURL(/\\/services\\/apply-government-job\\?job=/)
+    await expect(page).toHaveURL(/\/services\/apply-government-job\?job=/)
     await expectRealPage(page)
   } else {
     // Empty results are valid when all available snapshot entries fail the
@@ -108,9 +108,9 @@ test('government, recharge, jobs and scholarship cards open their actual detail/
   if (await scholarshipCards.count()) {
     const scholarshipCard = scholarshipCards.first()
     await scholarshipCard.getByRole('link', { name: 'View Details & Apply', exact: true }).click()
-    await expect(page).toHaveURL(/\\/scholarships\\//)
+    await expect(page).toHaveURL(/\/scholarships\//)
     await page.getByRole('link', { name: 'Apply with Assistance', exact: true }).click()
-    await expect(page).toHaveURL(/\\/services\\/scholarship-application-assistance\\?scholarship=/)
+    await expect(page).toHaveURL(/\/services\/scholarship-application-assistance\?scholarship=/)
     await expectRealPage(page)
   } else {
     await expect(scholarshipCards).toHaveCount(0)
