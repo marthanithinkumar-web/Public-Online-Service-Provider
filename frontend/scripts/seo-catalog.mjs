@@ -110,6 +110,16 @@ const hasSafePublicSlug=item=>{
   return slug.length<=200&&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)&&Boolean(item?.title)
 }
 
+function indiaToday(){
+  return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
+}
+function hasCurrentDeadline(item){
+  const deadline=String(item?.deadline||'')
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(deadline))return false
+  const parsed=new Date(deadline+'T00:00:00Z')
+  return !Number.isNaN(parsed.getTime())&&parsed.toISOString().slice(0,10)===deadline&&deadline>=indiaToday()
+}
+
 function uniqueBySlug(items){
   const seen=new Set()
   return items.filter(item=>{
@@ -123,7 +133,7 @@ function uniqueBySlug(items){
 export function readJobs(){
   // Older snapshots can carry forward a legacy duplicate slug. Keep one
   // canonical public URL until the next backend refresh repairs the source.
-  return uniqueBySlug(readSnapshot('jobs.json').filter(item=>item?.status==='published'&&hasSafePublicSlug(item)))
+  return uniqueBySlug(readSnapshot('jobs.json').filter(item=>item?.status==='published'&&hasCurrentDeadline(item)&&hasSafePublicSlug(item)))
 }
 
 // Only government recruitment detail pages are part of the SEO index surface.
@@ -133,5 +143,5 @@ export function readIndexableJobs(){
 }
 
 export function readScholarships(){
-  return readSnapshot('scholarships.json').filter(item=>item?.status==='active'&&hasSafePublicSlug(item))
+  return readSnapshot('scholarships.json').filter(item=>item?.status==='active'&&!item?.stale_source&&(item?.source_type==='official'||item?.is_official===true)&&hasCurrentDeadline(item)&&hasSafePublicSlug(item))
 }
