@@ -88,13 +88,16 @@ def build_snapshot(existing=None,session=None,now=None):
         try:
             html=fetch_official_page(definition.listing_url,session=session);parsed=definition.parser(html,definition.listing_url);published_count=0
             for item in parsed:
+                # Inspect the linked official notice first. Some boards put the
+                # application window only inside the PDF/notice, not on the index.
+                # Deadline validation must happen after this bounded enrichment.
+                item=enrich_job_item(item,session=session)
+                if 'notice_excluded_result_only' in (item.warnings or []):
+                    continue
                 status=target_status(item,today=today,allow_missing_deadline=definition.allow_missing_deadline,missing_deadline_max_age_days=definition.missing_deadline_max_age_days)
                 if status!='published':review_count+=int(status=='needs_review');continue
                 digest=item_hash(item)
                 if digest in seen_hashes:continue
-                # Fetch the actual official PDF only after the listing has passed
-                # publication validation. Failure leaves the verified listing intact.
-                item=enrich_job_item(item,session=session)
                 serialized=_serialize_item(item,definition,checked_at,previous_by_hash.get(digest));seen_hashes.add(digest);source_jobs.append(serialized);published_count+=1
             for old_job in previous_by_source.get(definition.key,[]):
                 digest=old_job.get('content_hash')
