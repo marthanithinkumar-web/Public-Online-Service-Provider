@@ -12,7 +12,7 @@ CATALOG_PATH = LOCAL_CATALOG_PATH if LOCAL_CATALOG_PATH.exists() else LEGACY_CAT
 def _active(item, today=None):
     # Scholarship listings are public only when they are explicitly official,
     # active, and have a parseable deadline that has not passed in India.
-    if str(item.get('status') or 'active').lower() != 'active':
+    if str(item.get('status') or 'active').lower() != 'active' or item.get('stale_source'):
         return False
     if not (item.get('source_type') == 'official' or item.get('is_official') is True):
         return False
