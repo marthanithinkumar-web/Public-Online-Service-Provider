@@ -74,7 +74,9 @@ def refresh_snapshot(path=CATALOG_PATH,today=None,*,discover=True,strict=False,n
                 preserved.append(item)
     for item in previous_stale:
         source_health=health.get(item.get('source_key')) or {}
-        if not discover or (not source_health.get('ok') and _preserve_previous(item,health,now,check_date)):
+        age=_age_days(item.get('last_seen_at'),now)
+        still_open=_active({**item,'stale_source':False},check_date)
+        if not discover or (not source_health.get('ok') and still_open and age is not None and age<=OFFICIAL_FAILURE_GRACE_DAYS):
             item['stale_source']=True;stale_preserved.append(item)
     items=dedupe_items([*discovered,*preserved]);items=[item for item in items if _active(item,check_date)];items.sort(key=lambda item:(0 if item.get('source_type')=='official' else 1,item.get('deadline') or '9999-12-31',item.get('title') or ''))
     stale_items=dedupe_items([item for item in stale_preserved if item.get('source_type')=='official' and item.get('deadline') and item.get('deadline')>=check_date.isoformat()])
