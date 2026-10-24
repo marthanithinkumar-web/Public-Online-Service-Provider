@@ -83,7 +83,7 @@ def parse_explicit_deadline(value):
     text = clean(value)
     token = r'(?:20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]20\d{2}|\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}|[A-Za-z]{3,9}\s+\d{1,2}\s+20\d{2})'
     closing = re.search(
-        rf'(?:last date(?: and time)?(?:\s+for\s+(?:receipt|submission|applying|online application|filling|registration|applications?))?|last date to apply|closing date(?: for applications?)?|application deadline|applications? close(?:s)? on|apply by)\s*[:\-]?\s*({token})',
+        rf'(?:last date(?: and time)?(?:\s+for\s+(?:receipt|submission|applying|online application|filling|registration|applications?)(?:\s+of\s+(?:online\s+)?applications?))?|last date to apply|closing date(?: for applications?)?|application deadline|applications? close(?:s)? on|apply by)\s*[:\-]?\s*({token})',
         text, re.I,
     )
     if closing:
