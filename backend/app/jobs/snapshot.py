@@ -91,7 +91,9 @@ def build_snapshot(existing=None,session=None,now=None):
                 # Inspect the linked official notice before validating the
                 # deadline. Some sources put the only application window in a
                 # PDF/HTML notice, and misleading links can lead to results.
-                if item.confidence >= 0.8:
+                notice_url = str(item.official_notice_url or '').rstrip('/')
+                listing_url = str(definition.listing_url or '').rstrip('/')
+                if item.confidence >= 0.8 and notice_url and notice_url != listing_url:
                     item = enrich_job_item(item, session=session)
                 if 'notice_excluded_result_only' in (item.warnings or []):
                     continue
