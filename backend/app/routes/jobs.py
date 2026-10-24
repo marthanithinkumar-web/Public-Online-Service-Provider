@@ -47,7 +47,7 @@ def list_jobs():
     if term:
         aliases = {'govt': 'government', 'railways': 'railway'}
         tokens = list(dict.fromkeys(
-            aliases.get(token.lower(), token) for token in term[:120].replace('-', ' ').split() if token
+            aliases.get(token, token) for token in re.sub(r'[^a-z0-9]+', ' ', term[:120].lower()).split() if token
         ))
         query = query.filter(and_(*[
             or_(
@@ -55,6 +55,10 @@ def list_jobs():
                 JobNotification.organization.ilike(f'%{token}%'),
                 JobNotification.qualification.ilike(f'%{token}%'),
                 JobNotification.location.ilike(f'%{token}%'),
+                JobNotification.source.has(or_(
+                    JobSource.name.ilike(f'%{token}%'),
+                    JobSource.key.ilike(f'%{token}%'),
+                )),
             )
             for token in tokens
         ]))
