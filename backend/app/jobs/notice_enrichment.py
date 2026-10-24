@@ -11,7 +11,8 @@ import re
 from urllib.parse import urlparse
 import requests
 from pypdf import PdfReader
-from .official_fetch import BROWSER_HEADERS, validate_official_url
+from .official_fetch import BROWSER_HEADERS, fetch_official_page, validate_official_url
+from .sources import parse_explicit_deadline
 
 MAX_NOTICE_BYTES=8*1024*1024
 
@@ -75,17 +76,37 @@ def _salary(text):return _first(text,(r'((?:pay level|level)[- ]?\s*\d+\s*\(?\s*
 def _vacancies(text):
     value=_first(text,(r'(?:total|approximately|tentative(?:ly)?)\s+(?:number of\s+)?vacanc(?:y|ies)\s*(?:are|is|:)\s*([\d,]+)',r'vacanc(?:y|ies)\s*[:\-]\s*([\d,]+)'),30);return f'{value} vacancies' if value and re.fullmatch(r'[\d,]+',value) else value
 def enrich_job_item(item,session=None):
+    """Inspect a linked allowlisted official HTML/PDF notice before publication."""
     url=str(getattr(item,'official_notice_url','') or '')
-    if not url or not urlparse(url).path.lower().endswith('.pdf'):return item
-    try:text=_pdf_text(_download_pdf(url,session=session))
-    except (requests.RequestException,ValueError):return item
-    if len(text)<100:return item
+    if not url:
+        return item
+    try:
+        if urlparse(url).path.lower().endswith('.pdf'):
+            text=_pdf_text(_download_pdf(url,session=session))
+        else:
+            html=fetch_official_page(url,session=session)
+            title_match=re.search(r'<title\b[^>]*>(.*?)</title>',html,re.I|re.S)
+            page_title=_clean(re.sub(r'<[^>]+>',' ',title_match.group(1))) if title_match else ''
+            if re.search(r'\b(final result|result of (?:the )?(?:recruitment|selection|examination)|selection list|selected candidates|admit card|call letter|answer key|score card|marks list|cancelled recruitment|recruitment cancelled)\b',f'{item.title} {page_title}',re.I):
+                item.warnings.append('notice_excluded_result_only')
+                return item
+            text=_clean(re.sub(r'<[^>]+>',' ',re.sub(r'<(?:script|style)\b[^>]*>.*?</(?:script|style)>',' ',html,flags=re.I|re.S)))
+            text=re.sub(r'&nbsp;',' ',text,flags=re.I)
+    except (requests.RequestException,ValueError,RuntimeError):
+        return item
+    if len(text)<30:
+        return item
+    if re.search(r'\b(final result|result of (?:the )?(?:recruitment|selection|examination)|selection list|selected candidates|admit card|call letter|answer key|score card|marks list|cancelled recruitment|recruitment cancelled)\b',f'{item.title} {text[:1200]}',re.I):
+        item.warnings.append('notice_excluded_result_only')
+        return item
     if not getattr(item,'qualification',None):item.qualification=_qualification(text)
     if not getattr(item,'age_limit',None):item.age_limit=_age(text)
     if not getattr(item,'application_fee',None):item.application_fee=_fee(text)
     if not getattr(item,'vacancies',None):item.vacancies=_vacancies(text)
     if not getattr(item,'salary',None):item.salary=_salary(text)
     start,deadline=_application_dates(text)
+    if deadline is None:
+        deadline=parse_explicit_deadline(text)
     if not getattr(item,'application_start_date',None) and start:item.application_start_date=start
     if not getattr(item,'deadline',None) and deadline:item.deadline=deadline
     extracted=[('Qualification',item.qualification),('Age',item.age_limit),('Fee',item.application_fee),('Vacancies',item.vacancies),('Pay',item.salary)];facts=[f'{label}: {value}' for label,value in extracted if value]
