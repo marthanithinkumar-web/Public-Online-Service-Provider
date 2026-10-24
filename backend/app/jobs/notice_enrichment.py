@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 import requests
 from pypdf import PdfReader
 from .official_fetch import BROWSER_HEADERS, fetch_official_page, validate_official_url
+from .sources import parse_explicit_deadline
 
 MAX_NOTICE_BYTES=8*1024*1024
 
@@ -89,12 +90,12 @@ def enrich_job_item(item,session=None):
             text=_pdf_text(_download_pdf(url,session=session))
         else:
             html=fetch_official_page(url,session=session)
-            title_match=re.search(r'<title\\b[^>]*>(.*?)</title>',html,re.I|re.S)
+            title_match=re.search(r'<title\b[^>]*>(.*?)</title>',html,re.I|re.S)
             page_title=_clean(re.sub(r'<[^>]+>',' ',title_match.group(1))) if title_match else ''
-            if re.search(r'\\b(final result|result of|selection list|selected candidates|admit card|call letter|answer key|score card|marks list|cancelled recruitment|recruitment cancelled)\\b', f'{item.title} {page_title}', re.I):
+            if re.search(r'\b(final result|result of|selection list|selected candidates|admit card|call letter|answer key|score card|marks list|cancelled recruitment|recruitment cancelled)\\b', f'{item.title} {page_title}', re.I):
                 item.warnings.append('notice_excluded_result_only')
                 return item
-            text=_clean(re.sub(r'<[^>]+>',' ',re.sub(r'<(?:script|style)\\b[^>]*>.*?</(?:script|style)>',' ',html,flags=re.I|re.S)))
+            text=_clean(re.sub(r'<[^>]+>',' ',re.sub(r'<(?:script|style)\b[^>]*>.*?</(?:script|style)>',' ',html,flags=re.I|re.S)))
             text=re.sub(r'&nbsp;',' ',text,flags=re.I)
     except (requests.RequestException,ValueError,RuntimeError):
         return item
@@ -106,6 +107,8 @@ def enrich_job_item(item,session=None):
     if not getattr(item,'vacancies',None):item.vacancies=_vacancies(text)
     if not getattr(item,'salary',None):item.salary=_salary(text)
     start,deadline=_application_dates(text)
+    if deadline is None:
+        deadline=parse_explicit_deadline(text)
     if not getattr(item,'application_start_date',None) and start:item.application_start_date=start
     if not getattr(item,'deadline',None) and deadline:item.deadline=deadline
     extracted=[('Qualification',item.qualification),('Age',item.age_limit),('Fee',item.application_fee),('Vacancies',item.vacancies),('Pay',item.salary)];facts=[f'{label}: {value}' for label,value in extracted if value]
