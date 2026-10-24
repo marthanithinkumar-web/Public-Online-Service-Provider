@@ -67,7 +67,7 @@ def _generic_official_parser(organization, summary):
                 application_url=application_url,
                 summary=summary,
                 confidence=0.92 if deadline else 0.84,
-                warnings=[] if deadline else ['Confirm the closing date and post-specific eligibility in the official recruitment notice.'],
+                warnings=(['notice_is_listing_page'] if is_application_link else []) + ([] if deadline else ['Confirm the closing date and post-specific eligibility in the official recruitment notice.']),
             ))
         return items
 
