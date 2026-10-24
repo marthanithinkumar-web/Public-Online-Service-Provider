@@ -88,6 +88,7 @@ test('government, recharge, jobs and scholarship cards open their actual detail/
   await expectRealPage(page)
 
   await page.goto('/jobs')
+  await expect(page.getByText('Loading current notices…')).toHaveCount(0)
   const jobCards = page.locator('.job-card')
   if (await jobCards.count()) {
     const jobCard = jobCards.first()
@@ -104,6 +105,7 @@ test('government, recharge, jobs and scholarship cards open their actual detail/
   }
 
   await page.goto('/scholarships')
+  await expect(page.getByText('Loading scholarships…')).toHaveCount(0)
   const scholarshipCards = page.locator('.service-card')
   if (await scholarshipCards.count()) {
     const scholarshipCard = scholarshipCards.first()
