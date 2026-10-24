@@ -741,8 +741,8 @@ SOURCE_DEFINITIONS = (
 # Register the specialized official recruitment sources and private-employer
 # career parsers alongside the base government-source parsers. Import these only
 # after the shared JobItem/parser helpers above have been defined.
-from .priority_sources import PRIORITY_SOURCES
+from .priority_sources import PRIORITY_OFFICIAL_SOURCES
 from .private_sources import PRIVATE_SOURCES
 
-SOURCE_DEFINITIONS = SOURCE_DEFINITIONS + PRIORITY_SOURCES + PRIVATE_SOURCES
+SOURCE_DEFINITIONS = SOURCE_DEFINITIONS + PRIORITY_OFFICIAL_SOURCES + PRIVATE_SOURCES
 SOURCE_BY_KEY = {source.key: source for source in SOURCE_DEFINITIONS}
