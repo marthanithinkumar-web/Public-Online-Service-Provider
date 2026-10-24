@@ -1,6 +1,7 @@
 import json
 import re
 from datetime import date, datetime, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 LOCAL_CATALOG_PATH = Path(__file__).resolve().parent / 'data' / 'scholarships.json'
@@ -9,16 +10,21 @@ CATALOG_PATH = LOCAL_CATALOG_PATH if LOCAL_CATALOG_PATH.exists() else LEGACY_CAT
 
 
 def _active(item, today=None):
+    # Scholarship listings are public only when they are explicitly official,
+    # active, and have a parseable deadline that has not passed in India.
     if str(item.get('status') or 'active').lower() != 'active':
+        return False
+    if not (item.get('source_type') == 'official' or item.get('is_official') is True):
         return False
     deadline = item.get('deadline')
     if not deadline:
-        return True
+        return False
     try:
         end = date.fromisoformat(str(deadline)[:10])
-    except ValueError:
+    except (TypeError, ValueError):
         return False
-    return end >= (today or date.today())
+    india_today = today or datetime.now(ZoneInfo('Asia/Kolkata')).date()
+    return end >= india_today
 
 
 def _matches(item, query):
