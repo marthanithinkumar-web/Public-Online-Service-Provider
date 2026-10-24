@@ -72,7 +72,7 @@ def test_snapshot_enriches_notice_before_deadline_validation(monkeypatch):
     source = next(item for item in SOURCE_DEFINITIONS if item.key == 'sbi')
     item = JobItem(
         external_id='sbi-official-test', title='Recruitment for Specialist Officer',
-        organization='State Bank of India', official_notice_url=source.listing_url, confidence=0.95,
+        organization='State Bank of India', official_notice_url='https://sbi.bank.in/web/careers/current-openings/notice-2026.pdf', confidence=0.95,
     )
     source = replace(source, parser=lambda html, url: [item])
     monkeypatch.setattr(snapshot, 'SOURCE_DEFINITIONS', (source,))
@@ -91,7 +91,7 @@ def test_snapshot_skips_result_only_notices(monkeypatch):
     source = next(item for item in SOURCE_DEFINITIONS if item.key == 'sbi')
     item = JobItem(
         external_id='sbi-result-test', title='Recruitment for Specialist Officer',
-        organization='State Bank of India', official_notice_url=source.listing_url, confidence=0.95,
+        organization='State Bank of India', official_notice_url='https://sbi.bank.in/web/careers/current-openings/notice-2026.pdf', confidence=0.95,
     )
     source = replace(source, parser=lambda html, url: [item])
     monkeypatch.setattr(snapshot, 'SOURCE_DEFINITIONS', (source,))
