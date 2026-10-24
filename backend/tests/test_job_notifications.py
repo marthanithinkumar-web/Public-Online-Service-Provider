@@ -330,3 +330,33 @@ def test_public_snapshot_keeps_verified_open_jobs_during_temporary_source_failur
     assert second['successful_sources'] == 0
     assert second['count'] == 1
     assert second['items'][0]['title'] == complete.title
+
+
+
+def test_public_job_filters_match_source_type_featured_and_limit(client):
+    with client.application.app_context():
+        source = JobSource.query.filter_by(key='upsc').one()
+        featured, *_ = upsert_item(source, _item(
+            external_id='filter-upsc-featured',
+            title='Graduate Assistant',
+            organization='Example Recruitment Board',
+            job_type='government',
+        ))
+        featured.is_featured = True
+        upsert_item(source, _item(
+            external_id='filter-upsc-private',
+            title='Graduate Private Assistant',
+            organization='Example Recruitment Board',
+            job_type='private',
+        ))
+        db.session.commit()
+        featured_slug = featured.slug
+
+    response = client.get('/api/jobs/?q=UPSC&type=government&featured=true&limit=1')
+    assert response.status_code == 200
+    assert response.get_json()['total'] == 1
+    assert [item['slug'] for item in response.get_json()['items']] == [featured_slug]
+
+    no_match = client.get('/api/jobs/?q=upsc&type=private&featured=true')
+    assert no_match.status_code == 200
+    assert no_match.get_json()['items'] == []
