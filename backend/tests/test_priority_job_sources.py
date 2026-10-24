@@ -103,3 +103,16 @@ def test_snapshot_skips_result_only_notices(monkeypatch):
     monkeypatch.setattr(snapshot, 'enrich_job_item', enrich)
     result = snapshot.build_snapshot(now=datetime(2026, 10, 24, tzinfo=timezone.utc))
     assert result['count'] == 0
+
+
+
+def test_application_portal_url_is_not_mislabelled_as_notice_url():
+    listing = 'https://opportunities.rbi.org.in/Scripts/Vacancies.aspx'
+    items = parse_rbi(
+        '<ul><li><a href="/Scripts/ApplyOnline.aspx">Apply Online for Officers Grade B Recruitment</a></li></ul>',
+        listing,
+    )
+    assert len(items) == 1
+    assert items[0].official_notice_url == listing
+    assert items[0].application_url == 'https://opportunities.rbi.org.in/Scripts/ApplyOnline.aspx'
+    assert 'notice_is_listing_page' in items[0].warnings
