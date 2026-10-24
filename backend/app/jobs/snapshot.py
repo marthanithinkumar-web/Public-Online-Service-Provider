@@ -83,27 +83,26 @@ def build_snapshot(existing=None,session=None,now=None):
     for job in previous_jobs:
         if isinstance(job,dict) and (job.get('source') or {}).get('key'):previous_by_source.setdefault(job['source']['key'],[]).append(job)
     jobs=[];sources=[];seen_hashes=set();successful_sources=0;review_count=0
+    max_notice_enrichments_per_source = 12
     for definition in SOURCE_DEFINITIONS:
         source_jobs=[]
         try:
-            html=fetch_official_page(definition.listing_url,session=session);parsed=definition.parser(html,definition.listing_url);published_count=0
+            html=fetch_official_page(definition.listing_url,session=session);parsed=definition.parser(html,definition.listing_url);published_count=0;notice_enrichments=0
             for item in parsed:
-                # Some official recruitment pages link to a notice PDF that
-                # contains the only explicit application deadline. Enrich these
-                # high-confidence, undated PDF notices before deciding whether
-                # they are safe to publish; otherwise they are all held for review.
-                enriched_for_deadline = False
-                if not item.deadline and item.confidence >= 0.8:
+                # Inspect the linked official notice before validating the
+                # deadline. Some sources put the only application window in a
+                # PDF/HTML notice, and misleading links can lead to results.
+                notice_url = str(item.official_notice_url or '').rstrip('/')
+                listing_url = str(definition.listing_url or '').rstrip('/')
+                if item.confidence >= 0.8 and not item.deadline and notice_url and notice_url != listing_url and notice_enrichments < max_notice_enrichments_per_source:
                     item = enrich_job_item(item, session=session)
-                    enriched_for_deadline = True
+                    notice_enrichments += 1
+                if 'notice_excluded_result_only' in (item.warnings or []):
+                    continue
                 status=target_status(item,today=today,allow_missing_deadline=definition.allow_missing_deadline,missing_deadline_max_age_days=definition.missing_deadline_max_age_days)
                 if status!='published':review_count+=int(status=='needs_review');continue
                 digest=item_hash(item)
                 if digest in seen_hashes:continue
-                # Enrich already-qualified notices with other explicitly stated
-                # facts, but avoid downloading the same PDF twice.
-                if not enriched_for_deadline:
-                    item=enrich_job_item(item,session=session)
                 serialized=_serialize_item(item,definition,checked_at,previous_by_hash.get(digest));seen_hashes.add(digest);source_jobs.append(serialized);published_count+=1
             for old_job in previous_by_source.get(definition.key,[]):
                 digest=old_job.get('content_hash')

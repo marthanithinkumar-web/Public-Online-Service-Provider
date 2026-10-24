@@ -8,6 +8,10 @@ on:
       - 'backend/app/jobs/**'
       - 'backend/app/routes/jobs.py'
       - 'frontend/src/services/jobs.ts'
+      - 'frontend/src/pages/Jobs.tsx'
+      - 'frontend/package.json'
+      - 'frontend/scripts/verify-job-filter-contract.mjs'
+      - 'backend/tests/**'
   schedule:
     # 07:45 Asia/Kolkata every day (02:15 UTC).
     - cron: '15 2 * * *'
@@ -36,6 +40,9 @@ jobs:
 
       - name: Install official-source fetch dependencies
         run: python -m pip install --disable-pip-version-check requests==2.32.5 pypdf==6.0.0
+
+      - name: Verify public job filter contract
+        run: node frontend/scripts/verify-job-filter-contract.mjs
 
       - name: Build verified public job snapshot
         env:
