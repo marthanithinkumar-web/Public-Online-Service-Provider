@@ -2,7 +2,7 @@ import re
 from datetime import date
 from urllib.parse import urljoin
 
-from .sources import JobItem, SourceDefinition, clean, parse_all_dates, parse_html
+from .sources import JobItem, SourceDefinition, clean, parse_all_dates, parse_explicit_deadline, parse_html
 
 _EXCLUDED = (
     'result', 'results', 'admit card', 'call letter', 'answer key', 'interview schedule',
@@ -49,18 +49,21 @@ def _generic_official_parser(organization, summary):
             if identity in seen:
                 continue
             seen.add(identity)
-            dates = parse_all_dates(text)
-            deadline = dates[-1] if dates else None
+            deadline = parse_explicit_deadline(text)
             if deadline and deadline < today:
                 continue
+            is_application_link = bool(re.search(r'\b(apply online|apply now|online application|registration portal)\b', text, re.I))
             items.append(JobItem(
                 external_id=f'{organization.lower().replace(" ", "-")}-{index}-{text[:80]}',
                 title=text[:500],
                 organization=organization,
-                official_notice_url=notice_url,
+                # Do not label an application portal as a notice PDF/page.
+                # If the link is application-only, retain the official source
+                # listing as the notice reference and preserve the portal URL separately.
+                official_notice_url=base_url if is_application_link else notice_url,
                 location='India',
                 deadline=deadline,
-                application_url=notice_url,
+                application_url=notice_url if is_application_link else None,
                 summary=summary,
                 confidence=0.92 if deadline else 0.84,
                 warnings=[] if deadline else ['Confirm the closing date and post-specific eligibility in the official recruitment notice.'],
