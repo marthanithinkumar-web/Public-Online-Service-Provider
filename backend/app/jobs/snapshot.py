@@ -15,18 +15,14 @@ def utc_now(): return datetime.now(timezone.utc).replace(microsecond=0)
 def _iso(value): return value.isoformat() if value else None
 
 
-def _is_open(job,today,now=None):
-    raw=job.get('deadline')
+def _is_open(job, today, now=None):
+    raw = job.get('deadline')
     if not raw:
-        last_seen=job.get('last_seen_at')
-        if not last_seen:return False
-        try:
-            seen=datetime.fromisoformat(last_seen.replace('Z','+00:00'));current=now or datetime.now(timezone.utc)
-            if seen.tzinfo is None:seen=seen.replace(tzinfo=timezone.utc)
-            return (current-seen).days<=3
-        except (TypeError,ValueError):return False
-    try:return date.fromisoformat(raw)>=today
-    except (TypeError,ValueError):return False
+        return False
+    try:
+        return date.fromisoformat(str(raw)[:10]) >= today
+    except (TypeError, ValueError):
+        return False
 
 
 def _safe_previous(existing):
