@@ -230,7 +230,7 @@ def sync_is_due(hours=20):
 
 
 def trigger_background_sync(app):
-    if app.config.get('TESTING'): return False
+    if app.config.get('TESTING') or app.config.get('DISABLE_BACKGROUND_JOB_SYNC'): return False
     if not sync_is_due() or not _background_lock.acquire(blocking=False): return False
     def run():
         lock_connection = None; database_lock_acquired = True
