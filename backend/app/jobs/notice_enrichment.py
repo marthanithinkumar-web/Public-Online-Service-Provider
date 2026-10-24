@@ -17,6 +17,12 @@ from .sources import parse_explicit_deadline
 MAX_NOTICE_BYTES=8*1024*1024
 
 def _clean(value):return re.sub(r'\s+',' ',str(value or '')).strip()
+def _add_warning(item,value):
+    warnings=getattr(item,'warnings',None)
+    if warnings is None:
+        warnings=[]
+        setattr(item,'warnings',warnings)
+    warnings.append(value)
 def _download_pdf(url,session=None):
     validate_official_url(url);client=session or requests.Session();response=client.get(url,timeout=(10,35),allow_redirects=True,headers=BROWSER_HEADERS,stream=True);response.raise_for_status();validate_official_url(response.url);content_type=(response.headers.get('Content-Type') or '').lower()
     if 'pdf' not in content_type and not urlparse(response.url).path.lower().endswith('.pdf'):return None
@@ -78,7 +84,7 @@ def _vacancies(text):
 def enrich_job_item(item,session=None):
     """Inspect a linked allowlisted official HTML/PDF notice before publication."""
     url=str(getattr(item,'official_notice_url','') or '')
-    if not url or 'notice_is_listing_page' in (item.warnings or []):
+    if not url or 'notice_is_listing_page' in (getattr(item,'warnings',[]) or []):
         return item
     try:
         if urlparse(url).path.lower().endswith('.pdf'):
@@ -88,7 +94,7 @@ def enrich_job_item(item,session=None):
             title_match=re.search(r'<title\b[^>]*>(.*?)</title>',html,re.I|re.S)
             page_title=_clean(re.sub(r'<[^>]+>',' ',title_match.group(1))) if title_match else ''
             if re.search(r'\b(final result|result of (?:the )?(?:recruitment|selection|examination)|selection list|selected candidates|admit card|call letter|answer key|score card|marks list|cancelled recruitment|recruitment cancelled)\b',f'{item.title} {page_title}',re.I):
-                item.warnings.append('notice_excluded_result_only')
+                _add_warning(item,'notice_excluded_result_only')
                 return item
             text=_clean(re.sub(r'<[^>]+>',' ',re.sub(r'<(?:script|style)\b[^>]*>.*?</(?:script|style)>',' ',html,flags=re.I|re.S)))
             text=re.sub(r'&nbsp;',' ',text,flags=re.I)
