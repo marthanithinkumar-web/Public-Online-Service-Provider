@@ -22,7 +22,7 @@ jobs:
     env:
       E2E_ADMIN_EMAIL: admin-e2e@example.test
       E2E_ADMIN_PASSWORD: E2E-Admin-Password-2026!
-      DATABASE_URL: sqlite:////tmp/posp-browser-e2e.db
+      DATABASE_URL: sqlite:////tmp/posp-browser-e2e.db?timeout=30
       SECRET_KEY: browser-e2e-secret-key-that-is-long-enough-for-tests-only
       ADMIN_EMAIL: admin-e2e@example.test
       ADMIN_PASSWORD: E2E-Admin-Password-2026!
