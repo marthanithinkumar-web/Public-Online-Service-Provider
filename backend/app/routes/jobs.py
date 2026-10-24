@@ -46,6 +46,15 @@ def _public_query():
     )
 
 
+def _job_payload(job):
+    data = job.to_dict()
+    source_data = data.get('source')
+    if isinstance(source_data, dict):
+        definition = SOURCE_BY_KEY.get(source_data.get('key'))
+        source_data['allow_missing_deadline'] = bool(definition and definition.allow_missing_deadline)
+    return data
+
+
 @bp.get('/')
 def list_jobs():
     from ..jobs.sync import trigger_background_sync
@@ -82,7 +91,7 @@ def list_jobs():
         JobNotification.deadline.asc().nullslast(),
         JobNotification.published_at.desc(),
     ).limit(limit).all()
-    response = jsonify({'items': [job.to_dict() for job in jobs], 'count': len(jobs), 'total': total})
+    response = jsonify({'items': [_job_payload(job) for job in jobs], 'count': len(jobs), 'total': total})
     response.headers['Cache-Control'] = 'public, max-age=300, stale-while-revalidate=600'
     return response
 
@@ -95,6 +104,8 @@ def list_sources():
     for source in JobSource.query.filter_by(enabled=True).order_by(JobSource.name).all():
         data = source.to_dict()
         data.pop('last_error', None)
+        definition = SOURCE_BY_KEY.get(source.key)
+        data['allow_missing_deadline'] = bool(definition and definition.allow_missing_deadline)
         items.append(data)
     response = jsonify({'items': items})
     response.headers['Cache-Control'] = 'public, max-age=900, stale-while-revalidate=1800'
@@ -113,6 +124,6 @@ def snapshot_status():
 @bp.get('/<slug>')
 def job_detail(slug):
     job = _public_query().filter_by(slug=slug).first_or_404()
-    response = jsonify({'job': job.to_dict()})
+    response = jsonify({'job': _job_payload(job)})
     response.headers['Cache-Control'] = 'public, max-age=300, stale-while-revalidate=600'
     return response
