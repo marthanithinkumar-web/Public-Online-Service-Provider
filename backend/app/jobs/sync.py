@@ -115,11 +115,13 @@ def sync_source(source, session=None):
             )
         published = 0; duplicates = 0
         for item in items:
-            # Keep database-backed sync consistent with the verified snapshot:
-            # extract a missing deadline from a high-confidence official PDF
-            # before applying the strict current-deadline publication rule.
-            if not item.deadline and item.confidence >= 0.8:
+            # Inspect high-confidence official notices before applying the same
+            # deadline rule used by the static snapshot. The date may exist only
+            # in a linked PDF/HTML notice, and result-only pages must not publish.
+            if item.confidence >= 0.8:
                 item = enrich_job_item(item, session=session)
+            if 'notice_excluded_result_only' in (item.warnings or []):
+                continue
             job, _, duplicate = upsert_item(source, item, allow_missing_deadline=definition.allow_missing_deadline, missing_deadline_max_age_days=definition.missing_deadline_max_age_days)
             duplicates += int(duplicate); published += int(job.status == 'published')
         source.fetched_count = len(items); source.published_count = published; source.last_sync_completed_at = utc_now(); source.last_sync_status = 'success'; source.last_error = f'{duplicates} duplicate notice(s) skipped.' if duplicates else None
