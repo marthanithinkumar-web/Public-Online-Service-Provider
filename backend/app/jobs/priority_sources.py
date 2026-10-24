@@ -34,6 +34,7 @@ class _GroupedOfficialListingsParser(HTMLParser):
         self.list_depth = 0
         self.list_item = None
         self.anchor = None
+        self.all_links = []
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
@@ -46,7 +47,7 @@ class _GroupedOfficialListingsParser(HTMLParser):
         elif tag == 'li' and self.list_depth > 0:
             self.list_item = {'text': [], 'links': []}
         elif tag == 'a':
-            self.anchor = {'href': attrs.get('href', ''), 'text': []}
+            self.anchor = {'href': attrs.get('href', ''), 'text': [], 'context': list(self.paragraphs)}
 
     def handle_data(self, data):
         if self.paragraph is not None:
@@ -59,8 +60,10 @@ class _GroupedOfficialListingsParser(HTMLParser):
     def handle_endtag(self, tag):
         if tag == 'a' and self.anchor is not None:
             label = clean(' '.join(self.anchor['text']))
-            if self.list_item is not None and self.anchor.get('href'):
-                self.list_item['links'].append((self.anchor['href'], label))
+            if self.anchor.get('href'):
+                self.all_links.append((self.anchor['href'], label, self.anchor.get('context', [])))
+                if self.list_item is not None:
+                    self.list_item['links'].append((self.anchor['href'], label))
             self.anchor = None
         elif tag == 'li' and self.list_item is not None:
             self.list_item['text'] = clean(' '.join(self.list_item['text']))
@@ -105,6 +108,12 @@ def _grouped_official_parser(organization, summary, fallback=None):
                 continue
 
             links = [link for row in section['items'] for link in row.get('links', [])]
+            # Some SBI CMS components place the advertisement anchors outside the
+            # <li> node even though their text appears with the group. Retain all
+            # anchors carrying this group's surrounding title/ad-number context.
+            for href, label, link_context in document.all_links:
+                if link_context == context and href and (href, label) not in links:
+                    links.append((href, label))
             application_candidates = [
                 (href, label) for href, label in links
                 if re.search(r'\b(apply online|apply now|online application|online registration|registration portal)\b', label, re.I)
