@@ -1,5 +1,6 @@
 from app.jobs import sources
 from app.jobs.priority_sources import parse_rbi
+from app.jobs.sources import parse_all_dates, parse_date
 
 
 def test_employment_news_all_jobs_is_removed_and_priority_sources_are_registered():
@@ -29,3 +30,9 @@ def test_priority_parser_keeps_recruitment_notice_and_excludes_results():
     assert items[0].organization == 'Reserve Bank of India (RBI)'
     assert items[0].deadline.isoformat() == '2026-10-30'
     assert items[0].official_notice_url == 'https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=5001'
+
+
+def test_dotted_numeric_dates_are_parsed_from_official_deadline_text():
+    assert parse_date('09.11.2026').isoformat() == '2026-11-09'
+    dates = parse_all_dates('Apply online from 19.10.2026 to 09.11.2026')
+    assert [value.isoformat() for value in dates] == ['2026-10-19', '2026-11-09']
