@@ -101,6 +101,11 @@ def enrich_job_item(item,session=None):
         return item
     if len(text)<30:
         return item
+    # Some listing links are misleading; reject result/selection PDFs whose
+    # opening text identifies them as a result rather than a live vacancy.
+    if re.search(r'\b(final result|result of (?:the )?(?:recruitment|selection|examination)|selection list|selected candidates|admit card|call letter|answer key|score card|marks list|cancelled recruitment|recruitment cancelled)\b', f'{item.title} {text[:1200]}', re.I):
+        item.warnings.append('notice_excluded_result_only')
+        return item
     if not getattr(item,'qualification',None):item.qualification=_qualification(text)
     if not getattr(item,'age_limit',None):item.age_limit=_age(text)
     if not getattr(item,'application_fee',None):item.application_fee=_fee(text)
