@@ -22,7 +22,7 @@ ALLOWED_HOSTS = {
     'isro.gov.in', 'www.isro.gov.in',
     'ncs.gov.in', 'www.ncs.gov.in',
     'opportunities.rbi.org.in',
-    'sbi.co.in', 'www.sbi.co.in',
+    'sbi.co.in', 'www.sbi.co.in', 'sbi.bank.in', 'www.sbi.bank.in',
     'navodaya.gov.in', 'www.navodaya.gov.in',
     'sainikschoolsociety.in', 'www.sainikschoolsociety.in',
     'kvsangathan.nic.in', 'www.kvsangathan.nic.in',
