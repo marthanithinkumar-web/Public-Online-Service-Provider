@@ -113,6 +113,26 @@ def enrich_job_item(item,session=None):
     start,deadline=_application_dates(text)
     if deadline is None:
         deadline=parse_explicit_deadline(text)
+    if deadline is None:
+        parsed_url = urlparse(url)
+        organization = str(getattr(item, 'organization', '') or '').lower()
+        # DRDO's official vacancy detail pages label the application closing
+        # date as "End Date". Interpret that field only on DRDO vacancy-detail
+        # URLs, never on arbitrary pages where it could mean a project end date.
+        if (
+            parsed_url.hostname in {'drdo.gov.in', 'www.drdo.gov.in'}
+            and re.search(r'/drdo/offerings/vacancies(?:/|$)', parsed_url.path, re.I)
+            and 'drdo' in organization
+        ):
+            end_date_match = re.search(
+                r'\bEnd Date\b\s*[:\-]?\s*'
+                r'(\d{1,2}[./-]\d{1,2}[./-]20\d{2}|'
+                r'(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+20\d{2})',
+                text,
+                re.I,
+            )
+            if end_date_match:
+                deadline = parse_explicit_deadline(f'Last date for application: {end_date_match.group(1)}')
     if not getattr(item,'application_start_date',None) and start:item.application_start_date=start
     if not getattr(item,'deadline',None) and deadline:item.deadline=deadline
     extracted=[('Qualification',item.qualification),('Age',item.age_limit),('Fee',item.application_fee),('Vacancies',item.vacancies),('Pay',item.salary)];facts=[f'{label}: {value}' for label,value in extracted if value]
