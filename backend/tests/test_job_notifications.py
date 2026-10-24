@@ -330,3 +330,42 @@ def test_public_snapshot_keeps_verified_open_jobs_during_temporary_source_failur
     assert second['successful_sources'] == 0
     assert second['count'] == 1
     assert second['items'][0]['title'] == complete.title
+
+
+def test_snapshot_enriches_official_pdf_deadline_before_publication_filter(monkeypatch):
+    deadline = date.today() + timedelta(days=20)
+    item = _item(deadline=None, official_notice_url='https://employmentnews.gov.in/notice/active-notice.pdf')
+    definition = SourceDefinition('employment_news', 'Employment News', 'https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All', lambda *_: [item])
+    monkeypatch.setattr('app.jobs.snapshot.SOURCE_DEFINITIONS', (definition,))
+    monkeypatch.setattr('app.jobs.snapshot.fetch_official_page', lambda *_args, **_kwargs: '<html/>')
+
+    def enrich(candidate, session=None):
+        candidate.deadline = deadline
+        return candidate
+
+    monkeypatch.setattr('app.jobs.snapshot.enrich_job_item', enrich)
+    snapshot = build_snapshot(existing={'items': [], 'sources': []})
+    assert snapshot['count'] == 1
+    assert snapshot['items'][0]['deadline'] == deadline.isoformat()
+
+
+def test_database_sync_enriches_official_pdf_deadline_before_upsert(client, monkeypatch):
+    deadline = date.today() + timedelta(days=20)
+    item = _item(deadline=None, official_notice_url='https://employmentnews.gov.in/notice/active-notice.pdf')
+    definition = SourceDefinition('employment_news', 'Employment News', 'https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All', lambda *_: [item])
+    monkeypatch.setitem(__import__('app.jobs.sync', fromlist=['SOURCE_BY_KEY']).SOURCE_BY_KEY, 'employment_news', definition)
+    monkeypatch.setattr('app.jobs.sync.fetch_official_page', lambda *_args, **_kwargs: '<html/>')
+
+    def enrich(candidate, session=None):
+        candidate.deadline = deadline
+        return candidate
+
+    monkeypatch.setattr('app.jobs.sync.enrich_job_item', enrich)
+    with client.application.app_context():
+        source = JobSource.query.filter_by(key='employment_news').first()
+        if source is None:
+            source = JobSource(key='employment_news', name='Employment News', listing_url=definition.listing_url, enabled=True, last_sync_status='not_run', fetched_count=0, published_count=0)
+            db.session.add(source); db.session.commit()
+        result = sync_source(source)
+        assert result['published'] == 1
+        assert JobNotification.query.filter_by(status='published').count() == 1

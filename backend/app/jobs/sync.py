@@ -11,6 +11,7 @@ from sqlalchemy import text
 from ..models.job import JobNotification, JobSource
 from ..utils.database import db
 from .official_fetch import OfficialSourceUnavailable, fetch_official_page, validate_official_url
+from .notice_enrichment import enrich_job_item
 from .rules import item_hash, target_status, unique_slug
 from .sources import SOURCE_BY_KEY, SOURCE_DEFINITIONS, JobItem
 
@@ -114,6 +115,11 @@ def sync_source(source, session=None):
             )
         published = 0; duplicates = 0
         for item in items:
+            # Keep database-backed sync consistent with the verified snapshot:
+            # extract a missing deadline from a high-confidence official PDF
+            # before applying the strict current-deadline publication rule.
+            if not item.deadline and item.confidence >= 0.8:
+                item = enrich_job_item(item, session=session)
             job, _, duplicate = upsert_item(source, item, allow_missing_deadline=definition.allow_missing_deadline, missing_deadline_max_age_days=definition.missing_deadline_max_age_days)
             duplicates += int(duplicate); published += int(job.status == 'published')
         source.fetched_count = len(items); source.published_count = published; source.last_sync_completed_at = utc_now(); source.last_sync_status = 'success'; source.last_error = f'{duplicates} duplicate notice(s) skipped.' if duplicates else None

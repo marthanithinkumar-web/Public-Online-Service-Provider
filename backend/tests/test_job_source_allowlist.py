@@ -19,3 +19,17 @@ def test_current_sbi_careers_host_is_approved():
 def test_unapproved_sbi_lookalike_host_is_rejected():
     with pytest.raises(ValueError):
         validate_official_url('https://sbi.bank.in.evil.example/web/careers/current-openings')
+
+
+def test_priority_and_private_sources_are_registered_for_sync_and_snapshot():
+    from app.jobs.sources import SOURCE_BY_KEY, SOURCE_DEFINITIONS
+
+    expected = {
+        'rbi', 'sbi', 'kvs', 'ibps', 'drdo_rac',
+        'wipro_careers', 'infosys_careers', 'accenture_careers',
+    }
+    assert expected.issubset(SOURCE_BY_KEY)
+    # The runtime registry also includes one separately registered RRCB source.
+    # Check that declared sources are present without requiring the two registries
+    # to have identical sizes.
+    assert {source.key for source in SOURCE_DEFINITIONS}.issubset(SOURCE_BY_KEY)
