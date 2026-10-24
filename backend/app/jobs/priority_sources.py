@@ -106,7 +106,7 @@ parse_drdo = _generic_official_parser(
 
 PRIORITY_OFFICIAL_SOURCES = (
     SourceDefinition('rbi', 'Reserve Bank of India', 'https://opportunities.rbi.org.in/Scripts/Vacancies.aspx', parse_rbi, allow_missing_deadline=True, missing_deadline_max_age_days=60),
-    SourceDefinition('sbi', 'State Bank of India — Careers', 'https://sbi.co.in/web/careers/current-openings', parse_sbi, allow_missing_deadline=True, missing_deadline_max_age_days=60),
+    SourceDefinition('sbi', 'State Bank of India — Careers', 'https://sbi.bank.in/web/careers/current-openings', parse_sbi, allow_missing_deadline=True, missing_deadline_max_age_days=60),
     SourceDefinition('nvs', 'Navodaya Vidyalaya Samiti', 'https://navodaya.gov.in/nvs/en/Recruitment/', parse_nvs, allow_missing_deadline=True, missing_deadline_max_age_days=60),
     SourceDefinition('sainik_schools', 'Sainik Schools Society', 'https://sainikschoolsociety.in/', parse_sainik, allow_missing_deadline=True, missing_deadline_max_age_days=60),
     SourceDefinition('kvs', 'Kendriya Vidyalaya Sangathan', 'https://kvsangathan.nic.in/en/recruitment/', parse_kvs, allow_missing_deadline=True, missing_deadline_max_age_days=60),
