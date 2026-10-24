@@ -213,3 +213,31 @@ def test_verify_marks_provider_captured_payment_and_exposes_receipt(client, monk
     assert response.status_code == 200
     assert response.get_json()['payment']['status'] == 'captured'
     assert response.get_json()['payment']['receipt_available'] is True
+
+def test_active_payment_blocks_cancellation_and_cancelled_order_blocks_checkout(client):
+    headers = _client_headers(client, '7')
+    with client.application.app_context():
+        user = User.query.filter_by(email='payment-7@example.com').first()
+        category = Category.query.filter_by(name='Cancellation Payment Guard').first() or Category(name='Cancellation Payment Guard')
+        db.session.add(category); db.session.flush()
+        service = Service(name='Cancellation Guard Test Service', description='Payment guard', price_inr=30, official_fee_inr=0, official_fee_status='none', category=category, is_active=True)
+        db.session.add(service); db.session.commit(); service_id = service.id
+
+    first = client.post('/api/orders/', headers=headers, json={'service_id': service_id, 'application_data': {'note': 'active payment cancellation guard'}})
+    assert first.status_code == 201
+    first_order_id = first.get_json()['order']['id']
+    with client.application.app_context():
+        db.session.add(Payment(order_id=first_order_id, purpose='assistance_fee', amount_paise=3000, currency='INR', status='created', razorpay_order_id='order_cancel_guard_active'))
+        db.session.commit()
+    blocked_cancel = client.post(f'/api/orders/{first_order_id}/cancel', headers=headers, json={})
+    assert blocked_cancel.status_code == 409
+    assert 'payment is pending or has been received' in blocked_cancel.get_json()['error']
+
+    second = client.post('/api/orders/', headers=headers, json={'service_id': service_id, 'application_data': {'note': 'cancelled checkout guard'}})
+    assert second.status_code == 201
+    second_order_id = second.get_json()['order']['id']
+    cancelled = client.post(f'/api/orders/{second_order_id}/cancel', headers=headers, json={})
+    assert cancelled.status_code == 200
+    blocked_checkout = client.post(f'/api/payments/orders/{second_order_id}/checkout', headers=headers, json={'purpose': 'assistance_fee'})
+    assert blocked_checkout.status_code == 409
+    assert 'request is cancelled' in blocked_checkout.get_json()['error']
