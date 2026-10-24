@@ -120,6 +120,14 @@ function hasCurrentDeadline(item){
   return !Number.isNaN(parsed.getTime())&&parsed.toISOString().slice(0,10)===deadline&&deadline>=indiaToday()
 }
 
+function isPublicActiveJob(item){
+  if(hasCurrentDeadline(item))return true
+  if(item?.deadline)return false
+  const lastSeen=Date.parse(String(item?.last_seen_at||''))
+  const age=Date.now()-lastSeen
+  return String(item?.job_type||'').toLowerCase()==='private'&&item?.source?.allow_missing_deadline===true&&Number(item?.confidence||0)>=0.8&&Number.isFinite(lastSeen)&&age>=-5*60*1000&&age<=3*24*60*60*1000
+}
+
 function uniqueBySlug(items){
   const seen=new Set()
   return items.filter(item=>{
@@ -133,7 +141,7 @@ function uniqueBySlug(items){
 export function readJobs(){
   // Older snapshots can carry forward a legacy duplicate slug. Keep one
   // canonical public URL until the next backend refresh repairs the source.
-  return uniqueBySlug(readSnapshot('jobs.json').filter(item=>item?.status==='published'&&hasCurrentDeadline(item)&&hasSafePublicSlug(item)))
+  return uniqueBySlug(readSnapshot('jobs.json').filter(item=>item?.status==='published'&&isPublicActiveJob(item)&&hasSafePublicSlug(item)))
 }
 
 // Only government recruitment detail pages are part of the SEO index surface.

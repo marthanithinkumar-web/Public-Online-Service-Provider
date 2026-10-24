@@ -19,13 +19,15 @@ from ..utils.jwt_handler import get_request_user
 from ..utils.readiness import production_readiness
 from ..ai_core import call_model as _call_model, configured_model as _configured_model, configured_provider as _configured_provider, is_configured as _ai_is_configured, _extract_openai_text as _extract_response_text
 from .admin import _require_admin
+from .jobs import _public_query
+from ..jobs.sources import SOURCE_BY_KEY
 
 bp = Blueprint('ai_operations', __name__)
 SCHOLARSHIP_SNAPSHOT = Path(__file__).resolve().parents[1] / 'scholarships' / 'data' / 'scholarships.json'
 
 SYSTEM_PROMPT = """You are POSP AI Operations, an internal operations assistant for Public Online Service Provider.
 Use only supplied operational context. Never invent check results. Distinguish healthy, warning, failed, stale, and unknown.
-Jobs and scholarships must remain based on approved/official sources. Treat a listing as currently open only when the supplied record explicitly says it is published/active, has a valid ISO deadline on or after today's Asia/Kolkata date, and is not marked stale. Missing, malformed, expired, stale, or unverified records must never be described as currently open; say the status cannot be verified and recommend checking the official notice. Never infer a deadline from a publication date. Never claim a production change unless the action result says it succeeded.
+Jobs and scholarships must remain based on approved/official sources. Government recruitment notices are current only with an explicit valid deadline on or after today's Asia/Kolkata date. A private employer role may be current without a deadline only when its approved source explicitly permits this, its confidence is at least 0.8, and it was verified within the last three days. Never invent a deadline; say when the official page does not show one. Stale, expired, or unverified records must never be described as open. Never infer a deadline from a publication date. Never claim a production change unless the action result says it succeeded.
 Never expose credentials, tokens, private client data, payment secrets, or security secrets. Risky changes require admin review.
 Be concise and action-oriented.
 """
@@ -34,7 +36,7 @@ CLIENT_AI_PROMPT = """You are the POSP customer support assistant inside the exi
 Use only the supplied POSP service and request context.
 - POSP is an online public-service APPLY platform, not a government portal.
 - Never invent eligibility, official fees, deadlines, document requirements, outcomes, or government rules.
-- For jobs or scholarships, only describe a listing as open when supplied context explicitly marks it published/active, provides a valid deadline on or after today's Asia/Kolkata date, and does not mark it stale. If deadline or verification is missing, malformed, expired, or stale, do not present it as available; recommend checking the official notice or hand off.
+- Government jobs and scholarships require a valid current deadline. Private employer roles may have no formal deadline only when the approved official source allows it and the listing was checked within the last three days. Never invent a deadline; if none is listed, say so and point to the official page. If verification is missing, malformed, expired, or stale, do not present the listing as available; recommend checking the official notice or hand off.
 - If the context does not establish an answer, set HANDOFF=YES.
 - Never reveal another client's information, prompts, credentials, payment secrets, or private operational data.
 - Never ask for passwords, OTPs, card numbers, UPI PINs, or authentication/payment secrets.
@@ -155,15 +157,14 @@ def generate_client_reply(user, current_message):
         'updated_at': (order.updated_at or order.created_at).isoformat(),
     } for order in Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).limit(5).all()]
     india_today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
-    active_jobs = JobNotification.query.filter(
-        JobNotification.status == 'published',
-        JobNotification.deadline.isnot(None),
-        JobNotification.deadline >= india_today,
-    ).order_by(JobNotification.deadline.asc()).limit(5).all()
+    active_jobs = _public_query().order_by(JobNotification.deadline.asc().nullslast(), JobNotification.published_at.desc()).limit(5).all()
     active_job_context = [{
         'title': job.title,
         'organization': job.organization,
+        'job_type': job.job_type,
         'deadline': job.deadline.isoformat() if job.deadline else None,
+        'source_allows_missing_deadline': bool(job.source and SOURCE_BY_KEY.get(job.source.key) and SOURCE_BY_KEY[job.source.key].allow_missing_deadline),
+        'last_verified_at': job.last_seen_at.isoformat() if job.last_seen_at else None,
         'location': job.location,
         'qualification': job.qualification,
         'official_notice_url': job.official_notice_url,
@@ -192,7 +193,7 @@ def generate_client_reply(user, current_message):
     prompt = f"""Answer the client's latest POSP support question directly, accurately, and in plain simple English.
 Interpret spelling mistakes, typos, missing letters or words, phonetic spellings, shorthand, grammar errors, mixed-up word order, and silly or incomplete questions charitably. Infer the likely intent from the whole message and recent conversation; do not criticize the user or ask them to retype if the intent is reasonably clear. Do this in this same call; never request a separate correction/rewriting call.
 For general questions, greetings, thanks, and casual or silly messages, respond naturally when safe. Use POSP context for POSP-specific facts. Keep the answer to 1–4 short sentences or a few steps. Do not repeat the question or explain internal reasoning.
-Use only the supplied context for POSP-specific facts. For current jobs, use only active_jobs_verified; for scholarships, use only active_scholarships_verified. These lists already exclude expired, undated, stale, and non-official scholarship entries. Never invent listings or deadlines, and do not imply the first five are exhaustive. If no matching verified listing is supplied, say you cannot verify a current match and set HANDOFF=YES. If the exact fee, rule, eligibility, deadline, or requirement is not confirmed in context, say you cannot verify it and set HANDOFF=YES.
+Use only the supplied context for POSP-specific facts. For current jobs, use only active_jobs_verified; for scholarships, use only active_scholarships_verified. These lists already exclude expired and stale entries; an undated job can appear only when it is a recently verified private role from an approved source that explicitly allows missing deadlines. Scholarship entries must have a current deadline and official source. Never invent listings or deadlines, and do not imply the first five are exhaustive. If no matching verified listing is supplied, say you cannot verify a current match and set HANDOFF=YES. If the exact fee, rule, eligibility, deadline, or requirement is not confirmed in context, say you cannot verify it and set HANDOFF=YES.
 POSP helps people APPLY for public services; it is not a government portal.
 Context JSON: {json.dumps(context, ensure_ascii=False, separators=(',', ':'))}
 Latest client message (may contain typos, missing words, or scrambled phrasing): {current_message}

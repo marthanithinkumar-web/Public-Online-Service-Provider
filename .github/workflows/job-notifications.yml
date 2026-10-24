@@ -48,26 +48,35 @@ jobs:
         run: |
           python - <<'PY'
           import json
+          from datetime import datetime, timedelta, timezone
           from pathlib import Path
+          from zoneinfo import ZoneInfo
           from app.jobs.sources import SOURCE_BY_KEY
 
           data = json.loads(Path('frontend/public/data/jobs.json').read_text(encoding='utf-8'))
           assert data['schema_version'] == 1
-          assert isinstance(data['items'], list)
+          assert isinstance(data['items'], list) and data['items'], 'Refusing to publish an empty active job snapshot.'
           assert isinstance(data['sources'], list) and data['sources']
+          today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+          now = datetime.now(timezone.utc)
           undated = 0
           for item in data['items']:
               assert item['status'] == 'published'
               assert item['official_notice_url'].startswith('https://')
               source_key = (item.get('source') or {}).get('key')
               assert source_key in SOURCE_BY_KEY
-              if not item.get('deadline'):
+              deadline = item.get('deadline')
+              if deadline:
+                  assert datetime.fromisoformat(deadline).date() >= today, f"Expired notice: {item.get('slug')}"
+              else:
                   definition = SOURCE_BY_KEY[source_key]
+                  last_seen = datetime.fromisoformat(str(item.get('last_seen_at') or '').replace('Z', '+00:00'))
+                  assert item.get('job_type') == 'private'
                   assert definition.allow_missing_deadline
                   assert float(item.get('confidence') or 0) >= 0.8
-                  assert item.get('last_seen_at')
+                  assert now - timedelta(days=3) <= last_seen <= now + timedelta(minutes=5)
                   undated += 1
-          print(f"Validated {len(data['items'])} published notice(s), including {undated} active undated notice(s), from {len(data['sources'])} configured source(s).")
+          print(f"Validated {len(data['items'])} active notice(s), including {undated} recently verified undated private role(s), from {len(data['sources'])} configured source(s).")
           PY
           cp frontend/public/data/jobs.json /tmp/verified-jobs.json
 

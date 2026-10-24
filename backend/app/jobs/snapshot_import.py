@@ -8,11 +8,11 @@ upstream career site is temporarily unreachable from Render.
 
 import argparse
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
-from sqlalchemy import text
+from sqlalchemy import and_, or_, text
 
 from ..models.job import JobNotification, JobSource
 from ..utils.database import db
@@ -107,14 +107,19 @@ def import_verified_snapshot(path):
         seen_hashes.add(digest)
         seen_slugs.add(slug)
 
-        # The verified snapshot can be a few hours or days old by the time a
-        # queued Render deploy starts. Validate the full snapshot, but only import
-        # records with an explicit, current deadline in India.
+        # Dated applications must still be open. Undated private roles are
+        # allowed only on configured sources and while their verification is fresh.
         deadline = _parse_date(item.get('deadline'))
         if deadline is None:
-            undated_snapshot_items_skipped += 1
-            continue
-        if deadline < india_today():
+            last_seen = _parse_datetime(item.get('last_seen_at'))
+            now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+            definition = SOURCE_BY_KEY[source_key]
+            fresh = bool(last_seen and now_utc - timedelta(days=3) <= last_seen <= now_utc + timedelta(minutes=5))
+            valid_undated_private = item.get('job_type') == 'private' and definition.allow_missing_deadline and float(item.get('confidence') or 0) >= 0.8 and fresh
+            if not valid_undated_private:
+                undated_snapshot_items_skipped += 1
+                continue
+        elif deadline < india_today():
             expired_snapshot_items_skipped += 1
             continue
         normalized_items.append((item, digest, slug, source_key))
@@ -282,10 +287,15 @@ def import_verified_snapshot(path):
         db.session.rollback()
         raise RuntimeError(f'Imported production job count mismatch: got {published_total}, expected {expected}.')
 
+    undated_source_ids = [source.id for key, source in stored_sources.items() if source.enabled and key in SOURCE_BY_KEY and SOURCE_BY_KEY[key].allow_missing_deadline]
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    fresh_since = now_utc - timedelta(days=3)
     active_total = JobNotification.query.filter(
         JobNotification.status == 'published',
-        JobNotification.deadline.isnot(None),
-        JobNotification.deadline >= india_today(),
+        or_(
+            JobNotification.deadline >= india_today(),
+            and_(JobNotification.deadline.is_(None), JobNotification.job_type == 'private', JobNotification.confidence >= 0.8, JobNotification.last_seen_at >= fresh_since, JobNotification.source_id.in_(undated_source_ids)),
+        ),
     ).count()
     if active_total != expected:
         db.session.rollback()

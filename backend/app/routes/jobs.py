@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 import re
@@ -7,6 +7,7 @@ from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy import and_, or_
 
 from ..models.job import JobNotification, JobSource
+from ..jobs.sources import SOURCE_BY_KEY
 
 
 bp = Blueprint('jobs', __name__)
@@ -27,13 +28,31 @@ def _india_today():
 
 
 def _public_query():
-    # Public listings must have a valid, current deadline. Undated records may
-    # remain in storage for review, but must not be advertised as open.
+    # Government notices require a current deadline. Private employer roles may
+    # omit one only when their configured official source was checked recently.
+    allowed_keys = [key for key, definition in SOURCE_BY_KEY.items() if definition.allow_missing_deadline]
+    source_ids = [source.id for source in JobSource.query.filter(JobSource.enabled.is_(True), JobSource.key.in_(allowed_keys)).all()]
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    undated_private = and_(
+        JobNotification.deadline.is_(None),
+        JobNotification.job_type == 'private',
+        JobNotification.confidence >= 0.8,
+        JobNotification.last_seen_at >= now_utc - timedelta(days=3),
+        JobNotification.source_id.in_(source_ids),
+    )
     return JobNotification.query.filter(
         JobNotification.status == 'published',
-        JobNotification.deadline.isnot(None),
-        JobNotification.deadline >= _india_today(),
+        or_(JobNotification.deadline >= _india_today(), undated_private),
     )
+
+
+def _job_payload(job):
+    data = job.to_dict()
+    source_data = data.get('source')
+    if isinstance(source_data, dict):
+        definition = SOURCE_BY_KEY.get(source_data.get('key'))
+        source_data['allow_missing_deadline'] = bool(definition and definition.allow_missing_deadline)
+    return data
 
 
 @bp.get('/')
@@ -69,10 +88,10 @@ def list_jobs():
         limit = 30
     jobs = query.order_by(
         JobNotification.is_featured.desc(),
-        JobNotification.deadline.asc(),
+        JobNotification.deadline.asc().nullslast(),
         JobNotification.published_at.desc(),
     ).limit(limit).all()
-    response = jsonify({'items': [job.to_dict() for job in jobs], 'count': len(jobs), 'total': total})
+    response = jsonify({'items': [_job_payload(job) for job in jobs], 'count': len(jobs), 'total': total})
     response.headers['Cache-Control'] = 'public, max-age=300, stale-while-revalidate=600'
     return response
 
@@ -85,6 +104,8 @@ def list_sources():
     for source in JobSource.query.filter_by(enabled=True).order_by(JobSource.name).all():
         data = source.to_dict()
         data.pop('last_error', None)
+        definition = SOURCE_BY_KEY.get(source.key)
+        data['allow_missing_deadline'] = bool(definition and definition.allow_missing_deadline)
         items.append(data)
     response = jsonify({'items': items})
     response.headers['Cache-Control'] = 'public, max-age=900, stale-while-revalidate=1800'
@@ -103,6 +124,6 @@ def snapshot_status():
 @bp.get('/<slug>')
 def job_detail(slug):
     job = _public_query().filter_by(slug=slug).first_or_404()
-    response = jsonify({'job': job.to_dict()})
+    response = jsonify({'job': _job_payload(job)})
     response.headers['Cache-Control'] = 'public, max-age=300, stale-while-revalidate=600'
     return response

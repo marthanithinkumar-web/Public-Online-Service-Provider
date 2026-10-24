@@ -5,24 +5,21 @@ import json
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from .notice_enrichment import enrich_job_item
+from .notice_enrichment import MAX_DEADLINE_ENRICHMENTS_PER_SOURCE, enrich_job_item, needs_deadline_enrichment
 from .official_fetch import fetch_official_page, validate_official_url
-from .rules import item_hash, slugify, target_status, unique_slug
-from .sources import SOURCE_DEFINITIONS
+from .rules import is_public_active_job, item_hash, slugify, target_status, unique_slug
+from .sources import SOURCE_BY_KEY, SOURCE_DEFINITIONS
 
 
 def utc_now(): return datetime.now(timezone.utc).replace(microsecond=0)
 def _iso(value): return value.isoformat() if value else None
 
 
-def _is_open(job, today, now=None):
-    raw = job.get('deadline')
-    if not raw:
-        return False
-    try:
-        return date.fromisoformat(str(raw)[:10]) >= today
-    except (TypeError, ValueError):
-        return False
+def _is_open(job, today, now=None, allow_undated_private=False):
+    source_key = (job.get('source') or {}).get('key')
+    definition = SOURCE_BY_KEY.get(source_key)
+    allow_undated = bool(allow_undated_private and definition and definition.allow_missing_deadline)
+    return is_public_active_job(job, source_allows_missing_deadline=allow_undated, today=today, now=now)
 
 
 def _safe_previous(existing):
@@ -35,7 +32,7 @@ def _serialize_item(item,definition,checked_at,previous=None):
     if item.application_url:validate_official_url(item.application_url)
     content_hash=item_hash(item);previous=previous or {}
     source={'key':definition.key,'name':definition.name,'listing_url':definition.listing_url,'last_sync_completed_at':checked_at,'last_sync_status':'success'}
-    return {'id':int(content_hash[:12],16),'slug':unique_slug(item,content_hash),'title':item.title[:500],'organization':item.organization[:500],'job_type':item.job_type if item.job_type in {'government','private'} else 'government','appointment_type':item.appointment_type,'location':item.location,'qualification':item.qualification,'age_limit':item.age_limit,'application_fee':item.application_fee,'vacancies':item.vacancies,'salary':item.salary,'summary':item.summary,'issue_date':_iso(item.issue_date),'application_start_date':_iso(item.application_start_date),'deadline':_iso(item.deadline),'official_notice_url':item.official_notice_url,'application_url':item.application_url,'status':'published','verification_status':'official_source_checked','confidence':float(item.confidence or 0),'is_featured':bool(previous.get('is_featured',False)),'source':source,'first_seen_at':previous.get('first_seen_at') or checked_at,'last_seen_at':checked_at,'published_at':previous.get('published_at') or checked_at,'content_hash':content_hash}
+    return {'id':int(content_hash[:12],16),'slug':unique_slug(item,content_hash),'title':item.title[:500],'organization':item.organization[:500],'job_type':item.job_type if item.job_type in {'government','private'} else 'government','appointment_type':item.appointment_type,'location':item.location,'qualification':item.qualification,'age_limit':item.age_limit,'application_fee':item.application_fee,'vacancies':item.vacancies,'salary':item.salary,'summary':item.summary,'issue_date':_iso(item.issue_date),'application_start_date':_iso(item.application_start_date),'deadline':_iso(item.deadline),'official_notice_url':item.official_notice_url,'application_url':item.application_url,'status':'published','verification_status':'official_source_checked','confidence':float(item.confidence or 0),'is_featured':bool(previous.get('is_featured',False)),'source':{**source,'allow_missing_deadline':bool(definition.allow_missing_deadline)},'first_seen_at':previous.get('first_seen_at') or checked_at,'last_seen_at':checked_at,'published_at':previous.get('published_at') or checked_at,'content_hash':content_hash}
 
 
 def _fallback_job_hash(job):
@@ -86,30 +83,35 @@ def build_snapshot(existing=None,session=None,now=None):
     for definition in SOURCE_DEFINITIONS:
         source_jobs=[]
         try:
-            html=fetch_official_page(definition.listing_url,session=session);parsed=definition.parser(html,definition.listing_url);published_count=0
+            html=fetch_official_page(definition.listing_url,session=session);parsed=definition.parser(html,definition.listing_url);published_count=0;deadline_enrichment_budget=MAX_DEADLINE_ENRICHMENTS_PER_SOURCE
             for item in parsed:
+                enriched_for_deadline=False
+                if deadline_enrichment_budget>0 and needs_deadline_enrichment(item):
+                    item=enrich_job_item(item,session=session);deadline_enrichment_budget-=1;enriched_for_deadline=True
                 status=target_status(item,today=today,allow_missing_deadline=definition.allow_missing_deadline,missing_deadline_max_age_days=definition.missing_deadline_max_age_days)
                 if status!='published':review_count+=int(status=='needs_review');continue
                 digest=item_hash(item)
                 if digest in seen_hashes:continue
-                # Fetch the actual official PDF only after the listing has passed
-                # publication validation. Failure leaves the verified listing intact.
-                item=enrich_job_item(item,session=session)
+                # Enrich other facts after publication validation; do not fetch a
+                # PDF twice when it was already used to establish the deadline.
+                if not enriched_for_deadline:item=enrich_job_item(item,session=session)
                 serialized=_serialize_item(item,definition,checked_at,previous_by_hash.get(digest));seen_hashes.add(digest);source_jobs.append(serialized);published_count+=1
             for old_job in previous_by_source.get(definition.key,[]):
                 digest=old_job.get('content_hash')
                 if digest and digest not in seen_hashes and _is_open(old_job,today,now=now):
                     carried=dict(old_job);carried['last_seen_at']=checked_at;source_data=dict(carried.get('source') or {});source_data.update({'key':definition.key,'name':definition.name,'listing_url':definition.listing_url,'last_sync_completed_at':checked_at,'last_sync_status':'success'});carried['source']=source_data;source_jobs.append(carried);seen_hashes.add(digest)
-            sources.append({'key':definition.key,'name':definition.name,'listing_url':definition.listing_url,'enabled':True,'last_sync_completed_at':checked_at,'last_sync_status':'success','fetched_count':len(parsed),'published_count':published_count});successful_sources+=1
+            sources.append({'key':definition.key,'name':definition.name,'listing_url':definition.listing_url,'enabled':True,'last_sync_completed_at':checked_at,'last_sync_status':'success','allow_missing_deadline':bool(definition.allow_missing_deadline),'fetched_count':len(parsed),'published_count':published_count});successful_sources+=1
         except Exception as exc:
             for old_job in previous_by_source.get(definition.key,[]):
                 digest=old_job.get('content_hash')
-                if digest and digest not in seen_hashes and _is_open(old_job,today,now=now):jobs.append(old_job);seen_hashes.add(digest)
-            sources.append({'key':definition.key,'name':definition.name,'listing_url':definition.listing_url,'enabled':True,'last_sync_completed_at':checked_at,'last_sync_status':'failed','fetched_count':0,'published_count':0,'last_error':str(exc)[:300]})
+                if digest and digest not in seen_hashes and _is_open(old_job,today,now=now,allow_undated_private=True):jobs.append(old_job);seen_hashes.add(digest)
+            sources.append({'key':definition.key,'name':definition.name,'listing_url':definition.listing_url,'enabled':True,'last_sync_completed_at':checked_at,'last_sync_status':'failed','allow_missing_deadline':bool(definition.allow_missing_deadline),'fetched_count':0,'published_count':0,'last_error':str(exc)[:300]})
         jobs.extend(source_jobs)
     jobs.sort(key=lambda job:(not bool(job.get('is_featured')),job.get('deadline') or '9999-12-31',job.get('title') or ''))
     jobs=_deduplicate_job_identities(jobs)
     _ensure_unique_slugs(jobs)
+    if not jobs:
+        raise RuntimeError('Refusing to publish an empty job snapshot; no current deadline-verified notices or recently verified private roles were found.')
     return {'schema_version':1,'generated_at':checked_at,'items':jobs,'sources':sources,'count':len(jobs),'review_count':review_count,'successful_sources':successful_sources}
 
 

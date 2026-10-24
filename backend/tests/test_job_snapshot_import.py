@@ -104,6 +104,26 @@ def test_verified_snapshot_import_is_idempotent(client, tmp_path):
         assert first['active_total'] == second['active_total'] == 1
         assert JobNotification.query.filter_by(content_hash='d' * 64).count() == 1
 
+
+
+def test_verified_snapshot_accepts_fresh_undated_private_roles_from_approved_sources(client, tmp_path):
+    source = next(definition for definition in SOURCE_DEFINITIONS if definition.allow_missing_deadline)
+    item = _item(source, '3' * 64, 'private-undated-open', 'Private Undated Open')
+    item['job_type'] = 'private'
+    item['deadline'] = None
+    item['confidence'] = 0.88
+    path = tmp_path / 'jobs.json'
+    path.write_text(json.dumps(_snapshot(source, [item])), encoding='utf-8')
+
+    with client.application.app_context():
+        result = import_verified_snapshot(path)
+        stored = JobNotification.query.filter_by(slug='private-undated-open').one()
+        assert result['imported'] == 1
+        assert result['active_total'] == 1
+        assert result['undated_snapshot_items_skipped'] == 0
+        assert stored.status == 'published'
+        assert stored.deadline is None
+
 def test_verified_snapshot_skips_undated_items(client, tmp_path):
     source = SOURCE_DEFINITIONS[0]
     dated = _item(source, '1' * 64, 'dated-open', 'Dated Open')

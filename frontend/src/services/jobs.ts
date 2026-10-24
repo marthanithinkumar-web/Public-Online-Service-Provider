@@ -1,7 +1,7 @@
 import axios from 'axios'
 import {apiBase} from './apiBase'
 
-export type JobSource={key:string;name:string;listing_url:string;last_sync_completed_at?:string|null;last_sync_status?:string;fetched_count?:number;published_count?:number;last_error?:string|null;enabled?:boolean}
+export type JobSource={key:string;name:string;listing_url:string;last_sync_completed_at?:string|null;last_sync_status?:string;fetched_count?:number;published_count?:number;last_error?:string|null;enabled?:boolean;allow_missing_deadline?:boolean}
 export type JobFeeFactor={key:string;label:string;type:'select'|'text'|'boolean';options?:string[];required?:boolean}
 export type JobFeeRule={amount_inr:number;conditions:Record<string,string[]>;label?:string;priority?:number}
 export type JobNotification={
@@ -61,6 +61,14 @@ function hasCurrentDeadline(value?:string|null){
   const parsed=new Date(value+'T00:00:00Z')
   return !Number.isNaN(parsed.getTime())&&parsed.toISOString().slice(0,10)===value&&value>=indiaToday()
 }
+function isPublicActiveJob(job:JobNotification){
+  if(job.status!=='published')return false
+  if(hasCurrentDeadline(job.deadline))return true
+  if(job.deadline)return false
+  const lastSeen=Date.parse(job.last_seen_at||'')
+  const age=Date.now()-lastSeen
+  return job.job_type==='private'&&job.source?.allow_missing_deadline===true&&Number(job.confidence||0)>=0.8&&Number.isFinite(lastSeen)&&age>=-5*60*1000&&age<=3*24*60*60*1000
+}
 
 function filterSnapshot(data:JobFeedData,params:Record<string,string|number|boolean>){
   const term=String(params.q||'').trim().toLowerCase()
@@ -71,7 +79,7 @@ function filterSnapshot(data:JobFeedData,params:Record<string,string|number|bool
   const requested=Number(params.limit||30)
   const limit=Number.isFinite(requested)?Math.min(100,Math.max(1,requested)):30
   const items=(data.items||[]).filter(job=>{
-    if(job.status!=='published'||!hasCurrentDeadline(job.deadline))return false
+    if(!isPublicActiveJob(job))return false
     if(type&&job.job_type!==type)return false
     if(featured&&!job.is_featured)return false
     if(!tokens.length)return true
@@ -101,14 +109,14 @@ export async function fetchJobs(params:Record<string,string|number|boolean>={}){
     return snapshot
   }catch{
     const data=(await api.get('/jobs/',{params})).data as JobFeedData
-    return {...data,items:(data.items||[]).filter(job=>job.status==='published'&&hasCurrentDeadline(job.deadline)).sort(compareJobs)}
+    return {...data,items:(data.items||[]).filter(job=>isPublicActiveJob(job)).sort(compareJobs)}
   }
 }
 
 export async function fetchJob(slug:string){
   try{
     const data=await fetchSnapshot()
-    const job=(data.items||[]).find(item=>item.slug===slug&&item.status==='published'&&hasCurrentDeadline(item.deadline))
+    const job=(data.items||[]).find(item=>item.slug===slug&&isPublicActiveJob(item))
     if(job){void api.get(`/jobs/${encodeURIComponent(slug)}`,{timeout:3500}).catch(()=>undefined);return {job}}
   }catch{
     // Fall through to the live API when the snapshot cannot be loaded.
