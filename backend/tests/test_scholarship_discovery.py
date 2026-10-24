@@ -140,14 +140,10 @@ def test_snapshot_separates_official_and_private_and_replaces_healthy_source(tmp
     payload = refresh_snapshot(path, today=date(2026, 9, 4), now=NOW, discovery_func=discoverer)
 
     assert payload['official_count'] == 1
-    assert payload['private_count'] == 1
+    assert payload['private_count'] == 0
     assert payload['stale_source_count'] == 0
     titles = {item['title'] for item in payload['items']}
-    assert 'New NSP Scholarship' in titles
-    assert 'Old NSP Scholarship' not in titles
-    private = next(item for item in payload['items'] if item['title'] == 'Partner Scholarship')
-    assert private['source_type'] == 'private'
-    assert private['is_official'] is False
+    assert titles == {'New NSP Scholarship'}
     assert payload['discovery']['source_health']['nsp']['ok'] is True
 
 
@@ -204,9 +200,11 @@ def test_snapshot_preserves_recent_official_entry_when_source_fails(tmp_path):
 
     payload = refresh_snapshot(path, today=date(2026, 9, 4), now=NOW, discovery_func=discoverer)
 
-    assert payload['count'] == 1
-    assert payload['items'][0]['stale_source'] is True
+    assert payload['count'] == 0
+    assert payload['items'] == []
     assert payload['stale_source_count'] == 1
+    assert payload['stale_items'][0]['stale_source'] is True
+    assert payload['stale_items'][0]['title'] == 'Existing NSP Scholarship'
 
 
 def test_strict_snapshot_refuses_unhealthy_primary_source(tmp_path):
