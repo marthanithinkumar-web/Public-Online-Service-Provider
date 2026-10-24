@@ -118,7 +118,9 @@ def sync_source(source, session=None):
             # Inspect high-confidence official notices before applying the same
             # deadline rule used by the static snapshot. The date may exist only
             # in a linked PDF/HTML notice, and result-only pages must not publish.
-            if item.confidence >= 0.8:
+            notice_url = str(item.official_notice_url or '').rstrip('/')
+            listing_url = str(definition.listing_url or '').rstrip('/')
+            if item.confidence >= 0.8 and notice_url and notice_url != listing_url:
                 item = enrich_job_item(item, session=session)
             if 'notice_excluded_result_only' in (item.warnings or []):
                 continue
