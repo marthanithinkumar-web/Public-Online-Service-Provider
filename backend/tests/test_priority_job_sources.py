@@ -2,7 +2,7 @@ from app.jobs import sources
 from app.jobs.priority_sources import parse_rbi
 from datetime import date, datetime, timezone
 
-from app.jobs import snapshot
+from app.jobs import snapshot, notice_enrichment
 from app.jobs.sources import JobItem, SOURCE_DEFINITIONS, parse_all_dates, parse_date, parse_explicit_deadline
 
 
@@ -99,3 +99,42 @@ def test_snapshot_does_not_publish_result_only_notice(monkeypatch):
     result = snapshot.build_snapshot(now=datetime(2026, 10, 24, tzinfo=timezone.utc))
 
     assert result['count'] == 0
+
+
+
+def test_html_notice_supplies_explicit_dotted_deadline(monkeypatch):
+    source = next(item for item in SOURCE_DEFINITIONS if item.key == 'sbi')
+    item = JobItem(
+        external_id='html-notice-date',
+        title='Recruitment for Specialist Officer',
+        organization='State Bank of India',
+        official_notice_url=source.listing_url,
+        confidence=0.95,
+    )
+    monkeypatch.setattr(
+        notice_enrichment,
+        'fetch_official_page',
+        lambda url, session=None: '<html><title>Specialist Officer Recruitment</title><body><p>Last date to apply: 09.11.2026</p></body></html>',
+    )
+
+    enriched = notice_enrichment.enrich_job_item(item)
+    assert enriched.deadline == date(2026, 11, 9)
+
+
+def test_html_result_page_is_marked_not_for_publication(monkeypatch):
+    source = next(item for item in SOURCE_DEFINITIONS if item.key == 'sbi')
+    item = JobItem(
+        external_id='html-result-notice',
+        title='Recruitment for Specialist Officer',
+        organization='State Bank of India',
+        official_notice_url=source.listing_url,
+        confidence=0.95,
+    )
+    monkeypatch.setattr(
+        notice_enrichment,
+        'fetch_official_page',
+        lambda url, session=None: '<html><title>Final Result for Specialist Officer Recruitment</title><body>Selected candidates list</body></html>',
+    )
+
+    enriched = notice_enrichment.enrich_job_item(item)
+    assert 'notice_excluded_result_only' in enriched.warnings
