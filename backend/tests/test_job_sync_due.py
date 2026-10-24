@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from app.jobs.sources import SOURCE_DEFINITIONS
+from app.jobs import sync as job_sync
 from app.jobs.sync import sync_is_due
 from app.models.job import JobSource
 from app.utils.database import db
@@ -66,3 +67,15 @@ def test_sync_is_not_due_when_all_enabled_configured_sources_are_recent(client):
         _mark_all_sources_recent()
 
         assert sync_is_due(hours=20) is False
+
+
+def test_background_job_sync_can_be_disabled_for_browser_e2e(client, monkeypatch):
+    app = client.application
+    app.config['DISABLE_BACKGROUND_JOB_SYNC'] = True
+    monkeypatch.setattr(
+        job_sync,
+        'sync_is_due',
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError('sync check must be skipped')),
+    )
+
+    assert job_sync.trigger_background_sync(app) is False

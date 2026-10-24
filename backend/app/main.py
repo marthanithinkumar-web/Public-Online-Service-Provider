@@ -81,7 +81,7 @@ def ensure_job_sources():
 def create_app():
     validate_runtime_security()
     database_uri=_database_url()
-    app=Flask(__name__);app.config.from_mapping(SECRET_KEY=os.getenv('SECRET_KEY','dev-key'),SQLALCHEMY_DATABASE_URI=database_uri,SQLALCHEMY_TRACK_MODIFICATIONS=False,SQLALCHEMY_ENGINE_OPTIONS=database_engine_options(database_uri),MAIL_SERVER=os.getenv('SMTP_HOST',''),MAIL_PORT=int(os.getenv('SMTP_PORT') or 0),MAIL_USERNAME=os.getenv('SMTP_USER'),MAIL_PASSWORD=os.getenv('SMTP_PASS'),MAIL_USE_TLS=True,MAIL_USE_SSL=False)
+    app=Flask(__name__);app.config.from_mapping(SECRET_KEY=os.getenv('SECRET_KEY','dev-key'),SQLALCHEMY_DATABASE_URI=database_uri,SQLALCHEMY_TRACK_MODIFICATIONS=False,DISABLE_BACKGROUND_JOB_SYNC=os.getenv('DISABLE_BACKGROUND_JOB_SYNC','').strip().lower() in {'1','true','yes'},SQLALCHEMY_ENGINE_OPTIONS=database_engine_options(database_uri),MAIL_SERVER=os.getenv('SMTP_HOST',''),MAIL_PORT=int(os.getenv('SMTP_PORT') or 0),MAIL_USERNAME=os.getenv('SMTP_USER'),MAIL_PASSWORD=os.getenv('SMTP_PASS'),MAIL_USE_TLS=True,MAIL_USE_SSL=False)
     Talisman(app,content_security_policy={'default-src':"'none'",'base-uri':"'none'",'frame-ancestors':"'none'"},force_https=os.getenv('FORCE_HTTPS','0')=='1',referrer_policy='no-referrer');db.init_app(app)
     configured_origins=os.getenv('CORS_ORIGINS');frontends=configured_origins or os.getenv('FRONTEND_URL','http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173');allowed_origins=[o.strip().rstrip('/') for o in frontends.split(',') if o.strip()]
     render_ui='https://pospindia.onrender.com'
