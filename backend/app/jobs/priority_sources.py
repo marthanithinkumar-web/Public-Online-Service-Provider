@@ -68,10 +68,12 @@ class _SBIPageParser(HTMLParser):
             advert = re.search(r"advertisement\\s*(?:no\\.?|number)\\s*[:#-]?\\s*([A-Z0-9/-]+)", text, re.I)
             if advert:
                 self.current_advertisement = advert.group(1).rstrip(".,)")
-            elif _RECRUITMENT.search(text) and not any(term in text.lower() for term in _EXCLUDED):
-                self.current_title = re.sub(r"\\s*\\((?:apply online|online registration).*?\\)\\s*$", "", text, flags=re.I).strip()
+            elif _RECRUITMENT.search(text):
+                self.current_title = ""
                 self.current_advertisement = None
                 self.current_notice_url = None
+                if not any(term in text.lower() for term in _EXCLUDED):
+                    self.current_title = re.sub(r"\\s*\\((?:apply online|online registration).*?\\)\\s*$", "", text, flags=re.I).strip()
         elif tag == "li" and self.list_item is not None:
             label = clean(" ".join(self.list_item["text"]))
             for link in self.list_item["links"]:
