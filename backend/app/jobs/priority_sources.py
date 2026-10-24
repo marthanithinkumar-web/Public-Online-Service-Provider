@@ -2,7 +2,8 @@ import re
 from datetime import date
 from urllib.parse import urljoin
 
-from .sources import JobItem, SourceDefinition, clean, parse_all_dates, parse_html
+from .official_fetch import validate_official_url
+from .sources import JobItem, SourceDefinition, clean, parse_all_dates, parse_explicit_deadline, parse_html
 
 _EXCLUDED = (
     'result', 'results', 'admit card', 'call letter', 'answer key', 'interview schedule',
@@ -43,24 +44,27 @@ def _generic_official_parser(organization, summary):
             if any(term in lowered for term in _EXCLUDED):
                 continue
             notice_url = urljoin(base_url, href)
-            if not notice_url.startswith('https://'):
+            try:
+                validate_official_url(notice_url)
+            except ValueError:
                 continue
             identity = (text.lower(), notice_url)
             if identity in seen:
                 continue
             seen.add(identity)
-            dates = parse_all_dates(text)
-            deadline = dates[-1] if dates else None
+            deadline = parse_explicit_deadline(text)
             if deadline and deadline < today:
                 continue
+            is_application_link = bool(re.search(r'\b(apply online|apply now|online application|registration portal)\b', text, re.I))
+            application_url = notice_url if is_application_link else None
             items.append(JobItem(
                 external_id=f'{organization.lower().replace(" ", "-")}-{index}-{text[:80]}',
                 title=text[:500],
                 organization=organization,
-                official_notice_url=notice_url,
+                official_notice_url=base_url if is_application_link else notice_url,
                 location='India',
                 deadline=deadline,
-                application_url=notice_url,
+                application_url=application_url,
                 summary=summary,
                 confidence=0.92 if deadline else 0.84,
                 warnings=[] if deadline else ['Confirm the closing date and post-specific eligibility in the official recruitment notice.'],
