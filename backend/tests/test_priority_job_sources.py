@@ -40,6 +40,7 @@ def test_dotted_dates_and_explicit_deadline_labels():
     assert [value.isoformat() for value in parse_all_dates('19.10.2026 to 09.11.2026')] == ['2026-10-19', '2026-11-09']
     assert parse_explicit_deadline('Notice issued 12 October 2026; exam on 20 November 2026') is None
     assert parse_explicit_deadline('Last date 30 October 2026') == date(2026, 10, 30)
+    assert parse_explicit_deadline('Last date for submission of online applications: 09.11.2026') == date(2026, 11, 9)
     assert parse_explicit_deadline('Online applications from 19.10.2026 to 09.11.2026') == date(2026, 11, 9)
 
 
