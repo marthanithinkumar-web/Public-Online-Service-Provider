@@ -15,11 +15,13 @@ export type ScholarshipFeed={
 }
 
 const api=axios.create({baseURL:apiBase,timeout:5000})
+const indiaToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
 const isActive=(item:Scholarship)=>{
-  if(item.status&&item.status!=='active')return false
-  if(!item.deadline)return true
-  const end=new Date(`${item.deadline}T23:59:59`)
-  return Number.isNaN(end.getTime())||end.getTime()>=Date.now()
+  if(item.status!=='active'||item.stale_source)return false
+  if(!(item.is_official===true||item.source_type==='official'))return false
+  if(!item.deadline||!/^\d{4}-\d{2}-\d{2}$/.test(item.deadline))return false
+  const end=new Date(item.deadline+'T00:00:00Z')
+  return !Number.isNaN(end.getTime())&&end.toISOString().slice(0,10)===item.deadline&&item.deadline>=indiaToday()
 }
 function scholarshipPriority(item:Scholarship){
   const hay=`${item.provider||''} ${item.source_name||''} ${item.source_key||''}`.toLowerCase()
