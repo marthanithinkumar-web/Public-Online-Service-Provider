@@ -362,8 +362,10 @@ def test_database_sync_enriches_official_pdf_deadline_before_upsert(client, monk
 
     monkeypatch.setattr('app.jobs.sync.enrich_job_item', enrich)
     with client.application.app_context():
-        source = JobSource(key='employment_news', name='Employment News', listing_url=definition.listing_url, enabled=True, last_sync_status='not_run', fetched_count=0, published_count=0)
-        db.session.add(source); db.session.commit()
+        source = JobSource.query.filter_by(key='employment_news').first()
+        if source is None:
+            source = JobSource(key='employment_news', name='Employment News', listing_url=definition.listing_url, enabled=True, last_sync_status='not_run', fetched_count=0, published_count=0)
+            db.session.add(source); db.session.commit()
         result = sync_source(source)
         assert result['published'] == 1
         assert JobNotification.query.filter_by(status='published').count() == 1
