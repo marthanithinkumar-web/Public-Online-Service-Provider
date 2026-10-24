@@ -82,7 +82,7 @@ def parse_explicit_deadline(value):
     """Return only a date tied to an explicit application closing label/window."""
     text = clean(value)
     patterns = (
-        r'(?:last date(?: and time)?\s+for\s+(?:receipt|submission|applying|online application|filling|registration)|last date to apply|closing date(?: for applications?)?|application deadline|applications? close(?:s)? on|apply by)\s*[:\-]?\s*([^.;|]{1,100})',
+        r'(?:last date(?: and time)?(?:\s+for\s+(?:receipt|submission|applying|online application|filling|registration|applications?))?|last date to apply|closing date(?: for applications?)?|application deadline|applications? close(?:s)? on|apply by)\s*[:\-]?\s*([^.;|]{1,100})',
         r'(?:online application(?:s)?|application period|registration period)\s*(?:will be accepted )?(?:from|between)\s+([^.;|]{1,100})',
     )
     for pattern in patterns:
