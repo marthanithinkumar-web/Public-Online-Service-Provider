@@ -1,5 +1,5 @@
 from app.jobs import sources
-from app.jobs.priority_sources import parse_rbi, parse_sbi
+from app.jobs.priority_sources import parse_drdo, parse_kvs, parse_rbi, parse_sbi
 from app.jobs import snapshot, notice_enrichment
 from app.jobs.sources import JobItem, SOURCE_DEFINITIONS, parse_all_dates, parse_date, parse_explicit_deadline
 from datetime import date, datetime, timezone
@@ -171,3 +171,76 @@ def test_sbi_grouped_parser_preserves_titles_notice_urls_and_application_urls():
     assert extension.title.startswith('ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON CONTRACT BASIS')
     assert extension.official_notice_url == 'https://sbi.bank.in/documents/adv25.pdf/abc125'
     assert extension.application_url == 'https://recruitment.sbi.bank.in/crpd-sco-2026-27-25/apply'
+
+
+def test_sbi_grouped_parser_uses_direct_pdf_when_anchor_label_is_only_language_or_size():
+    html = '''
+      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM EMPLOYMENT BASIS (Apply Online from 19.10.2026 TO 09.11.2026)</p>
+      <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/30</p>
+      <ul>
+        <li><a href="https://sbi.bank.in/documents/77530/57941334/17102026_Detail_ADV_CRPD_SCO_2026-27_30.pdf/226b6572-e6bd-2b73-f266-dc7db9b282bd?t=1792240760461">English (796 KB)</a></li>
+        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply">APPLY ONLINE (19.10.2026 TO 09.11.2026)</a></li>
+        <li><a href="https://sbi.bank.in/documents/77530/57941334/17102026_BIODATA_SCO-30.pdf/a508ff61-f98b-fce7-f2ac-22a8bc9623a">English (Biodata)</a></li>
+        <li><a href="https://sbi.bank.in/documents/77530/57941334/17102026_CTC_Negotiation_Form_SCO-30.pdf/13b531b8-003f-d837-38ba-22b80b9fb5d1">English (CTC Form)</a></li>
+      </ul>
+    '''
+    items = parse_sbi(html, 'https://sbi.bank.in/web/careers/current-openings')
+    assert len(items) == 1
+    assert items[0].official_notice_url == 'https://sbi.bank.in/documents/77530/57941334/17102026_Detail_ADV_CRPD_SCO_2026-27_30.pdf/226b6572-e6bd-2b73-f266-dc7db9b282bd?t=1792240760461'
+    assert items[0].application_url == 'https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply'
+
+
+def test_kvs_parser_uses_current_official_table_and_direct_pdf():
+    html = '''
+      <table>
+        <tr><th>Name</th><th>Published On</th><th>View / Download</th></tr>
+        <tr>
+          <td>Advertisement No. 05/2026 – Filling up the post of Deputy Commissioner through Direct Recruitment in Kendriya Vidyalaya Sangathan</td>
+          <td>01/10/2026</td>
+          <td><a href="https://cdnbbsr.s3waas.gov.in/s32d2ca7eedf739ef4c3800713ec482e1a/uploads/2026/10/2026101962.pdf">View / Download</a></td>
+        </tr>
+        <tr>
+          <td>Final result of recruitment for a previous examination</td>
+          <td>01/10/2026</td>
+          <td><a href="https://cdnbbsr.s3waas.gov.in/s32d2ca7eedf739ef4c3800713ec482e1a/uploads/2026/10/result.pdf">View / Download</a></td>
+        </tr>
+      </table>
+    '''
+    items = parse_kvs(html, 'https://kvs.gov.in/en/interview-notice/')
+    assert len(items) == 1
+    assert items[0].organization == 'Kendriya Vidyalaya Sangathan (KVS)'
+    assert items[0].official_notice_url == 'https://cdnbbsr.s3waas.gov.in/s32d2ca7eedf739ef4c3800713ec482e1a/uploads/2026/10/2026101962.pdf'
+    assert items[0].issue_date == date(2026, 10, 1)
+
+
+def test_drdo_vacancy_parser_keeps_individual_official_vacancy_page():
+    html = '''
+      <a href="/drdo/offerings/vacancies/npol-kochi-invites-application-consultant">
+        NPOL, Kochi invites application from retired Government officials as Consultant on contract basis
+      </a>
+      <a href="/drdo/offerings/vacancies/selected-candidates-jrf">
+        List of selected candidates for awarding JRF
+      </a>
+    '''
+    items = parse_drdo(html, 'https://drdo.gov.in/drdo/offerings/vacancies')
+    assert len(items) == 1
+    assert items[0].organization == 'Defence Research and Development Organisation (DRDO)'
+    assert items[0].official_notice_url == 'https://drdo.gov.in/drdo/offerings/vacancies/npol-kochi-invites-application-consultant'
+
+
+def test_drdo_end_date_is_used_only_on_official_drdo_vacancy_detail(monkeypatch):
+    item = JobItem(
+        external_id='drdo-npol-consultant',
+        title='NPOL, Kochi invites application from retired Government officials as Consultant',
+        organization='Defence Research and Development Organisation (DRDO)',
+        official_notice_url='https://drdo.gov.in/drdo/offerings/vacancies/npol-kochi-consultant',
+        confidence=0.95,
+        warnings=[],
+    )
+    monkeypatch.setattr(
+        notice_enrichment,
+        'fetch_official_page',
+        lambda url, session=None: '<html><title>NPOL vacancy</title><p>Published Date 18/10/2026</p><p>Start Date 18/10/2026</p><p>End Date 09/11/2026</p></html>',
+    )
+    notice_enrichment.enrich_job_item(item)
+    assert item.deadline == date(2026, 11, 9)
