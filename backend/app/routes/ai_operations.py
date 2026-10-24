@@ -2,6 +2,7 @@ import difflib
 import json
 import os
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 import requests
@@ -12,6 +13,7 @@ from ..models.job import JobNotification, JobSource
 from ..models.order import Order
 from ..models.service import Service
 from ..models.support_message import SupportMessage
+from ..scholarships.catalog import load_catalog
 from ..utils.database import db
 from ..utils.jwt_handler import get_request_user
 from ..utils.readiness import production_readiness
@@ -152,16 +154,45 @@ def generate_client_reply(user, current_message):
         'status': order.status,
         'updated_at': (order.updated_at or order.created_at).isoformat(),
     } for order in Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).limit(5).all()]
+    india_today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+    active_jobs = JobNotification.query.filter(
+        JobNotification.status == 'published',
+        JobNotification.deadline.isnot(None),
+        JobNotification.deadline >= india_today,
+    ).order_by(JobNotification.deadline.asc()).limit(5).all()
+    active_job_context = [{
+        'title': job.title,
+        'organization': job.organization,
+        'deadline': job.deadline.isoformat() if job.deadline else None,
+        'location': job.location,
+        'qualification': job.qualification,
+        'official_notice_url': job.official_notice_url,
+        'application_url': job.application_url,
+        'verification_status': job.verification_status,
+        'source_name': job.source.name if job.source else None,
+    } for job in active_jobs]
+    scholarship_payload = load_catalog()
+    active_scholarship_context = [{
+        'title': item.get('title'),
+        'provider': item.get('provider'),
+        'deadline': item.get('deadline'),
+        'region': item.get('region'),
+        'education_level': item.get('education_level'),
+        'source_url': item.get('source_url'),
+        'application_url': item.get('application_url'),
+        'source_type': item.get('source_type'),
+        'stale_source': bool(item.get('stale_source')),
+    } for item in scholarship_payload.get('items', [])[:5]]
     history = [{
         'role': 'client' if item.sender_role == 'client' else 'assistant',
         'content': item.message[:500],
     } for item in SupportMessage.query.filter_by(user_id=user.id)
         .order_by(SupportMessage.created_at.desc()).limit(8).all()][::-1]
-    context = {'relevant_services': services, 'client_requests': orders, 'recent_conversation': history}
+    context = {'relevant_services': services, 'client_requests': orders, 'recent_conversation': history, 'active_jobs_verified': active_job_context, 'active_scholarships_verified': active_scholarship_context, 'listing_checked_date_ist': india_today.isoformat()}
     prompt = f"""Answer the client's latest POSP support question directly, accurately, and in plain simple English.
 Interpret spelling mistakes, typos, missing letters or words, phonetic spellings, shorthand, grammar errors, mixed-up word order, and silly or incomplete questions charitably. Infer the likely intent from the whole message and recent conversation; do not criticize the user or ask them to retype if the intent is reasonably clear. Do this in this same call; never request a separate correction/rewriting call.
 For general questions, greetings, thanks, and casual or silly messages, respond naturally when safe. Use POSP context for POSP-specific facts. Keep the answer to 1–4 short sentences or a few steps. Do not repeat the question or explain internal reasoning.
-Use only the supplied context for POSP-specific facts. If the exact fee, rule, eligibility, deadline, or requirement is not confirmed in context, say you cannot verify it and set HANDOFF=YES.
+Use only the supplied context for POSP-specific facts. For current jobs, use only active_jobs_verified; for scholarships, use only active_scholarships_verified. These lists already exclude expired, undated, stale, and non-official scholarship entries. Never invent listings or deadlines, and do not imply the first five are exhaustive. If no matching verified listing is supplied, say you cannot verify a current match and set HANDOFF=YES. If the exact fee, rule, eligibility, deadline, or requirement is not confirmed in context, say you cannot verify it and set HANDOFF=YES.
 POSP helps people APPLY for public services; it is not a government portal.
 Context JSON: {json.dumps(context, ensure_ascii=False, separators=(',', ':'))}
 Latest client message (may contain typos, missing words, or scrambled phrasing): {current_message}
