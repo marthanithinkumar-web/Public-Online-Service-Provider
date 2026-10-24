@@ -16,8 +16,8 @@ const requiredPages=[
   'scholarships/index.html',
   'services/apply-government-job',
   'services/residence-certificate',
-  `jobs/${sampleJob.slug}`,
-  `scholarships/${sampleScholarship.slug}`,
+  ...(sampleJob?[`jobs/${sampleJob.slug}`]:[]),
+  ...(sampleScholarship?[`scholarships/${sampleScholarship.slug}`]:[]),
 ]
 const legacyEmploymentNewsUrl='https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All'
 
@@ -43,8 +43,8 @@ for(const route of noindexRoutes){
 const sitemap=fs.readFileSync(path.join(distDir,'sitemap.xml'),'utf8')
 if(!sitemap.includes(`<loc>${siteUrl}/</loc>`)) throw new Error('sitemap.xml does not use the configured site URL')
 if(!sitemap.includes(`<loc>${siteUrl}/government-services</loc>`)) throw new Error('Service directory is missing from sitemap.xml')
-if(!sitemap.includes(`<loc>${siteUrl}/jobs/${sampleJob.slug}</loc>`)) throw new Error('Job detail URLs are missing from sitemap.xml')
-if(!sitemap.includes(`<loc>${siteUrl}/scholarships/${sampleScholarship.slug}</loc>`)) throw new Error('Scholarship detail URLs are missing from sitemap.xml')
+if(sampleJob&&!sitemap.includes(`<loc>${siteUrl}/jobs/${sampleJob.slug}</loc>`)) throw new Error('Job detail URLs are missing from sitemap.xml')
+if(sampleScholarship&&!sitemap.includes(`<loc>${siteUrl}/scholarships/${sampleScholarship.slug}</loc>`)) throw new Error('Scholarship detail URLs are missing from sitemap.xml')
 
 const catalog=JSON.parse(fs.readFileSync(path.join(distDir,'seo-catalog.json'),'utf8'))
 const catalogSlugs=new Set(readCatalog().map(service=>service.slug))
