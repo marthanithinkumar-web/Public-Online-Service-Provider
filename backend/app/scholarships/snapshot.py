@@ -61,14 +61,25 @@ def refresh_snapshot(path=CATALOG_PATH,today=None,*,discover=True,strict=False,n
             nsp=health.get('nsp') or {}
             if not nsp.get('ok'):raise RuntimeError('National Scholarship Portal discovery failed; refusing to publish an unverified daily snapshot.')
             if sum(1 for item in discovered if item.get('source_type')=='official')<5:raise RuntimeError('Official scholarship discovery returned too few current listings; refusing to publish.')
-    preserved=[]
+    preserved=[];stale_preserved=[]
+    previous_stale=[_normalise_existing(item,generated_at) for item in previous.get('stale_items',[]) if isinstance(item,dict)]
     for item in previous_items:
-        if not discover or _preserve_previous(item,health,now,check_date):
-            if discover and item.get('source_type')=='official':item['stale_source']=True
+        if not discover:
             preserved.append(item)
+        elif _preserve_previous(item,health,now,check_date):
+            source_health=health.get(item.get('source_key')) or {}
+            if item.get('source_type')=='official' and not source_health.get('ok'):
+                item['stale_source']=True;stale_preserved.append(item)
+            else:
+                preserved.append(item)
+    for item in previous_stale:
+        source_health=health.get(item.get('source_key')) or {}
+        if not discover or (not source_health.get('ok') and _preserve_previous(item,health,now,check_date)):
+            item['stale_source']=True;stale_preserved.append(item)
     items=dedupe_items([*discovered,*preserved]);items=[item for item in items if _active(item,check_date)];items.sort(key=lambda item:(0 if item.get('source_type')=='official' else 1,item.get('deadline') or '9999-12-31',item.get('title') or ''))
-    official_count=sum(1 for item in items if item.get('source_type')=='official');private_count=sum(1 for item in items if item.get('source_type')=='private');stale_source_count=sum(1 for item in items if item.get('stale_source'))
-    refreshed={'generated_at':now.isoformat(),'count':len(items),'official_count':official_count,'private_count':private_count,'stale_source_count':stale_source_count,'discovery':{'mode':'official_daily_discovery' if discover else 'expiry_only','checked_at':now.isoformat(),'source_health':health},'items':items};path.write_text(json.dumps(refreshed,ensure_ascii=False,indent=2)+'\n',encoding='utf-8');return refreshed
+    stale_items=dedupe_items([item for item in stale_preserved if item.get('source_type')=='official' and item.get('deadline') and item.get('deadline')>=check_date.isoformat()])
+    official_count=sum(1 for item in items if item.get('source_type')=='official');private_count=sum(1 for item in items if item.get('source_type')=='private');stale_source_count=len(stale_items)
+    refreshed={'generated_at':now.isoformat(),'count':len(items),'official_count':official_count,'private_count':private_count,'stale_source_count':stale_source_count,'discovery':{'mode':'official_daily_discovery' if discover else 'expiry_only','checked_at':now.isoformat(),'source_health':health},'items':items,'stale_items':stale_items};path.write_text(json.dumps(refreshed,ensure_ascii=False,indent=2)+'\n',encoding='utf-8');return refreshed
 
 def main():
     parser=argparse.ArgumentParser(description='Discover current scholarships from official sources and refresh the public snapshot.');parser.add_argument('--output',default=str(CATALOG_PATH));parser.add_argument('--no-discover',action='store_true',help='Only remove closed/stale entries; do not contact official sources.');parser.add_argument('--strict',action='store_true',help='Fail rather than publish when the primary official discovery source is unhealthy.');args=parser.parse_args();payload=refresh_snapshot(args.output,discover=not args.no_discover,strict=args.strict);healthy=sum(1 for source in payload.get('discovery',{}).get('source_health',{}).values() if source.get('ok'));print(f"Published {payload['count']} active scholarships ({payload['official_count']} official, {payload['private_count']} private/partner); {healthy} official sources healthy.")
