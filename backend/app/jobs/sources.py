@@ -86,6 +86,7 @@ def parse_explicit_deadline(value):
     closing_patterns = (
         rf'(?:last date(?: and time)?(?:\s+for\s+(?:receipt|submission|applying|online application|filling|registration|applications?)(?:\s+of\s+(?:online\s+)?applications?)?)?|last date to apply|closing date(?: for applications?)?|application deadline|applications? close(?:s)? on|apply by)\s*[:\-]?\s*({token})',
         rf'\bapplications?\b[^.;]{{0,250}}\bon or before{time_clause}\s*({token})',
+        rf'\b(?:application|applications|sealed cover|application form)\b[^.;]{{0,500}}\b(?:should\s+)?(?:reach|be received|be submitted|be sent|be forwarded)\b[^.;]{{0,180}}\bon or before{time_clause}\s*({token})',
         rf'\b(?:online\s+)?registration(?:\s+for\s+(?:online\s+)?applications?)?\s+(?:has been\s+)?extended\s+(?:to|till|until|up to)\s*({token})',
         rf'\bapplication window\b[^.;]{{0,100}}\b(?:ends?|closes?|extended to|extended till|extended until)\s*({token})',
     )
