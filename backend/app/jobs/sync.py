@@ -2,6 +2,7 @@ import sys
 import threading
 import time
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import requests
 from flask import current_app
@@ -24,6 +25,10 @@ DUE_CHECK_CACHE_SECONDS = 60
 
 def utc_now():
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def india_today():
+    return datetime.now(ZoneInfo('Asia/Kolkata')).date()
 
 
 def ensure_job_sources():
@@ -66,9 +71,9 @@ def upsert_item(source, item, allow_missing_deadline=False, missing_deadline_max
             value = value[:limits.get(field, 600)]
         setattr(existing, field, value)
     proposed = target_status(item, allow_missing_deadline=allow_missing_deadline, missing_deadline_max_age_days=missing_deadline_max_age_days)
+    # Re-evaluate every item on every successful official-source observation.
+    # Never preserve 'published' merely because an older row was published.
     if previous_status == 'hidden': existing.status = 'hidden'
-    elif proposed == 'expired': existing.status = 'expired'
-    elif previous_status == 'published' and not is_new: existing.status = 'published'
     else: existing.status = proposed
     if existing.status == 'published' and not existing.published_at: existing.published_at = utc_now()
     existing.verification_status = 'official_source_checked'
@@ -98,6 +103,15 @@ def sync_source(source, session=None):
     try:
         html = fetch_official_page(definition.listing_url, session=session)
         items = definition.parser(html, definition.listing_url)
+        # An empty parse can mean an upstream layout change or partial page, not
+        # proof that every existing notice disappeared. Preserve prior verified
+        # rows and mark the source degraded until a non-empty parse is validated.
+        if not items:
+            return _record_source_failure(
+                source.id,
+                'Official source returned no parseable listings. Existing verified notices are preserved while the source is retried.',
+                'empty or incomplete official-source parse',
+            )
         published = 0; duplicates = 0
         for item in items:
             job, _, duplicate = upsert_item(source, item, allow_missing_deadline=definition.allow_missing_deadline, missing_deadline_max_age_days=definition.missing_deadline_max_age_days)
@@ -125,7 +139,7 @@ def sync_source(source, session=None):
 
 
 def expire_old_jobs():
-    expired = JobNotification.query.filter(JobNotification.deadline.isnot(None), JobNotification.deadline < date.today(), JobNotification.status.in_(['published', 'needs_review'])).all()
+    expired = JobNotification.query.filter(JobNotification.deadline.isnot(None), JobNotification.deadline < india_today(), JobNotification.status.in_(['published', 'needs_review'])).all()
     for job in expired: job.status = 'expired'
     undated_cutoff = utc_now() - timedelta(days=60)
     stale_undated = JobNotification.query.filter(JobNotification.deadline.is_(None), JobNotification.last_seen_at < undated_cutoff, JobNotification.status.in_(['published', 'needs_review'])).all()

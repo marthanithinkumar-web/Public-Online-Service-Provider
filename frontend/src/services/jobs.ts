@@ -53,6 +53,15 @@ async function fetchSnapshot(force=false){
   try{return await snapshotPromise}finally{snapshotPromise=null}
 }
 
+function indiaToday(){
+  return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
+}
+function hasCurrentDeadline(value?:string|null){
+  if(!value||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false
+  const parsed=new Date(value+'T00:00:00Z')
+  return !Number.isNaN(parsed.getTime())&&parsed.toISOString().slice(0,10)===value&&value>=indiaToday()
+}
+
 function filterSnapshot(data:JobFeedData,params:Record<string,string|number|boolean>){
   const term=String(params.q||'').trim().toLowerCase()
   const aliases:Record<string,string>={govt:'government',railways:'railway'}
@@ -62,6 +71,7 @@ function filterSnapshot(data:JobFeedData,params:Record<string,string|number|bool
   const requested=Number(params.limit||30)
   const limit=Number.isFinite(requested)?Math.min(100,Math.max(1,requested)):30
   const items=(data.items||[]).filter(job=>{
+    if(job.status!=='published'||!hasCurrentDeadline(job.deadline))return false
     if(type&&job.job_type!==type)return false
     if(featured&&!job.is_featured)return false
     if(!tokens.length)return true
@@ -91,14 +101,14 @@ export async function fetchJobs(params:Record<string,string|number|boolean>={}){
     return snapshot
   }catch{
     const data=(await api.get('/jobs/',{params})).data as JobFeedData
-    return {...data,items:(data.items||[]).sort(compareJobs)}
+    return {...data,items:(data.items||[]).filter(job=>job.status==='published'&&hasCurrentDeadline(job.deadline)).sort(compareJobs)}
   }
 }
 
 export async function fetchJob(slug:string){
   try{
     const data=await fetchSnapshot()
-    const job=(data.items||[]).find(item=>item.slug===slug)
+    const job=(data.items||[]).find(item=>item.slug===slug&&item.status==='published'&&hasCurrentDeadline(item.deadline))
     if(job){void api.get(`/jobs/${encodeURIComponent(slug)}`,{timeout:3500}).catch(()=>undefined);return {job}}
   }catch{
     // Fall through to the live API when the snapshot cannot be loaded.

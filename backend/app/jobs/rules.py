@@ -2,7 +2,8 @@
 
 import hashlib
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 
 def slugify(value):
@@ -19,20 +20,21 @@ def item_hash(item):
 
 
 def target_status(item, today=None, allow_missing_deadline=False, missing_deadline_max_age_days=45):
-    today = today or date.today()
-    if item.deadline and item.deadline < today:
+    """Only publish listings with an explicit, current application deadline.
+
+    allow_missing_deadline remains accepted for older callers, but an undated
+    listing is never public: it stays in review unless its issue date is old
+    enough to classify it as expired.
+    """
+    today = today or datetime.now(ZoneInfo('Asia/Kolkata')).date()
+    if item.deadline:
+        if item.deadline < today:
+            return 'expired'
+    elif item.issue_date and missing_deadline_max_age_days and item.issue_date < today - timedelta(days=missing_deadline_max_age_days):
         return 'expired'
-    if (
-        not item.deadline
-        and item.issue_date
-        and missing_deadline_max_age_days
-        and item.issue_date < today - timedelta(days=missing_deadline_max_age_days)
-    ):
-        return 'expired'
-    complete = bool(
-        item.title and item.organization and item.official_notice_url
-        and (item.deadline or allow_missing_deadline)
-    )
+    else:
+        return 'needs_review'
+    complete = bool(item.title and item.organization and item.official_notice_url and item.deadline)
     return 'published' if complete and item.confidence >= 0.8 else 'needs_review'
 
 

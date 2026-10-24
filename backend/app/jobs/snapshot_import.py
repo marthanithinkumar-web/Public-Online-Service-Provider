@@ -9,9 +9,10 @@ upstream career site is temporarily unreachable from Render.
 import argparse
 import json
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
-from sqlalchemy import or_, text
+from sqlalchemy import text
 
 from ..models.job import JobNotification, JobSource
 from ..utils.database import db
@@ -34,6 +35,10 @@ def _acquire_snapshot_import_lock():
             text('SELECT pg_advisory_xact_lock(:lock_id)'),
             {'lock_id': _SNAPSHOT_IMPORT_LOCK_ID},
         )
+
+
+def india_today():
+    return datetime.now(ZoneInfo('Asia/Kolkata')).date()
 
 
 def _parse_date(value):
@@ -81,6 +86,8 @@ def import_verified_snapshot(path):
     # generator already de-duplicates these, but enforcing uniqueness here
     # prevents an importer bug from silently collapsing two public records.
     normalized_items = []
+    expired_snapshot_items_skipped = 0
+    undated_snapshot_items_skipped = 0
     seen_hashes = set()
     seen_slugs = set()
     for item in data['items']:
@@ -101,12 +108,14 @@ def import_verified_snapshot(path):
         seen_slugs.add(slug)
 
         # The verified snapshot can be a few hours or days old by the time a
-        # queued Render deploy starts. Keep validating the complete snapshot,
-        # but never import an application whose deadline has passed since the
-        # snapshot was generated. The database-backed public feed is date-aware
-        # and the refresh workflow permits small deadline-driven count drift.
+        # queued Render deploy starts. Validate the full snapshot, but only import
+        # records with an explicit, current deadline in India.
         deadline = _parse_date(item.get('deadline'))
-        if deadline is not None and deadline < date.today():
+        if deadline is None:
+            undated_snapshot_items_skipped += 1
+            continue
+        if deadline < india_today():
+            expired_snapshot_items_skipped += 1
             continue
         normalized_items.append((item, digest, slug, source_key))
 
@@ -275,7 +284,8 @@ def import_verified_snapshot(path):
 
     active_total = JobNotification.query.filter(
         JobNotification.status == 'published',
-        or_(JobNotification.deadline.is_(None), JobNotification.deadline >= date.today()),
+        JobNotification.deadline.isnot(None),
+        JobNotification.deadline >= india_today(),
     ).count()
     if active_total != expected:
         db.session.rollback()
@@ -285,7 +295,8 @@ def import_verified_snapshot(path):
     return {
         'imported': expected,
         'active_total': active_total,
-        'expired_snapshot_items_skipped': len(data['items']) - expected,
+        'expired_snapshot_items_skipped': expired_snapshot_items_skipped,
+        'undated_snapshot_items_skipped': undated_snapshot_items_skipped,
         'sources': len(configured_keys),
     }
 

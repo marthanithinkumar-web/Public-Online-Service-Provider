@@ -1,4 +1,5 @@
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 import re
 
@@ -21,10 +22,17 @@ def _deployed_snapshot_sha256():
     return value if _SHA256_RE.fullmatch(value) else None
 
 
+def _india_today():
+    return datetime.now(ZoneInfo('Asia/Kolkata')).date()
+
+
 def _public_query():
+    # Public listings must have a valid, current deadline. Undated records may
+    # remain in storage for review, but must not be advertised as open.
     return JobNotification.query.filter(
         JobNotification.status == 'published',
-        or_(JobNotification.deadline.is_(None), JobNotification.deadline >= date.today()),
+        JobNotification.deadline.isnot(None),
+        JobNotification.deadline >= _india_today(),
     )
 
 

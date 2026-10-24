@@ -161,7 +161,7 @@ def test_sync_publishes_complete_notice_and_queues_uncertain_notice(client, monk
         assert JobNotification.query.filter_by(external_id='notice-2').one().status == 'needs_review'
 
 
-def test_active_official_source_can_publish_undated_notice(client, monkeypatch):
+def test_active_official_source_keeps_undated_notice_in_review(client, monkeypatch):
     current = _item(external_id='active-undated', deadline=None, confidence=0.84)
     definition = SourceDefinition(
         'employment_news', 'Active Official Board', 'https://employmentnews.gov.in/jobs',
@@ -172,7 +172,7 @@ def test_active_official_source_can_publish_undated_notice(client, monkeypatch):
     with client.application.app_context():
         source = JobSource.query.filter_by(key='employment_news').one()
         assert sync_source(source)['status'] == 'success'
-        assert JobNotification.query.filter_by(external_id='active-undated').one().status == 'published'
+        assert JobNotification.query.filter_by(external_id='active-undated').one().status == 'needs_review'
 
 
 def test_public_job_feed_excludes_review_hidden_and_expired(client):

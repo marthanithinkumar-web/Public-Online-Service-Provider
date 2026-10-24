@@ -45,7 +45,7 @@ def _item(source, digest, slug, title):
         'summary': None,
         'issue_date': None,
         'application_start_date': None,
-        'deadline': None,
+        'deadline': (date.today() + timedelta(days=30)).isoformat(),
         'official_notice_url': source.listing_url,
         'application_url': None,
         'status': 'published',
@@ -103,6 +103,25 @@ def test_verified_snapshot_import_is_idempotent(client, tmp_path):
         second = import_verified_snapshot(path)
         assert first['active_total'] == second['active_total'] == 1
         assert JobNotification.query.filter_by(content_hash='d' * 64).count() == 1
+
+def test_verified_snapshot_skips_undated_items(client, tmp_path):
+    source = SOURCE_DEFINITIONS[0]
+    dated = _item(source, '1' * 64, 'dated-open', 'Dated Open')
+    undated = _item(source, '2' * 64, 'undated-not-public', 'Undated Notice')
+    undated['deadline'] = None
+    path = tmp_path / 'jobs.json'
+    path.write_text(json.dumps(_snapshot(source, [dated, undated])), encoding='utf-8')
+
+    with client.application.app_context():
+        result = import_verified_snapshot(path)
+
+        assert result['imported'] == 1
+        assert result['active_total'] == 1
+        assert result['undated_snapshot_items_skipped'] == 1
+        assert result['expired_snapshot_items_skipped'] == 0
+        assert JobNotification.query.filter_by(slug='dated-open').one().status == 'published'
+        assert JobNotification.query.filter_by(slug='undated-not-public').count() == 0
+
 
 def test_verified_snapshot_skips_deadlines_that_expire_before_render_import(client, tmp_path):
     source = SOURCE_DEFINITIONS[0]
