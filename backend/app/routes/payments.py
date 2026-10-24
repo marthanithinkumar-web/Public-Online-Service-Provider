@@ -159,6 +159,13 @@ def create_checkout(order_id):
     order, error = _client_order(order_id)
     if error:
         return error
+    # Serialize checkout creation with client cancellation so a cancelled request
+    # cannot start a new payment while the cancellation transaction is in flight.
+    order = Order.query.filter_by(id=order.id).with_for_update().first()
+    if not order:
+        return jsonify({'error': 'Request not found.'}), 404
+    if order.status == 'Cancelled':
+        return jsonify({'error': 'This request is cancelled and cannot accept payments. Contact the administrator if you need to resolve a previous payment.'}), 409
     credentials = _credentials()
     if not credentials:
         return jsonify({'error': 'Online payment is not configured yet.'}), 503
