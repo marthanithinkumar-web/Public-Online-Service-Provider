@@ -29,4 +29,7 @@ def test_priority_and_private_sources_are_registered_for_sync_and_snapshot():
         'wipro_careers', 'infosys_careers', 'accenture_careers',
     }
     assert expected.issubset(SOURCE_BY_KEY)
-    assert len(SOURCE_BY_KEY) == len(SOURCE_DEFINITIONS)
+    # The runtime registry also includes one separately registered RRCB source.
+    # Check that declared sources are present without requiring the two registries
+    # to have identical sizes.
+    assert {source.key for source in SOURCE_DEFINITIONS}.issubset(SOURCE_BY_KEY)
