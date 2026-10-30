@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-29T08:24:35Z",
+  "generated_at": "2026-10-30T08:34:10Z",
   "items": [
     {
       "id": 152519210033427,
@@ -29,11 +29,11 @@
         "key": "sbi",
         "name": "State Bank of India — Careers",
         "listing_url": "https://sbi.bank.in/web/careers/current-openings",
-        "last_sync_completed_at": "2026-10-29T08:24:35Z",
+        "last_sync_completed_at": "2026-10-30T08:34:10Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-10-24T16:01:17Z",
-      "last_seen_at": "2026-10-29T08:24:35Z",
+      "last_seen_at": "2026-10-30T08:34:10Z",
       "published_at": "2026-10-24T16:01:17Z",
       "content_hash": "8ab72555e113642abbe1a3243bf5f095876239e63f65cdeaea6f0aca9e19ffd9"
     },
@@ -64,11 +64,11 @@
         "key": "sbi",
         "name": "State Bank of India — Careers",
         "listing_url": "https://sbi.bank.in/web/careers/current-openings",
-        "last_sync_completed_at": "2026-10-29T08:24:35Z",
+        "last_sync_completed_at": "2026-10-30T08:34:10Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-10-24T16:01:17Z",
-      "last_seen_at": "2026-10-29T08:24:35Z",
+      "last_seen_at": "2026-10-30T08:34:10Z",
       "published_at": "2026-10-24T16:01:17Z",
       "content_hash": "7dc226e6039c4286226bfcb2a172eceb9d4138a95932e14e263e23a55ee1681a"
     },
@@ -99,11 +99,11 @@
         "key": "sbi",
         "name": "State Bank of India — Careers",
         "listing_url": "https://sbi.bank.in/web/careers/current-openings",
-        "last_sync_completed_at": "2026-10-29T08:24:35Z",
+        "last_sync_completed_at": "2026-10-30T08:34:10Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-10-24T16:01:17Z",
-      "last_seen_at": "2026-10-29T08:24:35Z",
+      "last_seen_at": "2026-10-30T08:34:10Z",
       "published_at": "2026-10-24T16:01:17Z",
       "content_hash": "6c0171e1f71145565932169963966d1013e23a6ce028d51daa1d1245c76c011e"
     },
@@ -134,11 +134,11 @@
         "key": "rbi",
         "name": "Reserve Bank of India",
         "listing_url": "https://opportunities.rbi.org.in/Scripts/Vacancies.aspx",
-        "last_sync_completed_at": "2026-10-29T08:24:35Z",
+        "last_sync_completed_at": "2026-10-30T08:34:10Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-10-24T16:13:55Z",
-      "last_seen_at": "2026-10-29T08:24:35Z",
+      "last_seen_at": "2026-10-30T08:34:10Z",
       "published_at": "2026-10-24T16:13:55Z",
       "content_hash": "131941f0d790af874ca00e2e806fe09aba6f15762aeb0e0f7410ae1727860db0"
     }
@@ -149,7 +149,7 @@
       "name": "Reserve Bank of India",
       "listing_url": "https://opportunities.rbi.org.in/Scripts/Vacancies.aspx",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "success",
       "fetched_count": 25,
       "published_count": 1
@@ -159,7 +159,7 @@
       "name": "State Bank of India — Careers",
       "listing_url": "https://sbi.bank.in/web/careers/current-openings",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "success",
       "fetched_count": 47,
       "published_count": 3
@@ -169,7 +169,7 @@
       "name": "Navodaya Vidyalaya Samiti",
       "listing_url": "https://navodaya.gov.in/nvs/en/Recruitment/",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "failed",
       "fetched_count": 0,
       "published_count": 0,
@@ -180,7 +180,7 @@
       "name": "Sainik Schools Society",
       "listing_url": "https://sainikschoolsociety.in/",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -190,7 +190,7 @@
       "name": "Kendriya Vidyalaya Sangathan",
       "listing_url": "https://kvs.gov.in/en/interview-notice/",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "success",
       "fetched_count": 6,
       "published_count": 0
@@ -200,7 +200,7 @@
       "name": "Securities and Exchange Board of India",
       "listing_url": "https://www.sebi.gov.in/sebiweb/other/careerdetail.jsp?careerId=1",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -210,7 +210,7 @@
       "name": "Institute of Banking Personnel Selection",
       "listing_url": "https://www.ibps.in/",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "failed",
       "fetched_count": 0,
       "published_count": 0,
@@ -221,7 +221,7 @@
       "name": "Defence Research and Development Organisation (DRDO) — Vacancies",
       "listing_url": "https://drdo.gov.in/drdo/offerings/vacancies",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "failed",
       "fetched_count": 0,
       "published_count": 0,
@@ -232,7 +232,7 @@
       "name": "Staff Selection Commission",
       "listing_url": "https://ssc.gov.in/api/general-website/portal/notice-boards?page=1&limit=100&contentType=notice-boards&key=createdAt&order=DESC&isAttachment=true&language=english&attributes=id%2Cheadline%2CexamId%2CcontentType%2CredirectUrl%2CstartDate%2CendDate%2Clanguage%2CcreatedAt",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "success",
       "fetched_count": 3,
       "published_count": 0
@@ -242,7 +242,7 @@
       "name": "Railway Recruitment Control Board (RRCB)",
       "listing_url": "https://www.rrcb.gov.in/Employment_notices.html",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "failed",
       "fetched_count": 0,
       "published_count": 0,
@@ -253,9 +253,9 @@
       "name": "Union Public Service Commission",
       "listing_url": "https://www.upsc.gov.in/recruitment/recruitment-advertisement",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "success",
-      "fetched_count": 1,
+      "fetched_count": 0,
       "published_count": 0
     },
     {
@@ -263,7 +263,7 @@
       "name": "Intelligence Bureau / Ministry of Home Affairs",
       "listing_url": "https://www.mha.gov.in/en/notifications/vacancies?title=Intelligence%20Bureau",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -273,7 +273,7 @@
       "name": "Telangana Police Recruitment Board",
       "listing_url": "https://www.tgprb.in/",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -283,7 +283,7 @@
       "name": "India Post — GDS Online Engagement",
       "listing_url": "https://www.indiapost.gov.in/gdsonlineengagement",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -293,9 +293,9 @@
       "name": "Department of Posts — Vacancies",
       "listing_url": "https://www.indiapost.gov.in/vacancies",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "success",
-      "fetched_count": 3,
+      "fetched_count": 4,
       "published_count": 0
     },
     {
@@ -303,7 +303,7 @@
       "name": "Indian Space Research Organisation",
       "listing_url": "https://www.isro.gov.in/ViewAllOpportunities.html",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -313,7 +313,7 @@
       "name": "National Career Service",
       "listing_url": "https://www.ncs.gov.in/job-listing",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -323,9 +323,9 @@
       "name": "Wipro Careers",
       "listing_url": "https://careers.wipro.com/sitemap.xml",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "success",
-      "fetched_count": 6887,
+      "fetched_count": 6791,
       "published_count": 0
     },
     {
@@ -333,7 +333,7 @@
       "name": "Infosys Careers",
       "listing_url": "https://digitalcareers.infosys.com/infosys/global-careers?location=India",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -343,13 +343,13 @@
       "name": "Accenture Careers",
       "listing_url": "https://www.accenture.com/in-en/careers/jobsearch",
       "enabled": true,
-      "last_sync_completed_at": "2026-10-29T08:24:35Z",
+      "last_sync_completed_at": "2026-10-30T08:34:10Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
     }
   ],
   "count": 4,
-  "review_count": 6955,
+  "review_count": 6860,
   "successful_sources": 16
 }
