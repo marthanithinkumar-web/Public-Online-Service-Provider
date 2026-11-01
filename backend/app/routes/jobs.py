@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 from pathlib import Path
 import re
@@ -42,8 +42,11 @@ def list_jobs():
     trigger_background_sync(current_app._get_current_object())
     query = _public_query()
     term = (request.args.get('q') or '').strip()
-    job_type = (request.args.get('type') or '').strip().lower()
+    job_type = (request.args.get('type') or request.args.get('job_type') or '').strip().lower()
     featured = (request.args.get('featured') or '').strip().lower()
+    location = (request.args.get('location') or request.args.get('state') or '').strip()[:120]
+    qualification = (request.args.get('qualification') or request.args.get('education') or '').strip()[:120]
+    deadline_filter = (request.args.get('deadline') or '').strip().lower()
     if term:
         aliases = {'govt': 'government', 'railways': 'railway'}
         tokens = list(dict.fromkeys(
@@ -64,19 +67,36 @@ def list_jobs():
         ]))
     if job_type in {'government', 'private'}:
         query = query.filter(JobNotification.job_type == job_type)
+    if location:
+        query = query.filter(JobNotification.location.ilike(f'%{location}%'))
+    if qualification:
+        query = query.filter(JobNotification.qualification.ilike(f'%{qualification}%'))
     if featured in {'1', 'true', 'yes'}:
         query = query.filter(JobNotification.is_featured.is_(True))
+    if deadline_filter == 'closing_soon':
+        query = query.filter(JobNotification.deadline <= _india_today() + timedelta(days=7))
+    elif deadline_filter == 'this_month':
+        today = _india_today()
+        next_month = date(today.year + (today.month == 12), 1 if today.month == 12 else today.month + 1, 1)
+        query = query.filter(JobNotification.deadline < next_month)
     total = query.count()
     try:
         limit = min(100, max(1, int(request.args.get('limit', 30))))
     except (TypeError, ValueError):
         limit = 30
-    jobs = query.order_by(
-        JobNotification.is_featured.desc(),
-        JobNotification.deadline.asc(),
-        JobNotification.published_at.desc(),
-    ).limit(limit).all()
-    response = jsonify({'items': [job.to_dict() for job in jobs], 'count': len(jobs), 'total': total})
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+    except (TypeError, ValueError):
+        page = 1
+    sort = (request.args.get('sort') or 'deadline_asc').strip().lower()
+    if sort == 'deadline_desc':
+        ordering = (JobNotification.deadline.desc(), JobNotification.is_featured.desc())
+    elif sort == 'newest':
+        ordering = (JobNotification.published_at.desc(), JobNotification.deadline.asc())
+    else:
+        ordering = (JobNotification.is_featured.desc(), JobNotification.deadline.asc(), JobNotification.published_at.desc())
+    jobs = query.order_by(*ordering).offset((page - 1) * limit).limit(limit).all()
+    response = jsonify({'items': [job.to_dict() for job in jobs], 'count': len(jobs), 'total': total, 'page': page, 'limit': limit})
     response.headers['Cache-Control'] = 'public, max-age=300, stale-while-revalidate=600'
     return response
 

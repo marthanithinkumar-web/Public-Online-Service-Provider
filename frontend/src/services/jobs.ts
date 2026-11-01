@@ -13,31 +13,27 @@ export type JobNotification={
   content_hash?:string;
 }
 
-export type JobFeedData={items:JobNotification[];count:number;sources?:JobSource[];generated_at?:string|null;successful_sources?:number;review_count?:number}
+export type JobFeedData={items:JobNotification[];count:number;total?:number;page?:number;limit?:number;sources?:JobSource[];generated_at?:string|null;successful_sources?:number;review_count?:number}
 
 const api=axios.create({baseURL:apiBase,timeout:8000})
 let snapshotCache:JobFeedData|null=null
 let snapshotPromise:Promise<JobFeedData>|null=null
 
-const PRIORITY_JOB_SOURCES=['rrb','ssc','india_post_gds','india_post','upsc','sbi']
-function jobPriority(job:JobNotification){
-  const key=String(job.source?.key||'').toLowerCase()
-  const name=`${job.source?.name||''} ${job.organization||''}`.toLowerCase()
-  const direct=PRIORITY_JOB_SOURCES.indexOf(key)
-  if(direct>=0)return direct
-  if(name.includes('railway recruitment'))return 0
-  if(name.includes('staff selection commission'))return 1
-  if(name.includes('india post')||name.includes('department of posts'))return 2
-  if(name.includes('union public service commission')||name.includes('upsc'))return 3
-  if(name.includes('state bank of india')||name.includes('sbi'))return 4
-  return 100
-}
-function compareJobs(a:JobNotification,b:JobNotification){
-  const priority=jobPriority(a)-jobPriority(b)
-  if(priority)return priority
-  const aDate=Date.parse(a.deadline||a.issue_date||a.published_at||'')||0
-  const bDate=Date.parse(b.deadline||b.issue_date||b.published_at||'')||0
-  return bDate-aDate
+function compareJobs(a:JobNotification,b:JobNotification,sort:string){
+  if(sort==='deadline_desc'){
+    const deadline=(Date.parse(b.deadline||'')||0)-(Date.parse(a.deadline||'')||0)
+    return deadline||Number(b.is_featured)-Number(a.is_featured)
+  }
+  if(sort==='newest'){
+    const published=(Date.parse(b.published_at||'')||0)-(Date.parse(a.published_at||'')||0)
+    if(published)return published
+    return (Date.parse(a.deadline||'')||0)-(Date.parse(b.deadline||'')||0)
+  }
+  const featured=Number(b.is_featured)-Number(a.is_featured)
+  if(featured)return featured
+  const deadline=(Date.parse(a.deadline||'')||0)-(Date.parse(b.deadline||'')||0)
+  if(deadline)return deadline
+  return (Date.parse(b.published_at||'')||0)-(Date.parse(a.published_at||'')||0)
 }
 
 async function fetchSnapshot(force=false){
@@ -66,22 +62,37 @@ function filterSnapshot(data:JobFeedData,params:Record<string,string|number|bool
   const term=String(params.q||'').trim().toLowerCase()
   const aliases:Record<string,string>={govt:'government',railways:'railway'}
   const tokens=Array.from(new Set(term.replace(/[^a-z0-9]+/g,' ').split(' ').filter(Boolean).map(token=>aliases[token]||token)))
-  const requestedType=String(params.type||'').trim().toLowerCase()
+  const requestedType=String(params.type||params.job_type||'').trim().toLowerCase()
   const type=['government','private'].includes(requestedType)?requestedType:''
   const featured=['1','true','yes'].includes(String(params.featured||'').toLowerCase())
+  const location=String(params.location||params.state||'').trim().toLowerCase()
+  const qualification=String(params.qualification||params.education||'').trim().toLowerCase()
+  const deadline=String(params.deadline||'').trim().toLowerCase()
+  const sort=String(params.sort||'deadline_asc').trim().toLowerCase()
   const rawLimit=params.limit
   const requested=rawLimit===undefined||rawLimit===null||rawLimit===''?30:Number(rawLimit)
   const limit=Number.isFinite(requested)?Math.min(100,Math.max(1,requested)):30
-  const items=(data.items||[]).filter(job=>{
+  const rawPage=Number(params.page||1)
+  const page=Number.isFinite(rawPage)?Math.max(1,Math.floor(rawPage)):1
+  const matching=(data.items||[]).filter(job=>{
     if(job.status!=='published'||!hasCurrentDeadline(job.deadline))return false
     if(type&&job.job_type!==type)return false
     if(featured&&!job.is_featured)return false
+    if(location&&!String(job.location||'').toLowerCase().includes(location))return false
+    if(qualification&&!String(job.qualification||'').toLowerCase().includes(qualification))return false
+    if(deadline==='closing_soon'){
+      const days=(Date.parse(`${job.deadline}T00:00:00Z`)-Date.parse(`${indiaToday()}T00:00:00Z`))/86400000
+      if(days>7)return false
+    }
+    if(deadline==='this_month'&&job.deadline!.slice(0,7)!==indiaToday().slice(0,7))return false
     if(!tokens.length)return true
     const searchable=[job.title,job.organization,job.qualification,job.location,job.source?.name,job.source?.key]
       .map(value=>String(value||'').toLowerCase()).join(' ')
     return tokens.every(token=>searchable.includes(token))
-  }).sort(compareJobs).slice(0,limit)
-  return {...data,items,count:items.length}
+  })
+  const total=matching.length
+  const items=matching.sort((a,b)=>compareJobs(a,b,sort)).slice((page-1)*limit,page*limit)
+  return {...data,items,count:items.length,total,page,limit}
 }
 
 async function refreshJobsInBackground(params:Record<string,string|number|boolean>){
@@ -103,7 +114,8 @@ export async function fetchJobs(params:Record<string,string|number|boolean>={}){
     return snapshot
   }catch{
     const data=(await api.get('/jobs/',{params})).data as JobFeedData
-    return {...data,items:(data.items||[]).filter(job=>job.status==='published'&&hasCurrentDeadline(job.deadline)).sort(compareJobs)}
+    const items=(data.items||[]).filter(job=>job.status==='published'&&hasCurrentDeadline(job.deadline)).sort((a,b)=>compareJobs(a,b,String(params.sort||'deadline_asc')))
+    return {...data,items}
   }
 }
 

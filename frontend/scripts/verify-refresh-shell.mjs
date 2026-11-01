@@ -35,14 +35,15 @@ if(jobsHtml.includes(legacyEmploymentNewsUrl)) throw new Error('Removed Employme
 
 const robots=fs.readFileSync(path.join(distDir,'robots.txt'),'utf8')
 if(!robots.includes(`Sitemap: ${siteUrl}/sitemap.xml`)) throw new Error('robots.txt sitemap does not use the configured site URL')
-const noindexRoutes=['/admin','/my-orders','/account-settings','/messages','/grievances','/submit-grievance','/submit-review','/reset-password','/login','/register','/request-reset','/verify']
-for(const route of noindexRoutes){
-  if(robots.includes(`Disallow: ${route}\n`)) throw new Error(`robots.txt blocks ${route} and prevents crawlers from reading its X-Robots-Tag noindex header`)
+const privateRoutes=['/admin','/my-orders','/account-settings','/orders','/messages','/grievances','/submit-grievance','/submit-review','/reset-password','/login','/register','/request-reset','/verify']
+for(const route of privateRoutes){
+  if(!robots.includes(`Disallow: ${route}\n`)) throw new Error(`robots.txt does not block private route ${route}`)
 }
 
 const sitemap=fs.readFileSync(path.join(distDir,'sitemap.xml'),'utf8')
 if(!sitemap.includes(`<loc>${siteUrl}/</loc>`)) throw new Error('sitemap.xml does not use the configured site URL')
 if(!sitemap.includes(`<loc>${siteUrl}/government-services</loc>`)) throw new Error('Service directory is missing from sitemap.xml')
+if(/<loc>[^<]*\/(?:admin|login|register|request-reset|reset-password|verify|account-settings|my-orders|orders|messages|grievances|submit-grievance|submit-review)(?:\/|<)/.test(sitemap)) throw new Error('Private route leaked into sitemap.xml')
 if(sampleJob&&!sitemap.includes(`<loc>${siteUrl}/jobs/${sampleJob.slug}</loc>`)) throw new Error('Job detail URLs are missing from sitemap.xml')
 if(sampleScholarship&&!sitemap.includes(`<loc>${siteUrl}/scholarships/${sampleScholarship.slug}</loc>`)) throw new Error('Scholarship detail URLs are missing from sitemap.xml')
 

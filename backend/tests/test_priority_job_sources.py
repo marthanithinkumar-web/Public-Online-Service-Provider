@@ -2,7 +2,7 @@ from app.jobs import sources
 from app.jobs.priority_sources import parse_drdo, parse_kvs, parse_rbi, parse_sbi
 from app.jobs import snapshot, notice_enrichment
 from app.jobs.sources import JobItem, SOURCE_DEFINITIONS, parse_all_dates, parse_date, parse_explicit_deadline
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 
 def test_employment_news_all_jobs_is_removed_and_priority_sources_are_registered():
@@ -18,19 +18,20 @@ def test_employment_news_all_jobs_is_removed_and_priority_sources_are_registered
 
 
 def test_priority_parser_keeps_recruitment_notice_and_excludes_results():
+    deadline = date.today() + timedelta(days=30)
     html = '''
     <ul>
-      <li><a href="/Scripts/bs_viewcontent.aspx?Id=5001">Direct Recruitment for Officers Grade B 2026 - Last date 30 October 2026</a></li>
+      <li><a href="/Scripts/bs_viewcontent.aspx?Id=5001">Direct Recruitment for Officers Grade B - Last date {deadline}</a></li>
       <li><a href="/Scripts/bs_viewcontent.aspx?Id=5002">Final Result - Recruitment for Officers Grade B 2026</a></li>
       <li><a href="/Scripts/CallLetters.aspx">Call Letter for Recruitment Examination</a></li>
     </ul>
-    '''
+    '''.format(deadline=deadline.strftime('%d %B %Y'))
 
     items = parse_rbi(html, 'https://opportunities.rbi.org.in/Scripts/Vacancies.aspx')
 
     assert len(items) == 1
     assert items[0].organization == 'Reserve Bank of India (RBI)'
-    assert items[0].deadline.isoformat() == '2026-10-30'
+    assert items[0].deadline == deadline
     assert items[0].official_notice_url == 'https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=5001'
 
 
@@ -136,20 +137,23 @@ def test_application_deadline_formats_seen_in_official_notices():
 
 
 def test_sbi_grouped_parser_preserves_titles_notice_urls_and_application_urls():
+    fixed_term_deadline = date.today() + timedelta(days=30)
+    extension_deadline = date.today() + timedelta(days=10)
+    expired_deadline = date.today() - timedelta(days=1)
     html = '''
-      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM EMPLOYMENT BASIS (Apply Online from 19.10.2026 TO 09.11.2026)</p>
+      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM EMPLOYMENT BASIS (Apply Online from 19.10.2026 TO {fixed_deadline})</p>
       <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/30</p>
       <ul>
         <li><a href="/documents/adv30.pdf/abc123">DOWNLOAD ADVERTISEMENT English</a></li>
-        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply">APPLY ONLINE (19.10.2026 TO 09.11.2026)</a></li>
+        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply">APPLY ONLINE (19.10.2026 TO {fixed_deadline})</a></li>
       </ul>
-      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON CONTRACT BASIS (Online Registration Extended till 31.10.2026)</p>
+      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON CONTRACT BASIS (Online Registration Extended till {extension_deadline})</p>
       <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/25</p>
       <ul>
         <li><a href="/documents/adv25.pdf/abc125">DOWNLOAD ADVERTISEMENT English</a></li>
-        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-25/apply">APPLY ONLINE (Online Registration Extended till 31.10.2026)</a></li>
+        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-25/apply">APPLY ONLINE (Online Registration Extended till {extension_deadline})</a></li>
       </ul>
-      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON CONTRACT BASIS (Registration Extended till 16.10.2026)</p>
+      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON CONTRACT BASIS (Registration Extended till {expired_deadline})</p>
       <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/20</p>
       <ul>
         <li><a href="/documents/adv20.pdf/abc120">DOWNLOAD ADVERTISEMENT English</a></li>
@@ -158,13 +162,17 @@ def test_sbi_grouped_parser_preserves_titles_notice_urls_and_application_urls():
       <p>ENGAGEMENT OF SPECIALIST CADRE OFFICER ON CONTRACT BASIS (INTERVIEW SCHEDULE ANNOUNCED)</p>
       <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/21</p>
       <ul><li><a href="/documents/adv21.pdf/abc121">DOWNLOAD ADVERTISEMENT English</a></li></ul>
-    '''
+    '''.format(
+        fixed_deadline=fixed_term_deadline.strftime('%d.%m.%Y'),
+        extension_deadline=extension_deadline.strftime('%d.%m.%Y'),
+        expired_deadline=expired_deadline.strftime('%d.%m.%Y'),
+    )
 
     items = parse_sbi(html, 'https://sbi.bank.in/web/careers/current-openings')
 
     assert len(items) == 2
-    fixed_term = next(item for item in items if item.deadline == date(2026, 11, 9))
-    extension = next(item for item in items if item.deadline == date(2026, 10, 31))
+    fixed_term = next(item for item in items if item.deadline == fixed_term_deadline)
+    extension = next(item for item in items if item.deadline == extension_deadline)
     assert fixed_term.title.startswith('ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM')
     assert fixed_term.official_notice_url == 'https://sbi.bank.in/documents/adv30.pdf/abc123'
     assert fixed_term.application_url == 'https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply'
