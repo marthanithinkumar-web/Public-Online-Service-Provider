@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-01T09:11:28Z",
+  "generated_at": "2026-11-02T09:24:58Z",
   "items": [
     {
       "id": 174024068333720,
@@ -29,11 +29,11 @@
         "key": "sbi",
         "name": "State Bank of India — Careers",
         "listing_url": "https://sbi.bank.in/web/careers/current-openings",
-        "last_sync_completed_at": "2026-11-01T09:11:28Z",
+        "last_sync_completed_at": "2026-11-02T09:24:58Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-10-31T08:22:20Z",
-      "last_seen_at": "2026-11-01T09:11:28Z",
+      "last_seen_at": "2026-11-02T09:24:58Z",
       "published_at": "2026-10-31T08:22:20Z",
       "content_hash": "9e4622c680985c3e4515ea3aa0013987bf6ec0a02d25ffea10ba91ae60598e86"
     },
@@ -64,11 +64,11 @@
         "key": "sbi",
         "name": "State Bank of India — Careers",
         "listing_url": "https://sbi.bank.in/web/careers/current-openings",
-        "last_sync_completed_at": "2026-11-01T09:11:28Z",
+        "last_sync_completed_at": "2026-11-02T09:24:58Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-10-31T08:22:20Z",
-      "last_seen_at": "2026-11-01T09:11:28Z",
+      "last_seen_at": "2026-11-02T09:24:58Z",
       "published_at": "2026-10-31T08:22:20Z",
       "content_hash": "83e38d52e0d9ca577bfb200e9eb6420a44f626a14cfb5dd051b64c6f575e70db"
     },
@@ -99,11 +99,11 @@
         "key": "sbi",
         "name": "State Bank of India — Careers",
         "listing_url": "https://sbi.bank.in/web/careers/current-openings",
-        "last_sync_completed_at": "2026-11-01T09:11:28Z",
+        "last_sync_completed_at": "2026-11-02T09:24:58Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-10-24T16:01:17Z",
-      "last_seen_at": "2026-11-01T09:11:28Z",
+      "last_seen_at": "2026-11-02T09:24:58Z",
       "published_at": "2026-10-24T16:01:17Z",
       "content_hash": "6c0171e1f71145565932169963966d1013e23a6ce028d51daa1d1245c76c011e"
     },
@@ -134,13 +134,83 @@
         "key": "rbi",
         "name": "Reserve Bank of India",
         "listing_url": "https://opportunities.rbi.org.in/Scripts/Vacancies.aspx",
-        "last_sync_completed_at": "2026-11-01T09:11:28Z",
+        "last_sync_completed_at": "2026-11-02T09:24:58Z",
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-10-24T16:13:55Z",
-      "last_seen_at": "2026-11-01T09:11:28Z",
+      "last_seen_at": "2026-11-02T09:24:58Z",
       "published_at": "2026-10-24T16:13:55Z",
       "content_hash": "131941f0d790af874ca00e2e806fe09aba6f15762aeb0e0f7410ae1727860db0"
+    },
+    {
+      "id": 273958380241877,
+      "slug": "state-bank-of-india-sbi-recruitment-of-specialist-cadre-officer-on-regular-basis-post-risk-specialist-apply-online-from-02-11-2026-to-23-11-2026-f929e7f0",
+      "title": "RECRUITMENT OF SPECIALIST CADRE OFFICER ON REGULAR BASIS (POST : RISK SPECIALIST) (Apply Online from 02.11.2026 TO 23.11.2026)",
+      "organization": "State Bank of India (SBI)",
+      "job_type": "government",
+      "appointment_type": null,
+      "location": "India",
+      "qualification": "degree in Finance / Data Analytics / Business Analytics from a recognized institute",
+      "age_limit": null,
+      "application_fee": "s and Intimation Charges (Non -refundable) is Rs 750/- (Rupees Seven Hundred Fifty only) for General/EWS/OBC candidates and no fees/intimation charges for",
+      "vacancies": null,
+      "salary": null,
+      "summary": "Verified from the official notification. Qualification: degree in Finance / Data Analytics / Business Analytics from a recognized institute · Fee: s and Intimation Charges (Non -refundable) is Rs 750/- (Rupees Seven Hundred Fifty only) for General/EWS/OBC candidates and no fees/intimation charges for",
+      "issue_date": null,
+      "application_start_date": null,
+      "deadline": "2026-11-23",
+      "official_notice_url": "https://sbi.bank.in/documents/77530/57941334/DETAILED+ADV_RMD_SCO_2026-27_27.pdf/fff268f5-f55d-3ec8-b1ca-b7a51e705e0e?t=1793599952659",
+      "application_url": "https://recruitment.sbi.bank.in/crpd-sco-2026-27-27/apply",
+      "status": "published",
+      "verification_status": "official_source_checked",
+      "confidence": 0.96,
+      "is_featured": false,
+      "source": {
+        "key": "sbi",
+        "name": "State Bank of India — Careers",
+        "listing_url": "https://sbi.bank.in/web/careers/current-openings",
+        "last_sync_completed_at": "2026-11-02T09:24:58Z",
+        "last_sync_status": "success"
+      },
+      "first_seen_at": "2026-11-02T09:24:58Z",
+      "last_seen_at": "2026-11-02T09:24:58Z",
+      "published_at": "2026-11-02T09:24:58Z",
+      "content_hash": "f929e7f003d5b8f898109f1e96c589cfd20c90228eea0de03fb51c531d001783"
+    },
+    {
+      "id": 136282380084494,
+      "slug": "state-bank-of-india-sbi-recruitment-of-specialist-cadre-officer-on-regular-basis-for-the-posts-of-chief-manager-product-research-forex-rupee-derivatives-manager-product-research-analyst-apply-online-from-02-11-2026-to-23-11-2026-7bf2b6da",
+      "title": "RECRUITMENT OF SPECIALIST CADRE OFFICER ON REGULAR BASIS FOR THE POSTS OF CHIEF MANAGER (PRODUCT & RESEARCH - FOREX & RUPEE DERIVATIVES) & MANAGER (PRODUCT & RESEARCH ANALYST) (Apply Online from 02.11.2026 TO 23.11.2026)",
+      "organization": "State Bank of India (SBI)",
+      "job_type": "government",
+      "appointment_type": null,
+      "location": "India",
+      "qualification": "/POST -QUALIFICATION EXPERIENCES/SPECIFIC SKILLS ETC. POST",
+      "age_limit": null,
+      "application_fee": "s and Intimation Charges (Non -refundable) is Rs 750/- (Rupees Seven Hundred Fifty only) for General/EWS/OBC candidates and no fees/intimation charges for",
+      "vacancies": null,
+      "salary": null,
+      "summary": "Verified from the official notification. Qualification: /POST -QUALIFICATION EXPERIENCES/SPECIFIC SKILLS ETC. POST · Fee: s and Intimation Charges (Non -refundable) is Rs 750/- (Rupees Seven Hundred Fifty only) for General/EWS/OBC candidates and no fees/intimation charges for",
+      "issue_date": null,
+      "application_start_date": null,
+      "deadline": "2026-11-23",
+      "official_notice_url": "https://sbi.bank.in/documents/77530/57941334/FINAL+ADVT+CRPD+_SCO_2026-27_26_GMU.pdf/ade1acc4-609b-5c9a-ed89-670e70d0a82c?t=1793600742622",
+      "application_url": "https://recruitment.sbi.bank.in/crpd-sco-2026-27-26/apply",
+      "status": "published",
+      "verification_status": "official_source_checked",
+      "confidence": 0.96,
+      "is_featured": false,
+      "source": {
+        "key": "sbi",
+        "name": "State Bank of India — Careers",
+        "listing_url": "https://sbi.bank.in/web/careers/current-openings",
+        "last_sync_completed_at": "2026-11-02T09:24:58Z",
+        "last_sync_status": "success"
+      },
+      "first_seen_at": "2026-11-02T09:24:58Z",
+      "last_seen_at": "2026-11-02T09:24:58Z",
+      "published_at": "2026-11-02T09:24:58Z",
+      "content_hash": "7bf2b6daa50e7a2366c4ffbff0048a4788558f200188fe4a3775a416acf9a7a3"
     }
   ],
   "sources": [
@@ -149,9 +219,9 @@
       "name": "Reserve Bank of India",
       "listing_url": "https://opportunities.rbi.org.in/Scripts/Vacancies.aspx",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "success",
-      "fetched_count": 25,
+      "fetched_count": 26,
       "published_count": 1
     },
     {
@@ -159,17 +229,17 @@
       "name": "State Bank of India — Careers",
       "listing_url": "https://sbi.bank.in/web/careers/current-openings",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "success",
-      "fetched_count": 47,
-      "published_count": 3
+      "fetched_count": 49,
+      "published_count": 5
     },
     {
       "key": "nvs",
       "name": "Navodaya Vidyalaya Samiti",
       "listing_url": "https://navodaya.gov.in/nvs/en/Recruitment/",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "failed",
       "fetched_count": 0,
       "published_count": 0,
@@ -180,7 +250,7 @@
       "name": "Sainik Schools Society",
       "listing_url": "https://sainikschoolsociety.in/",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -190,7 +260,7 @@
       "name": "Kendriya Vidyalaya Sangathan",
       "listing_url": "https://kvs.gov.in/en/interview-notice/",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "success",
       "fetched_count": 6,
       "published_count": 0
@@ -200,7 +270,7 @@
       "name": "Securities and Exchange Board of India",
       "listing_url": "https://www.sebi.gov.in/sebiweb/other/careerdetail.jsp?careerId=1",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -210,7 +280,7 @@
       "name": "Institute of Banking Personnel Selection",
       "listing_url": "https://www.ibps.in/",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "failed",
       "fetched_count": 0,
       "published_count": 0,
@@ -221,7 +291,7 @@
       "name": "Defence Research and Development Organisation (DRDO) — Vacancies",
       "listing_url": "https://drdo.gov.in/drdo/offerings/vacancies",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "failed",
       "fetched_count": 0,
       "published_count": 0,
@@ -232,7 +302,7 @@
       "name": "Staff Selection Commission",
       "listing_url": "https://ssc.gov.in/api/general-website/portal/notice-boards?page=1&limit=100&contentType=notice-boards&key=createdAt&order=DESC&isAttachment=true&language=english&attributes=id%2Cheadline%2CexamId%2CcontentType%2CredirectUrl%2CstartDate%2CendDate%2Clanguage%2CcreatedAt",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "success",
       "fetched_count": 3,
       "published_count": 0
@@ -242,7 +312,7 @@
       "name": "Railway Recruitment Control Board (RRCB)",
       "listing_url": "https://www.rrcb.gov.in/Employment_notices.html",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "failed",
       "fetched_count": 0,
       "published_count": 0,
@@ -253,9 +323,9 @@
       "name": "Union Public Service Commission",
       "listing_url": "https://www.upsc.gov.in/recruitment/recruitment-advertisement",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "success",
-      "fetched_count": 1,
+      "fetched_count": 0,
       "published_count": 0
     },
     {
@@ -263,7 +333,7 @@
       "name": "Intelligence Bureau / Ministry of Home Affairs",
       "listing_url": "https://www.mha.gov.in/en/notifications/vacancies?title=Intelligence%20Bureau",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -273,7 +343,7 @@
       "name": "Telangana Police Recruitment Board",
       "listing_url": "https://www.tgprb.in/",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -283,7 +353,7 @@
       "name": "India Post — GDS Online Engagement",
       "listing_url": "https://www.indiapost.gov.in/gdsonlineengagement",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -293,7 +363,7 @@
       "name": "Department of Posts — Vacancies",
       "listing_url": "https://www.indiapost.gov.in/vacancies",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -303,7 +373,7 @@
       "name": "Indian Space Research Organisation",
       "listing_url": "https://www.isro.gov.in/ViewAllOpportunities.html",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -313,7 +383,7 @@
       "name": "National Career Service",
       "listing_url": "https://www.ncs.gov.in/job-listing",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -323,9 +393,9 @@
       "name": "Wipro Careers",
       "listing_url": "https://careers.wipro.com/sitemap.xml",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "success",
-      "fetched_count": 6484,
+      "fetched_count": 6491,
       "published_count": 0
     },
     {
@@ -333,7 +403,7 @@
       "name": "Infosys Careers",
       "listing_url": "https://digitalcareers.infosys.com/infosys/global-careers?location=India",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
@@ -343,13 +413,13 @@
       "name": "Accenture Careers",
       "listing_url": "https://www.accenture.com/in-en/careers/jobsearch",
       "enabled": true,
-      "last_sync_completed_at": "2026-11-01T09:11:28Z",
+      "last_sync_completed_at": "2026-11-02T09:24:58Z",
       "last_sync_status": "success",
       "fetched_count": 0,
       "published_count": 0
     }
   ],
-  "count": 4,
-  "review_count": 6552,
+  "count": 6,
+  "review_count": 6561,
   "successful_sources": 16
 }
