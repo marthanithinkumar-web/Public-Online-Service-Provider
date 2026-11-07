@@ -18,7 +18,7 @@ export type ScholarshipFeed={
 
 const api=axios.create({baseURL:apiBase,timeout:5000})
 const indiaToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
-const rollingOpenEvidence=/\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|open for applications|registration (?:is )?(?:currently )?open|application process is open)\b/i
+const rollingOpenEvidence=/\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|open for applications|registration\b.{0,80}\b(?:is|are)\s+(?:currently\s+)?open|application process is open)\b/i
 const sourceCheckIsFresh=(item:Scholarship)=>{
   const checked=Date.parse(item.source_checked_at||item.verified_at||item.last_seen_at||'')
   const age=Date.now()-checked
