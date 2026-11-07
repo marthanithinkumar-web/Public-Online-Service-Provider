@@ -413,8 +413,8 @@ def parse_tg_overseas(document, source, now=None):
             now=now,
         )
         open_match = re.search(
-            r'\b(?:registration|applications?)\\s+(?:is|are)\\s+(?:currently\\s+)?open\\b|'
-            r'\b(?:registration|applications?)\\s+open\\b',
+            r'\b(?:registration|applications?)\b.{0,80}\b(?:is|are)\s+(?:currently\s+)?open\b|'
+            r'\b(?:registration|applications?)\s+open\b',
             block,
             re.I,
         )
