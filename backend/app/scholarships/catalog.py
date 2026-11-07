@@ -59,7 +59,10 @@ def _active(item, today=None, now=None):
     if not evidence or not _fresh_source_check(item, now=now):
         return False
     application_status = str(item.get('application_status') or '').lower()
-    india_today = today or datetime.now(ZoneInfo('Asia/Kolkata')).date()
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    india_today = today or current.astimezone(ZoneInfo('Asia/Kolkata')).date()
     deadline = item.get('deadline')
     if not deadline:
         return application_status == 'open' and bool(ROLLING_OPEN_EVIDENCE.search(evidence))
