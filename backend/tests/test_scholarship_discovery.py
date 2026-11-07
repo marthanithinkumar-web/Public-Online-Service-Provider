@@ -289,3 +289,26 @@ def test_snapshot_excludes_officially_closed_nsp_record_from_active_items_and_ke
     assert payload['closed_count'] == 1
     assert payload['closed_items'][0]['title'] == 'Beedi Pre Matric Scholarship'
     assert payload['closed_items'][0]['closure_reason'] == 'official_status_closed'
+
+def test_nsp_parser_extracts_labeled_dates_when_a_card_renders_all_dates_on_one_line():
+    html = '''
+    <html><body>
+      <div>Academic Year 2026-27</div>
+      <div>Financial Assistance For Education To The Wards Of Beedi/Cine/IOMC/LSDM- Pre Matric (Welfare Based Scheme)</div>
+      <div>Scheme Open from : 01-06-2026 Student Application Closed on : 31-10-2026 Defective Application Verification Open till:15-11-2026 Institute Verification Open till:15-11-2026</div>
+      <div>PM YASASVI Central Sector Scheme Of Top Class Education In Schools For OBC, EBC And DNT Students (Merit Based Scheme)</div>
+      <div>Scheme Open from : 22-10-2026 Student Application Open till : 15-11-2026 Defective Application Verification Open till:30-11-2026</div>
+    </body></html>
+    '''
+    src = source('nsp', 'National Scholarship Portal', 'https://scholarships.gov.in/All-Scholarships', 'nsp')
+
+    items = parse_nsp(html, src, now=NOW)
+
+    beedi = next(item for item in items if 'Beedi' in item['title'])
+    yasasvi = next(item for item in items if 'YASASVI' in item['title'])
+    assert beedi['application_open_date'] == '2026-06-01'
+    assert beedi['deadline'] == '2026-10-31'
+    assert beedi['status'] == 'closed'
+    assert yasasvi['application_open_date'] == '2026-10-22'
+    assert yasasvi['deadline'] == '2026-11-15'
+    assert yasasvi['status'] == 'active'
