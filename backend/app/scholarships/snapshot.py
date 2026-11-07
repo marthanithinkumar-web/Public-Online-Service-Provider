@@ -37,7 +37,14 @@ def _normalise_existing(item,generated_at=None):
     return _normalise_nsp_provider(value)
 
 def _preserve_previous(item,health,now,check_date):
-    if not _active(item,check_date):return False
+    # Preserve a copy for admin review when an official source fails, but never
+    # re-publish it as active or refresh its last-seen timestamp.
+    status=str(item.get('status') or '').lower()
+    if status in {'closed','expired','cancelled','withdrawn'}:return False
+    deadline=None
+    try:deadline=date.fromisoformat(str(item.get('deadline') or '')[:10])
+    except (TypeError,ValueError):pass
+    if deadline is not None and deadline<check_date:return False
     age=_age_days(item.get('last_seen_at'),now)
     if item.get('source_type')=='private':return age is not None and age<=PRIVATE_LISTING_MAX_AGE_DAYS
     source_health=health.get(item.get('source_key'))
@@ -96,10 +103,10 @@ def refresh_snapshot(path=CATALOG_PATH,today=None,*,discover=True,strict=False,n
     for item in previous_stale:
         source_health=health.get(item.get('source_key')) or {}
         age=_age_days(item.get('last_seen_at'),now)
-        still_open=_active({**item,'stale_source':False},check_date)
-        if not discover or (not source_health.get('ok') and still_open and age is not None and age<=OFFICIAL_FAILURE_GRACE_DAYS):
-            item['stale_source']=True;stale_preserved.append(item)
-    items=dedupe_items([*discovered,*preserved]);items=[item for item in items if _active(item,check_date)];items.sort(key=lambda item:(0 if item.get('source_type')=='official' else 1,item.get('deadline') or '9999-12-31',item.get('title') or ''))
+        still_current=(not item.get('deadline') or str(item.get('deadline'))[:10]>=check_date.isoformat()) and str(item.get('status') or '').lower() not in {'closed','expired','cancelled','withdrawn'}
+        if not discover or (not source_health.get('ok') and still_current and age is not None and age<=OFFICIAL_FAILURE_GRACE_DAYS):
+            item['stale_source']=True;item['application_status']='unverified';stale_preserved.append(item)
+    items=dedupe_items([*discovered,*preserved]);items=[item for item in items if _active(item,check_date,now=now)];items.sort(key=lambda item:(0 if item.get('source_type')=='official' else 1,item.get('deadline') or '9999-12-31',item.get('title') or ''))
     active_keys={(slugify(item.get('title')),slugify(item.get('region') or 'india')) for item in items}
     closed_candidates=[]
     for candidate in [*previous_closed,*previous_items,*previous_stale,*discovered]:
@@ -110,9 +117,18 @@ def refresh_snapshot(path=CATALOG_PATH,today=None,*,discover=True,strict=False,n
         if key not in active_keys:
             closed_candidates.append(closed)
     closed_items=dedupe_items(closed_candidates)
-    stale_items=dedupe_items([item for item in stale_preserved if item.get('source_type')=='official' and item.get('deadline') and item.get('deadline')>=check_date.isoformat()])
+    stale_items=dedupe_items([item for item in stale_preserved if item.get('source_type')=='official' and (not item.get('deadline') or str(item.get('deadline'))[:10]>=check_date.isoformat()) and str(item.get('status') or '').lower() not in {'closed','expired','cancelled','withdrawn'}])
+    unverified_candidates=[]
+    for candidate in [*previous.get('unverified_items',[]),*discovered]:
+        if not isinstance(candidate,dict) or _closed_record(candidate,check_date,now):
+            continue
+        if not _active(candidate,check_date,now=now):
+            value=dict(candidate);value['status']='unverified';value['application_status']='unverified'
+            value['review_reason']=value.get('review_reason') or 'missing_or_ambiguous_official_application_status_or_fresh_evidence'
+            unverified_candidates.append(value)
+    unverified_items=dedupe_items(unverified_candidates)
     official_count=sum(1 for item in items if item.get('source_type')=='official');private_count=sum(1 for item in items if item.get('source_type')=='private');stale_source_count=len(stale_items)
-    refreshed={'generated_at':now.isoformat(),'count':len(items),'official_count':official_count,'private_count':private_count,'stale_source_count':stale_source_count,'closed_count':len(closed_items),'discovery':{'mode':'official_daily_discovery' if discover else 'expiry_only','checked_at':now.isoformat(),'source_health':health},'items':items,'closed_items':closed_items,'stale_items':stale_items};path.write_text(json.dumps(refreshed,ensure_ascii=False,indent=2)+'\n',encoding='utf-8');return refreshed
+    refreshed={'generated_at':now.isoformat(),'count':len(items),'official_count':official_count,'private_count':private_count,'verified_open_count':sum(1 for item in items if item.get('application_status')=='open'),'deadline_today_count':sum(1 for item in items if item.get('application_status')=='deadline_today'),'stale_source_count':stale_source_count,'closed_count':len(closed_items),'unverified_count':len(stale_items)+len(unverified_items),'discovery':{'mode':'official_daily_discovery' if discover else 'expiry_only','checked_at':now.isoformat(),'source_health':health},'items':items,'closed_items':closed_items,'stale_items':stale_items,'unverified_items':unverified_items};path.write_text(json.dumps(refreshed,ensure_ascii=False,indent=2)+'\\n',encoding='utf-8');return refreshed
 
 def main():
     parser=argparse.ArgumentParser(description='Discover current scholarships from official sources and refresh the public snapshot.');parser.add_argument('--output',default=str(CATALOG_PATH));parser.add_argument('--no-discover',action='store_true',help='Only remove closed/stale entries; do not contact official sources.');parser.add_argument('--strict',action='store_true',help='Fail rather than publish when the primary official discovery source is unhealthy.');args=parser.parse_args();payload=refresh_snapshot(args.output,discover=not args.no_discover,strict=args.strict);healthy=sum(1 for source in payload.get('discovery',{}).get('source_health',{}).values() if source.get('ok'));print(f"Published {payload['count']} active scholarships ({payload['official_count']} official, {payload['private_count']} private/partner); {healthy} official sources healthy.")
