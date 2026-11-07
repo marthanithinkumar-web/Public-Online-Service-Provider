@@ -4,7 +4,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 from .catalog import CATALOG_PATH, _active
-from .discovery import dedupe_items, discover_official_scholarships, is_official_url, source_key_for_url
+from .discovery import dedupe_items, discover_official_scholarships, is_official_url, slugify, source_key_for_url
 from .source_enrichment import enrich_scholarships
 
 OFFICIAL_FAILURE_GRACE_DAYS = 7
@@ -44,13 +44,34 @@ def _preserve_previous(item,health,now,check_date):
     if source_health and source_health.get('ok'):return False
     return age is not None and age<=OFFICIAL_FAILURE_GRACE_DAYS
 
+def _closed_record(item, check_date, now):
+    value = dict(item)
+    status = str(value.get('status') or '').lower()
+    deadline = None
+    try:
+        deadline = date.fromisoformat(str(value.get('deadline') or '')[:10])
+    except (TypeError, ValueError):
+        pass
+    if status in {'closed', 'expired', 'cancelled', 'withdrawn'}:
+        reason = value.get('closure_reason') or ('official_status_' + status)
+    elif deadline is not None and deadline < check_date:
+        reason = 'deadline_passed'
+    else:
+        return None
+    value['status'] = 'closed'
+    value['application_status'] = 'closed' if status != 'cancelled' else 'cancelled'
+    value['closure_reason'] = reason
+    value['closed_at'] = value.get('closed_at') or now.isoformat()
+    return value
+
+
 def refresh_snapshot(path=CATALOG_PATH,today=None,*,discover=True,strict=False,now=None,discovery_func=None):
     path=Path(path)
     try:previous=json.loads(path.read_text(encoding='utf-8'))
     except (OSError,ValueError,TypeError):previous={'items':[]}
     now=now or datetime.now(timezone.utc)
     if now.tzinfo is None:now=now.replace(tzinfo=timezone.utc)
-    check_date=today or now.date();generated_at=previous.get('generated_at');previous_items=[_normalise_existing(item,generated_at) for item in previous.get('items',[]) if isinstance(item,dict)]
+    check_date=today or now.date();generated_at=previous.get('generated_at');previous_items=[_normalise_existing(item,generated_at) for item in previous.get('items',[]) if isinstance(item,dict)];previous_closed=[_normalise_existing(item,generated_at) for item in previous.get('closed_items',[]) if isinstance(item,dict)]
     health={};discovered=[]
     if discover:
         discoverer=discovery_func or discover_official_scholarships;discovered,health=discoverer(now=now);discovered=[_normalise_nsp_provider(item) for item in discovered]
@@ -79,9 +100,19 @@ def refresh_snapshot(path=CATALOG_PATH,today=None,*,discover=True,strict=False,n
         if not discover or (not source_health.get('ok') and still_open and age is not None and age<=OFFICIAL_FAILURE_GRACE_DAYS):
             item['stale_source']=True;stale_preserved.append(item)
     items=dedupe_items([*discovered,*preserved]);items=[item for item in items if _active(item,check_date)];items.sort(key=lambda item:(0 if item.get('source_type')=='official' else 1,item.get('deadline') or '9999-12-31',item.get('title') or ''))
+    active_keys={(slugify(item.get('title')),slugify(item.get('region') or 'india')) for item in items}
+    closed_candidates=[]
+    for candidate in [*previous_closed,*previous_items,*previous_stale,*discovered]:
+        closed=_closed_record(candidate,check_date,now)
+        if not closed:
+            continue
+        key=(slugify(closed.get('title')),slugify(closed.get('region') or 'india'))
+        if key not in active_keys:
+            closed_candidates.append(closed)
+    closed_items=dedupe_items(closed_candidates)
     stale_items=dedupe_items([item for item in stale_preserved if item.get('source_type')=='official' and item.get('deadline') and item.get('deadline')>=check_date.isoformat()])
     official_count=sum(1 for item in items if item.get('source_type')=='official');private_count=sum(1 for item in items if item.get('source_type')=='private');stale_source_count=len(stale_items)
-    refreshed={'generated_at':now.isoformat(),'count':len(items),'official_count':official_count,'private_count':private_count,'stale_source_count':stale_source_count,'discovery':{'mode':'official_daily_discovery' if discover else 'expiry_only','checked_at':now.isoformat(),'source_health':health},'items':items,'stale_items':stale_items};path.write_text(json.dumps(refreshed,ensure_ascii=False,indent=2)+'\n',encoding='utf-8');return refreshed
+    refreshed={'generated_at':now.isoformat(),'count':len(items),'official_count':official_count,'private_count':private_count,'stale_source_count':stale_source_count,'closed_count':len(closed_items),'discovery':{'mode':'official_daily_discovery' if discover else 'expiry_only','checked_at':now.isoformat(),'source_health':health},'items':items,'closed_items':closed_items,'stale_items':stale_items};path.write_text(json.dumps(refreshed,ensure_ascii=False,indent=2)+'\n',encoding='utf-8');return refreshed
 
 def main():
     parser=argparse.ArgumentParser(description='Discover current scholarships from official sources and refresh the public snapshot.');parser.add_argument('--output',default=str(CATALOG_PATH));parser.add_argument('--no-discover',action='store_true',help='Only remove closed/stale entries; do not contact official sources.');parser.add_argument('--strict',action='store_true',help='Fail rather than publish when the primary official discovery source is unhealthy.');args=parser.parse_args();payload=refresh_snapshot(args.output,discover=not args.no_discover,strict=args.strict);healthy=sum(1 for source in payload.get('discovery',{}).get('source_health',{}).values() if source.get('ok'));print(f"Published {payload['count']} active scholarships ({payload['official_count']} official, {payload['private_count']} private/partner); {healthy} official sources healthy.")
