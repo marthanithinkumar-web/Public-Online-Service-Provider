@@ -413,14 +413,14 @@ def parse_tg_overseas(document, source, now=None):
             now=now,
         )
         open_match = re.search(
-            r'\\b(?:registration|applications?)\\s+(?:is|are)\\s+(?:currently\\s+)?open\\b|'
-            r'\\b(?:registration|applications?)\\s+open\\b',
+            r'\b(?:registration|applications?)\\s+(?:is|are)\\s+(?:currently\\s+)?open\\b|'
+            r'\b(?:registration|applications?)\\s+open\\b',
             block,
             re.I,
         )
         if open_match:
             item['application_status'] = 'open'
-            item['status_evidence'] = re.sub(r'\\s+', ' ', open_match.group(0)).strip()
+            item['status_evidence'] = re.sub(r'\s+', ' ', open_match.group(0)).strip()
         items.append(item)
     return items
 
