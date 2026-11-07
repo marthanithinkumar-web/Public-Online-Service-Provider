@@ -160,3 +160,20 @@ After the items above are complete and tested, continue the existing full improv
    - Client APIs, the client dashboard, and the client's complete application history are unchanged and do not expose admin filing state.
    - Archive and restore actions require an active administrator account and create admin audit-log records.
    - Still required: publish only after the current Render deployment is stable, run the migration, and complete production admin/client isolation checks.
+
+## 2026-11-07 — POSP expired scholarship production blocker (active)
+
+- Owner authorized the GitHub repository as the normal code-writing path. This supersedes the earlier blocked-write constraint for branch/commit/PR work; it does not authorize automatic merge or deployment.
+- Latest verified main at branch creation: `f1391efac69f721b14f3956cb1b85d84f3496770`.
+- Cross-chat continuity retrieval was completed before repository inspection. Current open PRs/issues and workflows were inspected; no existing branch already contained this focused NSP parser correction.
+- Confirmed official NSP page states Beedi/Cine/IOMC/LSDM Pre-Matric student applications closed on 31-10-2026; 15-11-2026 is defective/institute verification. The adjacent PM YASASVI Top Class Education in Schools scheme has its own student-application deadline 15-11-2026. Official source: https://scholarships.gov.in/All-Scholarships.
+- PR #252: https://github.com/marthanithinkumar-web/Public-Online-Service-Provider/pull/252
+- Branch: `fix/verified-scholarship-application-status-20261107`.
+- Latest branch head at this handoff: `f996d99883832af03f1b2b14c53ffdaf234c83bf`.
+- Code changes: NSP parser recognizes explicit student-application closure/open labels, scopes date association to the relevant card, parses labeled dates even when the card dates share one text row, records source evidence/timezone/check timestamp, and separates closed/expired scholarship records into `closed_items` rather than active `items`.
+- Regression tests added for the Beedi/PM YASASVI neighboring-card bug, combined-row dates, verification-date separation, closed record audit retention, and closed/cancelled active-eligibility rejection.
+- Browser E2E workflow pinned to Ubuntu 24.04 because the previous `ubuntu-latest` runner resolved to Ubuntu 26.04, which Playwright 1.55.0 could not install on. The failed earlier E2E run stopped before test execution due to that runner incompatibility.
+- Exact-head CI and E2E for `f996d99883832af03f1b2b14c53ffdaf234c83bf` were in progress when this entry was written: CI run 42324692738; authenticated browser E2E run 42324692752. Frontend typecheck/build and operational safety had succeeded; backend tests and Chromium install were still running.
+- No merge, deployment, production data mutation, customer/request/payment change, or real notification occurred.
+- Remaining blocker: verify all current active jobs and scholarships against official sources; fix same-advertisement job supersession and stale carry-forward; add item-level freshness/status evidence and safe deadline cutoff handling; enforce across API/search/frontend/AI/SEO/sitemap; add admin sync/failure reporting; complete regression coverage; obtain green exact-head CI and production API/UI/sitemap verification. Do not declare the listing set clean.
+
