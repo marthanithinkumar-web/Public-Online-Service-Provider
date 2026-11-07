@@ -51,6 +51,9 @@ def test_nsp_parser_discovers_current_scheme_with_deadline_and_metadata():
     assert item['is_official'] is True
     assert item['application_url'] == 'https://scholarships.gov.in/Students'
     assert item['category'] == 'Merit Based'
+    assert item['application_status'] == 'open'
+    assert item['status_evidence'] == 'Student Application Open till : 31-10-2026'
+    assert item['source_checked_at'] == NOW.isoformat()
 
 
 def test_telangana_postmatric_and_prematric_parsers_find_fresh_and_renewal():
@@ -97,6 +100,10 @@ def test_telangana_overseas_parser_excludes_closed_scheme_and_reads_deadline():
 
     assert len(items) == 2
     assert not any('Minority' in item['title'] for item in items)
+    ambedkar = next(item for item in items if 'Ambedkar' in item['title'])
+    assert ambedkar['deadline'] is None
+    assert ambedkar['application_status'] == 'open'
+    assert 'Registration for SC students is open' in ambedkar['status_evidence']
     jyothiba = next(item for item in items if 'Jyothiba' in item['title'])
     assert jyothiba['deadline'] == '2026-09-30'
     assert jyothiba['is_official'] is True
@@ -132,6 +139,8 @@ def test_snapshot_separates_official_and_private_and_replaces_healthy_source(tmp
         'deadline': '2026-11-30', 'status': 'active', 'source_key': 'nsp',
         'source_type': 'official', 'is_official': True, 'record_type': 'scholarship',
         'verified_at': NOW.isoformat(), 'last_seen_at': NOW.isoformat(),
+        'source_checked_at': NOW.isoformat(), 'application_status': 'open',
+        'status_evidence': 'Student Application Open till : 30-11-2026',
     }
 
     def discoverer(now=None):
@@ -157,6 +166,8 @@ def test_snapshot_normalizes_neighbouring_nsp_scheme_title_used_as_provider(tmp_
         'deadline': '2026-10-31', 'status': 'active', 'source_key': 'nsp',
         'source_type': 'official', 'is_official': True, 'record_type': 'scholarship',
         'verified_at': NOW.isoformat(), 'last_seen_at': NOW.isoformat(),
+        'source_checked_at': NOW.isoformat(), 'application_status': 'open',
+        'status_evidence': 'Student Application Open till : 31-10-2026',
     }
     bad_aicte = {
         **base,
