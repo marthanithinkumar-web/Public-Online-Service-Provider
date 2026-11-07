@@ -249,6 +249,15 @@ def _nsp_title_before(lines, index):
     return None, None
 
 
+def _nsp_labeled_date(text, label_pattern):
+    match = re.search(label_pattern, str(text or ''), re.I)
+    if not match:
+        return None
+    # Parse only the date following the requested label. A card may render
+    # scheme-open, student-application and verification dates in one text row.
+    return iso_date(str(text)[match.end():match.end() + 100])
+
+
 def parse_nsp(document, source, now=None):
     lines = html_lines(document)
     year = _academic_year(' '.join(lines[:80]))
@@ -260,7 +269,7 @@ def parse_nsp(document, source, now=None):
         is_closed = 'student application closed on' in lower
         if not (is_open or is_closed):
             continue
-        deadline = iso_date(line)
+        deadline = _nsp_labeled_date(line, r'student application (?:open till|closed on)')
         if not deadline:
             continue
         title_index, title = _nsp_title_before(lines, index)
@@ -271,12 +280,12 @@ def parse_nsp(document, source, now=None):
         if key in seen:
             continue
         seen.add(key)
-        scheme_line = next(
+        scheme_line = line if 'scheme open from' in lower else next(
             (lines[position] for position in range(index - 1, max(-1, index - 18), -1)
              if 'scheme open from' in lines[position].lower()),
             '',
         )
-        open_date = iso_date(scheme_line)
+        open_date = _nsp_labeled_date(scheme_line, 'scheme open from')
         nearby = ' '.join(lines[title_index:index + 1])
         category = 'Welfare Based' if 'welfare based scheme' in nearby.lower() else ('Merit Based' if 'merit based scheme' in nearby.lower() else 'Scholarship')
         item = official_item(
