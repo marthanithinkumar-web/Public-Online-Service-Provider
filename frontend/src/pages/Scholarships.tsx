@@ -1,7 +1,7 @@
 import React,{useEffect,useMemo,useState} from 'react'
 import {Link} from 'react-router-dom'
 import Seo from '../components/ui/Seo'
-import {fetchScholarships,Scholarship,scholarshipPath,scholarshipSourceLabel} from '../services/scholarships'
+import {fetchScholarships,Scholarship,scholarshipPath,scholarshipSourceLabel,scholarshipStatusLabel,scholarshipLastVerified} from '../services/scholarships'
 
 export default function Scholarships(){
   const [items,setItems]=useState<Scholarship[]>([]),[q,setQ]=useState(''),[loading,setLoading]=useState(true),[error,setError]=useState('')
@@ -11,7 +11,7 @@ export default function Scholarships(){
     <div className="section-header"><div><span className="eyebrow">Updated scholarship opportunities</span><h1>Scholarships</h1><p>Search active opportunities and check the eligibility requirements before applying.</p></div></div>
     <label className="search-box"><span className="sr-only">Search scholarships</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search scholarship, provider, course, state or category"/></label>
     {loading&&<div className="jobs-loading" role="status"><div className="loading-dot"/><p>Loading scholarships…</p></div>}{error&&<p className="info" role="alert">{error}</p>}
-    {!loading&&!error&&<div className="service-grid">{visible.map(item=><article className="service-card" key={item.id}><span className="eyebrow">{scholarshipSourceLabel(item)}{item.stale_source?' · source check delayed':''}</span><h2>{item.title}</h2><p><strong>{item.provider}</strong></p>{item.education_level&&<p>Study level: {item.education_level}</p>}{item.region&&<p>Region: {item.region}</p>}<p>{item.deadline?`Apply by ${new Date(`${item.deadline}T00:00:00`).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}`:'Deadline: see current listing'}</p><Link className="btn btn-primary" to={scholarshipPath(item)}>View Details & Apply</Link></article>)}</div>}
+    {!loading&&!error&&<div className="service-grid">{visible.map(item=><article className="service-card" key={item.id}><span className="eyebrow">{scholarshipStatusLabel(item)} · {scholarshipSourceLabel(item)}</span><h2>{item.title}</h2><p><strong>{item.provider}</strong></p>{item.education_level&&<p>Study level: {item.education_level}</p>}{item.region&&<p>Region: {item.region}</p>}<p>{item.deadline?`Apply by ${new Date(`${item.deadline}T00:00:00`).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}`:'Deadline: see current listing'}</p><p className="muted">{scholarshipLastVerified(item)}</p><Link className="btn btn-primary" to={scholarshipPath(item)}>{item.application_status==='deadline_today'?'Check Official Portal':'View Details & Apply'}</Link></article>)}</div>}
     {!loading&&!error&&visible.length===0&&<div className="empty-dashboard"><h2>No active scholarship matches</h2><p>Try a broader search. Closed applications are removed from the active list.</p></div>}
   </section>
 }
