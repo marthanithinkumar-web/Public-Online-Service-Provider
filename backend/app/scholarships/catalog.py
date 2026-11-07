@@ -9,9 +9,9 @@ LEGACY_CATALOG_PATH = Path(__file__).resolve().parents[3] / 'frontend' / 'public
 CATALOG_PATH = LOCAL_CATALOG_PATH if LOCAL_CATALOG_PATH.exists() else LEGACY_CATALOG_PATH
 VERIFICATION_MAX_AGE = timedelta(hours=36)
 ROLLING_OPEN_EVIDENCE = re.compile(
-    r'\\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|'
-    r'open for applications|registration\\b.{0,80}\\b(?:is|are)\\s+(?:currently\\s+)?open|'
-    r'application process is open)\\b',
+    r'\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|'
+    r'open for applications|registration\b.{0,80}\b(?:is|are)\s+(?:currently\s+)?open|'
+    r'application process is open)\b',
     re.I,
 )
 
