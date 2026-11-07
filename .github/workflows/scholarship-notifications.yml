@@ -51,7 +51,8 @@ jobs:
         run: |
           python - <<'PY'
           import json
-          from datetime import date
+          from datetime import date, datetime, timedelta, timezone
+          from zoneinfo import ZoneInfo
           from pathlib import Path
           from urllib.parse import urlparse
           from app.scholarships.discovery import SOURCE_DEFINITIONS, is_official_url
@@ -69,6 +70,9 @@ jobs:
           assert len(official) >= 5, f'expected at least 5 current official scholarships, found {len(official)}'
           discovery=data.get('discovery') or {}
           health=discovery.get('source_health') or {}
+          now=datetime.now(timezone.utc)
+          today=now.astimezone(ZoneInfo('Asia/Kolkata')).date()
+          rolling_open_evidence=__import__('re').compile(r'\\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|open for applications|registration\\b.{0,80}\\b(?:is|are)\\s+(?:currently\\s+)?open|application process is open)\\b', __import__('re').I)
           assert discovery.get('mode') == 'official_daily_discovery', discovery
           assert (health.get('nsp') or {}).get('ok') is True, health.get('nsp')
           assert len(health) >= 5, f'official source health coverage is too small: {list(health)}'
@@ -88,11 +92,31 @@ jobs:
               assert item.get('is_official') is (source_type == 'official'), f'official-source flag mismatch: {slug}'
               deadline=item.get('deadline')
               if deadline:
-                  assert date.fromisoformat(deadline[:10]) >= date.today(), f'expired scholarship published: {slug}'
+                  assert date.fromisoformat(deadline[:10]) >= today, f'expired scholarship published: {slug}'
               for key in ('source_url','application_url'):
                   value=item.get(key)
                   assert value and urlparse(value).scheme == 'https', f'invalid {key}: {slug}'
               assert item.get('source_name'), f'missing source attribution: {slug}'
+              assert item.get('status') == 'active', f'non-active status in public snapshot: {slug}'
+              application_status=item.get('application_status')
+              assert application_status in {'open','deadline_today'}, f'unverified application status: {slug}'
+              evidence=str(item.get('status_evidence') or '').strip()
+              assert evidence, f'missing official status evidence: {slug}'
+              checked_value=item.get('source_checked_at') or item.get('verified_at')
+              assert checked_value, f'missing official source-check timestamp: {slug}'
+              checked=datetime.fromisoformat(str(checked_value).replace('Z','+00:00'))
+              if checked.tzinfo is None: checked=checked.replace(tzinfo=timezone.utc)
+              checked=checked.astimezone(timezone.utc)
+              assert now-timedelta(hours=36) <= checked <= now+timedelta(minutes=5), f'stale/future official source check: {slug}'
+              assert (health.get(item.get('source_key')) or {}).get('ok') is True, f'public item source failed: {slug}'
+              if deadline:
+                  end=date.fromisoformat(deadline[:10])
+                  if end == today:
+                      assert application_status == 'deadline_today', f'deadline-today item missing warning status: {slug}'
+                  else:
+                      assert application_status == 'open', f'future-deadline item not marked open: {slug}'
+              else:
+                  assert application_status == 'open' and rolling_open_evidence.search(evidence), f'undated item lacks explicit current-open evidence: {slug}'
               if source_type == 'official':
                   assert is_official_url(item['source_url']), f'official listing uses untrusted source: {slug}'
                   assert is_official_url(item['application_url']), f'official listing uses untrusted application URL: {slug}'
@@ -101,7 +125,9 @@ jobs:
                   assert 'Welfare Based Scheme)' not in provider, (item.get('title'), provider)
                   assert 'Merit Based Scheme)' not in provider, (item.get('title'), provider)
 
-          print(f"Validated {len(items)} active scholarships: {len(official)} official, {len(private)} private/partner")
+          verified_open=sum(1 for item in items if item.get('application_status')=='open')
+          deadline_today=sum(1 for item in items if item.get('application_status')=='deadline_today')
+          print(f"Validated {len(items)} public scholarships: {verified_open} verified open, {deadline_today} deadline today, {len(official)} official, {len(private)} private/partner")
           for key, value in sorted(health.items()):
               print(f"{key}: {'ok' if value.get('ok') else 'failed'} ({value.get('count', 0)} discovered)")
           PY
@@ -171,8 +197,8 @@ jobs:
                       raise RuntimeError(f"production snapshot is not deployed yet ({payload.get('generated_at')} != {expected_generated})")
                   if payload.get('count') != expected_count:
                       raise RuntimeError(f"production snapshot count differs ({payload.get('count')} != {expected_count})")
-                  if int(payload.get('official_count') or 0) < 5:
-                      raise RuntimeError(f"production feed has only {payload.get('official_count')} official scholarships")
+                  if int(payload.get('verified_open_count') or 0) < 5:
+                      raise RuntimeError(f"production feed has only {payload.get('verified_open_count')} verified-open scholarships")
                   health=(payload.get('discovery') or {}).get('source_health') or {}
                   if not health:
                       raise RuntimeError('production feed does not expose discovery source health')
