@@ -188,6 +188,11 @@ def official_item(title, provider, source, *, deadline=None, category=None, regi
         'category': category or 'Scholarship',
         'eligibility': eligibility or 'Apply only if you meet the current eligibility criteria published by the official provider.',
         'status': 'active',
+        'application_status': 'unverified',
+        'status_evidence': None,
+        'source_checked_at': stamp,
+        'deadline_timezone': 'Asia/Kolkata',
+        'deadline_cutoff_time': None,
         'source_key': source['key'],
         'source_type': 'official',
         'is_official': True,
@@ -400,13 +405,23 @@ def parse_tg_overseas(document, source, now=None):
             continue
         deadline_match = re.search(r'Last Date[^\d]{0,80}(\d{1,2}[-/.]\d{1,2}[-/.]20\d{2})', block, re.I)
         deadline = iso_date(deadline_match.group(1)) if deadline_match else None
-        items.append(official_item(
+        item = official_item(
             title,
             'Government of Telangana', source,
             deadline=deadline, region='Telangana', education_level='Higher Education / Overseas', category='Welfare Based',
             eligibility=f'For eligible {audience}; verify income, academic, admission, country and current session conditions on Telangana ePASS.',
             now=now,
-        ))
+        )
+        open_match = re.search(
+            r'\\b(?:registration|applications?)\\s+(?:is|are)\\s+(?:currently\\s+)?open\\b|'
+            r'\\b(?:registration|applications?)\\s+open\\b',
+            block,
+            re.I,
+        )
+        if open_match:
+            item['application_status'] = 'open'
+            item['status_evidence'] = re.sub(r'\\s+', ' ', open_match.group(0)).strip()
+        items.append(item)
     return items
 
 
