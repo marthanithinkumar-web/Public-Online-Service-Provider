@@ -8,6 +8,7 @@ content into a scholarship listing.
 import re
 import time
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from html.parser import HTMLParser
 from urllib.parse import urlparse
 
@@ -229,7 +230,7 @@ def _is_nsp_title(line):
 def _nsp_title_before(lines, index):
     # Each NSP card has its own "Scheme Open from" row. Anchor title lookup
     # to that card boundary so a neighbouring scheme cannot donate its date.
-    scheme_index = next(
+    scheme_index = index if 'scheme open from' in lines[index].lower() else next(
         (position for position in range(index - 1, max(-1, index - 18), -1)
          if 'scheme open from' in lines[position].lower()),
         None,
@@ -301,9 +302,16 @@ def parse_nsp(document, source, now=None):
         )
         # Only the student-application row supplies the application deadline.
         # Verification dates are intentionally not considered here.
+        checked_now = now or datetime.now(timezone.utc)
+        if checked_now.tzinfo is None:
+            checked_now = checked_now.replace(tzinfo=timezone.utc)
+        india_today = checked_now.astimezone(ZoneInfo('Asia/Kolkata')).date()
+        application_status = 'closed' if is_closed else (
+            'deadline_today' if deadline == india_today.isoformat() else 'open'
+        )
         item.update({
             'status': 'closed' if is_closed else 'active',
-            'application_status': 'closed' if is_closed else 'open',
+            'application_status': application_status,
             'application_open_date': open_date,
             'deadline_type': 'student_application',
             'deadline_timezone': 'Asia/Kolkata',
