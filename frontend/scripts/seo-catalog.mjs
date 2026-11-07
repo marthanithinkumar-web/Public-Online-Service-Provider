@@ -152,7 +152,7 @@ function isVerifiedScholarship(item){
   if(!String(item?.status_evidence||'').trim()||!scholarshipCheckIsFresh(item))return false
   const status=String(item?.application_status||'')
   const deadline=String(item?.deadline||'')
-  if(!deadline)return status==='open'&&/\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|open for applications|registration (?:is )?(?:currently )?open|application process is open)\b/i.test(String(item?.status_evidence||''))
+  if(!deadline)return status==='open'&&/\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|open for applications|registration\b.{0,80}\b(?:is|are)\s+(?:currently\s+)?open|application process is open)\b/i.test(String(item?.status_evidence||''))
   if(!hasCurrentDeadline(item))return false
   if(deadline===indiaToday())return status==='deadline_today'
   return status==='open'
