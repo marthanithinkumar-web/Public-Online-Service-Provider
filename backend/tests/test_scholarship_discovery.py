@@ -216,3 +216,51 @@ def test_strict_snapshot_refuses_unhealthy_primary_source(tmp_path):
 
     with pytest.raises(RuntimeError, match='National Scholarship Portal discovery failed'):
         refresh_snapshot(path, today=date(2026, 9, 4), now=NOW, discovery_func=discoverer, strict=True)
+
+def test_nsp_parser_keeps_closed_beedi_and_open_pm_yasasvi_dates_with_their_own_cards():
+    html = '''
+    <html><body>
+      <div>Academic Year 2026-27</div>
+      <div>Ministry of Labour &amp; Employment</div>
+      <div>Financial Assistance For Education To The Wards Of Beedi/Cine/IOMC/LSDM- Pre Matric (Welfare Based Scheme)</div>
+      <div>Scheme Open from : 01-06-2026</div>
+      <div>Student Application Closed on : 31-10-2026</div>
+      <div>Defective Application Verification Open till:15-11-2026</div>
+      <div>Institute Verification Open till:15-11-2026</div>
+      <div>Department of Social Justice &amp; Empowerment (Backward Classes)</div>
+      <div>PM YASASVI Central Sector Scheme Of Top Class Education In Schools For OBC, EBC And DNT Students (Merit Based Scheme)</div>
+      <div>Scheme Open from : 22-10-2026</div>
+      <div>Student Application Open till : 15-11-2026</div>
+      <div>Defective Application Verification Open till:30-11-2026</div>
+    </body></html>
+    '''
+    src = source('nsp', 'National Scholarship Portal', 'https://scholarships.gov.in/All-Scholarships', 'nsp')
+
+    items = parse_nsp(html, src, now=NOW)
+
+    beedi = next(item for item in items if 'Beedi' in item['title'])
+    yasasvi = next(item for item in items if 'YASASVI' in item['title'])
+    assert beedi['deadline'] == '2026-10-31'
+    assert beedi['status'] == 'closed'
+    assert beedi['application_status'] == 'closed'
+    assert beedi['deadline_type'] == 'student_application'
+    assert beedi['status_evidence'] == 'Student Application Closed on : 31-10-2026'
+    assert yasasvi['deadline'] == '2026-11-15'
+    assert yasasvi['status'] == 'active'
+    assert yasasvi['application_status'] == 'open'
+    assert yasasvi['application_open_date'] == '2026-10-22'
+    assert yasasvi['deadline_timezone'] == 'Asia/Kolkata'
+
+
+def test_nsp_parser_never_uses_verification_deadline_as_application_deadline():
+    html = '''
+    <div>Academic Year 2026-27</div>
+    <div>Financial Assistance For Education To The Wards Of Beedi/Cine/IOMC/LSDM- Pre Matric (Welfare Based Scheme)</div>
+    <div>Scheme Open from : 01-06-2026</div>
+    <div>Defective Application Verification Open till:15-11-2026</div>
+    <div>Institute Verification Open till:15-11-2026</div>
+    </body></html>
+    '''
+    src = source('nsp', 'National Scholarship Portal', 'https://scholarships.gov.in/All-Scholarships', 'nsp')
+    assert parse_nsp(html, src, now=NOW) == []
+
