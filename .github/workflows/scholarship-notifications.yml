@@ -72,7 +72,7 @@ jobs:
           health=discovery.get('source_health') or {}
           now=datetime.now(timezone.utc)
           today=now.astimezone(ZoneInfo('Asia/Kolkata')).date()
-          rolling_open_evidence=__import__('re').compile(r'\\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|open for applications|registration\\b.{0,80}\\b(?:is|are)\\s+(?:currently\\s+)?open|application process is open)\\b', __import__('re').I)
+          rolling_open_evidence=__import__('re').compile(r'\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|open for applications|registration\b.{0,80}\b(?:is|are)\s+(?:currently\s+)?open|application process is open)\b', __import__('re').I)
           assert discovery.get('mode') == 'official_daily_discovery', discovery
           assert (health.get('nsp') or {}).get('ok') is True, health.get('nsp')
           assert len(health) >= 5, f'official source health coverage is too small: {list(health)}'
