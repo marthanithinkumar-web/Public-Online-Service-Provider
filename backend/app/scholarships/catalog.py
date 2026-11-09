@@ -53,7 +53,7 @@ def _active(item, today=None, now=None):
     """
     if str(item.get('status') or '').lower() != 'active' or item.get('stale_source'):
         return False
-    if not (item.get('source_type') == 'official' or item.get('is_official') is True):
+    if item.get('source_type') != 'official' or item.get('is_official') is not True:
         return False
     evidence = str(item.get('status_evidence') or '').strip()
     if not evidence or not _fresh_source_check(item, now=now):
