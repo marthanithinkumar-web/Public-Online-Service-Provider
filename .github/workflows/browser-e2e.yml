@@ -17,7 +17,7 @@ concurrency:
 jobs:
   chromium-auth-routing:
     name: Chromium authenticated and client-admin workflow
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       E2E_ADMIN_EMAIL: admin-e2e@example.test

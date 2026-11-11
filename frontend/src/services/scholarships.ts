@@ -8,6 +8,8 @@ export type Scholarship={
   category?:string|null;eligibility?:string|null;documents?:string[];status?:string;verified_at?:string|null;
   source_type?:'official'|'private';is_official?:boolean;source_key?:string;record_type?:'scholarship'|'official_notice';
   academic_year?:string|null;last_seen_at?:string|null;stale_source?:boolean;discovery_method?:string
+  application_status?:'open'|'deadline_today'|'closed'|'cancelled'|'unverified';status_evidence?:string|null
+  source_checked_at?:string|null;deadline_timezone?:string;deadline_cutoff_time?:string|null;closure_reason?:string|null
 }
 export type ScholarshipFeed={
   items:Scholarship[];count:number;generated_at?:string|null;official_count?:number;private_count?:number;stale_source_count?:number;
@@ -16,12 +18,35 @@ export type ScholarshipFeed={
 
 const api=axios.create({baseURL:apiBase,timeout:5000})
 const indiaToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
+const rollingOpenEvidence=/\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|open for applications|registration\b.{0,80}\b(?:is|are)\s+(?:currently\s+)?open|application process is open)\b/i
+const sourceCheckIsFresh=(item:Scholarship)=>{
+  const checked=Date.parse(item.source_checked_at||item.verified_at||item.last_seen_at||'')
+  const age=Date.now()-checked
+  return Number.isFinite(checked)&&age>=-5*60*1000&&age<=36*60*60*1000
+}
+export const scholarshipStatusLabel=(item:Scholarship)=>{
+  if(item.application_status==='deadline_today')return 'Deadline today—check official portal'
+  if(item.application_status==='open')return 'Verified open'
+  if(item.application_status==='closed'||item.status==='closed')return 'Closed—deadline passed'
+  return 'Unverified—check official source'
+}
+export const scholarshipLastVerified=(item:Scholarship)=>{
+  const value=item.source_checked_at||item.verified_at||item.last_seen_at
+  if(!value)return 'Verification date unavailable'
+  const parsed=new Date(value)
+  return Number.isNaN(parsed.getTime())?'Verification date unavailable':'Last verified '+parsed.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Kolkata'})
+}
 const isActive=(item:Scholarship)=>{
   if(item.status!=='active'||item.stale_source)return false
   if(!(item.is_official===true||item.source_type==='official'))return false
-  if(!item.deadline||!/^\d{4}-\d{2}-\d{2}$/.test(item.deadline))return false
+  if(!String(item.status_evidence||'').trim()||!sourceCheckIsFresh(item))return false
+  const status=item.application_status
+  if(!item.deadline)return status==='open'&&rollingOpenEvidence.test(String(item.status_evidence||''))
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(item.deadline))return false
   const end=new Date(item.deadline+'T00:00:00Z')
-  return !Number.isNaN(end.getTime())&&end.toISOString().slice(0,10)===item.deadline&&item.deadline>=indiaToday()
+  if(Number.isNaN(end.getTime())||end.toISOString().slice(0,10)!==item.deadline||item.deadline<indiaToday())return false
+  if(item.deadline===indiaToday())return status==='deadline_today'
+  return status==='open'
 }
 function scholarshipPriority(item:Scholarship){
   const hay=`${item.provider||''} ${item.source_name||''} ${item.source_key||''}`.toLowerCase()
