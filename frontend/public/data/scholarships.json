@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-11-11T09:47:11.010921+00:00",
-  "count": 26,
-  "official_count": 26,
+  "count": 25,
+  "official_count": 25,
   "private_count": 0,
   "stale_source_count": 0,
   "discovery": {
@@ -70,32 +70,6 @@
     }
   },
   "items": [
-    {
-      "id": "nsp-financial-assistance-for-education-to-the-wards-of-beedi-cine-iomc-lsdm-pre-matric",
-      "slug": "financial-assistance-for-education-to-the-wards-of-beedi-cine-iomc-lsdm-pre-matric",
-      "title": "Financial Assistance For Education To The Wards Of Beedi/Cine/Iomc/Lsdm- Pre Matric",
-      "provider": "Ministry of Labour & Employment",
-      "source_name": "National Scholarship Portal",
-      "source_url": "https://scholarships.gov.in/All-Scholarships",
-      "application_url": "https://scholarships.gov.in/Students",
-      "deadline": "2026-11-15",
-      "region": "India",
-      "education_level": "School / Pre Matric",
-      "category": "Welfare Based",
-      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
-      "status": "active",
-      "source_key": "nsp",
-      "source_type": "official",
-      "is_official": true,
-      "record_type": "scholarship",
-      "academic_year": "2026-27",
-      "discovery_method": "official_page",
-      "verified_at": "2026-11-11T09:47:11.010921+00:00",
-      "last_seen_at": "2026-11-11T09:47:11.010921+00:00",
-      "eligibility_source": "official_source_unstructured",
-      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
-      "application_requirements_source": "https://scholarships.gov.in/Students"
-    },
     {
       "id": "nsp-national-means-cum-merit-scholarship",
       "slug": "national-means-cum-merit-scholarship",
@@ -754,5 +728,46 @@
       "application_requirements_source": "https://scholarships.gov.in/Students"
     }
   ],
-  "stale_items": []
+  "stale_items": [],
+  "closed_items": [
+    {
+      "id": "nsp-financial-assistance-for-education-to-the-wards-of-beedi-cine-iomc-lsdm-pre-matric",
+      "slug": "financial-assistance-for-education-to-the-wards-of-beedi-cine-iomc-lsdm-pre-matric",
+      "title": "Financial Assistance For Education To The Wards Of Beedi/Cine/Iomc/Lsdm- Pre Matric",
+      "provider": "Ministry of Labour & Employment",
+      "source_name": "National Scholarship Portal",
+      "source_url": "https://scholarships.gov.in/All-Scholarships",
+      "application_url": "https://scholarships.gov.in/Students",
+      "deadline": "2026-10-31",
+      "region": "India",
+      "education_level": "School / Pre Matric",
+      "category": "Welfare Based",
+      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
+      "status": "closed",
+      "source_key": "nsp",
+      "source_type": "official",
+      "is_official": true,
+      "record_type": "scholarship",
+      "academic_year": "2026-27",
+      "discovery_method": "official_page",
+      "verified_at": "2026-11-11T09:47:11.010921+00:00",
+      "last_seen_at": "2026-11-11T09:47:11.010921+00:00",
+      "eligibility_source": "official_source_unstructured",
+      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
+      "application_requirements_source": "https://scholarships.gov.in/Students",
+      "application_deadline": "2026-10-31",
+      "application_status": "closed",
+      "application_deadline_type": "student_application",
+      "verification_deadline": "2026-11-15",
+      "verification_deadline_type": "institute_verification",
+      "closed_reason": "Student applications closed on 31 October 2026. 15 November 2026 is the institute verification deadline, not a student application deadline.",
+      "status_evidence": {
+        "source_name": "National Scholarship Portal",
+        "source_url": "https://scholarships.gov.in/All-Scholarships",
+        "official_text": "Student Application Closed on 31 October 2026",
+        "checked_at": "2026-11-12",
+        "note": "The separate 15 November 2026 date is for institute verification."
+      }
+    }
+  ]
 }
