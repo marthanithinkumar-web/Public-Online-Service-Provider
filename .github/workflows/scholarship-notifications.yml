@@ -44,7 +44,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           python -m app.scholarships.snapshot --output app/scholarships/data/scholarships.json --strict
-          cp app/scholarships/data/scholarships.json ../frontend/public/data/scholarships.json
+          python -c "import json,pathlib; s=pathlib.Path('app/scholarships/data/scholarships.json'); d=json.loads(s.read_text(encoding='utf-8')); k=('generated_at','count','items','official_count','private_count','verified_open_count','deadline_today_count'); pathlib.Path('../frontend/public/data/scholarships.json').write_text(json.dumps({x:d.get(x) for x in k},ensure_ascii=False,indent=2)+chr(10),encoding='utf-8')"
       - name: Validate scholarship snapshot
         env:
           PYTHONPATH: backend
@@ -59,8 +59,11 @@ jobs:
 
           backend_path=Path('backend/app/scholarships/data/scholarships.json')
           frontend_path=Path('frontend/public/data/scholarships.json')
-          assert backend_path.read_bytes() == frontend_path.read_bytes(), 'backend and frontend scholarship snapshots differ'
           data=json.loads(backend_path.read_text(encoding='utf-8'))
+          public_data=json.loads(frontend_path.read_text(encoding='utf-8'))
+          public_keys=('generated_at','count','items','official_count','private_count','verified_open_count','deadline_today_count')
+          assert public_data == {key:data.get(key) for key in public_keys}, 'frontend snapshot must contain only the public active projection'
+          assert not any(key in public_data for key in ('discovery','closed_items','unverified_items','stale_items')), 'internal audit/source health leaked into public snapshot'
           items=data.get('items',[])
           assert data.get('count') == len(items)
           official=[item for item in items if item.get('source_type') == 'official']
@@ -159,7 +162,7 @@ jobs:
             (
               cd backend
               python -m app.scholarships.snapshot --output app/scholarships/data/scholarships.json --strict
-              cp app/scholarships/data/scholarships.json ../frontend/public/data/scholarships.json
+              python -c "import json,pathlib; s=pathlib.Path('app/scholarships/data/scholarships.json'); d=json.loads(s.read_text(encoding='utf-8')); k=('generated_at','count','items','official_count','private_count','verified_open_count','deadline_today_count'); pathlib.Path('../frontend/public/data/scholarships.json').write_text(json.dumps({x:d.get(x) for x in k},ensure_ascii=False,indent=2)+chr(10),encoding='utf-8')"
             )
 
             git add backend/app/scholarships/data/scholarships.json frontend/public/data/scholarships.json
@@ -204,22 +207,16 @@ jobs:
                       raise RuntimeError(f"production snapshot is not deployed yet ({payload.get('generated_at')} != {expected_generated})")
                   if payload.get('count') != expected_count:
                       raise RuntimeError(f"production snapshot count differs ({payload.get('count')} != {expected_count})")
-                  closed_items=payload.get('closed_items') or []
-                  if int(payload.get('closed_count') or 0) != len(closed_items):
-                      raise RuntimeError('production closed-item count does not match audit records')
-                  active_slugs={item.get('slug') for item in payload.get('items',[])}
-                  closed_slugs={item.get('slug') for item in closed_items}
-                  if active_slugs & closed_slugs:
-                      raise RuntimeError(f'production exposes closed scholarship(s): {active_slugs & closed_slugs}')
                   if int(payload.get('verified_open_count') or 0) < 5:
                       raise RuntimeError(f"production feed has only {payload.get('verified_open_count')} verified-open scholarships")
-                  health=(payload.get('discovery') or {}).get('source_health') or {}
-                  if not health:
-                      raise RuntimeError('production feed does not expose discovery source health')
                   bad=[item for item in payload['items'] if item.get('source_key')=='nsp' and any(marker in str(item.get('provider') or '') for marker in ('Welfare Based Scheme)', 'Merit Based Scheme)'))]
                   if bad:
                       raise RuntimeError(f"production feed has invalid NSP provider attribution: {bad[0].get('title')}")
-                  print(f"Production scholarship API is current: {payload.get('official_count')} official scholarships from {len(health)} checked sources.")
+                  if any(item.get('application_status') not in {'open','deadline_today'} for item in payload.get('items',[])):
+                      raise RuntimeError('production API returned a non-open scholarship')
+                  if any(item.get('deadline_type') != 'student_application' for item in payload.get('items',[]) if item.get('deadline')):
+                      raise RuntimeError('production API returned a non-application deadline')
+                  print(f"Production scholarship API is current: {payload.get('verified_open_count')} verified-open and {payload.get('deadline_today_count')} deadline-today item(s).")
                   break
               except (TimeoutError, urllib.error.URLError, urllib.error.HTTPError, RuntimeError, json.JSONDecodeError) as exc:
                   last_error=exc
