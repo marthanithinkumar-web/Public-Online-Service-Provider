@@ -2,6 +2,7 @@ import argparse
 import json
 from datetime import date, datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from .catalog import CATALOG_PATH, _active
 from .discovery import dedupe_items, discover_official_scholarships, is_official_url, slugify, source_key_for_url
@@ -78,7 +79,7 @@ def refresh_snapshot(path=CATALOG_PATH,today=None,*,discover=True,strict=False,n
     except (OSError,ValueError,TypeError):previous={'items':[]}
     now=now or datetime.now(timezone.utc)
     if now.tzinfo is None:now=now.replace(tzinfo=timezone.utc)
-    check_date=today or now.date();generated_at=previous.get('generated_at');previous_items=[_normalise_existing(item,generated_at) for item in previous.get('items',[]) if isinstance(item,dict)];previous_closed=[_normalise_existing(item,generated_at) for item in previous.get('closed_items',[]) if isinstance(item,dict)]
+    check_date=today or now.astimezone(ZoneInfo('Asia/Kolkata')).date();generated_at=previous.get('generated_at');previous_items=[_normalise_existing(item,generated_at) for item in previous.get('items',[]) if isinstance(item,dict)];previous_closed=[_normalise_existing(item,generated_at) for item in previous.get('closed_items',[]) if isinstance(item,dict)]
     health={};discovered=[]
     if discover:
         discoverer=discovery_func or discover_official_scholarships;discovered,health=discoverer(now=now);discovered=[_normalise_nsp_provider(item) for item in discovered]
@@ -108,6 +109,8 @@ def refresh_snapshot(path=CATALOG_PATH,today=None,*,discover=True,strict=False,n
             item['stale_source']=True;item['application_status']='unverified';stale_preserved.append(item)
     items=dedupe_items([*discovered,*preserved]);items=[item for item in items if _active(item,check_date,now=now)];items.sort(key=lambda item:(0 if item.get('source_type')=='official' else 1,item.get('deadline') or '9999-12-31',item.get('title') or ''))
     active_keys={(slugify(item.get('title')),slugify(item.get('region') or 'india')) for item in items}
+    discovered_keys={(slugify(item.get('title')),slugify(item.get('region') or 'india')) for item in discovered}
+    previous_keys={(slugify(item.get('title')),slugify(item.get('region') or 'india')) for item in previous_items}
     closed_candidates=[]
     for candidate in [*previous_closed,*previous_items,*previous_stale,*discovered]:
         closed=_closed_record(candidate,check_date,now)
@@ -118,9 +121,21 @@ def refresh_snapshot(path=CATALOG_PATH,today=None,*,discover=True,strict=False,n
             closed_candidates.append(closed)
     closed_items=dedupe_items(closed_candidates)
     stale_items=dedupe_items([item for item in stale_preserved if item.get('source_type')=='official' and (not item.get('deadline') or str(item.get('deadline'))[:10]>=check_date.isoformat()) and str(item.get('status') or '').lower() not in {'closed','expired','cancelled','withdrawn'}])
+    closed_keys={(slugify(item.get('title')),slugify(item.get('region') or 'india')) for item in closed_items}
     unverified_candidates=[]
     for candidate in [*previous.get('unverified_items',[]),*previous_items,*discovered]:
-        if not isinstance(candidate,dict) or _closed_record(candidate,check_date,now) or candidate.get('stale_source'):
+        if not isinstance(candidate,dict) or _closed_record(candidate,check_date,now):
+            continue
+        key=(slugify(candidate.get('title')),slugify(candidate.get('region') or 'india'))
+        if key in active_keys or key in closed_keys:
+            continue
+        source_health=health.get(candidate.get('source_key')) or {}
+        if key in previous_keys and key not in discovered_keys and source_health.get('ok'):
+            value=dict(candidate);value['status']='unverified';value['application_status']='unverified';value['stale_source']=False
+            value['review_reason']='not_returned_by_healthy_official_source_parse'
+            unverified_candidates.append(value)
+            continue
+        if candidate.get('stale_source'):
             continue
         if not _active(candidate,check_date,now=now):
             value=dict(candidate);value['status']='unverified';value['application_status']='unverified'
