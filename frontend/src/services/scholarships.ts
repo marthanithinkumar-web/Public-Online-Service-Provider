@@ -1,7 +1,6 @@
 import axios from 'axios'
 import {apiBase} from './apiBase'
 
-export type ScholarshipSourceHealth={ok:boolean;source_name?:string;source_url?:string;count?:number;checked_at?:string;elapsed_ms?:number;error?:string}
 export type Scholarship={
   id:string;slug:string;title:string;provider:string;source_name:string;source_url:string;application_url:string;
   deadline?:string|null;award?:string|null;region?:string|null;education_level?:string|null;income_limit?:string|null;
@@ -12,8 +11,7 @@ export type Scholarship={
   source_checked_at?:string|null;deadline_timezone?:string;deadline_cutoff_time?:string|null;closure_reason?:string|null
 }
 export type ScholarshipFeed={
-  items:Scholarship[];count:number;generated_at?:string|null;official_count?:number;private_count?:number;stale_source_count?:number;
-  discovery?:{mode?:string;checked_at?:string;source_health?:Record<string,ScholarshipSourceHealth>}
+  items:Scholarship[];count:number;generated_at?:string|null;official_count?:number;private_count?:number;verified_open_count?:number;deadline_today_count?:number
 }
 
 const api=axios.create({baseURL:apiBase,timeout:5000})
