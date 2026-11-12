@@ -143,5 +143,7 @@ export function readIndexableJobs(){
 }
 
 export function readScholarships(){
-  return readSnapshot('scholarships.json').filter(item=>item?.status==='active'&&!item?.stale_source&&(item?.source_type==='official'||item?.is_official===true)&&hasCurrentDeadline(item)&&hasSafePublicSlug(item))
+  // Emergency publication guard until NSP application/verification dates are parsed separately.
+  const closedApplicationSlugs=new Set(['financial-assistance-for-education-to-the-wards-of-beedi-cine-iomc-lsdm-pre-matric'])
+  return readSnapshot('scholarships.json').filter(item=>!closedApplicationSlugs.has(String(item?.slug||''))&&item?.status==='active'&&!item?.stale_source&&(item?.source_type==='official'||item?.is_official===true)&&hasCurrentDeadline(item)&&hasSafePublicSlug(item))
 }
