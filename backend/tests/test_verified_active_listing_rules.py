@@ -9,6 +9,7 @@ def _item(now, *, deadline='2026-10-24', application_status='deadline_today', ev
         'source_type': 'official',
         'is_official': True,
         'deadline': deadline,
+        'deadline_type': 'student_application',
         'application_status': application_status,
         'status_evidence': evidence,
         'source_checked_at': now.isoformat(),
@@ -33,6 +34,7 @@ def test_scholarship_requires_fresh_official_status_and_current_application_dead
     assert _active({**base, 'status': 'expired'}, today, now=now) is False
     assert _active({**base, 'application_status': 'closed'}, today, now=now) is False
     assert _active({**base, 'status_evidence': ''}, today, now=now) is False
+    assert _active({**base, 'deadline_type': 'institute_verification'}, today, now=now) is False
 
 
 def test_deadline_today_is_visible_only_with_explicit_warning_state():
