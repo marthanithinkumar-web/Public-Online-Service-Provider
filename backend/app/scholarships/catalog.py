@@ -45,6 +45,7 @@ def _fresh_source_check(item, now=None):
 
 
 def _active(item, today=None, now=None):
+    """Fail closed: publish only fresh, official student-application evidence."""
     """Return only fresh, evidence-backed official student-application opportunities.
 
     A verification deadline is never substituted for a student application
