@@ -8,6 +8,7 @@ content into a scholarship listing.
 import re
 import time
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from html.parser import HTMLParser
 from urllib.parse import urlparse
 
@@ -187,6 +188,11 @@ def official_item(title, provider, source, *, deadline=None, category=None, regi
         'category': category or 'Scholarship',
         'eligibility': eligibility or 'Apply only if you meet the current eligibility criteria published by the official provider.',
         'status': 'active',
+        'application_status': 'unverified',
+        'status_evidence': None,
+        'source_checked_at': stamp,
+        'deadline_timezone': 'Asia/Kolkata',
+        'deadline_cutoff_time': None,
         'source_key': source['key'],
         'source_type': 'official',
         'is_official': True,
@@ -212,28 +218,67 @@ def _provider_before(lines, index):
     return 'Government of India (via National Scholarship Portal)'
 
 
+def _is_nsp_title(line):
+    lower = str(line or '').lower()
+    if any(marker in lower for marker in (
+        'student application', 'scheme open from', 'defective application',
+        'institute verification', 'dno/sno/mno verification',
+    )):
+        return False
+    return any(marker in lower for marker in (
+        'scholarship', 'fellowship', 'financial assistance for education',
+        'stipend scheme', 'top class education', 'free coaching',
+        'means cum merit',
+    ))
+
+
+def _nsp_title_before(lines, index):
+    # Each NSP card has its own "Scheme Open from" row. Anchor title lookup
+    # to that card boundary so a neighbouring scheme cannot donate its date.
+    scheme_index = index if 'scheme open from' in lines[index].lower() else next(
+        (position for position in range(index - 1, max(-1, index - 18), -1)
+         if 'scheme open from' in lines[position].lower()),
+        None,
+    )
+    search_end = scheme_index if scheme_index is not None else index
+    lower_bound = max(0, search_end - 8)
+    for position in range(search_end - 1, lower_bound - 1, -1):
+        if _is_nsp_title(lines[position]):
+            return position, lines[position]
+    # Conservative fallback for layouts that omit the scheme-open row.
+    for position in range(index - 1, max(-1, index - 12), -1):
+        candidate = lines[position]
+        if 'student application' in candidate.lower():
+            break
+        if _is_nsp_title(candidate):
+            return position, candidate
+    return None, None
+
+
+def _nsp_labeled_date(text, label_pattern):
+    match = re.search(label_pattern, str(text or ''), re.I)
+    if not match:
+        return None
+    # Parse only the date following the requested label. A card may render
+    # scheme-open, student-application and verification dates in one text row.
+    return iso_date(str(text)[match.end():match.end() + 100])
+
+
 def parse_nsp(document, source, now=None):
     lines = html_lines(document)
     year = _academic_year(' '.join(lines[:80]))
     items = []
     seen = set()
-    title_words = ('scholarship', 'fellowship', 'financial assistance for education', 'stipend scheme')
     for index, line in enumerate(lines):
-        if 'student application open till' not in line.lower():
+        lower = line.lower()
+        is_open = 'student application open till' in lower
+        is_closed = 'student application closed on' in lower
+        if not (is_open or is_closed):
             continue
-        window = ' '.join(lines[index:index + 3])
-        deadline = iso_date(window)
+        deadline = _nsp_labeled_date(line, r'student application (?:open till|closed on)')
         if not deadline:
             continue
-        title = None
-        title_index = index
-        for offset in range(index - 1, max(-1, index - 12), -1):
-            candidate = lines[offset]
-            lower = candidate.lower()
-            if any(word in lower for word in title_words) and 'student application' not in lower and 'scheme open from' not in lower:
-                title = candidate
-                title_index = offset
-                break
+        title_index, title = _nsp_title_before(lines, index)
         if not title:
             continue
         title = re.sub(r'\s*\((?:Merit|Welfare) Based Scheme\)\s*$', '', title, flags=re.I).strip()
@@ -241,9 +286,15 @@ def parse_nsp(document, source, now=None):
         if key in seen:
             continue
         seen.add(key)
-        nearby = ' '.join(lines[max(0, title_index - 2):index + 1])
+        scheme_line = line if 'scheme open from' in lower else next(
+            (lines[position] for position in range(index - 1, max(-1, index - 18), -1)
+             if 'scheme open from' in lines[position].lower()),
+            '',
+        )
+        open_date = _nsp_labeled_date(scheme_line, 'scheme open from')
+        nearby = ' '.join(lines[title_index:index + 1])
         category = 'Welfare Based' if 'welfare based scheme' in nearby.lower() else ('Merit Based' if 'merit based scheme' in nearby.lower() else 'Scholarship')
-        items.append(official_item(
+        item = official_item(
             title,
             _provider_before(lines, title_index),
             source,
@@ -253,7 +304,27 @@ def parse_nsp(document, source, now=None):
             academic_year=year,
             application_url='https://scholarships.gov.in/Students',
             now=now,
-        ))
+        )
+        # Only the student-application row supplies the application deadline.
+        # Verification dates are intentionally not considered here.
+        checked_now = now or datetime.now(timezone.utc)
+        if checked_now.tzinfo is None:
+            checked_now = checked_now.replace(tzinfo=timezone.utc)
+        india_today = checked_now.astimezone(ZoneInfo('Asia/Kolkata')).date()
+        application_status = 'closed' if is_closed else (
+            'deadline_today' if deadline == india_today.isoformat() else 'open'
+        )
+        item.update({
+            'status': 'closed' if is_closed else 'active',
+            'application_status': application_status,
+            'application_open_date': open_date,
+            'deadline_type': 'student_application',
+            'deadline_timezone': 'Asia/Kolkata',
+            'deadline_cutoff_time': None,
+            'status_evidence': line,
+            'source_checked_at': item.get('verified_at'),
+        })
+        items.append(item)
     return items
 
 
@@ -334,13 +405,23 @@ def parse_tg_overseas(document, source, now=None):
             continue
         deadline_match = re.search(r'Last Date[^\d]{0,80}(\d{1,2}[-/.]\d{1,2}[-/.]20\d{2})', block, re.I)
         deadline = iso_date(deadline_match.group(1)) if deadline_match else None
-        items.append(official_item(
+        item = official_item(
             title,
             'Government of Telangana', source,
             deadline=deadline, region='Telangana', education_level='Higher Education / Overseas', category='Welfare Based',
             eligibility=f'For eligible {audience}; verify income, academic, admission, country and current session conditions on Telangana ePASS.',
             now=now,
-        ))
+        )
+        open_match = re.search(
+            r'\b(?:registration|applications?)\b.{0,80}\b(?:is|are)\s+(?:currently\s+)?open\b|'
+            r'\b(?:registration|applications?)\s+open\b',
+            block,
+            re.I,
+        )
+        if open_match:
+            item['application_status'] = 'open'
+            item['status_evidence'] = re.sub(r'\s+', ' ', open_match.group(0)).strip()
+        items.append(item)
     return items
 
 
