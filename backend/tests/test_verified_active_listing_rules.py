@@ -1,5 +1,5 @@
+import json
 from datetime import date, datetime, timedelta, timezone
-
 from app.scholarships.catalog import _active
 
 
