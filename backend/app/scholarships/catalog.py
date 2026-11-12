@@ -10,6 +10,10 @@ CATALOG_PATH = LOCAL_CATALOG_PATH if LOCAL_CATALOG_PATH.exists() else LEGACY_CAT
 
 
 def _active(item, today=None):
+    # Temporary hard stop for the confirmed NSP date-attribution defect.
+    # Keep the record in closed_items for audit; never expose it as an active application.
+    if item.get('slug') == 'financial-assistance-for-education-to-the-wards-of-beedi-cine-iomc-lsdm-pre-matric':
+        return False
     # Scholarship listings are public only when they are explicitly official,
     # active, and have a parseable deadline that has not passed in India.
     if str(item.get('status') or 'active').lower() != 'active' or item.get('stale_source'):
