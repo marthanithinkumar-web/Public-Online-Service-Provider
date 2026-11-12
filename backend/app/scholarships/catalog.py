@@ -45,8 +45,10 @@ def _fresh_source_check(item, now=None):
 
 
 def _active(item, today=None, now=None):
-    """Fail closed: publish only fresh, official student-application evidence."""
     """Return only fresh, evidence-backed official student-application opportunities.
+
+    Fail closed: publish only verified student-application dates, never downstream
+    verification dates or undated records without explicit current-open evidence.
 
     A verification deadline is never substituted for a student application
     deadline. Date-only deadlines that fall today are shown with a warning
@@ -65,6 +67,8 @@ def _active(item, today=None, now=None):
         current = current.replace(tzinfo=timezone.utc)
     india_today = today or current.astimezone(ZoneInfo('Asia/Kolkata')).date()
     deadline = item.get('deadline')
+    if deadline and item.get('deadline_type') != 'student_application':
+        return False
     if not deadline:
         return application_status == 'open' and bool(ROLLING_OPEN_EVIDENCE.search(evidence))
     try:
