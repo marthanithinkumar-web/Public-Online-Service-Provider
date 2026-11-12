@@ -17,7 +17,9 @@ concurrency:
 jobs:
   chromium-auth-routing:
     name: Chromium authenticated and client-admin workflow
-    runs-on: ubuntu-latest
+    # Playwright 1.55 does not support the Ubuntu 26.04 image currently used
+    # by ubuntu-latest. Pin a supported image so browser coverage is reliable.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       E2E_ADMIN_EMAIL: admin-e2e@example.test
