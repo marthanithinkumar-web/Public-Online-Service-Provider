@@ -140,6 +140,7 @@ def test_snapshot_separates_official_and_private_and_replaces_healthy_source(tmp
         'source_type': 'official', 'is_official': True, 'record_type': 'scholarship',
         'verified_at': NOW.isoformat(), 'last_seen_at': NOW.isoformat(),
         'source_checked_at': NOW.isoformat(), 'application_status': 'open',
+        'deadline_type': 'student_application',
         'status_evidence': 'Student Application Open till : 30-11-2026',
     }
 
@@ -167,6 +168,7 @@ def test_snapshot_normalizes_neighbouring_nsp_scheme_title_used_as_provider(tmp_
         'source_type': 'official', 'is_official': True, 'record_type': 'scholarship',
         'verified_at': NOW.isoformat(), 'last_seen_at': NOW.isoformat(),
         'source_checked_at': NOW.isoformat(), 'application_status': 'open',
+        'deadline_type': 'student_application',
         'status_evidence': 'Student Application Open till : 31-10-2026',
     }
     bad_aicte = {
