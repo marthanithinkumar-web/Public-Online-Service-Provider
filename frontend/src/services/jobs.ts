@@ -69,6 +69,8 @@ function filterSnapshot(data:JobFeedData,params:Record<string,string|number|bool
   const requestedType=String(params.type||'').trim().toLowerCase()
   const type=['government','private'].includes(requestedType)?requestedType:''
   const featured=['1','true','yes'].includes(String(params.featured||'').toLowerCase())
+  const location=String(params.location||'').trim().toLowerCase()
+  const qualification=String(params.qualification||'').trim().toLowerCase()
   const rawLimit=params.limit
   const requested=rawLimit===undefined||rawLimit===null||rawLimit===''?30:Number(rawLimit)
   const limit=Number.isFinite(requested)?Math.min(100,Math.max(1,requested)):30
@@ -76,6 +78,8 @@ function filterSnapshot(data:JobFeedData,params:Record<string,string|number|bool
     if(job.status!=='published'||!hasCurrentDeadline(job.deadline))return false
     if(type&&job.job_type!==type)return false
     if(featured&&!job.is_featured)return false
+    if(location&&!String(job.location||'').toLowerCase().includes(location))return false
+    if(qualification&&!String(job.qualification||'').toLowerCase().includes(qualification))return false
     if(!tokens.length)return true
     const searchable=[job.title,job.organization,job.qualification,job.location,job.source?.name,job.source?.key]
       .map(value=>String(value||'').toLowerCase()).join(' ')

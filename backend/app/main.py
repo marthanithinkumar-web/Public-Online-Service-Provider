@@ -88,7 +88,7 @@ def create_app():
     if render_ui not in allowed_origins:allowed_origins.append(render_ui)
     CORS(app,resources={r'/api/*':{'origins':allowed_origins}},supports_credentials=True,allow_headers=['Content-Type','Authorization','X-Razorpay-Signature'],methods=['GET','POST','PUT','PATCH','DELETE','OPTIONS']);Migrate(app,db)
     from .utils.limiter import limiter
-    upload_limit_mb=int(os.getenv('MAX_UPLOAD_MB','10'));app.config['MAX_CONTENT_LENGTH']=(upload_limit_mb+1)*1024*1024
+    upload_limit_mb=int(os.getenv('MAX_UPLOAD_MB','10'));app.config['MAX_UPLOAD_BYTES']=upload_limit_mb*1024*1024;app.config['MAX_CONTENT_LENGTH']=(upload_limit_mb+1)*1024*1024
     limiter._default_limits=['2000 per day','500 per hour'];limiter.init_app(app)
     with app.app_context():
         if os.getenv('SKIP_DATABASE_BOOTSTRAP') != '1':

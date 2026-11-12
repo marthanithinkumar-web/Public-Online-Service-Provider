@@ -278,7 +278,11 @@ def test_public_snapshot_publishes_only_complete_official_notices(monkeypatch):
         <tr><td>EN-99</td><td>National Test Board</td><td>Assistant Posts</td><td>30 September 2099</td></tr></table>''',
         'upsc.gov.in': '''<ul><li>Advertisement No.52 - 2099, closing date 29 September 2099
         <a href="/sites/default/files/advt-52-2099.pdf">Official recruitment advertisement</a></li></ul>''',
-        'ncs.gov.in': '<html><body>No server-embedded job records in this fixture.</body></html>',
+        'ncs.gov.in': '''<html><body><script type="application/ld+json">
+        {"jobs": [{"jobId": "ncs-99", "jobTitle": "NCS Assistant",
+        "organizationName": "National Career Service", "jobUrl": "/jobs/ncs-99",
+        "lastDate": "2099-09-30", "sector": "government"}]}
+        </script></body></html>''',
     }
 
     class Response:
@@ -296,7 +300,7 @@ def test_public_snapshot_publishes_only_complete_official_notices(monkeypatch):
     now = datetime(2099, 8, 1, tzinfo=timezone.utc)
     snapshot = build_snapshot(session=Session(), now=now)
     assert snapshot['successful_sources'] == 3
-    assert snapshot['count'] == 2
+    assert snapshot['count'] == 3
     assert snapshot['review_count'] == 0
     assert all(job['status'] == 'published' for job in snapshot['items'])
     assert all(job['deadline'] for job in snapshot['items'])
@@ -330,6 +334,30 @@ def test_public_snapshot_keeps_verified_open_jobs_during_temporary_source_failur
     assert second['successful_sources'] == 0
     assert second['count'] == 1
     assert second['items'][0]['title'] == complete.title
+
+
+def test_public_snapshot_preserves_open_jobs_when_source_returns_empty_parse(monkeypatch):
+    from dataclasses import replace
+
+    source = SOURCE_BY_KEY['sbi']
+    item = _item(
+        external_id='sbi-empty-parse',
+        official_notice_url='https://sbi.bank.in/web/careers/current-openings/notice-1.pdf',
+        application_url='https://sbi.bank.in/web/careers/current-openings/apply-1',
+        deadline=date(2099, 9, 30),
+    )
+    populated = replace(source, parser=lambda *_args: [item])
+    monkeypatch.setattr('app.jobs.snapshot.SOURCE_DEFINITIONS', (populated,))
+    monkeypatch.setattr('app.jobs.snapshot.fetch_official_page', lambda *_args, **_kwargs: '<html/>')
+    first = build_snapshot(now=datetime(2099, 8, 1, tzinfo=timezone.utc))
+    assert first['count'] == 1
+
+    empty = replace(populated, parser=lambda *_args: [])
+    monkeypatch.setattr('app.jobs.snapshot.SOURCE_DEFINITIONS', (empty,))
+    second = build_snapshot(first, now=datetime(2099, 8, 2, tzinfo=timezone.utc))
+    assert second['count'] == 1
+    assert second['successful_sources'] == 0
+    assert second['sources'][0]['last_sync_status'] == 'degraded'
 
 
 def test_snapshot_enriches_official_pdf_deadline_before_publication_filter(monkeypatch):

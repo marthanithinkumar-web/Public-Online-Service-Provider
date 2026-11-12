@@ -54,7 +54,7 @@ def test_duplicate_content_hash_keeps_first_stable_public_url():
     digest = '4e99be63' + ('d' * 56)
     jobs = [
         {
-            'slug': 'staff-selection-commission-capf-2026-4e99be63',
+            'slug': 'staff-selection-job-2026-4e99be63',
             'title': 'CAPF 2026',
             'organization': 'SSC',
             'content_hash': digest,
@@ -70,4 +70,28 @@ def test_duplicate_content_hash_keeps_first_stable_public_url():
     deduplicated = _deduplicate_job_identities(jobs)
 
     assert len(deduplicated) == 1
-    assert deduplicated[0]['slug'] == 'staff-selection-commission-capf-2026-4e99be63'
+    assert deduplicated[0]['slug'] == 'staff-selection-job-2026-4e99be63'
+
+
+def test_duplicate_official_notice_url_keeps_first_record():
+    jobs = [
+        {
+            'slug': 'notice-first',
+            'title': 'Notice first deadline',
+            'organization': 'Official Board',
+            'official_notice_url': 'https://example.gov/notice/42/',
+            'content_hash': 'a' * 64,
+        },
+        {
+            'slug': 'notice-second',
+            'title': 'Notice second deadline',
+            'organization': 'Official Board',
+            'official_notice_url': 'https://example.gov/notice/42',
+            'content_hash': 'b' * 64,
+        },
+    ]
+
+    deduplicated = _deduplicate_job_identities(jobs)
+
+    assert len(deduplicated) == 1
+    assert deduplicated[0]['slug'] == 'notice-first'
