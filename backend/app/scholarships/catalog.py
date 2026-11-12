@@ -108,15 +108,6 @@ def load_catalog(query='', today=None, now=None):
     ))
     official_count = sum(1 for item in items if item.get('source_type') == 'official' or item.get('is_official') is True)
     private_count = sum(1 for item in items if item.get('source_type') == 'private' or item.get('is_official') is False)
-    health = (payload.get('discovery') or {}).get('source_health') or {}
-    checked_successfully = [
-        _timestamp(value.get('checked_at'))
-        for value in health.values()
-        if isinstance(value, dict) and value.get('ok')
-    ]
-    checked_successfully = [value for value in checked_successfully if value]
-    stale_count = int(payload.get('stale_source_count') or len(payload.get('stale_items') or []))
-    closed_count = int(payload.get('closed_count') or len(payload.get('closed_items') or []))
     return {
         'items': items,
         'count': len(items),
@@ -125,10 +116,4 @@ def load_catalog(query='', today=None, now=None):
         'private_count': private_count,
         'verified_open_count': sum(1 for item in items if item.get('application_status') == 'open'),
         'deadline_today_count': sum(1 for item in items if item.get('application_status') == 'deadline_today'),
-        'closed_count': closed_count,
-        'unverified_count': stale_count + len(payload.get('unverified_items') or []),
-        'stale_source_count': stale_count,
-        'source_failures': sum(1 for value in health.values() if isinstance(value, dict) and not value.get('ok')),
-        'last_successful_sync_at': max(checked_successfully).isoformat() if checked_successfully else None,
-        'discovery': payload.get('discovery') or {},
     }
