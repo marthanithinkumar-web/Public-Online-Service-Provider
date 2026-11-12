@@ -183,6 +183,14 @@ def create_order():
     history_note = 'Official job application assistance requested by client.' if selected_job else 'Application submitted by client.'
     db.session.add(OrderStatusHistory(order_id=order.id, previous_status=None, new_status='Submitted', changed_by=user.email, note=history_note))
     db.session.commit()
+    # Best-effort WhatsApp confirmation: only for explicit WhatsApp
+    # opt-in, deduped by event, and never allowed to break submission.
+    if str(order.contact_method or '').lower() == 'whatsapp':
+        try:
+            from ..services.whatsapp_notify import notify_confirmation
+            notify_confirmation(order)
+        except Exception:
+            pass
     order_data = dump_schema.dump(order); order_data['can_submit_feedback'] = Order.query.filter_by(user_id=user.id).count() == 1
     return jsonify({'message': 'Your service request has been submitted successfully.', 'order': order_data}), 201
 
@@ -303,4 +311,10 @@ def cancel_order(order_id):
     db.session.add(OrderStatusHistory(order_id=order.id, previous_status=previous, new_status='Cancelled', changed_by=user.email, note=reason or 'Cancelled by the client before processing.'))
     db.session.add(Notification(user_id=user.id, order_id=order.id, title='Request cancelled', message=f'Your request {order.order_code} was cancelled. No further processing will take place.'))
     db.session.commit()
+    if str(order.contact_method or '').lower() == 'whatsapp':
+        try:
+            from ..services.whatsapp_notify import notify_status_change
+            notify_status_change(order, 'Cancelled')
+        except Exception:
+            pass
     return jsonify({'message': 'Your request has been cancelled.', 'order': dump_schema.dump(order)})

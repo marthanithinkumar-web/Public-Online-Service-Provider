@@ -44,12 +44,13 @@ def _fallback_job_hash(job):
 
 
 def _deduplicate_job_identities(jobs):
-    """Keep one public record per final job identity, preserving the first stable URL."""
+    """Keep one public record per official notice, then fall back to content identity."""
     seen=set();deduplicated=[]
     for job in jobs:
-        digest=str(job.get('content_hash') or '').strip() or _fallback_job_hash(job)
-        if digest in seen:continue
-        seen.add(digest);deduplicated.append(job)
+        official_url=str(job.get('official_notice_url') or '').strip().rstrip('/').lower()
+        identity=f'url:{official_url}' if official_url else f'hash:{str(job.get("content_hash") or "").strip() or _fallback_job_hash(job)}'
+        if identity in seen:continue
+        seen.add(identity);deduplicated.append(job)
     return deduplicated
 
 
@@ -88,6 +89,14 @@ def build_snapshot(existing=None,session=None,now=None):
         source_jobs=[]
         try:
             html=fetch_official_page(definition.listing_url,session=session);parsed=definition.parser(html,definition.listing_url);published_count=0;notice_enrichments=0
+            if not parsed:
+                for old_job in previous_by_source.get(definition.key,[]):
+                    digest=old_job.get('content_hash')
+                    if digest and digest not in seen_hashes and _is_open(old_job,today,now=now):
+                        carried=dict(old_job);carried['last_seen_at']=checked_at;source_data=dict(carried.get('source') or {});source_data.update({'key':definition.key,'name':definition.name,'listing_url':definition.listing_url,'last_sync_completed_at':checked_at,'last_sync_status':'degraded'});carried['source']=source_data;source_jobs.append(carried);seen_hashes.add(digest)
+                sources.append({'key':definition.key,'name':definition.name,'listing_url':definition.listing_url,'enabled':True,'last_sync_completed_at':checked_at,'last_sync_status':'degraded','fetched_count':0,'published_count':0,'last_error':'Official source returned no parseable listings; prior open records were preserved.'})
+                jobs.extend(source_jobs)
+                continue
             for item in parsed:
                 # Inspect the linked official notice before validating the
                 # deadline. Some sources put the only application window in a

@@ -23,7 +23,7 @@ def configured_model():
     provider = configured_provider()
     if provider == "gemini":
         return model if model.startswith("gemini-") else "gemini-2.5-flash"
-    return model if model and not model.startswith("gemini-") else "gpt-6-luna"
+    return model if model and not model.startswith("gemini-") else "gpt-5"
 
 
 def is_configured():

@@ -37,7 +37,9 @@ The status template sender expects body parameters in this order:
 2. request status
 3. secure request-tracking URL
 
-The webhook verifies Meta's `hub.verify_token` challenge for setup and validates `X-Hub-Signature-256` on POST requests before accepting events. The receiver intentionally does not persist or log inbound message content; it only acknowledges verified events and records aggregate event counts in application logs.
+The webhook verifies Meta's `hub.verify_token` challenge for setup and validates `X-Hub-Signature-256` on POST requests before accepting events. Verified inbound text is persisted in the existing support architecture so an admin can continue the conversation; it is not copied into email or operational alerts. The admin list endpoint redacts message bodies by default.
+
+WhatsApp message rows have an explicit 90-day default retention policy, configurable with `WHATSAPP_MESSAGE_RETENTION_DAYS` from 30 to 3650 days. Cleanup is dry-run by default and is invoked through `python -m app.cli --whatsapp-messages`; permanent deletion additionally requires `--apply`. No recurring cleanup schedule is enabled by this local change, so production activation still requires an owner-approved maintenance schedule and verification.
 
 ## Stage 2: explicit client consent
 
@@ -64,3 +66,39 @@ Automated request-status messages are opt-in, not automatic for every client.
 10. Only after those checks succeed, change `WHATSAPP_CLOUD_API_ENABLED=1`.
 
 A conversational inbound WhatsApp bot can be added later without changing the public click-to-chat implementation or the request-level consent model.
+
+## 2026-11-04 implementation: automatic notifications, tracking, admin panel
+
+Implemented without changing the existing consent model or click-to-chat:
+
+- `backend/app/models/whatsapp_message.py` (`whatsapp_messages` table, migration
+  `20261104_25`): outbound/inbound tracking, Meta message id, delivery
+  status, retry count, and a unique `event_key` per business event.
+- `backend/app/services/whatsapp_notify.py`: confirmation on order creation,
+  status change on admin status update, document event for
+  "Documents Required", and completion notification. All are best-effort,
+  opt-in only (`contact_method=whatsapp`), deduped by event key, and
+  never break order creation or status updates on failure.
+- `backend/app/services/whatsapp.py`: template sending with bounded
+  retries (transport/5xx/429 only), text sending for the 24-hour
+  customer-service window, and webhook payload parsing.
+- `backend/app/routes/whatsapp.py`: webhook now persists inbound
+  messages (deduped by Meta message id or a bounded ID-less fingerprint), updates outbound delivery
+  statuses, and hands matched inbound messages to the existing
+  support-message thread (no separate WhatsApp-only chat, no message
+  content in admin alerts). Admin-only endpoints:
+  `GET /api/whatsapp/admin/status`, `GET /api/whatsapp/admin/messages`,
+  `POST /api/whatsapp/admin/messages/<id>/retry`, and per-order
+  `GET /api/whatsapp/orders/<id>/messages` for the owner or an admin.
+- Frontend: `frontend/src/components/admin/WhatsAppManagement.tsx`,
+  linked as `/admin/whatsapp`, shows connection/webhook/phone status,
+  delivery statistics, failed messages with retry, and history.
+  It never displays tokens or secrets. The backend admin list returns metadata
+  without message bodies; per-order history remains restricted to the owner
+  or an admin.
+
+Still requires manual owner steps (see production activation checklist):
+Meta app / WhatsApp Business Account / business phone number selection,
+approved status template, long-lived token, and Render environment
+variables. Until those are set, `WHATSAPP_CLOUD_API_ENABLED` stays `0`
+and the sender stays inert; tests use mocked Meta responses.

@@ -84,7 +84,28 @@ services:
       - key: POSP_AI_MODEL
         value: gemini-2.5-flash
       - key: POSP_CLIENT_AI_ENABLED
-        value: "true"
+        value: "false"
+      # WhatsApp Cloud API: values are set in the Render dashboard
+      # (sync: false), never in Git. Keep ENABLED=0 until webhook
+      # verification and a controlled test pass.
+      - key: WHATSAPP_CLOUD_API_ENABLED
+        value: "0"
+      - key: WHATSAPP_GRAPH_API_VERSION
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_BUSINESS_ACCOUNT_ID
+        sync: false
+      - key: WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: WHATSAPP_APP_SECRET
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: WHATSAPP_STATUS_TEMPLATE_NAME
+        sync: false
+      - key: WHATSAPP_TEMPLATE_LANGUAGE
+        value: "en"
 
   - type: web
     name: pospindia

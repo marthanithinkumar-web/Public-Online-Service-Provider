@@ -13,7 +13,6 @@ from datetime import datetime, timezone
 
 bp = Blueprint('uploads', __name__)
 ALLOWED_EXT = {'pdf', 'png', 'jpg', 'jpeg'}
-MAX_FILE_SIZE = 10 * 1024 * 1024
 MAX_ATTACHMENTS_PER_REQUEST = 20
 OPEN_UPLOAD_STATUSES = {'New', 'Submitted', 'Pending', 'Under Review', 'Documents Required', 'In Progress'}
 
@@ -32,6 +31,23 @@ def allowed_file(filename):
 
 def _auth():
     return get_request_user()
+
+
+def _max_file_size():
+    return int(current_app.config.get('MAX_UPLOAD_BYTES', 10 * 1024 * 1024))
+
+
+def _save_limited(stream, path, limit):
+    total = 0
+    with open(path, 'wb') as destination:
+        while True:
+            chunk = stream.read(1024 * 1024)
+            if not chunk:
+                return True
+            total += len(chunk)
+            if total > limit:
+                return False
+            destination.write(chunk)
 
 
 def _matches_signature(filename, header):
@@ -60,8 +76,9 @@ def upload_file():
         return jsonify({'error': 'Filename is empty.'}), 400
     if not allowed_file(f.filename):
         return jsonify({'error': 'Only PDF, PNG and JPG/JPEG documents are allowed.'}), 400
-    if request.content_length and request.content_length > MAX_FILE_SIZE + 1024 * 1024:
-        return jsonify({'error': 'File is too large. Maximum size is 10 MB.'}), 413
+    max_file_size = _max_file_size()
+    if request.content_length and request.content_length > max_file_size + 1024 * 1024:
+        return jsonify({'error': f'File is too large. Maximum size is {max_file_size // (1024 * 1024)} MB.'}), 413
 
     order_id = request.form.get('order_id')
     if not order_id:
@@ -96,15 +113,19 @@ def upload_file():
     os.makedirs(upload_folder, exist_ok=True)
     local_path = os.path.join(upload_folder, stored_name)
     try:
-        f.save(local_path)
+        f.stream.seek(0)
+        saved = _save_limited(f.stream, local_path, max_file_size)
     except OSError:
         _remove_local_file(local_path)
         return jsonify({'error': 'Unable to store the uploaded file.'}), 500
+    if not saved:
+        _remove_local_file(local_path)
+        return jsonify({'error': f'File is too large. Maximum size is {max_file_size // (1024 * 1024)} MB.'}), 413
 
     try:
-        if os.path.getsize(local_path) > MAX_FILE_SIZE:
+        if os.path.getsize(local_path) > max_file_size:
             _remove_local_file(local_path)
-            return jsonify({'error': 'File is too large. Maximum size is 10 MB.'}), 413
+            return jsonify({'error': f'File is too large. Maximum size is {max_file_size // (1024 * 1024)} MB.'}), 413
     except OSError:
         _remove_local_file(local_path)
         return jsonify({'error': 'Unable to verify the uploaded file.'}), 500
