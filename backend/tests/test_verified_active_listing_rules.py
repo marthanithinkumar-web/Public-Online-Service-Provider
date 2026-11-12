@@ -85,3 +85,28 @@ def test_scholarship_explicitly_closed_or_cancelled_status_is_never_public():
     assert _active({**base, 'status': 'closed'}, today, now=now) is False
     assert _active({**base, 'status': 'cancelled'}, today, now=now) is False
     assert _active({**base, 'application_status': 'cancelled'}, today, now=now) is False
+
+
+def test_public_catalog_does_not_expose_internal_audit_or_source_health(tmp_path, monkeypatch):
+    from app.scholarships import catalog
+
+    now = datetime(2026, 11, 7, 10, 0, tzinfo=timezone.utc)
+    item = _item(now, deadline='2026-11-30', application_status='open', evidence='Student Application Open till : 30-11-2026')
+    item.update({'id': 'nsp-open', 'slug': 'nsp-open', 'title': 'Verified NSP Scholarship', 'deadline_type': 'student_application'})
+    path = tmp_path / 'scholarships.json'
+    path.write_text(json.dumps({
+        'generated_at': now.isoformat(),
+        'items': [item],
+        'closed_items': [{'slug': 'closed-record', 'status': 'closed'}],
+        'unverified_items': [{'slug': 'review-record', 'application_status': 'unverified'}],
+        'stale_items': [{'slug': 'stale-record', 'stale_source': True}],
+        'closed_count': 1,
+        'discovery': {'source_health': {'nsp': {'ok': False, 'error': 'internal timeout'}}},
+    }), encoding='utf-8')
+    monkeypatch.setattr(catalog, 'CATALOG_PATH', path)
+
+    payload = catalog.load_catalog(today=date(2026, 11, 7), now=now)
+
+    assert payload['count'] == 1
+    assert payload['items'][0]['slug'] == 'nsp-open'
+    assert not any(key in payload for key in ('discovery', 'closed_items', 'unverified_items', 'stale_items', 'source_failures', 'last_successful_sync_at'))
