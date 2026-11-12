@@ -374,3 +374,56 @@ def test_snapshot_keeps_disappeared_ambiguous_record_for_admin_review(tmp_path):
     assert payload['unverified_count'] == 1
     assert payload['unverified_items'][0]['slug'] == 'nsp-ambiguous'
     assert payload['unverified_items'][0]['application_status'] == 'unverified'
+
+
+def test_snapshot_uses_india_date_before_utc_midnight_for_expiry(tmp_path):
+    now = datetime(2026, 11, 12, 20, 0, tzinfo=timezone.utc)  # 13 Nov 01:30 IST
+    path = tmp_path / 'scholarships.json'
+    previous = {
+        'id': 'nsp-yesterday', 'slug': 'nsp-yesterday', 'title': 'Yesterday Deadline Scholarship',
+        'provider': 'Test Ministry', 'source_name': 'National Scholarship Portal',
+        'source_url': 'https://scholarships.gov.in/All-Scholarships',
+        'application_url': 'https://scholarships.gov.in/Students',
+        'deadline': '2026-11-12', 'status': 'active', 'application_status': 'open',
+        'deadline_type': 'student_application', 'status_evidence': 'Student Application Open till : 12-11-2026',
+        'source_checked_at': now.isoformat(), 'verified_at': now.isoformat(), 'last_seen_at': now.isoformat(),
+        'source_key': 'nsp', 'source_type': 'official', 'is_official': True, 'region': 'India',
+    }
+    path.write_text(json.dumps({'items': [previous]}), encoding='utf-8')
+
+    def discoverer(now=None):
+        return [], {'nsp': {'ok': True, 'count': 0, 'checked_at': now.isoformat()}}
+
+    payload = refresh_snapshot(path, now=now, discovery_func=discoverer)
+
+    assert payload['items'] == []
+    assert payload['closed_count'] == 1
+    assert payload['closed_items'][0]['slug'] == 'nsp-yesterday'
+    assert payload['closed_items'][0]['application_status'] == 'closed'
+
+
+def test_snapshot_keeps_recently_verified_item_missing_from_healthy_source_in_unverified_review(tmp_path):
+    now = datetime(2026, 11, 7, 10, 0, tzinfo=timezone.utc)
+    path = tmp_path / 'scholarships.json'
+    previous = {
+        'id': 'nsp-disappeared', 'slug': 'nsp-disappeared', 'title': 'Recently Verified Missing Scholarship',
+        'provider': 'Test Ministry', 'source_name': 'National Scholarship Portal',
+        'source_url': 'https://scholarships.gov.in/All-Scholarships',
+        'application_url': 'https://scholarships.gov.in/Students',
+        'deadline': '2026-11-30', 'status': 'active', 'application_status': 'open',
+        'deadline_type': 'student_application', 'status_evidence': 'Student Application Open till : 30-11-2026',
+        'source_checked_at': now.isoformat(), 'verified_at': now.isoformat(), 'last_seen_at': now.isoformat(),
+        'source_key': 'nsp', 'source_type': 'official', 'is_official': True, 'region': 'India',
+    }
+    path.write_text(json.dumps({'items': [previous]}), encoding='utf-8')
+
+    def discoverer(now=None):
+        return [], {'nsp': {'ok': True, 'count': 0, 'checked_at': now.isoformat()}}
+
+    payload = refresh_snapshot(path, today=date(2026, 11, 7), now=now, discovery_func=discoverer)
+
+    assert payload['items'] == []
+    assert payload['unverified_count'] == 1
+    assert payload['unverified_items'][0]['slug'] == 'nsp-disappeared'
+    assert payload['unverified_items'][0]['application_status'] == 'unverified'
+    assert payload['unverified_items'][0]['review_reason'] == 'not_returned_by_healthy_official_source_parse'
