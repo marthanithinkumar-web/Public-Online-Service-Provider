@@ -8,7 +8,7 @@ export type Scholarship={
   category?:string|null;eligibility?:string|null;documents?:string[];status?:string;verified_at?:string|null;
   source_type?:'official'|'private';is_official?:boolean;source_key?:string;record_type?:'scholarship'|'official_notice';
   academic_year?:string|null;last_seen_at?:string|null;stale_source?:boolean;discovery_method?:string
-  application_status?:'open'|'deadline_today'|'closed'|'cancelled'|'unverified';status_evidence?:string|null
+  application_status?:'open'|'deadline_today'|'closed'|'cancelled'|'unverified';deadline_type?:string|null;status_evidence?:string|null
   source_checked_at?:string|null;deadline_timezone?:string;deadline_cutoff_time?:string|null;closure_reason?:string|null
 }
 export type ScholarshipFeed={
@@ -41,6 +41,7 @@ const isActive=(item:Scholarship)=>{
   if(!(item.is_official===true||item.source_type==='official'))return false
   if(!String(item.status_evidence||'').trim()||!sourceCheckIsFresh(item))return false
   const status=item.application_status
+  if(item.deadline&&item.deadline_type!=='student_application')return false
   if(!item.deadline)return status==='open'&&rollingOpenEvidence.test(String(item.status_evidence||''))
   if(!/^\d{4}-\d{2}-\d{2}$/.test(item.deadline))return false
   const end=new Date(item.deadline+'T00:00:00Z')
