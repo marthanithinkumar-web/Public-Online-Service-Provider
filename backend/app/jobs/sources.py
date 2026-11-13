@@ -126,6 +126,7 @@ def parse_explicit_deadline_cutoff(value):
     patterns = (
         rf'(?:last date(?: and time)?(?:\\s+for\\s+(?:receipt|submission|applying|online application|filling|registration|applications?)(?:\\s+of\\s+(?:online\\s+)?applications?)?)?|last date to apply|closing date(?: for applications?)?|application deadline|end date(?: of application)?|last date of submission)\\s*[:\\-]?\\s*{date_token}[^.;]{{0,35}}?(?:at|up to|till|until|by)?\\s*[\\(\\[]?\\s*{time_token}',
         rf'(?:application|registration)\\s+(?:window|period)[^.;]{{0,100}}?{date_token}[^.;]{{0,35}}?(?:at|up to|till|until|by)\\s*[\\(\\[]?\\s*{time_token}',
+        rf'(?:last date(?: and time)?|closing date|application deadline|end date)[^.;]{{0,100}}?(?:by|before|up to|till|until)?\\s*{time_token}\\s*(?:on|of)\\s*{date_token}',
     )
     for pattern in patterns:
         match = re.search(pattern, text, re.I)
