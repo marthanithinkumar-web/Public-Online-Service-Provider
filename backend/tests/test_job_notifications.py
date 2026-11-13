@@ -321,7 +321,7 @@ def test_public_snapshot_publishes_only_complete_official_notices(monkeypatch):
     assert all(job['official_notice_url'].startswith('https://') for job in snapshot['items'])
 
 
-def test_public_snapshot_keeps_verified_open_jobs_during_temporary_source_failure():
+def test_public_snapshot_withholds_jobs_during_temporary_source_failure():
     complete = _item(deadline=date(2099, 9, 30))
     html = '''<table><tr><th>Advertisement No.</th><th>Organization</th><th>Post</th><th>Last Date</th></tr>
     <tr><td>notice-1</td><td>Official Recruitment Board</td><td>Assistant Officer</td><td>30 September 2099</td></tr></table>'''
@@ -351,7 +351,7 @@ def test_public_snapshot_keeps_verified_open_jobs_during_temporary_source_failur
     assert second['items'] == []
 
 
-def test_public_snapshot_preserves_open_jobs_when_source_returns_empty_parse(monkeypatch):
+def test_public_snapshot_withholds_jobs_when_source_returns_empty_parse(monkeypatch):
     from dataclasses import replace
 
     source = SOURCE_BY_KEY['sbi']
