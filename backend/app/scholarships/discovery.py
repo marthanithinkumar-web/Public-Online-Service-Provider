@@ -235,9 +235,13 @@ def _is_nsp_title(line):
 def _nsp_title_before(lines, index):
     # Each NSP card has its own "Scheme Open from" row. Anchor title lookup
     # to that card boundary so a neighbouring scheme cannot donate its date.
-    scheme_index = index if 'scheme open from' in lines[index].lower() else next(
+    def is_scheme_boundary(value):
+        lower = str(value or '').lower()
+        return 'scheme open from' in lower or ('scheme' in lower and 'not yet opened' in lower)
+
+    scheme_index = index if is_scheme_boundary(lines[index]) else next(
         (position for position in range(index - 1, max(-1, index - 18), -1)
-         if 'scheme open from' in lines[position].lower()),
+         if is_scheme_boundary(lines[position])),
         None,
     )
     search_end = scheme_index if scheme_index is not None else index
@@ -286,11 +290,16 @@ def parse_nsp(document, source, now=None):
         if key in seen:
             continue
         seen.add(key)
-        scheme_line = line if 'scheme open from' in lower else next(
+        def is_scheme_boundary(value):
+            value_lower = str(value or '').lower()
+            return 'scheme open from' in value_lower or ('scheme' in value_lower and 'not yet opened' in value_lower)
+
+        scheme_line = line if is_scheme_boundary(line) else next(
             (lines[position] for position in range(index - 1, max(-1, index - 18), -1)
-             if 'scheme open from' in lines[position].lower()),
+             if is_scheme_boundary(lines[position])),
             '',
         )
+        is_unopened = 'not yet opened' in scheme_line.lower() or 'not opened' in scheme_line.lower()
         open_date = _nsp_labeled_date(scheme_line, 'scheme open from')
         nearby = ' '.join(lines[title_index:index + 1])
         category = 'Welfare Based' if 'welfare based scheme' in nearby.lower() else ('Merit Based' if 'merit based scheme' in nearby.lower() else 'Scholarship')
@@ -312,17 +321,22 @@ def parse_nsp(document, source, now=None):
             checked_now = checked_now.replace(tzinfo=timezone.utc)
         india_today = checked_now.astimezone(ZoneInfo('Asia/Kolkata')).date()
         application_status = 'closed' if is_closed else (
-            'deadline_today' if deadline == india_today.isoformat() else 'open'
+            'unverified' if is_unopened else (
+                'deadline_today' if deadline == india_today.isoformat() else 'open'
+            )
         )
+        application_scope = 'renewal_only' if re.search(r'\\bfor\\s+renewal\\b', line, re.I) else None
         item.update({
-            'status': 'closed' if is_closed else 'active',
+            'status': 'closed' if is_closed else ('unverified' if is_unopened else 'active'),
             'application_status': application_status,
+            'application_scope': application_scope,
             'application_open_date': open_date,
             'deadline_type': 'student_application',
             'deadline_timezone': 'Asia/Kolkata',
             'deadline_cutoff_time': None,
-            'status_evidence': line,
+            'status_evidence': f'{scheme_line}; {line}' if is_unopened else line,
             'source_checked_at': item.get('verified_at'),
+            **({'review_reason': 'official_scheme_not_yet_opened'} if is_unopened else {}),
         })
         items.append(item)
     return items
