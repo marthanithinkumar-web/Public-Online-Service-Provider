@@ -1,9 +1,9 @@
-from datetime import date, datetime
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 import re
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, abort, current_app, jsonify, request
 from sqlalchemy import and_, or_
 
 from ..models.job import JobNotification, JobSource
@@ -27,14 +27,21 @@ def _india_today():
 
 
 def _public_query():
-    # Public listings must have a valid, current deadline. Undated records may
-    # remain in storage for review, but must not be advertised as open.
+    # A published row is public only while its own notice and its source check
+    # are fresh. A failed/degraded source must not keep stale records visible.
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    freshness_cutoff = now - timedelta(hours=36)
     return JobNotification.query.filter(
         JobNotification.status == 'published',
         JobNotification.deadline.isnot(None),
         JobNotification.deadline >= _india_today(),
+        JobNotification.last_seen_at >= freshness_cutoff,
+        JobNotification.source.has(and_(
+            JobSource.last_sync_status.in_(['success', 'running']),
+            JobSource.last_successful_sync_at.isnot(None),
+            JobSource.last_successful_sync_at >= freshness_cutoff,
+        )),
     )
-
 
 @bp.get('/')
 def list_jobs():
@@ -66,17 +73,25 @@ def list_jobs():
         query = query.filter(JobNotification.job_type == job_type)
     if featured in {'1', 'true', 'yes'}:
         query = query.filter(JobNotification.is_featured.is_(True))
-    total = query.count()
+    candidates = query.order_by(
+        JobNotification.is_featured.desc(),
+        JobNotification.deadline.asc(),
+        JobNotification.published_at.desc(),
+    ).all()
+    eligible = [job for job in candidates if job.is_open]
+    total = len(eligible)
     try:
         limit = min(100, max(1, int(request.args.get('limit', 30))))
     except (TypeError, ValueError):
         limit = 30
-    jobs = query.order_by(
-        JobNotification.is_featured.desc(),
-        JobNotification.deadline.asc(),
-        JobNotification.published_at.desc(),
-    ).limit(limit).all()
-    response = jsonify({'items': [job.to_dict() for job in jobs], 'count': len(jobs), 'total': total})
+    jobs = eligible[:limit]
+    response = jsonify({
+        'items': [job.to_dict() for job in jobs],
+        'count': len(jobs),
+        'total': total,
+        'verified_open_count': sum(1 for job in eligible if job.deadline_status() == 'open'),
+        'deadline_today_count': sum(1 for job in eligible if job.deadline_status() == 'deadline_today'),
+    })
     response.headers['Cache-Control'] = 'public, max-age=300, stale-while-revalidate=600'
     return response
 
@@ -107,6 +122,8 @@ def snapshot_status():
 @bp.get('/<slug>')
 def job_detail(slug):
     job = _public_query().filter_by(slug=slug).first_or_404()
+    if not job.is_open:
+        abort(404)
     response = jsonify({'job': job.to_dict()})
     response.headers['Cache-Control'] = 'public, max-age=300, stale-while-revalidate=600'
     return response
