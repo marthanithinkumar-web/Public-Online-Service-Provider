@@ -8,7 +8,7 @@ from pathlib import Path
 from .notice_enrichment import enrich_job_item
 from .official_fetch import fetch_official_page, validate_official_url
 from .rules import item_hash, slugify, target_status, unique_slug
-from .sources import SOURCE_DEFINITIONS
+from .sources import SOURCE_DEFINITIONS, india_today
 
 
 def utc_now(): return datetime.now(timezone.utc).replace(microsecond=0)
@@ -79,7 +79,7 @@ def _ensure_unique_slugs(jobs):
 
 
 def build_snapshot(existing=None,session=None,now=None):
-    now=now or utc_now();checked_at=now.isoformat().replace('+00:00','Z');today=now.date();previous=_safe_previous(existing);previous_jobs=previous['items']
+    now=now or utc_now();checked_at=now.isoformat().replace('+00:00','Z');today=india_today(now);previous=_safe_previous(existing);previous_jobs=previous['items']
     previous_by_hash={job.get('content_hash'):job for job in previous_jobs if isinstance(job,dict) and job.get('content_hash')};previous_by_source={}
     for job in previous_jobs:
         if isinstance(job,dict) and (job.get('source') or {}).get('key'):previous_by_source.setdefault(job['source']['key'],[]).append(job)
@@ -124,6 +124,8 @@ def build_snapshot(existing=None,session=None,now=None):
                 if digest and digest not in seen_hashes and _is_open(old_job,today,now=now):jobs.append(old_job);seen_hashes.add(digest)
             sources.append({'key':definition.key,'name':definition.name,'listing_url':definition.listing_url,'enabled':True,'last_sync_completed_at':checked_at,'last_sync_status':'failed','fetched_count':0,'published_count':0,'last_error':str(exc)[:300]})
         jobs.extend(source_jobs)
+    if not jobs and any(_is_open(job,today,now=now) for job in previous_jobs):
+        raise RuntimeError('Refusing to replace a snapshot with no published jobs while previously verified opportunities still have current deadlines.')
     jobs.sort(key=lambda job:(not bool(job.get('is_featured')),job.get('deadline') or '9999-12-31',job.get('title') or ''))
     jobs=_deduplicate_job_identities(jobs)
     _ensure_unique_slugs(jobs)
