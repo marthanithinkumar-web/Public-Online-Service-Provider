@@ -106,7 +106,7 @@ def build_snapshot(existing=None,session=None,now=None):
                     notice_enrichments += 1
                 if 'notice_excluded_result_only' in (item.warnings or []):
                     continue
-                status=target_status(item,today=today,allow_missing_deadline=definition.allow_missing_deadline,missing_deadline_max_age_days=definition.missing_deadline_max_age_days)
+                status=target_status(item,today=today,now=now,allow_missing_deadline=definition.allow_missing_deadline,missing_deadline_max_age_days=definition.missing_deadline_max_age_days)
                 if status!='published':review_count+=int(status=='needs_review');continue
                 digest=item_hash(item)
                 if digest in seen_hashes:continue
