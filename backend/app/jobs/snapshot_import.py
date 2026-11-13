@@ -8,7 +8,7 @@ upstream career site is temporarily unreachable from Render.
 
 import argparse
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
@@ -17,6 +17,7 @@ from sqlalchemy import text
 from ..models.job import JobNotification, JobSource
 from ..utils.database import db
 from .official_fetch import validate_official_url
+from .rules import deadline_status, is_fresh_timestamp
 from .sources import SOURCE_BY_KEY, SOURCE_DEFINITIONS
 
 
@@ -37,8 +38,12 @@ def _acquire_snapshot_import_lock():
         )
 
 
+def india_now():
+    return datetime.now(ZoneInfo('Asia/Kolkata'))
+
+
 def india_today():
-    return datetime.now(ZoneInfo('Asia/Kolkata')).date()
+    return india_now().date()
 
 
 def _parse_date(value):
@@ -88,6 +93,10 @@ def import_verified_snapshot(path):
     normalized_items = []
     expired_snapshot_items_skipped = 0
     undated_snapshot_items_skipped = 0
+    stale_snapshot_items_skipped = 0
+    now = india_now()
+    freshness_cutoff = now.astimezone(timezone.utc) - timedelta(hours=36)
+    snapshot_sources = {item.get('key'): item for item in data['sources'] if item.get('key')}
     seen_hashes = set()
     seen_slugs = set()
     for item in data['items']:
@@ -107,19 +116,37 @@ def import_verified_snapshot(path):
         seen_hashes.add(digest)
         seen_slugs.add(slug)
 
-        # The verified snapshot can be a few hours or days old by the time a
-        # queued Render deploy starts. Validate the full snapshot, but only import
-        # records with an explicit, current deadline in India.
+        # A deploy can consume an older or partially refreshed snapshot.
+        # Only import items whose own observation and source-level check are
+        # recent and successful; failures must never inherit verified-open status.
         deadline = _parse_date(item.get('deadline'))
         if deadline is None:
             undated_snapshot_items_skipped += 1
             continue
-        if deadline < india_today():
+        source_meta = snapshot_sources.get(source_key) or {}
+        source_checked = _parse_datetime(source_meta.get('last_sync_completed_at') or source_data.get('last_sync_completed_at'))
+        item_seen = _parse_datetime(item.get('last_seen_at'))
+        source_fresh = (
+            source_meta.get('last_sync_status') == 'success'
+            and source_data.get('last_sync_status') == 'success'
+            and is_fresh_timestamp(source_checked, now=now)
+            and is_fresh_timestamp(item_seen, now=now)
+        )
+        if not source_fresh:
+            stale_snapshot_items_skipped += 1
+            continue
+        state = deadline_status(
+            deadline,
+            item.get('deadline_cutoff_time'),
+            item.get('deadline_timezone') or 'Asia/Kolkata',
+            now=now,
+            verified=True,
+        )
+        if state == 'Closed—deadline passed':
             expired_snapshot_items_skipped += 1
             continue
         normalized_items.append((item, digest, slug, source_key))
 
-    snapshot_sources = {item.get('key'): item for item in data['sources'] if item.get('key')}
     configured_keys = {definition.key for definition in SOURCE_DEFINITIONS}
     unknown = set(snapshot_sources) - configured_keys
     if unknown:
@@ -249,6 +276,8 @@ def import_verified_snapshot(path):
         job.issue_date = _parse_date(item.get('issue_date'))
         job.application_start_date = _parse_date(item.get('application_start_date'))
         job.deadline = _parse_date(item.get('deadline'))
+        job.deadline_cutoff_time = item.get('deadline_cutoff_time') or None
+        job.deadline_timezone = item.get('deadline_timezone') or 'Asia/Kolkata'
         job.official_notice_url = str(item['official_notice_url'])[:1200]
         job.application_url = str(item['application_url'])[:1200] if item.get('application_url') else None
         job.status = 'published'
@@ -266,12 +295,24 @@ def import_verified_snapshot(path):
             job.published_at = published_at
         active_jobs.append(job)
 
-    # The validated snapshot is the exact active public set. Expire any older
-    # row that was not selected one-to-one for a current snapshot item.
+    # The public snapshot is the exact verified-active set. A record omitted
+    # by a failed or incomplete source parse is not proof of expiry: preserve it
+    # for admin review unless its official deadline/cutoff has actually passed.
     active_existing_ids = {job.id for job in active_jobs if job.id is not None}
     for job in existing_jobs:
-        if job.id not in active_existing_ids and job.status in {'published', 'needs_review'}:
+        if job.id in active_existing_ids or job.status not in {'published', 'needs_review'}:
+            continue
+        state = deadline_status(
+            job.deadline,
+            job.deadline_cutoff_time,
+            job.deadline_timezone,
+            now=now,
+            verified=True,
+        )
+        if state == 'Closed—deadline passed':
             job.status = 'expired'
+        else:
+            job.status = 'needs_review'
 
     # Flush before commit so uniqueness or identity-count failures roll back the
     # whole import instead of leaving a partially accepted production snapshot.
@@ -282,11 +323,10 @@ def import_verified_snapshot(path):
         db.session.rollback()
         raise RuntimeError(f'Imported production job count mismatch: got {published_total}, expected {expected}.')
 
-    active_total = JobNotification.query.filter(
-        JobNotification.status == 'published',
-        JobNotification.deadline.isnot(None),
-        JobNotification.deadline >= india_today(),
-    ).count()
+    active_total = sum(
+        1 for job in JobNotification.query.filter(JobNotification.status == 'published').all()
+        if job.deadline_status in {'Verified open', 'Deadline today—check official portal'}
+    )
     if active_total != expected:
         db.session.rollback()
         raise RuntimeError(f'Imported active production job count mismatch: got {active_total}, expected {expected}.')
@@ -297,6 +337,7 @@ def import_verified_snapshot(path):
         'active_total': active_total,
         'expired_snapshot_items_skipped': expired_snapshot_items_skipped,
         'undated_snapshot_items_skipped': undated_snapshot_items_skipped,
+        'stale_snapshot_items_skipped': stale_snapshot_items_skipped,
         'sources': len(configured_keys),
     }
 
