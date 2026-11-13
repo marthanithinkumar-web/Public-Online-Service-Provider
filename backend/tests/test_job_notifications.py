@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 from app.jobs.sources import (
     SOURCE_BY_KEY,
@@ -14,8 +14,10 @@ from app.jobs.sources import (
     parse_tgprb,
     parse_upsc,
     india_today,
+    parse_explicit_deadline_cutoff_time,
 )
 from app.jobs.snapshot import build_snapshot
+from app.jobs.rules import target_status
 from app.jobs.sync import fetch_official_page, sync_is_due, sync_source, trigger_background_sync, upsert_item
 from app.models.job import JobNotification, JobSource
 from app.models.user import User
@@ -23,6 +25,16 @@ from app.utils.database import db
 from app.utils.jwt_handler import create_token
 from app.utils.password import hash_password
 
+
+
+
+def _mark_source_verified(source):
+    checked = datetime.now(timezone.utc).replace(tzinfo=None)
+    source.last_sync_status = 'success'
+    source.last_sync_completed_at = checked
+    source.last_successful_sync_at = checked
+    source.consecutive_failures = 0
+    db.session.commit()
 
 def _admin_headers(client):
     with client.application.app_context():
@@ -179,6 +191,7 @@ def test_active_official_source_keeps_undated_notice_in_review(client, monkeypat
 def test_public_job_feed_excludes_review_hidden_and_expired(client):
     with client.application.app_context():
         source = JobSource.query.filter_by(key='employment_news').one()
+        _mark_source_verified(source)
         visible, *_ = upsert_item(source, _item())
         review, *_ = upsert_item(source, _item(external_id='review', title='Review Post', deadline=None, confidence=0.3))
         expired, *_ = upsert_item(source, _item(external_id='expired', title='Expired Post', deadline=date.today() - timedelta(days=1)))
@@ -198,6 +211,7 @@ def test_public_job_feed_excludes_review_hidden_and_expired(client):
 def test_public_job_search_matches_all_words(client):
     with client.application.app_context():
         source = JobSource.query.filter_by(key='employment_news').one()
+        _mark_source_verified(source)
         match, *_ = upsert_item(source, _item(external_id='ssc-cgl', title='Combined Graduate Level', organization='Staff Selection Commission'))
         upsert_item(source, _item(external_id='railway', title='Assistant Loco Pilot', organization='Railway Recruitment Board'))
         db.session.commit()
@@ -333,8 +347,8 @@ def test_public_snapshot_keeps_verified_open_jobs_during_temporary_source_failur
 
     second = build_snapshot(first, session=FailedSession(), now=datetime(2099, 8, 2, tzinfo=timezone.utc))
     assert second['successful_sources'] == 0
-    assert second['count'] == 1
-    assert second['items'][0]['title'] == complete.title
+    assert second['count'] == 0
+    assert second['review_count'] == 1
 
 
 def test_public_snapshot_preserves_open_jobs_when_source_returns_empty_parse(monkeypatch):
@@ -356,7 +370,8 @@ def test_public_snapshot_preserves_open_jobs_when_source_returns_empty_parse(mon
     empty = replace(populated, parser=lambda *_args: [])
     monkeypatch.setattr('app.jobs.snapshot.SOURCE_DEFINITIONS', (empty,))
     second = build_snapshot(first, now=datetime(2099, 8, 2, tzinfo=timezone.utc))
-    assert second['count'] == 1
+    assert second['count'] == 0
+    assert second['review_count'] == 1
     assert second['successful_sources'] == 0
     assert second['sources'][0]['last_sync_status'] == 'degraded'
 
@@ -471,3 +486,31 @@ def test_sbi_parser_discovers_official_manager_security_opening():
     assert match.deadline == date(2026, 11, 25)
     assert match.application_url == 'https://recruitment.sbi.bank.in/'
     assert match.official_notice_url == 'https://sbi.bank.in/documents/manager-security.pdf'
+
+
+def test_explicit_official_deadline_cutoff_parser_reads_rbi_17_00_ist():
+    from app.jobs.sources import parse_explicit_deadline_cutoff_time
+
+    text = "Applications should reach the Bank on or before 17.00 hrs on November 13, 2026."
+    assert parse_explicit_deadline_cutoff_time(text) == time(17, 0)
+
+
+def test_target_status_enforces_deadline_cutoff_in_its_timezone():
+    item = _item(deadline=date(2026, 11, 14))
+    item.deadline_cutoff_time = time(17, 0)
+    item.deadline_timezone = 'Asia/Kolkata'
+
+    before_cutoff = datetime(2026, 11, 14, 11, 29, tzinfo=timezone.utc)
+    at_cutoff = datetime(2026, 11, 14, 11, 30, tzinfo=timezone.utc)
+    assert target_status(item, now=before_cutoff) == 'published'
+    assert target_status(item, now=at_cutoff) == 'expired'
+
+
+def test_date_only_deadline_today_is_not_silently_closed_or_apply_now():
+    item = JobNotification(
+        status='published',
+        deadline=date(2026, 11, 14),
+        deadline_timezone='Asia/Kolkata',
+    )
+    after_business_hours = datetime(2026, 11, 14, 18, 0, tzinfo=timezone.utc)
+    assert item.deadline_status(now=after_business_hours) == 'deadline_today'
