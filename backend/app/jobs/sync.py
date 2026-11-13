@@ -77,7 +77,7 @@ def upsert_item(source, item, allow_missing_deadline=False, missing_deadline_max
     if previous_status == 'hidden': existing.status = 'hidden'
     else: existing.status = proposed
     if existing.status == 'published' and not existing.published_at: existing.published_at = utc_now()
-    existing.verification_status = 'official_source_checked'
+    existing.verification_status = 'official_source_checked' if proposed == 'published' else ('deadline_passed' if proposed == 'expired' else 'unverified')
     existing.last_seen_at = utc_now()
     return existing, is_new, False
 
