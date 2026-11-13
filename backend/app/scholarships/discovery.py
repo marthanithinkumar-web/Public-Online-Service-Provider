@@ -325,7 +325,7 @@ def parse_nsp(document, source, now=None):
                 'deadline_today' if deadline == india_today.isoformat() else 'open'
             )
         )
-        application_scope = 'renewal_only' if re.search(r'\\bfor\\s+renewal\\b', line, re.I) else None
+        application_scope = 'renewal_only' if re.search(r'\bfor\s+renewal\b', line, re.I) else None
         item.update({
             'status': 'closed' if is_closed else ('unverified' if is_unopened else 'active'),
             'application_status': application_status,
