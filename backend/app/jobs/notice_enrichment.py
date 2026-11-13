@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 import requests
 from pypdf import PdfReader
 from .official_fetch import BROWSER_HEADERS, fetch_official_page, validate_official_url
-from .sources import parse_explicit_deadline
+from .sources import parse_explicit_deadline, parse_explicit_deadline_cutoff
 
 MAX_NOTICE_BYTES=8*1024*1024
 
@@ -111,8 +111,11 @@ def enrich_job_item(item,session=None):
     if not getattr(item,'vacancies',None):item.vacancies=_vacancies(text)
     if not getattr(item,'salary',None):item.salary=_salary(text)
     start,deadline=_application_dates(text)
+    cutoff_time=parse_explicit_deadline_cutoff(text)
     if deadline is None:
         deadline=parse_explicit_deadline(text)
+        if cutoff_time is None:
+            cutoff_time=parse_explicit_deadline_cutoff(text)
     if deadline is None:
         parsed_url = urlparse(url)
         organization = str(getattr(item, 'organization', '') or '').lower()
@@ -135,6 +138,8 @@ def enrich_job_item(item,session=None):
                 deadline = parse_explicit_deadline(f'Last date for application: {end_date_match.group(1)}')
     if not getattr(item,'application_start_date',None) and start:item.application_start_date=start
     if not getattr(item,'deadline',None) and deadline:item.deadline=deadline
+    if deadline and cutoff_time and not getattr(item,'deadline_cutoff_time',None):item.deadline_cutoff_time=cutoff_time
+    if deadline and not getattr(item,'deadline_timezone',None):item.deadline_timezone='Asia/Kolkata'
     extracted=[('Qualification',item.qualification),('Age',item.age_limit),('Fee',item.application_fee),('Vacancies',item.vacancies),('Pay',item.salary)];facts=[f'{label}: {value}' for label,value in extracted if value]
     if facts and (not item.summary or item.summary.startswith('Official ')):item.summary='Verified from the official notification. '+' · '.join(facts)
     return item
