@@ -427,3 +427,47 @@ def test_snapshot_keeps_recently_verified_item_missing_from_healthy_source_in_un
     assert payload['unverified_items'][0]['slug'] == 'nsp-disappeared'
     assert payload['unverified_items'][0]['application_status'] == 'unverified'
     assert payload['unverified_items'][0]['review_reason'] == 'not_returned_by_healthy_official_source_parse'
+
+
+def test_nsp_parser_marks_not_yet_opened_scheme_unverified_even_with_future_student_deadline():
+    html = '''
+    <html><body>
+      <div>Academic Year 2026-27</div>
+      <div>Department of Higher Education</div>
+      <div>PM-USP - Central Sector Scheme Of Scholarship For College And University Students (CSSS) (Merit Based Scheme)</div>
+      <div>Scheme : NOT YET OPENED</div>
+      <div>Student Application Open till : 30-11-2026</div>
+    </body></html>
+    '''
+    src = source('nsp', 'National Scholarship Portal', 'https://scholarships.gov.in/All-Scholarships', 'nsp')
+
+    items = parse_nsp(html, src, now=NOW)
+
+    assert len(items) == 1
+    item = items[0]
+    assert 'PM-USP' in item['title']
+    assert item['deadline'] == '2026-11-30'
+    assert item['status'] == 'unverified'
+    assert item['application_status'] == 'unverified'
+    assert item['review_reason'] == 'official_scheme_not_yet_opened'
+    assert 'NOT YET OPENED' in item['status_evidence']
+
+
+def test_nsp_parser_marks_explicit_renewal_scope_without_borrowing_neighbouring_card_text():
+    html = '''
+    <html><body>
+      <div>Academic Year 2026-27</div>
+      <div>North Eastern Council(NEC), DoNER</div>
+      <div>Financial Support To The Students Of NER For Higher Professional Courses (NEC Merit Scholarship)</div>
+      <div>Scheme Open from (for Renewal): 15-07-2026</div>
+      <div>Student Application Open till (for Renewal): 30-11-2026</div>
+    </body></html>
+    '''
+    src = source('nsp', 'National Scholarship Portal', 'https://scholarships.gov.in/All-Scholarships', 'nsp')
+
+    items = parse_nsp(html, src, now=NOW)
+
+    assert len(items) == 1
+    assert items[0]['application_status'] == 'open'
+    assert items[0]['application_scope'] == 'renewal_only'
+    assert items[0]['status_evidence'] == 'Student Application Open till (for Renewal): 30-11-2026'
