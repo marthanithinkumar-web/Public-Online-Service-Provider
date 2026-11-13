@@ -8,7 +8,7 @@ upstream career site is temporarily unreachable from Render.
 
 import argparse
 import json
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
@@ -53,6 +53,12 @@ def _parse_datetime(value):
     return datetime.fromisoformat(str(value).replace('Z', '+00:00')).replace(tzinfo=None)
 
 
+def _parse_time(value):
+    if not value:
+        return None
+    return time.fromisoformat(str(value))
+
+
 def _load_snapshot(path):
     data = json.loads(Path(path).read_text(encoding='utf-8'))
     if data.get('schema_version') != 1:
@@ -81,6 +87,8 @@ def _retired_external_id(external_id, job_id):
 def import_verified_snapshot(path):
     data = _load_snapshot(path)
     _acquire_snapshot_import_lock()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    freshness_cutoff = now - timedelta(hours=36)
 
     # Validate every final identity before mutating the database. The snapshot
     # generator already de-duplicates these, but enforcing uniqueness here
@@ -88,6 +96,7 @@ def import_verified_snapshot(path):
     normalized_items = []
     expired_snapshot_items_skipped = 0
     undated_snapshot_items_skipped = 0
+    cutoff_snapshot_items_skipped = 0
     seen_hashes = set()
     seen_slugs = set()
     for item in data['items']:
@@ -104,6 +113,11 @@ def import_verified_snapshot(path):
         validate_official_url(item.get('official_notice_url'))
         if item.get('application_url'):
             validate_official_url(item.get('application_url'))
+        source_status = str(source_data.get('last_sync_status') or '')
+        source_checked = _parse_datetime(source_data.get('last_successful_sync_at') or source_data.get('last_sync_completed_at'))
+        item_seen = _parse_datetime(item.get('last_seen_at'))
+        if source_status != 'success' or not source_checked or source_checked < freshness_cutoff or not item_seen or item_seen < freshness_cutoff:
+            raise ValueError(f'Job {slug} is not backed by a fresh successful official-source check.')
         seen_hashes.add(digest)
         seen_slugs.add(slug)
 
@@ -116,6 +130,15 @@ def import_verified_snapshot(path):
             continue
         if deadline < india_today():
             expired_snapshot_items_skipped += 1
+            continue
+        try:
+            deadline_tz = ZoneInfo(str(item.get('deadline_timezone') or 'Asia/Kolkata'))
+        except Exception as exc:
+            raise ValueError(f'Job {slug} has an invalid deadline timezone.') from exc
+        cutoff_time = _parse_time(item.get('deadline_cutoff_time'))
+        local_now = datetime.now(timezone.utc).astimezone(deadline_tz)
+        if deadline == local_now.date() and cutoff_time and local_now.timetz().replace(tzinfo=None) >= cutoff_time:
+            cutoff_snapshot_items_skipped += 1
             continue
         normalized_items.append((item, digest, slug, source_key))
 
@@ -146,6 +169,12 @@ def import_verified_snapshot(path):
         metadata = snapshot_sources.get(definition.key) or {}
         source.last_sync_completed_at = _parse_datetime(metadata.get('last_sync_completed_at'))
         source.last_sync_status = metadata.get('last_sync_status') or 'not_run'
+        successful_at = _parse_datetime(metadata.get('last_successful_sync_at'))
+        if successful_at:
+            source.last_successful_sync_at = successful_at
+        elif source.last_sync_status == 'success' and source.last_sync_completed_at:
+            source.last_successful_sync_at = source.last_sync_completed_at
+        source.consecutive_failures = max(0, int(metadata.get('consecutive_failures') or 0))
         source.fetched_count = int(metadata.get('fetched_count') or 0)
         source.published_count = int(metadata.get('published_count') or 0)
         source.last_error = metadata.get('last_error') or None
@@ -249,6 +278,8 @@ def import_verified_snapshot(path):
         job.issue_date = _parse_date(item.get('issue_date'))
         job.application_start_date = _parse_date(item.get('application_start_date'))
         job.deadline = _parse_date(item.get('deadline'))
+        job.deadline_cutoff_time = _parse_time(item.get('deadline_cutoff_time'))
+        job.deadline_timezone = str(item.get('deadline_timezone') or 'Asia/Kolkata')
         job.official_notice_url = str(item['official_notice_url'])[:1200]
         job.application_url = str(item['application_url'])[:1200] if item.get('application_url') else None
         job.status = 'published'
@@ -266,12 +297,16 @@ def import_verified_snapshot(path):
             job.published_at = published_at
         active_jobs.append(job)
 
-    # The validated snapshot is the exact active public set. Expire any older
-    # row that was not selected one-to-one for a current snapshot item.
+    # The validated snapshot is the exact verified public set. Missing rows are
+    # preserved for admin review unless their own official deadline has passed.
     active_existing_ids = {job.id for job in active_jobs if job.id is not None}
     for job in existing_jobs:
         if job.id not in active_existing_ids and job.status in {'published', 'needs_review'}:
-            job.status = 'expired'
+            if job.deadline_status(now=datetime.now(timezone.utc)) == 'closed':
+                job.status = 'expired'
+            else:
+                job.status = 'needs_review'
+                job.verification_status = 'not_returned_by_latest_official_snapshot'
 
     # Flush before commit so uniqueness or identity-count failures roll back the
     # whole import instead of leaving a partially accepted production snapshot.
@@ -282,11 +317,14 @@ def import_verified_snapshot(path):
         db.session.rollback()
         raise RuntimeError(f'Imported production job count mismatch: got {published_total}, expected {expected}.')
 
-    active_total = JobNotification.query.filter(
-        JobNotification.status == 'published',
-        JobNotification.deadline.isnot(None),
-        JobNotification.deadline >= india_today(),
-    ).count()
+    active_total = sum(
+        1 for job in JobNotification.query.filter_by(status='published').all()
+        if job.is_open and job.source
+        and job.source.last_sync_status in {'success', 'running'}
+        and job.source.last_successful_sync_at
+        and job.source.last_successful_sync_at >= freshness_cutoff
+        and job.last_seen_at and job.last_seen_at >= freshness_cutoff
+    )
     if active_total != expected:
         db.session.rollback()
         raise RuntimeError(f'Imported active production job count mismatch: got {active_total}, expected {expected}.')
@@ -297,6 +335,9 @@ def import_verified_snapshot(path):
         'active_total': active_total,
         'expired_snapshot_items_skipped': expired_snapshot_items_skipped,
         'undated_snapshot_items_skipped': undated_snapshot_items_skipped,
+        'cutoff_snapshot_items_skipped': cutoff_snapshot_items_skipped,
+        'needs_review_total': JobNotification.query.filter_by(status='needs_review').count(),
+        'expired_total': JobNotification.query.filter_by(status='expired').count(),
         'sources': len(configured_keys),
     }
 
