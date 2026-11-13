@@ -2,6 +2,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 from html import unescape
 from html.parser import HTMLParser
 from typing import Callable
@@ -26,6 +27,8 @@ class JobItem:
     issue_date: date | None = None
     application_start_date: date | None = None
     deadline: date | None = None
+    deadline_cutoff_time: str | None = None
+    deadline_timezone: str = 'Asia/Kolkata'
     application_url: str | None = None
     confidence: float = 0.0
     warnings: list[str] = field(default_factory=list)
@@ -39,6 +42,10 @@ class SourceDefinition:
     parser: Callable[[str, str], list[JobItem]]
     allow_missing_deadline: bool = False
     missing_deadline_max_age_days: int = 45
+
+
+def india_today():
+    return datetime.now(ZoneInfo('Asia/Kolkata')).date()
 
 
 def clean(value):
@@ -107,6 +114,40 @@ def parse_explicit_deadline(value):
             deadline = parse_date(match.group(2))
             if deadline:
                 return deadline
+    return None
+
+
+
+def parse_explicit_deadline_cutoff(value):
+    """Extract a cutoff time only when it is attached to explicit application-closing language."""
+    text = clean(value)
+    date_token = r'(?:20\\d{2}-\\d{1,2}-\\d{1,2}|\\d{1,2}[./-]\\d{1,2}[./-]20\\d{2}|\\d{1,2}\\s+[A-Za-z]{3,9}\\s+20\\d{2}|[A-Za-z]{3,9}\\s+\\d{1,2},?\\s+20\\d{2})'
+    time_token = r'(\\d{1,2}(?:[:.]\\d{2})?\\s*(?:a\\.?m\\.?|p\\.?m\\.?|hrs?|hours?))'
+    patterns = (
+        rf'(?:last date(?: and time)?(?:\\s+for\\s+(?:receipt|submission|applying|online application|filling|registration|applications?)(?:\\s+of\\s+(?:online\\s+)?applications?)?)?|last date to apply|closing date(?: for applications?)?|application deadline|end date(?: of application)?|last date of submission)\\s*[:\\-]?\\s*{date_token}[^.;]{{0,35}}?(?:at|up to|till|until|by)?\\s*[\\(\\[]?\\s*{time_token}',
+        rf'(?:application|registration)\\s+(?:window|period)[^.;]{{0,100}}?{date_token}[^.;]{{0,35}}?(?:at|up to|till|until|by)\\s*[\\(\\[]?\\s*{time_token}',
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text, re.I)
+        if not match:
+            continue
+        raw = re.sub(r'\\s+', ' ', match.group(1)).strip().lower().replace('.', ':')
+        parsed = re.fullmatch(r'(\\d{1,2})(?::(\\d{2}))?\\s*(a:?m:?|p:?m:?|hrs?|hours?)?', raw)
+        if not parsed:
+            continue
+        hour = int(parsed.group(1))
+        minute = int(parsed.group(2) or 0)
+        suffix = (parsed.group(3) or '').replace(':', '')
+        if hour > 23 or minute > 59:
+            continue
+        if suffix.startswith('p') and hour < 12:
+            hour += 12
+        elif suffix.startswith('a') and hour == 12:
+            hour = 0
+        elif not suffix and hour <= 12:
+            # A bare 5:00 is ambiguous; require AM/PM, HRS, or 24-hour notation.
+            continue
+        return f'{hour:02d}:{minute:02d}'
     return None
 
 
@@ -541,7 +582,7 @@ def parse_india_post_gds(html, base_url):
     if len(application_dates) < 2:
         return []
     start_date, deadline = application_dates[0], application_dates[-1]
-    if deadline < date.today():
+    if deadline < india_today():
         return []
 
     document = parse_html(html)
