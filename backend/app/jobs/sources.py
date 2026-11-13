@@ -91,7 +91,7 @@ def parse_explicit_deadline(value):
     token = r'(?:20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]20\d{2}|\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}|[A-Za-z]{3,9}\s+\d{1,2},?\s+20\d{2})'
     time_clause = r'(?:\s+\d{1,2}[.:]\d{2}\s*(?:hrs?|hours?)\s+on)?'
     closing_patterns = (
-        rf'(?:last date(?: and time)?(?:\s+for\s+(?:receipt|submission|applying|online application|filling|registration|applications?)(?:\s+of\s+(?:online\s+)?applications?)?)?|last date to apply|closing date(?: for applications?)?|application deadline|applications? close(?:s)? on|apply by)\s*[:\-]?\s*({token})',
+        rf'(?:last date(?: and time)?(?:\s+for\s+(?:receipt|submission|applying|online application|filling|registration|applications?)(?:\s+of\s+(?:online\s+)?applications?)?)?|last date to apply|closing date(?: for applications?)?|application deadline|applications? close(?:s)? on|apply by)\s*(?:is|will be|shall be)?\s*[:\-]?\s*({token})',
         rf'\bapplications?\b[^.;]{{0,250}}\bon or before{time_clause}\s*({token})',
         rf'\b(?:application|applications|sealed cover|application form)\b.{{0,500}}?\b(?:should\s+)?(?:reach|be received|be submitted|be sent|be forwarded)\b.{{0,180}}?\bon or before{time_clause}\s*({token})',
         rf'\b(?:online\s+)?registration(?:\s+for\s+(?:online\s+)?applications?)?\s+(?:has been\s+)?extended\s+(?:to|till|until|up to)\s*({token})',
