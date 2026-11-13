@@ -142,6 +142,22 @@ export function readIndexableJobs(){
   return readJobs().filter(item=>String(item?.job_type||'').toLowerCase()==='government')
 }
 
+function scholarshipCheckIsFresh(item){
+  const checked=Date.parse(String(item?.source_checked_at||item?.verified_at||item?.last_seen_at||''))
+  const age=Date.now()-checked
+  return Number.isFinite(checked)&&age>=-5*60*1000&&age<=36*60*60*1000
+}
+function isVerifiedScholarship(item){
+  if(item?.status!=='active'||item?.stale_source||(item?.source_type!=='official'&&item?.is_official!==true))return false
+  if(!String(item?.status_evidence||'').trim()||!scholarshipCheckIsFresh(item))return false
+  const status=String(item?.application_status||'')
+  const deadline=String(item?.deadline||'')
+  if(deadline&&item?.deadline_type!=='student_application')return false
+  if(!deadline)return status==='open'&&/\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|open for applications|registration\b.{0,80}\b(?:is|are)\s+(?:currently\s+)?open|application process is open)\b/i.test(String(item?.status_evidence||''))
+  if(!hasCurrentDeadline(item))return false
+  if(deadline===indiaToday())return status==='deadline_today'
+  return status==='open'
+}
 export function readScholarships(){
-  return readSnapshot('scholarships.json').filter(item=>item?.status==='active'&&!item?.stale_source&&(item?.source_type==='official'||item?.is_official===true)&&hasCurrentDeadline(item)&&hasSafePublicSlug(item))
+  return readSnapshot('scholarships.json').filter(item=>isVerifiedScholarship(item)&&hasSafePublicSlug(item))
 }
