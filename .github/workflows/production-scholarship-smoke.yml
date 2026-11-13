@@ -58,7 +58,9 @@ jobs:
               payload.get('official_count', 0) >= 5
               and (health.get('nsp') or {}).get('ok') is True
               and len(health) >= 5
-              and any(item.get('source_key','').startswith('tg_epass') for item in items)
+              and all(item.get('status') == 'active' and item.get('application_status') in {'open','deadline_today'} for item in items)
+              and not any('beedi' in str(item.get('title') or '').lower() for item in items)
+              and not any('central sector scheme of scholarship for college and university students' in str(item.get('title') or '').lower() for item in items)
               and not bad_provider
           )
           sys.exit(0 if ok else 1)
@@ -76,7 +78,11 @@ jobs:
         run: |
           set -Eeuo pipefail
           curl --fail --silent --show-error --location --max-time 30 \
-            "$API_URL/api/scholarships/?q=telangana" -o /tmp/telangana.json
+            "$API_URL/api/scholarships/?q=beedi" -o /tmp/beedi.json
+          curl --fail --silent --show-error --location --max-time 30 \
+            "$API_URL/api/scholarships/?q=csss" -o /tmp/csss.json
+          curl --fail --silent --show-error --location --max-time 30 \
+            "$API_URL/api/scholarships/?q=nec" -o /tmp/nec.json
           curl --fail --silent --show-error --location --max-time 30 \
             "$API_URL/api/scholarships/?q=aicte" -o /tmp/aicte.json
           python - <<'PY'
@@ -109,10 +115,22 @@ jobs:
                   assert 'Welfare Based Scheme)' not in provider, (item['title'], provider)
                   assert 'Merit Based Scheme)' not in provider, (item['title'], provider)
 
-          with open('/tmp/telangana.json', encoding='utf-8') as handle:
-              telangana=json.load(handle)
-          assert telangana.get('items'), 'Telangana scholarship search is empty'
-          assert any(item.get('source_key','').startswith('tg_epass') for item in telangana['items']), telangana['items'][:3]
+          assert not any('beedi' in str(item.get('title') or '').lower() for item in items), 'Closed Beedi scholarship leaked into the active API'
+          assert not any('central sector scheme of scholarship for college and university students' in str(item.get('title') or '').lower() for item in items), 'Not-yet-opened PM-USP CSSS leaked into the active API'
+
+          with open('/tmp/beedi.json', encoding='utf-8') as handle:
+              beedi=json.load(handle)
+          assert not beedi.get('items'), f'Closed Beedi applications remain searchable: {beedi.get("items", [])[:3]}'
+
+          with open('/tmp/csss.json', encoding='utf-8') as handle:
+              csss=json.load(handle)
+          assert not csss.get('items'), f'Not-yet-opened PM-USP CSSS remains searchable: {csss.get("items", [])[:3]}'
+
+          with open('/tmp/nec.json', encoding='utf-8') as handle:
+              nec=json.load(handle)
+          for item in nec.get('items', []):
+              if 'NEC Merit Scholarship' in str(item.get('title') or ''):
+                  assert item.get('application_scope') == 'renewal_only', item
 
           with open('/tmp/aicte.json', encoding='utf-8') as handle:
               aicte=json.load(handle)
