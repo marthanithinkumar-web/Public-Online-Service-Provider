@@ -119,6 +119,29 @@ function hasCurrentDeadline(item){
   const parsed=new Date(deadline+'T00:00:00Z')
   return !Number.isNaN(parsed.getTime())&&parsed.toISOString().slice(0,10)===deadline&&deadline>=indiaToday()
 }
+function indiaTime(){
+  return new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date())
+}
+function jobSourceCheckIsFresh(item){
+  const source=item?.source||{}
+  const sourceChecked=Date.parse(String(source.last_sync_completed_at||''))
+  const itemChecked=Date.parse(String(item?.last_seen_at||''))
+  const sourceAge=Date.now()-sourceChecked
+  const itemAge=Date.now()-itemChecked
+  const maxAge=36*60*60*1000
+  return source.last_sync_status==='success'
+    &&Number.isFinite(sourceChecked)&&sourceAge>=-5*60*1000&&sourceAge<=maxAge
+    &&Number.isFinite(itemChecked)&&itemAge>=-5*60*1000&&itemAge<=maxAge
+}
+function hasCurrentJobDeadline(item){
+  if(!hasCurrentDeadline(item)||!jobSourceCheckIsFresh(item))return false
+  if((item?.deadline_timezone||'Asia/Kolkata')!=='Asia/Kolkata')return false
+  if(String(item.deadline)===indiaToday()){
+    const cutoff=String(item?.deadline_cutoff_time||'')
+    if(/^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(cutoff)&&indiaTime()>=cutoff)return false
+  }
+  return true
+}
 
 function uniqueBySlug(items){
   const seen=new Set()
@@ -133,7 +156,7 @@ function uniqueBySlug(items){
 export function readJobs(){
   // Older snapshots can carry forward a legacy duplicate slug. Keep one
   // canonical public URL until the next backend refresh repairs the source.
-  return uniqueBySlug(readSnapshot('jobs.json').filter(item=>item?.status==='published'&&hasCurrentDeadline(item)&&hasSafePublicSlug(item)))
+  return uniqueBySlug(readSnapshot('jobs.json').filter(item=>item?.status==='published'&&hasCurrentJobDeadline(item)&&hasSafePublicSlug(item)))
 }
 
 // Only government recruitment detail pages are part of the SEO index surface.
