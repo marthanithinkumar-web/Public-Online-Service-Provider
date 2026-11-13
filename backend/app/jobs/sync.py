@@ -65,7 +65,7 @@ def upsert_item(source, item, allow_missing_deadline=False, missing_deadline_max
         db.session.add(existing)
     previous_status = existing.status
     existing.content_hash = content_hash
-    for field in ('title', 'organization', 'job_type', 'appointment_type', 'location', 'qualification', 'age_limit', 'application_fee', 'vacancies', 'salary', 'summary', 'issue_date', 'application_start_date', 'deadline', 'official_notice_url', 'application_url', 'confidence'):
+    for field in ('title', 'organization', 'job_type', 'appointment_type', 'location', 'qualification', 'age_limit', 'application_fee', 'vacancies', 'salary', 'summary', 'issue_date', 'application_start_date', 'deadline', 'deadline_cutoff_time', 'deadline_timezone', 'official_notice_url', 'application_url', 'confidence'):
         value = getattr(item, field)
         if isinstance(value, str):
             limits = {'title': 500, 'organization': 500, 'official_notice_url': 1200, 'application_url': 1200}
@@ -91,6 +91,7 @@ def _record_source_failure(source_id, message, detail=''):
     db.session.rollback()
     current = db.session.get(JobSource, source_id)
     current.last_sync_completed_at = utc_now()
+    current.consecutive_failures = int(current.consecutive_failures or 0) + 1
     has_verified = _has_verified_notices(source_id)
     current.last_sync_status = 'degraded' if has_verified else 'failed'
     current.last_error = message
@@ -114,6 +115,7 @@ def sync_source(source, session=None):
                 'empty or incomplete official-source parse',
             )
         published = 0; duplicates = 0; notice_enrichments = 0; max_notice_enrichments_per_source = 12
+        seen_job_ids = set()
         for item in items:
             # Inspect high-confidence official notices before applying the same
             # deadline rule used by the static snapshot. The date may exist only
@@ -126,8 +128,18 @@ def sync_source(source, session=None):
             if 'notice_excluded_result_only' in (item.warnings or []):
                 continue
             job, _, duplicate = upsert_item(source, item, allow_missing_deadline=definition.allow_missing_deadline, missing_deadline_max_age_days=definition.missing_deadline_max_age_days)
+            if job.source_id == source.id:
+                seen_job_ids.add(job.id)
             duplicates += int(duplicate); published += int(job.status == 'published')
-        source.fetched_count = len(items); source.published_count = published; source.last_sync_completed_at = utc_now(); source.last_sync_status = 'success'; source.last_error = f'{duplicates} duplicate notice(s) skipped.' if duplicates else None
+        for old_job in JobNotification.query.filter_by(source_id=source.id, status='published').all():
+            if old_job.id in seen_job_ids:
+                continue
+            if old_job.deadline_status(now=datetime.now(timezone.utc)) == 'closed':
+                old_job.status = 'expired'
+            else:
+                old_job.status = 'needs_review'
+                old_job.verification_status = 'not_returned_by_latest_official_parse'
+        source.fetched_count = len(items); source.published_count = published; source.last_sync_completed_at = utc_now(); source.last_successful_sync_at = source.last_sync_completed_at; source.consecutive_failures = 0; source.last_sync_status = 'success'; source.last_error = f'{duplicates} duplicate notice(s) skipped.' if duplicates else None
         db.session.commit()
         return {'source': source.key, 'fetched': len(items), 'published': published, 'duplicates': duplicates, 'status': 'success'}
     except OfficialSourceUnavailable as exc:
@@ -138,6 +150,7 @@ def sync_source(source, session=None):
         db.session.rollback()
         current = db.session.get(JobSource, source.id)
         current.last_sync_completed_at = utc_now()
+        current.consecutive_failures = int(current.consecutive_failures or 0) + 1
         detail = str(exc).strip()
         if _has_verified_notices(source.id):
             current.last_sync_status = 'degraded'
@@ -150,14 +163,21 @@ def sync_source(source, session=None):
 
 
 def expire_old_jobs():
-    expired = JobNotification.query.filter(JobNotification.deadline.isnot(None), JobNotification.deadline < india_today(), JobNotification.status.in_(['published', 'needs_review'])).all()
-    for job in expired: job.status = 'expired'
-    undated_cutoff = utc_now() - timedelta(days=60)
-    stale_undated = JobNotification.query.filter(JobNotification.deadline.is_(None), JobNotification.last_seen_at < undated_cutoff, JobNotification.status.in_(['published', 'needs_review'])).all()
-    for job in stale_undated: job.status = 'expired'
-    if expired or stale_undated: db.session.commit()
-    return len(expired) + len(stale_undated)
-
+    now = datetime.now(timezone.utc)
+    candidates = JobNotification.query.filter(
+        JobNotification.status.in_(['published', 'needs_review'])
+    ).all()
+    expired = 0
+    for job in candidates:
+        if job.deadline is not None and job.deadline_status(now=now) == 'closed':
+            job.status = 'expired'
+            expired += 1
+        elif job.deadline is None and job.last_seen_at < utc_now() - timedelta(days=60):
+            job.status = 'expired'
+            expired += 1
+    if expired:
+        db.session.commit()
+    return expired
 
 def sync_all_sources(session=None):
     ensure_job_sources(); results = []
