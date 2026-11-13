@@ -87,7 +87,8 @@ jobs:
             "$API_URL/api/scholarships/?q=aicte" -o /tmp/aicte.json
           python - <<'PY'
           import json
-          from datetime import date, datetime, timezone
+          from datetime import date, datetime, timedelta, timezone
+          from zoneinfo import ZoneInfo
 
           with open('/tmp/scholarships.json', encoding='utf-8') as handle:
               payload=json.load(handle)
@@ -100,8 +101,10 @@ jobs:
           checked=datetime.fromisoformat(discovery['checked_at'].replace('Z','+00:00'))
           if checked.tzinfo is None:
               checked=checked.replace(tzinfo=timezone.utc)
-          assert (datetime.now(timezone.utc)-checked).total_seconds() <= 36*3600, discovery['checked_at']
+          assert (now-checked).total_seconds() <= 36*3600, discovery['checked_at']
           health=discovery.get('source_health') or {}
+          now=datetime.now(timezone.utc)
+          today=now.astimezone(ZoneInfo('Asia/Kolkata')).date()
           assert (health.get('nsp') or {}).get('ok') is True, health.get('nsp')
           assert int((health.get('nsp') or {}).get('count') or 0) >= 5, health.get('nsp')
 
@@ -109,7 +112,13 @@ jobs:
               assert item.get('source_type') in {'official','private'}, item.get('title')
               assert item.get('is_official') is (item['source_type']=='official'), item.get('title')
               if item.get('deadline'):
-                  assert date.fromisoformat(item['deadline'][:10]) >= date.today(), item['title']
+                  assert date.fromisoformat(item['deadline'][:10]) >= today, item['title']
+              source_checked=item.get('source_checked_at') or item.get('verified_at')
+              assert source_checked, item.get('title')
+              source_checked_at=datetime.fromisoformat(str(source_checked).replace('Z','+00:00'))
+              if source_checked_at.tzinfo is None:
+                  source_checked_at=source_checked_at.replace(tzinfo=timezone.utc)
+              assert now-source_checked_at.astimezone(timezone.utc) <= timedelta(hours=36), item.get('title')
               if item.get('source_key') == 'nsp':
                   provider=str(item.get('provider') or '')
                   assert 'Welfare Based Scheme)' not in provider, (item['title'], provider)
