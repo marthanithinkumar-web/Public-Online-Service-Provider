@@ -27,11 +27,11 @@ class JobItem:
     issue_date: date | None = None
     application_start_date: date | None = None
     deadline: date | None = None
-    deadline_cutoff_time: str | None = None
-    deadline_timezone: str = 'Asia/Kolkata'
     application_url: str | None = None
     confidence: float = 0.0
     warnings: list[str] = field(default_factory=list)
+    deadline_cutoff_time: str | None = None
+    deadline_timezone: str = 'Asia/Kolkata'
 
 
 @dataclass(frozen=True)
