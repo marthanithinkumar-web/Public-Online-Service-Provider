@@ -1,7 +1,7 @@
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 from html import unescape
 from html.parser import HTMLParser
 from typing import Callable
@@ -35,6 +35,8 @@ class JobItem:
     issue_date: date | None = None
     application_start_date: date | None = None
     deadline: date | None = None
+    deadline_cutoff_time: time | None = None
+    deadline_timezone: str = 'Asia/Kolkata'
     application_url: str | None = None
     confidence: float = 0.0
     warnings: list[str] = field(default_factory=list)
@@ -116,6 +118,36 @@ def parse_explicit_deadline(value):
             deadline = parse_date(match.group(2))
             if deadline:
                 return deadline
+    return None
+
+
+def parse_explicit_deadline_cutoff_time(value):
+    """Extract a time only when it is attached to explicit application-deadline wording."""
+    text = clean(value)
+    date_token = r'(?:20\\d{2}-\\d{1,2}-\\d{1,2}|\\d{1,2}[./-]\\d{1,2}[./-]20\\d{2}|\\d{1,2}\\s+[A-Za-z]{3,9}\\s+20\\d{2}|[A-Za-z]{3,9}\\s+\\d{1,2},?\\s+20\\d{2})'
+    time_token = r'(\\d{1,2}[.:]\\d{2}\\s*(?:AM|PM)?)'
+    patterns = (
+        rf'\\bon or before\\s*{time_token}\\s*(?:hrs?|hours?)\\s+on\\s*{date_token}',
+        rf'(?:last date(?: and time)?(?:\\s+for\\s+(?:receipt|submission|applying|online application|filling|registration|applications?)(?:\\s+of\\s+(?:online\\s+)?applications?)?)?|last date to apply|closing date(?: for applications?)?|application deadline|apply by)[^.;]{{0,180}}?{date_token}[^.;]{{0,80}}?(?:at|by)\\s*{time_token}\\s*(?:hrs?|hours?|IST|Indian Standard Time)?',
+        rf'(?:last date|application deadline|closing date)[^.;]{{0,120}}?{time_token}\\s*(?:hrs?|hours?)\\s*(?:IST|Indian Standard Time)?',
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text, re.I)
+        if not match:
+            continue
+        raw = re.sub(r'\\s+', '', match.group(1)).replace('.', ':')
+        clock = re.fullmatch(r'(\\d{1,2}):(\\d{2})(AM|PM)?', raw, re.I)
+        if not clock:
+            continue
+        hour, minute = int(clock.group(1)), int(clock.group(2))
+        meridiem = (clock.group(3) or '').upper()
+        if minute > 59 or hour > (12 if meridiem else 23) or hour < (1 if meridiem else 0):
+            continue
+        if meridiem == 'AM':
+            hour = 0 if hour == 12 else hour
+        elif meridiem == 'PM':
+            hour = 12 if hour == 12 else hour + 12
+        return time(hour, minute)
     return None
 
 
