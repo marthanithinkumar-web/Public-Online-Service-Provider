@@ -449,3 +449,25 @@ def test_rbi_priority_parser_uses_india_local_date(monkeypatch):
     html = '''<a href="/notice.pdf">Engagement of Part-Time Bank Medical Consultants — Last date to apply: 13 November 2026</a>'''
 
     assert parse_rbi(html, 'https://opportunities.rbi.org.in/Scripts/Vacancies.aspx') == []
+
+
+def test_sbi_parser_discovers_official_manager_security_opening():
+    from app.jobs.priority_sources import parse_sbi
+
+    html = '''
+    <html><body>
+      <p>RECRUITMENT OF SPECIALIST CADRE OFFICERS ON REGULAR BASIS FOR THE POST OF MANAGER (SECURITY)/DEPUTY MANAGER (Apply Online from 04.11.2026 TO 25.11.2026)</p>
+      <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/28</p>
+      <ul>
+        <li><a href="/documents/manager-security.pdf">DOWNLOAD ADVERTISEMENT</a></li>
+        <li><a href="https://recruitment.sbi.bank.in/">APPLY ONLINE (04.11.2026 to 25.11.2026)</a></li>
+      </ul>
+    </body></html>
+    '''
+
+    items = parse_sbi(html, 'https://sbi.bank.in/web/careers/current-openings')
+
+    match = next(item for item in items if 'MANAGER (SECURITY)' in item.title.upper())
+    assert match.deadline == date(2026, 11, 25)
+    assert match.application_url == 'https://recruitment.sbi.bank.in/'
+    assert match.official_notice_url == 'https://sbi.bank.in/documents/manager-security.pdf'
