@@ -320,23 +320,26 @@ def parse_nsp(document, source, now=None):
         if checked_now.tzinfo is None:
             checked_now = checked_now.replace(tzinfo=timezone.utc)
         india_today = checked_now.astimezone(ZoneInfo('Asia/Kolkata')).date()
+        future_open_date = bool(open_date and datetime.fromisoformat(open_date).date() > india_today)
+        not_yet_open = is_unopened or future_open_date
         application_status = 'closed' if is_closed else (
-            'unverified' if is_unopened else (
+            'unverified' if not_yet_open else (
                 'deadline_today' if deadline == india_today.isoformat() else 'open'
             )
         )
         application_scope = 'renewal_only' if re.search(r'\bfor\s+renewal\b', line, re.I) else None
+        status_evidence = f'{scheme_line}; {line}' if scheme_line else line
         item.update({
-            'status': 'closed' if is_closed else ('unverified' if is_unopened else 'active'),
+            'status': 'closed' if is_closed else ('unverified' if not_yet_open else 'active'),
             'application_status': application_status,
             'application_scope': application_scope,
             'application_open_date': open_date,
             'deadline_type': 'student_application',
             'deadline_timezone': 'Asia/Kolkata',
             'deadline_cutoff_time': None,
-            'status_evidence': f'{scheme_line}; {line}' if is_unopened else line,
+            'status_evidence': status_evidence,
             'source_checked_at': item.get('verified_at'),
-            **({'review_reason': 'official_scheme_not_yet_opened'} if is_unopened else {}),
+            **({'review_reason': 'official_scheme_not_yet_opened'} if not_yet_open else {}),
         })
         items.append(item)
     return items

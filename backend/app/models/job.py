@@ -1,4 +1,5 @@
 from datetime import date, datetime, timezone
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import CheckConstraint, UniqueConstraint
 
@@ -90,7 +91,8 @@ class JobNotification(db.Model):
 
     @property
     def is_open(self):
-        return self.deadline is None or self.deadline >= date.today()
+        today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+        return self.deadline is not None and self.deadline >= today
 
     def to_dict(self, include_admin=False):
         data = {

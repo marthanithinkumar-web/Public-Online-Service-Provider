@@ -52,7 +52,8 @@ def test_nsp_parser_discovers_current_scheme_with_deadline_and_metadata():
     assert item['application_url'] == 'https://scholarships.gov.in/Students'
     assert item['category'] == 'Merit Based'
     assert item['application_status'] == 'open'
-    assert item['status_evidence'] == 'Student Application Open till : 31-10-2026'
+    assert 'Scheme Open from : 01-06-2026' in item['status_evidence']
+    assert 'Student Application Open till : 31-10-2026' in item['status_evidence']
     assert item['source_checked_at'] == NOW.isoformat()
 
 
@@ -249,7 +250,7 @@ def test_nsp_parser_keeps_closed_beedi_and_open_pm_yasasvi_dates_with_their_own_
     '''
     src = source('nsp', 'National Scholarship Portal', 'https://scholarships.gov.in/All-Scholarships', 'nsp')
 
-    items = parse_nsp(html, src, now=NOW)
+    items = parse_nsp(html, src, now=datetime(2026, 11, 13, 20, 37, tzinfo=timezone.utc))
 
     beedi = next(item for item in items if 'Beedi' in item['title'])
     yasasvi = next(item for item in items if 'YASASVI' in item['title'])
@@ -257,7 +258,8 @@ def test_nsp_parser_keeps_closed_beedi_and_open_pm_yasasvi_dates_with_their_own_
     assert beedi['status'] == 'closed'
     assert beedi['application_status'] == 'closed'
     assert beedi['deadline_type'] == 'student_application'
-    assert beedi['status_evidence'] == 'Student Application Closed on : 31-10-2026'
+    assert 'Scheme Open from : 01-06-2026' in beedi['status_evidence']
+    assert 'Student Application Closed on : 31-10-2026' in beedi['status_evidence']
     assert yasasvi['deadline'] == '2026-11-15'
     assert yasasvi['status'] == 'active'
     assert yasasvi['application_status'] == 'open'
@@ -315,7 +317,7 @@ def test_nsp_parser_extracts_labeled_dates_when_a_card_renders_all_dates_on_one_
     '''
     src = source('nsp', 'National Scholarship Portal', 'https://scholarships.gov.in/All-Scholarships', 'nsp')
 
-    items = parse_nsp(html, src, now=NOW)
+    items = parse_nsp(html, src, now=datetime(2026, 11, 13, 20, 37, tzinfo=timezone.utc))
 
     beedi = next(item for item in items if 'Beedi' in item['title'])
     yasasvi = next(item for item in items if 'YASASVI' in item['title'])
@@ -470,4 +472,60 @@ def test_nsp_parser_marks_explicit_renewal_scope_without_borrowing_neighbouring_
     assert len(items) == 1
     assert items[0]['application_status'] == 'open'
     assert items[0]['application_scope'] == 'renewal_only'
-    assert items[0]['status_evidence'] == 'Student Application Open till (for Renewal): 30-11-2026'
+    assert 'Scheme Open from (for Renewal): 15-07-2026' in items[0]['status_evidence']
+    assert 'Student Application Open till (for Renewal): 30-11-2026' in items[0]['status_evidence']
+
+
+def test_nsp_parser_promotes_pm_usp_after_official_open_date_is_published():
+    html = '''
+    <html><body>
+      <div>Academic Year 2026-27</div>
+      <div>Department of Higher Education</div>
+      <div>PM-USP – Central Sector Scheme Of Scholarship For College And University Students (CSSS) (Merit Based Scheme)</div>
+      <div>Scheme Open from : 22-10-2026</div>
+      <div>Student Application Open till : 30-11-2026</div>
+      <div>Defective Application Verification Open till:15-12-2026</div>
+      <div>Institute Verification Open till:15-12-2026</div>
+    </body></html>
+    '''
+    src = source('nsp', 'National Scholarship Portal', 'https://scholarships.gov.in/All-Scholarships', 'nsp')
+    checked_at = datetime(2026, 11, 13, 20, 37, tzinfo=timezone.utc)
+
+    items = parse_nsp(html, src, now=checked_at)
+
+    assert len(items) == 1
+    item = items[0]
+    assert 'PM-USP' in item['title']
+    assert item['application_open_date'] == '2026-10-22'
+    assert item['deadline'] == '2026-11-30'
+    assert item['deadline_type'] == 'student_application'
+    assert item['status'] == 'active'
+    assert item['application_status'] == 'open'
+    assert 'Scheme Open from : 22-10-2026' in item['status_evidence']
+    assert 'Student Application Open till : 30-11-2026' in item['status_evidence']
+    assert item['source_checked_at'] == checked_at.isoformat()
+
+
+def test_nsp_parser_does_not_publish_scheme_before_its_official_open_date():
+    html = '''
+    <html><body>
+      <div>Academic Year 2026-27</div>
+      <div>Department of Higher Education</div>
+      <div>Future Opening Scholarship (Merit Based Scheme)</div>
+      <div>Scheme Open from : 15-11-2026</div>
+      <div>Student Application Open till : 30-11-2026</div>
+    </body></html>
+    '''
+    src = source('nsp', 'National Scholarship Portal', 'https://scholarships.gov.in/All-Scholarships', 'nsp')
+    checked_at = datetime(2026, 11, 13, 20, 37, tzinfo=timezone.utc)  # 14 Nov in India
+
+    items = parse_nsp(html, src, now=checked_at)
+
+    assert len(items) == 1
+    item = items[0]
+    assert item['application_open_date'] == '2026-11-15'
+    assert item['deadline'] == '2026-11-30'
+    assert item['status'] == 'unverified'
+    assert item['application_status'] == 'unverified'
+    assert item['review_reason'] == 'official_scheme_not_yet_opened'
+    assert 'Scheme Open from : 15-11-2026' in item['status_evidence']

@@ -1,11 +1,20 @@
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from html import unescape
 from html.parser import HTMLParser
 from typing import Callable
+from zoneinfo import ZoneInfo
 from urllib.parse import urljoin
+
+
+def india_today(now=None):
+    """Return the current India calendar date for application deadlines."""
+    current = now or datetime.now(ZoneInfo('Asia/Kolkata'))
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    return current.astimezone(ZoneInfo('Asia/Kolkata')).date()
 
 
 @dataclass
@@ -541,7 +550,7 @@ def parse_india_post_gds(html, base_url):
     if len(application_dates) < 2:
         return []
     start_date, deadline = application_dates[0], application_dates[-1]
-    if deadline < date.today():
+    if deadline < india_today():
         return []
 
     document = parse_html(html)
@@ -573,7 +582,7 @@ def parse_isro_opportunities(html, base_url):
     document = parse_html(html)
     items = []
     seen = set()
-    today = date.today()
+    today = india_today()
     for record in _table_records(document):
         title = _first(record, ('post', 'position', 'recruitment'))
         advert = _first(record, ('advertisement number', 'advertisement no', 'advt'))
