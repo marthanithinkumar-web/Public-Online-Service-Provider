@@ -524,3 +524,39 @@ def test_public_api_excludes_failed_or_stale_source(client):
     response = client.get('/api/jobs/')
     assert response.status_code == 200
     assert slug not in [item['slug'] for item in response.get_json()['items']]
+
+
+def test_sync_failure_withholds_previously_published_jobs_for_review(client, monkeypatch):
+    with client.application.app_context():
+        source = JobSource.query.filter_by(key='employment_news').one()
+        _verify_source(source)
+        job, *_ = upsert_item(source, _item(external_id='source-failure'))
+        monkeypatch.setattr('app.jobs.sync.fetch_official_page', lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError('official source timeout')))
+        result = sync_source(source)
+        db.session.refresh(job)
+        assert result['status'] == 'degraded'
+        assert job.status == 'needs_review'
+        assert job.verification_status == 'unverified'
+
+
+def test_successful_partial_parse_withholds_omitted_jobs_for_review(client, monkeypatch):
+    first_item = _item(external_id='first-current', official_notice_url='https://employmentnews.gov.in/jobs')
+    second_item = _item(external_id='second-current', title='Senior Officer', official_notice_url='https://employmentnews.gov.in/jobs')
+    definition = SourceDefinition('employment_news', 'Employment News', 'https://employmentnews.gov.in/jobs', lambda *_: [first_item, second_item])
+    monkeypatch.setitem(__import__('app.jobs.sync', fromlist=['SOURCE_BY_KEY']).SOURCE_BY_KEY, 'employment_news', definition)
+    monkeypatch.setattr('app.jobs.sync.fetch_official_page', lambda *_args, **_kwargs: '<html/>')
+    with client.application.app_context():
+        source = JobSource.query.filter_by(key='employment_news').one()
+        first = sync_source(source)
+        assert first['published'] == 2
+        first_job = JobNotification.query.filter_by(external_id='first-current').one()
+        second_job = JobNotification.query.filter_by(external_id='second-current').one()
+        definition = SourceDefinition('employment_news', 'Employment News', 'https://employmentnews.gov.in/jobs', lambda *_: [second_item])
+        monkeypatch.setitem(__import__('app.jobs.sync', fromlist=['SOURCE_BY_KEY']).SOURCE_BY_KEY, 'employment_news', definition)
+        second = sync_source(source)
+        db.session.refresh(first_job)
+        db.session.refresh(second_job)
+        assert second['status'] == 'success'
+        assert first_job.status == 'needs_review'
+        assert first_job.verification_status == 'unverified'
+        assert second_job.status == 'published'
