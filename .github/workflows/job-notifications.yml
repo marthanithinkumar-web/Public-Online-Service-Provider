@@ -26,12 +26,15 @@ concurrency:
 
 jobs:
   refresh:
+    if: github.ref == 'refs/heads/main'
     name: Refresh verified public job data
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
       - name: Check out current website
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -55,26 +58,29 @@ jobs:
         run: |
           python - <<'PY'
           import json
+          from datetime import date, datetime
           from pathlib import Path
+          from zoneinfo import ZoneInfo
           from app.jobs.sources import SOURCE_BY_KEY
 
           data = json.loads(Path('frontend/public/data/jobs.json').read_text(encoding='utf-8'))
           assert data['schema_version'] == 1
           assert isinstance(data['items'], list)
           assert isinstance(data['sources'], list) and data['sources']
-          undated = 0
+          assert data.get('count') == len(data['items'])
+          configured_keys = set(SOURCE_BY_KEY)
+          snapshot_keys = {source.get('key') for source in data['sources'] if source.get('key')}
+          assert snapshot_keys == configured_keys, f'Snapshot/source-registry mismatch: snapshot-only={sorted(snapshot_keys-configured_keys)}, registry-only={sorted(configured_keys-snapshot_keys)}'
+          today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
           for item in data['items']:
               assert item['status'] == 'published'
               assert item['official_notice_url'].startswith('https://')
               source_key = (item.get('source') or {}).get('key')
               assert source_key in SOURCE_BY_KEY
-              if not item.get('deadline'):
-                  definition = SOURCE_BY_KEY[source_key]
-                  assert definition.allow_missing_deadline
-                  assert float(item.get('confidence') or 0) >= 0.8
-                  assert item.get('last_seen_at')
-                  undated += 1
-          print(f"Validated {len(data['items'])} published notice(s), including {undated} active undated notice(s), from {len(data['sources'])} configured source(s).")
+              deadline = item.get('deadline')
+              assert deadline, f"Published job has no explicit application deadline: {item.get('title')}"
+              assert date.fromisoformat(str(deadline)[:10]) >= today, f"Expired job remains in public snapshot: {item.get('title')} ({deadline})"
+          print(f"Validated {len(data['items'])} current published notice(s) from {len(data['sources'])} configured official source(s), using India-local deadline dates.")
           PY
           cp frontend/public/data/jobs.json /tmp/verified-jobs.json
 
