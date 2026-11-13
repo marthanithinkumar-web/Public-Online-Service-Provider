@@ -124,9 +124,9 @@ def parse_explicit_deadline_cutoff(value):
     date_token = r'(?:20\\d{2}-\\d{1,2}-\\d{1,2}|\\d{1,2}[./-]\\d{1,2}[./-]20\\d{2}|\\d{1,2}\\s+[A-Za-z]{3,9}\\s+20\\d{2}|[A-Za-z]{3,9}\\s+\\d{1,2},?\\s+20\\d{2})'
     time_token = r'(\\d{1,2}(?:[:.]\\d{2})?\\s*(?:a\\.?m\\.?|p\\.?m\\.?|hrs?|hours?))'
     patterns = (
-        rf'(?:last date(?: and time)?(?:\\s+for\\s+(?:receipt|submission|applying|online application|filling|registration|applications?)(?:\\s+of\\s+(?:online\\s+)?applications?)?)?|last date to apply|closing date(?: for applications?)?|application deadline|end date(?: of application)?|last date of submission)\\s*[:\\-]?\\s*{date_token}[^.;]{{0,35}}?(?:at|up to|till|until|by)?\\s*[\\(\\[]?\\s*{time_token}',
+        rf'(?:last date(?: and time)?(?:\\s+for\\s+(?:receipt|submission|applying|online application|filling|registration|applications?)(?:\\s+of\\s+(?:online\\s+)?applications?)?)?|last date to apply|closing date(?: for applications?)?|application deadline|end date(?: of application)?|last date of submission)\\s*(?:is|will be|shall be)?\\s*[:\\-]?\\s*{date_token}[^.;]{{0,35}}?(?:at|up to|till|until|by)?\\s*[\\(\\[]?\\s*{time_token}',
         rf'(?:application|registration)\\s+(?:window|period)[^.;]{{0,100}}?{date_token}[^.;]{{0,35}}?(?:at|up to|till|until|by)\\s*[\\(\\[]?\\s*{time_token}',
-        rf'(?:last date(?: and time)?|closing date|application deadline|end date)[^.;]{{0,100}}?(?:by|before|up to|till|until)?\\s*{time_token}\\s*(?:on|of)\\s*{date_token}',
+        rf'(?:last date(?: and time)?|closing date|application deadline|end date)[^.;]{{0,100}}?(?:is|will be|shall be)?\\s*(?:by|before|up to|till|until)?\\s*{time_token}\\s*(?:on|of)\\s*{date_token}',
     )
     for pattern in patterns:
         match = re.search(pattern, text, re.I)
