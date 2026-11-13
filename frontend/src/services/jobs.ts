@@ -135,15 +135,17 @@ export const jobPath=(job:Pick<JobNotification,'slug'>)=>`/jobs/${job.slug}`
 
 export function formatJobDate(value?:string|null){
   if(!value)return 'See official notice'
-  const parsed=new Date(`${value}T00:00:00`)
-  return Number.isNaN(parsed.getTime())?value:parsed.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})
+  const parsed=new Date(`${value}T00:00:00Z`)
+  return Number.isNaN(parsed.getTime())?value:parsed.toLocaleDateString('en-IN',{timeZone:'Asia/Kolkata',day:'numeric',month:'short',year:'numeric'})
 }
 
 export function deadlineText(value?:string|null){
   if(!value)return 'Date in official notice'
-  const end=new Date(`${value}T23:59:59`)
-  const days=Math.ceil((end.getTime()-Date.now())/86400000)
-  if(days<0)return 'Closed'
-  if(days===0)return 'Last day today'
+  const deadline=Date.parse(`${value}T00:00:00Z`)
+  const today=Date.parse(`${indiaToday()}T00:00:00Z`)
+  if(Number.isNaN(deadline)||Number.isNaN(today))return 'Check official portal'
+  const days=Math.round((deadline-today)/86400000)
+  if(days<0)return 'Closed — deadline passed'
+  if(days===0)return 'Deadline today — check official portal'
   return `${days} day${days===1?'':'s'} left`
 }
