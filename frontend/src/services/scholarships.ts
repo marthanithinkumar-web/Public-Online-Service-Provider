@@ -24,7 +24,8 @@ const sourceCheckIsFresh=(item:Scholarship)=>{
 }
 export const scholarshipStatusLabel=(item:Scholarship)=>{
   if(item.application_status==='deadline_today')return 'Deadline today—check official portal'
-  if(item.application_status==='open'&&item.application_scope==='renewal_only')return 'Verified open — renewal only'\n  if(item.application_status==='open')return 'Verified open'
+  if(item.application_status==='open'&&item.application_scope==='renewal_only')return 'Verified open — renewal only'
+  if(item.application_status==='open')return 'Verified open'
   if(item.application_status==='closed'||item.status==='closed')return 'Closed—deadline passed'
   return 'Unverified—check official source'
 }
