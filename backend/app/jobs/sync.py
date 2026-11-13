@@ -87,7 +87,7 @@ def _has_verified_notices(source_id):
 
 
 def _record_source_failure(source_id, message, detail=''):
-    """Preserve verified data and report temporary upstream trouble as degraded."""
+    """Retain records for audit, but withhold source-failed notices from public feeds."""
     db.session.rollback()
     current = db.session.get(JobSource, source_id)
     current.last_sync_completed_at = utc_now()
@@ -114,7 +114,7 @@ def sync_source(source, session=None):
         if not items:
             return _record_source_failure(
                 source.id,
-                'Official source returned no parseable listings. Existing verified notices are preserved while the source is retried.',
+                'Official source returned no parseable listings. Existing records are retained for admin review and withheld from public feeds until verification succeeds.',
                 'empty or incomplete official-source parse',
             )
         published = 0; duplicates = 0; notice_enrichments = 0; max_notice_enrichments_per_source = 12
@@ -145,9 +145,9 @@ def sync_source(source, session=None):
         db.session.commit()
         return {'source': source.key, 'fetched': len(items), 'published': published, 'duplicates': duplicates, 'status': 'success'}
     except OfficialSourceUnavailable as exc:
-        return _record_source_failure(source.id, 'Official source is temporarily unavailable. Last verified job notices remain available and synchronization will retry automatically.', str(exc))
+        return _record_source_failure(source.id, 'Official source is temporarily unavailable. Existing job records are retained for admin review and withheld from public feeds until verification succeeds.', str(exc))
     except requests.RequestException as exc:
-        return _record_source_failure(source.id, 'Official source could not be reached reliably. Last verified job notices remain available and synchronization will retry automatically.', str(exc))
+        return _record_source_failure(source.id, 'Official source could not be reached reliably. Existing job records are retained for admin review and withheld from public feeds until verification succeeds.', str(exc))
     except Exception as exc:
         db.session.rollback()
         current = db.session.get(JobSource, source.id)
@@ -155,10 +155,14 @@ def sync_source(source, session=None):
         detail = str(exc).strip()
         if _has_verified_notices(source.id):
             current.last_sync_status = 'degraded'
-            current.last_error = 'The latest official-source check could not be processed. Last verified job notices remain available while the next check retries.'
+            current.last_error = 'The latest official-source check could not be processed. Existing records are retained for admin review and withheld from public feeds until verification succeeds.'
         else:
             current.last_sync_status = 'failed'
             current.last_error = detail[:350] if detail else 'The official source could not be processed. Review the source configuration.'
+        JobNotification.query.filter(
+            JobNotification.source_id == source.id,
+            JobNotification.status == 'published',
+        ).update({'status': 'needs_review', 'verification_status': 'unverified'}, synchronize_session=False)
         db.session.commit()
         return {'source': source.key, 'fetched': 0, 'published': int(current.published_count or 0), 'duplicates': 0, 'status': current.last_sync_status, 'error': detail}
 
