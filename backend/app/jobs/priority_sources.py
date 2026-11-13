@@ -325,7 +325,8 @@ def parse_kvs(html, base_url):
         published_text = _first(record, ('published on', 'published date', 'publication date', 'date'))
         issue_date = parse_date(published_text)
         deadline = parse_explicit_deadline(title)
-        if deadline is not None and deadline < date.today():
+        deadline_cutoff_time = parse_explicit_deadline_cutoff(title)
+        if deadline is not None and deadline < india_today():
             continue
         slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')[:72]
         items.append(JobItem(
