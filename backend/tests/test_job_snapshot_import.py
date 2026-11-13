@@ -1,5 +1,6 @@
 import json
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from app.jobs.snapshot_import import import_verified_snapshot
 from app.jobs.sources import SOURCE_DEFINITIONS
@@ -150,7 +151,7 @@ def test_verified_snapshot_skips_deadlines_that_expire_before_render_import(clie
 def test_verified_snapshot_skips_deadline_after_explicit_cutoff(client, tmp_path):
     source = SOURCE_DEFINITIONS[0]
     item = _item(source, 'a' * 64, 'cutoff-passed', 'Cutoff Passed')
-    item['deadline'] = datetime.now().astimezone().date().isoformat()
+    item['deadline'] = datetime.now(timezone.utc).astimezone(ZoneInfo('Asia/Kolkata')).date().isoformat()
     item['deadline_timezone'] = 'Asia/Kolkata'
     item['deadline_cutoff_time'] = '00:01'
     path = tmp_path / 'jobs.json'
