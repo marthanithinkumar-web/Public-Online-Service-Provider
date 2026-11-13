@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 import re
@@ -22,17 +22,36 @@ def _deployed_snapshot_sha256():
     return value if _SHA256_RE.fullmatch(value) else None
 
 
-def _india_today():
-    return datetime.now(ZoneInfo('Asia/Kolkata')).date()
+def _india_now():
+    return datetime.now(ZoneInfo('Asia/Kolkata'))
 
 
-def _public_query():
-    # Public listings must have a valid, current deadline. Undated records may
-    # remain in storage for review, but must not be advertised as open.
+def _public_query(now=None):
+    # A public job must have a current deadline, a recent item observation, and
+    # a successful recent official-source check. Unknown same-day cutoffs stay
+    # visible only with a warning; known cutoffs close at the exact minute.
+    now = now or _india_now()
+    freshness_cutoff = now.astimezone(timezone.utc).replace(tzinfo=None) - timedelta(hours=36)
+    today = now.date()
+    cutoff = now.strftime('%H:%M')
     return JobNotification.query.filter(
         JobNotification.status == 'published',
         JobNotification.deadline.isnot(None),
-        JobNotification.deadline >= _india_today(),
+        JobNotification.deadline >= today,
+        or_(
+            JobNotification.deadline > today,
+            JobNotification.deadline_cutoff_time.is_(None),
+            JobNotification.deadline_cutoff_time > cutoff,
+        ),
+        or_(
+            JobNotification.deadline_timezone == 'Asia/Kolkata',
+            JobNotification.deadline_timezone.is_(None),
+        ),
+        JobNotification.last_seen_at >= freshness_cutoff,
+        JobNotification.source.has(and_(
+            JobSource.last_sync_status == 'success',
+            JobSource.last_sync_completed_at >= freshness_cutoff,
+        )),
     )
 
 
@@ -77,7 +96,7 @@ def list_jobs():
         JobNotification.published_at.desc(),
     ).limit(limit).all()
     response = jsonify({'items': [job.to_dict() for job in jobs], 'count': len(jobs), 'total': total})
-    response.headers['Cache-Control'] = 'public, max-age=300, stale-while-revalidate=600'
+    response.headers['Cache-Control'] = 'public, max-age=60, stale-while-revalidate=120'
     return response
 
 
