@@ -45,7 +45,7 @@ const isActive=(item:Scholarship)=>{
   if(!/^\d{4}-\d{2}-\d{2}$/.test(item.deadline))return false
   const end=new Date(item.deadline+'T00:00:00Z')
   if(Number.isNaN(end.getTime())||end.toISOString().slice(0,10)!==item.deadline||item.deadline<indiaToday())return false
-  if(item.deadline===indiaToday())return status==='deadline_today'
+  if(item.deadline===indiaToday())return status==='open'||status==='deadline_today'
   return status==='open'
 }
 function scholarshipPriority(item:Scholarship){
@@ -65,7 +65,7 @@ function compareScholarships(a:Scholarship,b:Scholarship){
 }
 function filter(data:ScholarshipFeed,q=''){
   const tokens=q.toLowerCase().replace(/[^a-z0-9]+/g,' ').split(' ').filter(Boolean)
-  const items=(data.items||[]).filter(isActive).filter(item=>{
+  const items=(data.items||[]).filter(isActive).map(item=>item.deadline===indiaToday()&&item.application_status==='open'?{...item,application_status:'deadline_today'}:item).filter(item=>{
     if(!tokens.length)return true
     const hay=[item.title,item.provider,item.source_name,item.source_type,item.region,item.education_level,item.category,item.eligibility,item.academic_year].join(' ').toLowerCase()
     return tokens.every(token=>hay.includes(token))
