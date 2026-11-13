@@ -13,6 +13,7 @@ from app.jobs.sources import (
     parse_ssc,
     parse_tgprb,
     parse_upsc,
+    india_today,
 )
 from app.jobs.snapshot import build_snapshot
 from app.jobs.sync import fetch_official_page, sync_is_due, sync_source, trigger_background_sync, upsert_item
@@ -397,3 +398,54 @@ def test_database_sync_enriches_official_pdf_deadline_before_upsert(client, monk
         result = sync_source(source)
         assert result['published'] == 1
         assert JobNotification.query.filter_by(status='published').count() == 1
+
+
+def test_india_today_uses_ist_calendar_date_when_utc_is_previous_day():
+    now = datetime(2026, 11, 13, 20, 11, tzinfo=timezone.utc)
+    assert india_today(now) == date(2026, 11, 14)
+
+
+def test_public_snapshot_excludes_job_after_india_midnight(monkeypatch):
+    listing_url = 'https://employmentnews.gov.in/jobs'
+    expired = _item(official_notice_url=listing_url, deadline=date(2026, 11, 13))
+    definition = SourceDefinition('employment_news', 'Employment News', listing_url, lambda *_args: [expired])
+    monkeypatch.setattr('app.jobs.snapshot.SOURCE_DEFINITIONS', (definition,))
+    monkeypatch.setattr('app.jobs.snapshot.fetch_official_page', lambda *_args, **_kwargs: '<html/>')
+
+    # 20:11 UTC on 13 November is already 01:41 on 14 November in India.
+    snapshot = build_snapshot(now=datetime(2026, 11, 13, 20, 11, tzinfo=timezone.utc))
+
+    assert snapshot['successful_sources'] == 1
+    assert snapshot['count'] == 0
+
+
+def test_public_snapshot_does_not_carry_forward_job_expired_at_india_midnight(monkeypatch):
+    listing_url = 'https://employmentnews.gov.in/jobs'
+    definition = SourceDefinition('employment_news', 'Employment News', listing_url, lambda *_args: [])
+    old = {
+        'slug': 'expired-after-india-midnight',
+        'content_hash': 'a' * 64,
+        'deadline': '2026-11-13',
+        'source': {'key': 'employment_news'},
+        'status': 'published',
+        'title': 'Expired after India midnight',
+    }
+    monkeypatch.setattr('app.jobs.snapshot.SOURCE_DEFINITIONS', (definition,))
+    monkeypatch.setattr('app.jobs.snapshot.fetch_official_page', lambda *_args, **_kwargs: '<html/>')
+
+    snapshot = build_snapshot(
+        {'items': [old], 'sources': []},
+        now=datetime(2026, 11, 13, 20, 11, tzinfo=timezone.utc),
+    )
+
+    assert snapshot['count'] == 0
+    assert snapshot['sources'][0]['last_sync_status'] == 'degraded'
+
+
+def test_rbi_priority_parser_uses_india_local_date(monkeypatch):
+    from app.jobs.priority_sources import parse_rbi
+
+    monkeypatch.setattr('app.jobs.priority_sources.india_today', lambda: date(2026, 11, 14))
+    html = '''<a href="/notice.pdf">Engagement of Part-Time Bank Medical Consultants — Last date to apply: 13 November 2026</a>'''
+
+    assert parse_rbi(html, 'https://opportunities.rbi.org.in/Scripts/Vacancies.aspx') == []
