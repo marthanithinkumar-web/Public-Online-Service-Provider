@@ -310,8 +310,10 @@ def import_verified_snapshot(path):
         )
         if state == 'Closed—deadline passed':
             job.status = 'expired'
+            job.verification_status = 'deadline_passed'
         else:
             job.status = 'needs_review'
+            job.verification_status = 'unverified'
 
     # Flush before commit so uniqueness or identity-count failures roll back the
     # whole import instead of leaving a partially accepted production snapshot.
