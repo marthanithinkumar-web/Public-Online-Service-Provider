@@ -58,7 +58,7 @@ jobs:
               and payload.get('official_count', 0) >= 5
               and all(item.get('status') == 'active' and item.get('application_status') in {'open','deadline_today'} and item.get('source_type') == 'official' and item.get('status_evidence') and (item.get('source_checked_at') or item.get('verified_at')) for item in items)
               and not any('beedi' in str(item.get('title') or '').lower() for item in items)
-              and not any('central sector scheme of scholarship for college and university students' in str(item.get('title') or '').lower() for item in items)
+              and any('central sector scheme of scholarship for college and university students' in str(item.get('title') or '').lower() for item in items)
               and not bad_provider
           )
           sys.exit(0 if ok else 1)
@@ -118,7 +118,14 @@ jobs:
                   assert 'Merit Based Scheme)' not in provider, (item['title'], provider)
 
           assert not any('beedi' in str(item.get('title') or '').lower() for item in items), 'Closed Beedi scholarship leaked into the active API'
-          assert not any('central sector scheme of scholarship for college and university students' in str(item.get('title') or '').lower() for item in items), 'Not-yet-opened PM-USP CSSS leaked into the active API'
+          csss_items=[item for item in items if 'central sector scheme of scholarship for college and university students' in str(item.get('title') or '').lower()]
+          assert csss_items, 'Officially opened PM-USP CSSS is missing from the active API'
+          for item in csss_items:
+              assert item.get('application_open_date') == '2026-10-22', item
+              assert item.get('deadline') == '2026-11-30', item
+              assert item.get('application_status') in {'open','deadline_today'}, item
+              assert 'Scheme Open from : 22-10-2026' in str(item.get('status_evidence') or ''), item
+              assert 'Student Application Open till : 30-11-2026' in str(item.get('status_evidence') or ''), item
 
           with open('/tmp/beedi.json', encoding='utf-8') as handle:
               beedi=json.load(handle)
@@ -126,7 +133,9 @@ jobs:
 
           with open('/tmp/csss.json', encoding='utf-8') as handle:
               csss=json.load(handle)
-          assert not csss.get('items'), f'Not-yet-opened PM-USP CSSS remains searchable: {csss.get("items", [])[:3]}'
+          csss_matches=[item for item in csss.get('items', []) if 'central sector scheme of scholarship for college and university students' in str(item.get('title') or '').lower()]
+          assert csss_matches, f'Officially opened PM-USP CSSS is missing from search: {csss.get("items", [])[:3]}'
+          assert all(item.get('deadline') == '2026-11-30' and item.get('application_open_date') == '2026-10-22' for item in csss_matches), csss_matches
 
           with open('/tmp/nec.json', encoding='utf-8') as handle:
               nec=json.load(handle)
