@@ -3,41 +3,6 @@
   "generated_at": "2026-11-13T20:11:28Z",
   "items": [
     {
-      "id": 20999201413008,
-      "slug": "reserve-bank-of-india-rbi-engagement-of-part-time-bank-s-medical-consultants-bmc-on-contract-basis-with-fixed-hourly-remuneration-at-reserve-bank-of-india-thiruvananthapuram-131941f0",
-      "title": "Engagement of Part- Time Bank’s Medical Consultants (BMC) on Contract Basis with Fixed Hourly Remuneration at Reserve Bank of India, Thiruvananthapuram",
-      "organization": "Reserve Bank of India (RBI)",
-      "job_type": "government",
-      "appointment_type": null,
-      "location": "India",
-      "qualification": "degree in the Allopathic system of medicine of any university recognized by the Medical Council of India",
-      "age_limit": null,
-      "application_fee": null,
-      "vacancies": null,
-      "salary": null,
-      "summary": "Verified from the official notification. Qualification: degree in the Allopathic system of medicine of any university recognized by the Medical Council of India",
-      "issue_date": null,
-      "application_start_date": null,
-      "deadline": "2026-11-13",
-      "official_notice_url": "https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=5192",
-      "application_url": null,
-      "status": "published",
-      "verification_status": "official_source_checked",
-      "confidence": 0.84,
-      "is_featured": false,
-      "source": {
-        "key": "rbi",
-        "name": "Reserve Bank of India",
-        "listing_url": "https://opportunities.rbi.org.in/Scripts/Vacancies.aspx",
-        "last_sync_completed_at": "2026-11-13T20:11:28Z",
-        "last_sync_status": "success"
-      },
-      "first_seen_at": "2026-10-24T16:13:55Z",
-      "last_seen_at": "2026-11-13T20:11:28Z",
-      "published_at": "2026-10-24T16:13:55Z",
-      "content_hash": "131941f0d790af874ca00e2e806fe09aba6f15762aeb0e0f7410ae1727860db0"
-    },
-    {
       "id": 219697436843038,
       "slug": "state-bank-of-india-sbi-engagement-of-specialist-cadre-officers-on-fixed-term-employment-basis-online-registration-extended-till-16-11-2026-c7d04bae",
       "title": "ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM EMPLOYMENT BASIS (Online Registration Extended till 16.11.2026)",
@@ -187,7 +152,7 @@
       "last_sync_completed_at": "2026-11-13T20:11:28Z",
       "last_sync_status": "success",
       "fetched_count": 24,
-      "published_count": 1
+      "published_count": 0
     },
     {
       "key": "sbi",
@@ -395,7 +360,8 @@
       "last_error": "Official source returned no parseable listings; prior open records were preserved."
     }
   ],
-  "count": 5,
+  "count": 4,
   "review_count": 6863,
-  "successful_sources": 5
+  "successful_sources": 5,
+  "expired_count": 1
 }
