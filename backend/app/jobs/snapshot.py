@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .notice_enrichment import enrich_job_item
 from .official_fetch import fetch_official_page, validate_official_url
-from .rules import is_publicly_active_snapshot_item, item_hash, slugify, target_status, unique_slug
+from .rules import deadline_status, item_hash, slugify, target_status, unique_slug
 from .sources import SOURCE_DEFINITIONS
 
 
@@ -17,7 +17,16 @@ def _iso(value): return value.isoformat() if value else None
 
 
 def _is_open(job, today=None, now=None):
-    return is_publicly_active_snapshot_item(job, now=now)
+    # Count prior non-expired records for the review metric even when their
+    # source check is stale; they are never carried into the public items list.
+    state = deadline_status(
+        job.get('deadline'),
+        job.get('deadline_cutoff_time'),
+        job.get('deadline_timezone') or 'Asia/Kolkata',
+        now=now,
+        verified=True,
+    )
+    return state in {'Verified open', 'Deadline today—check official portal'}
 
 
 def _safe_previous(existing):
