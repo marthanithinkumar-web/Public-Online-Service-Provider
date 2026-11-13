@@ -1,10 +1,9 @@
 import re
 from html.parser import HTMLParser
-from datetime import date
 from urllib.parse import urljoin, urlparse
 
 from .official_fetch import validate_official_url
-from .sources import JobItem, SourceDefinition, _first, _looks_like_initial_recruitment, _row_url, _table_records, clean, parse_all_dates, parse_date, parse_explicit_deadline, parse_html
+from .sources import JobItem, SourceDefinition, _first, _looks_like_initial_recruitment, _row_url, _table_records, clean, parse_all_dates, parse_date, parse_explicit_deadline, parse_html, india_today
 
 _EXCLUDED = (
     'result', 'results', 'admit card', 'call letter', 'answer key', 'interview schedule',
@@ -123,7 +122,7 @@ def _grouped_official_parser(organization, summary, fallback=None):
         document.feed(html)
         document.close()
         items = []
-        today = date.today()
+        today = india_today()
         recognized_section = False
 
         for index, section in enumerate(document.sections, start=1):
@@ -229,7 +228,7 @@ def _generic_official_parser(organization, summary):
         document = parse_html(html)
         items = []
         seen = set()
-        today = date.today()
+        today = india_today()
 
         candidates = []
         for block in document.blocks:
