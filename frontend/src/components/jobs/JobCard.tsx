@@ -1,6 +1,6 @@
 import React from 'react'
 import {Link} from 'react-router-dom'
-import {deadlineText,formatJobDate,jobPath,jobLastVerified,jobStatusLabel,jobCanApply,JobNotification} from '../../services/jobs'
+import {formatJobDate,jobPath,jobLastVerified,jobStatusLabel,jobCanApply,JobNotification} from '../../services/jobs'
 
 const detail=(value?:string|null)=>value||'See official notice'
 
