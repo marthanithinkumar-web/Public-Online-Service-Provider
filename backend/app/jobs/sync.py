@@ -12,7 +12,7 @@ from ..models.job import JobNotification, JobSource
 from ..utils.database import db
 from .official_fetch import OfficialSourceUnavailable, fetch_official_page, validate_official_url
 from .notice_enrichment import enrich_job_item
-from .rules import item_hash, target_status, unique_slug
+from .rules import deadline_status, item_hash, target_status, unique_slug
 from .sources import SOURCE_BY_KEY, SOURCE_DEFINITIONS, JobItem
 
 
@@ -65,13 +65,13 @@ def upsert_item(source, item, allow_missing_deadline=False, missing_deadline_max
         db.session.add(existing)
     previous_status = existing.status
     existing.content_hash = content_hash
-    for field in ('title', 'organization', 'job_type', 'appointment_type', 'location', 'qualification', 'age_limit', 'application_fee', 'vacancies', 'salary', 'summary', 'issue_date', 'application_start_date', 'deadline', 'official_notice_url', 'application_url', 'confidence'):
+    for field in ('title', 'organization', 'job_type', 'appointment_type', 'location', 'qualification', 'age_limit', 'application_fee', 'vacancies', 'salary', 'summary', 'issue_date', 'application_start_date', 'deadline', 'deadline_cutoff_time', 'deadline_timezone', 'official_notice_url', 'application_url', 'confidence'):
         value = getattr(item, field)
         if isinstance(value, str):
             limits = {'title': 500, 'organization': 500, 'official_notice_url': 1200, 'application_url': 1200}
             value = value[:limits.get(field, 600)]
         setattr(existing, field, value)
-    proposed = target_status(item, allow_missing_deadline=allow_missing_deadline, missing_deadline_max_age_days=missing_deadline_max_age_days)
+    proposed = target_status(item, now=datetime.now(ZoneInfo(getattr(item, 'deadline_timezone', None) or 'Asia/Kolkata')), allow_missing_deadline=allow_missing_deadline, missing_deadline_max_age_days=missing_deadline_max_age_days)
     # Re-evaluate every item on every successful official-source observation.
     # Never preserve 'published' merely because an older row was published.
     if previous_status == 'hidden': existing.status = 'hidden'
@@ -150,8 +150,23 @@ def sync_source(source, session=None):
 
 
 def expire_old_jobs():
-    expired = JobNotification.query.filter(JobNotification.deadline.isnot(None), JobNotification.deadline < india_today(), JobNotification.status.in_(['published', 'needs_review'])).all()
-    for job in expired: job.status = 'expired'
+    now = datetime.now(ZoneInfo('Asia/Kolkata'))
+    candidates = JobNotification.query.filter(
+        JobNotification.deadline.isnot(None),
+        JobNotification.status.in_(['published', 'needs_review']),
+    ).all()
+    expired = []
+    for job in candidates:
+        state = deadline_status(
+            job.deadline,
+            job.deadline_cutoff_time,
+            job.deadline_timezone,
+            now=now,
+            verified=True,
+        )
+        if state == 'Closed—deadline passed':
+            job.status = 'expired'
+            expired.append(job)
     undated_cutoff = utc_now() - timedelta(days=60)
     stale_undated = JobNotification.query.filter(JobNotification.deadline.is_(None), JobNotification.last_seen_at < undated_cutoff, JobNotification.status.in_(['published', 'needs_review'])).all()
     for job in stale_undated: job.status = 'expired'
