@@ -78,7 +78,7 @@ def _active(item, today=None, now=None):
     if end < india_today:
         return False
     if end == india_today:
-        return application_status == 'deadline_today'
+        return application_status in {'open', 'deadline_today'}
     return application_status == 'open'
 
 
@@ -97,10 +97,17 @@ def load_catalog(query='', today=None, now=None):
         payload = json.loads(CATALOG_PATH.read_text(encoding='utf-8'))
     except (OSError, ValueError, TypeError):
         payload = {'items': []}
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    india_date = today or current.astimezone(ZoneInfo('Asia/Kolkata')).date()
     items = [
-        item for item in payload.get('items', [])
-        if isinstance(item, dict) and _active(item, today, now=now) and _matches(item, query)
+        dict(item) for item in payload.get('items', [])
+        if isinstance(item, dict) and _active(item, india_date, now=current) and _matches(item, query)
     ]
+    for item in items:
+        if item.get('deadline') and str(item.get('deadline'))[:10] == india_date.isoformat() and item.get('application_status') == 'open':
+            item['application_status'] = 'deadline_today'
     items.sort(key=lambda item: (
         0 if item.get('source_type') == 'official' else 1,
         item.get('deadline') or '9999-12-31',
