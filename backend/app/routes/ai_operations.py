@@ -157,7 +157,6 @@ def generate_client_reply(user, current_message):
         'status': order.status,
         'updated_at': (order.updated_at or order.created_at).isoformat(),
     } for order in Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).limit(5).all()]
-    india_today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
     active_jobs = _public_query().order_by(JobNotification.deadline.asc()).limit(5).all()
     active_job_context = [{
         'title': job.title,
@@ -167,7 +166,7 @@ def generate_client_reply(user, current_message):
         'deadline_timezone': job.deadline_timezone,
         'deadline_status': job.deadline_status,
         'can_apply': job.can_apply,
-        'last_verified_at': job.last_seen_at.isoformat() if job.last_seen_at else None,
+        'last_verified_at': job.last_seen_at.replace(tzinfo=timezone.utc).isoformat().replace('+00:00', 'Z') if job.last_seen_at else None,
         'location': job.location,
         'qualification': job.qualification,
         'official_notice_url': job.official_notice_url,
@@ -175,7 +174,7 @@ def generate_client_reply(user, current_message):
         'verification_status': job.verification_status,
         'source_name': job.source.name if job.source else None,
         'source_last_sync_status': job.source.last_sync_status if job.source else None,
-        'source_last_sync_completed_at': job.source.last_sync_completed_at.isoformat() if job.source and job.source.last_sync_completed_at else None,
+        'source_last_sync_completed_at': job.source.last_sync_completed_at.replace(tzinfo=timezone.utc).isoformat().replace('+00:00', 'Z') if job.source and job.source.last_sync_completed_at else None,
     } for job in active_jobs]
     scholarship_payload = load_catalog()
     active_scholarship_context = [{
