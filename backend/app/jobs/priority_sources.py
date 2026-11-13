@@ -235,7 +235,7 @@ def _generic_official_parser(organization, summary):
         document = parse_html(html)
         items = []
         seen = set()
-        today = date.today()
+        today = india_today()
 
         candidates = []
         for block in document.blocks:
@@ -261,6 +261,7 @@ def _generic_official_parser(organization, summary):
                 continue
             seen.add(identity)
             deadline = parse_explicit_deadline(text)
+            deadline_cutoff_time = parse_explicit_deadline_cutoff(text)
             if deadline and deadline < today:
                 continue
             is_application_link = bool(re.search(r'\b(apply online|apply now|online application|registration portal)\b', text, re.I))
@@ -272,6 +273,8 @@ def _generic_official_parser(organization, summary):
                 official_notice_url=base_url if is_application_link else notice_url,
                 location='India',
                 deadline=deadline,
+                deadline_cutoff_time=deadline_cutoff_time,
+                deadline_timezone='Asia/Kolkata',
                 application_url=application_url,
                 summary=summary,
                 confidence=0.92 if deadline else 0.84,
