@@ -471,3 +471,32 @@ def test_nsp_parser_marks_explicit_renewal_scope_without_borrowing_neighbouring_
     assert items[0]['application_status'] == 'open'
     assert items[0]['application_scope'] == 'renewal_only'
     assert items[0]['status_evidence'] == 'Student Application Open till (for Renewal): 30-11-2026'
+
+
+def test_nsp_parser_promotes_pm_usp_after_official_open_date_is_published():
+    html = '''
+    <html><body>
+      <div>Academic Year 2026-27</div>
+      <div>Department of Higher Education</div>
+      <div>PM-USP – Central Sector Scheme Of Scholarship For College And University Students (CSSS) (Merit Based Scheme)</div>
+      <div>Scheme Open from : 22-10-2026</div>
+      <div>Student Application Open till : 30-11-2026</div>
+      <div>Defective Application Verification Open till:15-12-2026</div>
+      <div>Institute Verification Open till:15-12-2026</div>
+    </body></html>
+    '''
+    src = source('nsp', 'National Scholarship Portal', 'https://scholarships.gov.in/All-Scholarships', 'nsp')
+    checked_at = datetime(2026, 11, 13, 20, 37, tzinfo=timezone.utc)
+
+    items = parse_nsp(html, src, now=checked_at)
+
+    assert len(items) == 1
+    item = items[0]
+    assert 'PM-USP' in item['title']
+    assert item['application_open_date'] == '2026-10-22'
+    assert item['deadline'] == '2026-11-30'
+    assert item['deadline_type'] == 'student_application'
+    assert item['status'] == 'active'
+    assert item['application_status'] == 'open'
+    assert item['status_evidence'] == 'Student Application Open till : 30-11-2026'
+    assert item['source_checked_at'] == checked_at.isoformat()
