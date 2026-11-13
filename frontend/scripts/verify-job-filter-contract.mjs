@@ -12,7 +12,7 @@ const card=read('frontend/src/components/jobs/JobCard.tsx')
 const detail=read('frontend/src/pages/JobDetail.tsx')
 
 const required=[
-  ['published status',/job\.status!=='published'/],
+  ['published status',/job\.status==='published'/],
   ['cutoff and verification-aware public eligibility',/isPubliclyActiveJob\(job\)/],
   ['source success requirement',/job\.source\?\.last_sync_status==='success'/],
   ['36-hour source freshness',/SOURCE_FRESHNESS_MS=36\*60\*60\*1000/],
