@@ -8,7 +8,7 @@ upstream career site is temporarily unreachable from Render.
 
 import argparse
 import json
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
@@ -95,7 +95,6 @@ def import_verified_snapshot(path):
     undated_snapshot_items_skipped = 0
     stale_snapshot_items_skipped = 0
     now = india_now()
-    freshness_cutoff = now.astimezone(timezone.utc) - timedelta(hours=36)
     snapshot_sources = {item.get('key'): item for item in data['sources'] if item.get('key')}
     seen_hashes = set()
     seen_slugs = set()
@@ -353,7 +352,10 @@ def main(argv=None):
         result = import_verified_snapshot(args.path)
         print(
             f"Verified job snapshot imported: {result['active_total']} active published job(s), "
-            f"{result['sources']} configured source(s)."
+            f"{result['sources']} configured source(s); "
+            f"{result['expired_snapshot_items_skipped']} expired, "
+            f"{result['undated_snapshot_items_skipped']} undated, "
+            f"{result['stale_snapshot_items_skipped']} stale/unverified snapshot item(s) withheld."
         )
     return 0
 
