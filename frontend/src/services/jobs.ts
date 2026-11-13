@@ -7,7 +7,7 @@ export type JobFeeRule={amount_inr:number;conditions:Record<string,string[]>;lab
 export type JobNotification={
   id:number;slug:string;title:string;organization:string;job_type:'government'|'private';appointment_type?:string|null;
   location?:string|null;qualification?:string|null;age_limit?:string|null;application_fee?:string|null;fee_factors?:JobFeeFactor[];fee_rules_verified?:boolean;fee_rules?:JobFeeRule[];fee_rules_verified_at?:string|null;vacancies?:string|null;
-  salary?:string|null;summary?:string|null;issue_date?:string|null;application_start_date?:string|null;deadline?:string|null;
+  salary?:string|null;summary?:string|null;issue_date?:string|null;application_start_date?:string|null;deadline?:string|null;deadline_cutoff_time?:string|null;deadline_timezone?:string|null;deadline_status?:string;can_apply?:boolean;last_verified_at?:string|null;
   official_notice_url:string;application_url?:string|null;status:string;verification_status:string;is_featured:boolean;
   source?:JobSource|null;first_seen_at?:string|null;last_seen_at?:string|null;published_at?:string|null;confidence?:number;
   content_hash?:string;
@@ -53,13 +53,37 @@ async function fetchSnapshot(force=false){
   try{return await snapshotPromise}finally{snapshotPromise=null}
 }
 
-function indiaToday(){
-  return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
+const SOURCE_FRESHNESS_MS=36*60*60*1000
+function indiaToday(now=new Date(),timeZone='Asia/Kolkata'){
+  return new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit'}).format(now)
 }
-function hasCurrentDeadline(value?:string|null){
-  if(!value||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false
-  const parsed=new Date(value+'T00:00:00Z')
-  return !Number.isNaN(parsed.getTime())&&parsed.toISOString().slice(0,10)===value&&value>=indiaToday()
+function indiaTime(now=new Date(),timeZone='Asia/Kolkata'){
+  return new Intl.DateTimeFormat('en-GB',{timeZone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(now)
+}
+function isFresh(value?:string|null,now=new Date()){
+  const checked=Date.parse(value||'')
+  const age=now.getTime()-checked
+  return Number.isFinite(checked)&&age>=-5*60*1000&&age<=SOURCE_FRESHNESS_MS
+}
+export function jobDeadlineStatus(job:JobNotification,now=new Date()){
+  if(!job.deadline||!/^\d{4}-\d{2}-\d{2}$/.test(job.deadline))return 'Unverified—check official source'
+  const timeZone=job.deadline_timezone||'Asia/Kolkata'
+  if(timeZone!=='Asia/Kolkata')return 'Unverified—check official source'
+  const today=indiaToday(now,timeZone)
+  if(job.deadline<today)return 'Closed—deadline passed'
+  const sourceVerified=job.source?.last_sync_status==='success'
+    &&isFresh(job.source.last_sync_completed_at,now)
+    &&isFresh(job.last_seen_at,now)
+  if(!sourceVerified)return 'Unverified—check official source'
+  if(job.deadline===today){
+    const cutoff=String(job.deadline_cutoff_time||'')
+    if(!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(cutoff))return 'Deadline today—check official portal'
+    if(indiaTime(now,timeZone)>=cutoff)return 'Closed—deadline passed'
+  }
+  return 'Verified open'
+}
+export function isPubliclyActiveJob(job:JobNotification,now=new Date()){
+  return job.status==='published'&&['Verified open','Deadline today—check official portal'].includes(jobDeadlineStatus(job,now))
 }
 
 function filterSnapshot(data:JobFeedData,params:Record<string,string|number|boolean>){
@@ -75,7 +99,7 @@ function filterSnapshot(data:JobFeedData,params:Record<string,string|number|bool
   const requested=rawLimit===undefined||rawLimit===null||rawLimit===''?30:Number(rawLimit)
   const limit=Number.isFinite(requested)?Math.min(100,Math.max(1,requested)):30
   const items=(data.items||[]).filter(job=>{
-    if(job.status!=='published'||!hasCurrentDeadline(job.deadline))return false
+    if(!isPubliclyActiveJob(job))return false
     if(type&&job.job_type!==type)return false
     if(featured&&!job.is_featured)return false
     if(location&&!String(job.location||'').toLowerCase().includes(location))return false
@@ -107,14 +131,14 @@ export async function fetchJobs(params:Record<string,string|number|boolean>={}){
     return snapshot
   }catch{
     const data=(await api.get('/jobs/',{params})).data as JobFeedData
-    return {...data,items:(data.items||[]).filter(job=>job.status==='published'&&hasCurrentDeadline(job.deadline)).sort(compareJobs)}
+    return {...data,items:(data.items||[]).filter(job=>isPubliclyActiveJob(job)).sort(compareJobs)}
   }
 }
 
 export async function fetchJob(slug:string){
   try{
     const data=await fetchSnapshot()
-    const job=(data.items||[]).find(item=>item.slug===slug&&item.status==='published'&&hasCurrentDeadline(item.deadline))
+    const job=(data.items||[]).find(item=>item.slug===slug&&isPubliclyActiveJob(item))
     if(job){void api.get(`/jobs/${encodeURIComponent(slug)}`,{timeout:3500}).catch(()=>undefined);return {job}}
   }catch{
     // Fall through to the live API when the snapshot cannot be loaded.
@@ -135,15 +159,29 @@ export const jobPath=(job:Pick<JobNotification,'slug'>)=>`/jobs/${job.slug}`
 
 export function formatJobDate(value?:string|null){
   if(!value)return 'See official notice'
-  const parsed=new Date(`${value}T00:00:00`)
-  return Number.isNaN(parsed.getTime())?value:parsed.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})
+  const parsed=new Date(`${value}T00:00:00+05:30`)
+  return Number.isNaN(parsed.getTime())?value:parsed.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Kolkata'})
 }
 
-export function deadlineText(value?:string|null){
-  if(!value)return 'Date in official notice'
-  const end=new Date(`${value}T23:59:59`)
-  const days=Math.ceil((end.getTime()-Date.now())/86400000)
-  if(days<0)return 'Closed'
-  if(days===0)return 'Last day today'
+export function formatJobVerifiedAt(value?:string|null){
+  if(!value)return 'Unverified'
+  const parsed=new Date(value)
+  return Number.isNaN(parsed.getTime())?'Unverified':parsed.toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'})+' IST'
+}
+
+export function deadlineText(value?:string|null|JobNotification){
+  const job=typeof value==='object'&&value!==null?value:undefined
+  const deadline=job?.deadline||(typeof value==='string'?value:null)
+  if(job){
+    const status=jobDeadlineStatus(job)
+    if(status!=='Verified open')return status
+  }
+  if(!deadline)return 'Unverified—check official source'
+  const today=indiaToday()
+  if(deadline<today)return 'Closed—deadline passed'
+  if(deadline===today)return 'Deadline today—check official portal'
+  const start=new Date(`${today}T00:00:00Z`)
+  const end=new Date(`${deadline}T00:00:00Z`)
+  const days=Math.round((end.getTime()-start.getTime())/86400000)
   return `${days} day${days===1?'':'s'} left`
 }
