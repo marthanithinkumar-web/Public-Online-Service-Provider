@@ -105,13 +105,8 @@ export function jobLastVerified(job:JobNotification){
   const parsed=new Date(value)
   return Number.isNaN(parsed.getTime())?'Last verified date unavailable':`Last verified ${parsed.toLocaleDateString('en-IN',{timeZone:'Asia/Kolkata',day:'numeric',month:'short',year:'numeric'})}`
 }
-function hasCurrentDeadline(value?:string|null){
-  if(!value||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false
-  const parsed=new Date(value+'T00:00:00Z')
-  return !Number.isNaN(parsed.getTime())&&parsed.toISOString().slice(0,10)===value&&value>=indiaToday()
-}
 function isVerifiedPublicJob(job:JobNotification){
-  return job.status==='published'&&sourceIsFresh(job)&&hasCurrentDeadline(job.deadline)&&deadlineState(job)!=='closed'
+  return job.status==='published'&&sourceIsFresh(job)&&['open','deadline_today'].includes(deadlineState(job))
 }
 
 function filterSnapshot(data:JobFeedData,params:Record<string,string|number|boolean>){
