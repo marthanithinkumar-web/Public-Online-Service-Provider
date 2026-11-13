@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
 from sqlalchemy import CheckConstraint, UniqueConstraint
 
@@ -74,6 +74,8 @@ class JobNotification(db.Model):
     issue_date = db.Column(db.Date, nullable=True)
     application_start_date = db.Column(db.Date, nullable=True)
     deadline = db.Column(db.Date, nullable=True, index=True)
+    deadline_cutoff_time = db.Column(db.String(5), nullable=True)
+    deadline_timezone = db.Column(db.String(80), nullable=False, default='Asia/Kolkata')
     official_notice_url = db.Column(db.String(1200), nullable=False)
     application_url = db.Column(db.String(1200), nullable=True)
     status = db.Column(db.String(30), nullable=False, default='needs_review', index=True)
@@ -89,8 +91,29 @@ class JobNotification(db.Model):
     source = db.relationship('JobSource', back_populates='jobs')
 
     @property
+    def deadline_status(self):
+        from ..jobs.rules import deadline_status, is_fresh_timestamp
+
+        source_verified = bool(
+            self.source
+            and self.source.last_sync_status == 'success'
+            and is_fresh_timestamp(self.source.last_sync_completed_at)
+            and is_fresh_timestamp(self.last_seen_at)
+        )
+        return deadline_status(
+            self.deadline,
+            self.deadline_cutoff_time,
+            self.deadline_timezone,
+            verified=source_verified,
+        )
+
+    @property
+    def can_apply(self):
+        return self.deadline_status == 'Verified open'
+
+    @property
     def is_open(self):
-        return self.deadline is None or self.deadline >= date.today()
+        return self.deadline_status == 'Verified open'
 
     def to_dict(self, include_admin=False):
         data = {
@@ -112,6 +135,11 @@ class JobNotification(db.Model):
             'issue_date': self.issue_date.isoformat() if self.issue_date else None,
             'application_start_date': self.application_start_date.isoformat() if self.application_start_date else None,
             'deadline': self.deadline.isoformat() if self.deadline else None,
+            'deadline_cutoff_time': self.deadline_cutoff_time,
+            'deadline_timezone': self.deadline_timezone or 'Asia/Kolkata',
+            'deadline_status': self.deadline_status,
+            'can_apply': self.can_apply,
+            'last_verified_at': self.last_seen_at.isoformat() if self.last_seen_at else None,
             'official_notice_url': self.official_notice_url,
             'application_url': self.application_url,
             'status': self.status,
@@ -121,6 +149,8 @@ class JobNotification(db.Model):
                 'key': self.source.key,
                 'name': self.source.name,
                 'listing_url': self.source.listing_url,
+                'last_sync_status': self.source.last_sync_status,
+                'last_sync_completed_at': self.source.last_sync_completed_at.isoformat() if self.source.last_sync_completed_at else None,
             } if self.source else None,
             'first_seen_at': self.first_seen_at.isoformat() if self.first_seen_at else None,
             'last_seen_at': self.last_seen_at.isoformat() if self.last_seen_at else None,
