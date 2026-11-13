@@ -36,7 +36,7 @@ class JobSource(db.Model):
             'listing_url': self.listing_url,
             'enabled': bool(self.enabled),
             'last_sync_started_at': self.last_sync_started_at.isoformat() if self.last_sync_started_at else None,
-            'last_sync_completed_at': self.last_sync_completed_at.isoformat() if self.last_sync_completed_at else None,
+            'last_sync_completed_at': _utc_iso(self.last_sync_completed_at),
             'last_sync_status': self.last_sync_status,
             'last_error': self.last_error,
             'fetched_count': int(self.fetched_count or 0),
@@ -139,7 +139,7 @@ class JobNotification(db.Model):
             'deadline_timezone': self.deadline_timezone or 'Asia/Kolkata',
             'deadline_status': self.deadline_status,
             'can_apply': self.can_apply,
-            'last_verified_at': self.last_seen_at.isoformat() if self.last_seen_at else None,
+            'last_verified_at': _utc_iso(self.last_seen_at),
             'official_notice_url': self.official_notice_url,
             'application_url': self.application_url,
             'status': self.status,
@@ -152,9 +152,9 @@ class JobNotification(db.Model):
                 'last_sync_status': self.source.last_sync_status,
                 'last_sync_completed_at': self.source.last_sync_completed_at.isoformat() if self.source.last_sync_completed_at else None,
             } if self.source else None,
-            'first_seen_at': self.first_seen_at.isoformat() if self.first_seen_at else None,
-            'last_seen_at': self.last_seen_at.isoformat() if self.last_seen_at else None,
-            'published_at': self.published_at.isoformat() if self.published_at else None,
+            'first_seen_at': _utc_iso(self.first_seen_at),
+            'last_seen_at': _utc_iso(self.last_seen_at),
+            'published_at': _utc_iso(self.published_at),
         }
         if include_admin:
             data.update({
