@@ -94,6 +94,10 @@ def _record_source_failure(source_id, message, detail=''):
     has_verified = _has_verified_notices(source_id)
     current.last_sync_status = 'degraded' if has_verified else 'failed'
     current.last_error = message
+    JobNotification.query.filter(
+        JobNotification.source_id == source_id,
+        JobNotification.status == 'published',
+    ).update({'status': 'needs_review', 'verification_status': 'unverified'}, synchronize_session=False)
     db.session.commit()
     return {'source': current.key, 'fetched': 0, 'published': int(current.published_count or 0), 'duplicates': 0, 'status': current.last_sync_status, 'error': detail}
 
@@ -114,6 +118,7 @@ def sync_source(source, session=None):
                 'empty or incomplete official-source parse',
             )
         published = 0; duplicates = 0; notice_enrichments = 0; max_notice_enrichments_per_source = 12
+        observed_job_ids = set()
         for item in items:
             # Inspect high-confidence official notices before applying the same
             # deadline rule used by the static snapshot. The date may exist only
@@ -127,6 +132,15 @@ def sync_source(source, session=None):
                 continue
             job, _, duplicate = upsert_item(source, item, allow_missing_deadline=definition.allow_missing_deadline, missing_deadline_max_age_days=definition.missing_deadline_max_age_days)
             duplicates += int(duplicate); published += int(job.status == 'published')
+            if job.source_id == source.id:
+                observed_job_ids.add(job.id)
+        # A successful but incomplete parse is not proof that omitted notices
+        # have closed. Keep them in storage, but remove them from verified-active
+        # publication until the official source confirms them again.
+        for old_job in JobNotification.query.filter_by(source_id=source.id, status='published').all():
+            if old_job.id not in observed_job_ids:
+                old_job.status = 'needs_review'
+                old_job.verification_status = 'unverified'
         source.fetched_count = len(items); source.published_count = published; source.last_sync_completed_at = utc_now(); source.last_sync_status = 'success'; source.last_error = f'{duplicates} duplicate notice(s) skipped.' if duplicates else None
         db.session.commit()
         return {'source': source.key, 'fetched': len(items), 'published': published, 'duplicates': duplicates, 'status': 'success'}
