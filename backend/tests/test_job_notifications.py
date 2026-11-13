@@ -483,7 +483,7 @@ def test_public_api_excludes_job_at_official_cutoff_and_detail(client, monkeypat
 
 
 def test_public_api_labels_deadline_today_without_cutoff_and_disables_apply(client, monkeypatch):
-    now = datetime(2026, 11, 14, 12, 0, tzinfo=ZoneInfo('Asia/Kolkata'))
+    now = datetime.now(ZoneInfo('Asia/Kolkata'))
     monkeypatch.setattr('app.routes.jobs._india_now', lambda: now)
     with client.application.app_context():
         source = JobSource.query.filter_by(key='employment_news').one()
@@ -496,7 +496,7 @@ def test_public_api_labels_deadline_today_without_cutoff_and_disables_apply(clie
             content_hash='b' * 64,
             title='Same Day Deadline Notice',
             organization='Official Recruitment Board',
-            deadline=date(2026, 11, 14),
+            deadline=now.date(),
             deadline_timezone='Asia/Kolkata',
             official_notice_url='https://employmentnews.gov.in/notice/today',
             status='published',
