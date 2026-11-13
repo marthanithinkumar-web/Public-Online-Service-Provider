@@ -10,6 +10,7 @@ const api=read('backend/app/routes/jobs.py')
 const seo=read('frontend/scripts/seo-catalog.mjs')
 const card=read('frontend/src/components/jobs/JobCard.tsx')
 const detail=read('frontend/src/pages/JobDetail.tsx')
+const ai=read('backend/app/routes/ai_operations.py')
 
 const required=[
   ['published status',/job\.status==='published'/],
@@ -51,8 +52,11 @@ for(const [name,pattern] of [
   ['SEO current cutoff and source freshness',/hasCurrentJobDeadline\(item\)/],
   ['job cards suppress uncertain apply action',/canApply\?['"]View Details & Apply['"]/],
   ['job detail suppresses assistance when not verified open',/canApply\?/],
+  ['AI uses only the verified public job query',/active_jobs = _public_query\(\)/],
+  ['AI requires verified-open status',/deadline_status is exactly 'Verified open'/],
+  ['AI warns on unknown same-day cutoff',/Deadline today—check official portal/],
 ]){
-  const source=name.startsWith('SEO')?seo:name.startsWith('job cards')?card:detail
+  const source=name.startsWith('SEO')?seo:name.startsWith('job cards')?card:name.startsWith('AI')?ai:detail
   if(!pattern.test(source))throw new Error(`Job publication contract missing: ${name}`)
 }
 console.log('Verified job filter contract: India deadline/cutoff, fresh official source, API, UI, search and SEO.')
