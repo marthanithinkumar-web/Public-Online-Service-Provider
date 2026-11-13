@@ -7,7 +7,7 @@ export type Scholarship={
   category?:string|null;eligibility?:string|null;documents?:string[];status?:string;verified_at?:string|null;
   source_type?:'official'|'private';is_official?:boolean;source_key?:string;record_type?:'scholarship'|'official_notice';
   academic_year?:string|null;last_seen_at?:string|null;stale_source?:boolean;discovery_method?:string
-  application_status?:'open'|'deadline_today'|'closed'|'cancelled'|'unverified';deadline_type?:string|null;status_evidence?:string|null
+  application_status?:'open'|'deadline_today'|'closed'|'cancelled'|'unverified';application_scope?:string|null;deadline_type?:string|null;status_evidence?:string|null
   source_checked_at?:string|null;deadline_timezone?:string;deadline_cutoff_time?:string|null;closure_reason?:string|null
 }
 export type ScholarshipFeed={
@@ -24,7 +24,7 @@ const sourceCheckIsFresh=(item:Scholarship)=>{
 }
 export const scholarshipStatusLabel=(item:Scholarship)=>{
   if(item.application_status==='deadline_today')return 'Deadline today—check official portal'
-  if(item.application_status==='open')return 'Verified open'
+  if(item.application_status==='open'&&item.application_scope==='renewal_only')return 'Verified open — renewal only'\n  if(item.application_status==='open')return 'Verified open'
   if(item.application_status==='closed'||item.status==='closed')return 'Closed—deadline passed'
   return 'Unverified—check official source'
 }
