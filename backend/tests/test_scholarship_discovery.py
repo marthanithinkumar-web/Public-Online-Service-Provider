@@ -500,3 +500,28 @@ def test_nsp_parser_promotes_pm_usp_after_official_open_date_is_published():
     assert item['application_status'] == 'open'
     assert item['status_evidence'] == 'Student Application Open till : 30-11-2026'
     assert item['source_checked_at'] == checked_at.isoformat()
+
+
+def test_nsp_parser_does_not_publish_scheme_before_its_official_open_date():
+    html = '''
+    <html><body>
+      <div>Academic Year 2026-27</div>
+      <div>Department of Higher Education</div>
+      <div>Future Opening Scholarship (Merit Based Scheme)</div>
+      <div>Scheme Open from : 15-11-2026</div>
+      <div>Student Application Open till : 30-11-2026</div>
+    </body></html>
+    '''
+    src = source('nsp', 'National Scholarship Portal', 'https://scholarships.gov.in/All-Scholarships', 'nsp')
+    checked_at = datetime(2026, 11, 13, 20, 37, tzinfo=timezone.utc)  # 14 Nov in India
+
+    items = parse_nsp(html, src, now=checked_at)
+
+    assert len(items) == 1
+    item = items[0]
+    assert item['application_open_date'] == '2026-11-15'
+    assert item['deadline'] == '2026-11-30'
+    assert item['status'] == 'unverified'
+    assert item['application_status'] == 'unverified'
+    assert item['review_reason'] == 'official_scheme_not_yet_opened'
+    assert 'Scheme Open from : 15-11-2026' in item['status_evidence']
