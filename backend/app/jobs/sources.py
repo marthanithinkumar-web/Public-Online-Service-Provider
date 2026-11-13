@@ -124,19 +124,19 @@ def parse_explicit_deadline(value):
 def parse_explicit_deadline_cutoff_time(value):
     """Extract a time only when it is attached to explicit application-deadline wording."""
     text = clean(value)
-    date_token = r'(?:20\\d{2}-\\d{1,2}-\\d{1,2}|\\d{1,2}[./-]\\d{1,2}[./-]20\\d{2}|\\d{1,2}\\s+[A-Za-z]{3,9}\\s+20\\d{2}|[A-Za-z]{3,9}\\s+\\d{1,2},?\\s+20\\d{2})'
-    time_token = r'(\\d{1,2}[.:]\\d{2}\\s*(?:AM|PM)?)'
+    date_token = r'(?:20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]20\d{2}|\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}|[A-Za-z]{3,9}\s+\d{1,2},?\s+20\d{2})'
+    time_token = r'(\d{1,2}[.:]\d{2}\s*(?:AM|PM)?)'
     patterns = (
-        rf'\\bon or before\\s*{time_token}\\s*(?:hrs?|hours?)\\s+on\\s*{date_token}',
-        rf'(?:last date(?: and time)?(?:\\s+for\\s+(?:receipt|submission|applying|online application|filling|registration|applications?)(?:\\s+of\\s+(?:online\\s+)?applications?)?)?|last date to apply|closing date(?: for applications?)?|application deadline|apply by)[^.;]{{0,180}}?{date_token}[^.;]{{0,80}}?(?:at|by)\\s*{time_token}\\s*(?:hrs?|hours?|IST|Indian Standard Time)?',
-        rf'(?:last date|application deadline|closing date)[^.;]{{0,120}}?{time_token}\\s*(?:hrs?|hours?)\\s*(?:IST|Indian Standard Time)?',
+        rf'\bon or before\s*{time_token}\s*(?:hrs?|hours?)\s+on\s*{date_token}',
+        rf'(?:last date(?: and time)?(?:\s+for\s+(?:receipt|submission|applying|online application|filling|registration|applications?)(?:\s+of\s+(?:online\s+)?applications?)?)?|last date to apply|closing date(?: for applications?)?|application deadline|apply by)[^.;]{0,180}?{date_token}[^.;]{0,80}?(?:at|by)\s*{time_token}\s*(?:hrs?|hours?|IST|Indian Standard Time)?',
+        rf'(?:last date|application deadline|closing date)[^.;]{0,120}?{time_token}\s*(?:hrs?|hours?)\s*(?:IST|Indian Standard Time)?',
     )
     for pattern in patterns:
         match = re.search(pattern, text, re.I)
         if not match:
             continue
-        raw = re.sub(r'\\s+', '', match.group(1)).replace('.', ':')
-        clock = re.fullmatch(r'(\\d{1,2}):(\\d{2})(AM|PM)?', raw, re.I)
+        raw = re.sub(r'\s+', '', match.group(1)).replace('.', ':')
+        clock = re.fullmatch(r'(\d{1,2}):(\d{2})(AM|PM)?', raw, re.I)
         if not clock:
             continue
         hour, minute = int(clock.group(1)), int(clock.group(2))
