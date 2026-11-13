@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from app.jobs.sources import (
     SOURCE_BY_KEY,
@@ -8,6 +9,7 @@ from app.jobs.sources import (
     parse_india_post_gds,
     parse_india_post_vacancies,
     parse_isro_opportunities,
+    parse_explicit_deadline_cutoff,
     parse_mha_ib,
     parse_rrb,
     parse_ssc,
@@ -15,6 +17,7 @@ from app.jobs.sources import (
     parse_upsc,
 )
 from app.jobs.snapshot import build_snapshot
+from app.jobs.rules import deadline_status
 from app.jobs.sync import fetch_official_page, sync_is_due, sync_source, trigger_background_sync, upsert_item
 from app.models.job import JobNotification, JobSource
 from app.models.user import User
@@ -30,6 +33,13 @@ def _admin_headers(client):
         db.session.commit()
         token = create_token({'user_id': admin.id, 'is_admin': True, 'token_version': admin.token_version})
     return {'Authorization': f'Bearer {token}'}
+
+
+def _verify_source(source, now=None):
+    checked = now or datetime.now(timezone.utc).replace(tzinfo=None)
+    source.last_sync_status = 'success'
+    source.last_sync_completed_at = checked
+    return checked
 
 
 def _item(**changes):
@@ -131,6 +141,8 @@ def test_india_post_gds_parser_extracts_active_application_window():
     items = parse_india_post_gds(html, 'https://www.indiapost.gov.in/gdsonlineengagement')
     assert len(items) == 1
     assert items[0].deadline == date(2099, 9, 21)
+    assert items[0].deadline_cutoff_time == '17:00'
+    assert items[0].deadline_timezone == 'Asia/Kolkata'
     assert items[0].application_start_date == date(2099, 9, 2)
     assert items[0].official_notice_url.endswith('/pdf/descriptive-notification.pdf')
 
@@ -178,6 +190,7 @@ def test_active_official_source_keeps_undated_notice_in_review(client, monkeypat
 def test_public_job_feed_excludes_review_hidden_and_expired(client):
     with client.application.app_context():
         source = JobSource.query.filter_by(key='employment_news').one()
+        _verify_source(source)
         visible, *_ = upsert_item(source, _item())
         review, *_ = upsert_item(source, _item(external_id='review', title='Review Post', deadline=None, confidence=0.3))
         expired, *_ = upsert_item(source, _item(external_id='expired', title='Expired Post', deadline=date.today() - timedelta(days=1)))
@@ -197,6 +210,7 @@ def test_public_job_feed_excludes_review_hidden_and_expired(client):
 def test_public_job_search_matches_all_words(client):
     with client.application.app_context():
         source = JobSource.query.filter_by(key='employment_news').one()
+        _verify_source(source)
         match, *_ = upsert_item(source, _item(external_id='ssc-cgl', title='Combined Graduate Level', organization='Staff Selection Commission'))
         upsert_item(source, _item(external_id='railway', title='Assistant Loco Pilot', organization='Railway Recruitment Board'))
         db.session.commit()
@@ -332,8 +346,9 @@ def test_public_snapshot_keeps_verified_open_jobs_during_temporary_source_failur
 
     second = build_snapshot(first, session=FailedSession(), now=datetime(2099, 8, 2, tzinfo=timezone.utc))
     assert second['successful_sources'] == 0
-    assert second['count'] == 1
-    assert second['items'][0]['title'] == complete.title
+    assert second['count'] == 0
+    assert second['review_count'] == 1
+    assert second['items'] == []
 
 
 def test_public_snapshot_preserves_open_jobs_when_source_returns_empty_parse(monkeypatch):
@@ -355,7 +370,9 @@ def test_public_snapshot_preserves_open_jobs_when_source_returns_empty_parse(mon
     empty = replace(populated, parser=lambda *_args: [])
     monkeypatch.setattr('app.jobs.snapshot.SOURCE_DEFINITIONS', (empty,))
     second = build_snapshot(first, now=datetime(2099, 8, 2, tzinfo=timezone.utc))
-    assert second['count'] == 1
+    assert second['count'] == 0
+    assert second['review_count'] == 1
+    assert second['items'] == []
     assert second['successful_sources'] == 0
     assert second['sources'][0]['last_sync_status'] == 'degraded'
 
@@ -397,3 +414,113 @@ def test_database_sync_enriches_official_pdf_deadline_before_upsert(client, monk
         result = sync_source(source)
         assert result['published'] == 1
         assert JobNotification.query.filter_by(status='published').count() == 1
+
+
+def test_explicit_deadline_cutoff_parser_requires_unambiguous_official_time():
+    assert parse_explicit_deadline_cutoff('End Date: 21-09-2099 17:00 HRS') == '17:00'
+    assert parse_explicit_deadline_cutoff('Last date for receipt of applications is 13 November 2026 by 5:00 PM') == '17:00'
+    assert parse_explicit_deadline_cutoff('Last date for receipt of applications is 17:00 HRS on 13 November 2026') == '17:00'
+    assert parse_explicit_deadline_cutoff('Last date to apply is 13 November 2026') is None
+    assert parse_explicit_deadline_cutoff('Last date to apply is 13 November 2026 at 5:00') is None
+
+
+def test_deadline_status_closes_at_the_exact_ist_cutoff():
+    deadline = date(2026, 11, 13)
+    before = datetime(2026, 11, 13, 11, 29, 59, tzinfo=timezone.utc)
+    at = datetime(2026, 11, 13, 11, 30, 0, tzinfo=timezone.utc)
+    after = datetime(2026, 11, 13, 11, 31, 0, tzinfo=timezone.utc)
+    assert deadline_status(deadline, '17:00', 'Asia/Kolkata', now=before) == 'Verified open'
+    assert deadline_status(deadline, '17:00', 'Asia/Kolkata', now=at) == 'Closed—deadline passed'
+    assert deadline_status(deadline, '17:00', 'Asia/Kolkata', now=after) == 'Closed—deadline passed'
+
+
+def test_deadline_today_without_official_cutoff_is_warning_not_verified_open():
+    now = datetime(2026, 11, 14, 6, 7, tzinfo=timezone.utc)
+    assert deadline_status(date(2026, 11, 14), None, 'Asia/Kolkata', now=now) == 'Deadline today—check official portal'
+
+
+def test_snapshot_uses_india_date_when_utc_date_is_still_previous_day(monkeypatch):
+    item = _item(deadline=date(2026, 11, 13))
+    definition = SourceDefinition('employment_news', 'Employment News', 'https://employmentnews.gov.in/jobs', lambda *_: [item])
+    monkeypatch.setattr('app.jobs.snapshot.SOURCE_DEFINITIONS', (definition,))
+    monkeypatch.setattr('app.jobs.snapshot.fetch_official_page', lambda *_args, **_kwargs: '<html/>')
+    now = datetime(2026, 11, 13, 20, 11, tzinfo=timezone.utc)  # 14 Nov 01:41 IST
+    snapshot = build_snapshot(now=now)
+    assert snapshot['count'] == 0
+    assert snapshot['items'] == []
+
+
+def test_public_api_excludes_job_at_official_cutoff_and_detail(client, monkeypatch):
+    now = datetime(2026, 11, 13, 17, 0, tzinfo=ZoneInfo('Asia/Kolkata'))
+    monkeypatch.setattr('app.routes.jobs._india_now', lambda: now)
+    with client.application.app_context():
+        source = JobSource.query.filter_by(key='employment_news').one()
+        checked = now.astimezone(timezone.utc).replace(tzinfo=None)
+        _verify_source(source, checked)
+        job = JobNotification(
+            source_id=source.id,
+            external_id='rbi-cutoff',
+            slug='rbi-cutoff-2099',
+            content_hash='a' * 64,
+            title='RBI Medical Consultant',
+            organization='Reserve Bank of India',
+            deadline=date(2026, 11, 13),
+            deadline_cutoff_time='17:00',
+            deadline_timezone='Asia/Kolkata',
+            official_notice_url='https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=5192',
+            status='published',
+            confidence=0.95,
+            first_seen_at=checked,
+            last_seen_at=checked,
+        )
+        db.session.add(job)
+        db.session.commit()
+        slug = job.slug
+    response = client.get('/api/jobs/')
+    assert response.status_code == 200
+    assert response.get_json()['total'] == 0
+    assert client.get(f'/api/jobs/{slug}').status_code == 404
+
+
+def test_public_api_labels_deadline_today_without_cutoff_and_disables_apply(client, monkeypatch):
+    now = datetime(2026, 11, 14, 12, 0, tzinfo=ZoneInfo('Asia/Kolkata'))
+    monkeypatch.setattr('app.routes.jobs._india_now', lambda: now)
+    with client.application.app_context():
+        source = JobSource.query.filter_by(key='employment_news').one()
+        checked = now.astimezone(timezone.utc).replace(tzinfo=None)
+        _verify_source(source, checked)
+        job = JobNotification(
+            source_id=source.id,
+            external_id='today-no-cutoff',
+            slug='today-no-cutoff-2099',
+            content_hash='b' * 64,
+            title='Same Day Deadline Notice',
+            organization='Official Recruitment Board',
+            deadline=date(2026, 11, 14),
+            deadline_timezone='Asia/Kolkata',
+            official_notice_url='https://employmentnews.gov.in/notice/today',
+            status='published',
+            confidence=0.95,
+            first_seen_at=checked,
+            last_seen_at=checked,
+        )
+        db.session.add(job)
+        db.session.commit()
+    response = client.get('/api/jobs/')
+    assert response.status_code == 200
+    item = next(item for item in response.get_json()['items'] if item['slug'] == 'today-no-cutoff-2099')
+    assert item['deadline_status'] == 'Deadline today—check official portal'
+    assert item['can_apply'] is False
+
+
+def test_public_api_excludes_failed_or_stale_source(client):
+    with client.application.app_context():
+        source = JobSource.query.filter_by(key='employment_news').one()
+        _verify_source(source)
+        job, *_ = upsert_item(source, _item(external_id='source-degraded', title='Source Degraded Notice'))
+        source.last_sync_status = 'degraded'
+        db.session.commit()
+        slug = job.slug
+    response = client.get('/api/jobs/')
+    assert response.status_code == 200
+    assert slug not in [item['slug'] for item in response.get_json()['items']]
