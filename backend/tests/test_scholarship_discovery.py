@@ -498,7 +498,8 @@ def test_nsp_parser_promotes_pm_usp_after_official_open_date_is_published():
     assert item['deadline_type'] == 'student_application'
     assert item['status'] == 'active'
     assert item['application_status'] == 'open'
-    assert item['status_evidence'] == 'Student Application Open till : 30-11-2026'
+    assert 'Scheme Open from : 22-10-2026' in item['status_evidence']
+    assert 'Student Application Open till : 30-11-2026' in item['status_evidence']
     assert item['source_checked_at'] == checked_at.isoformat()
 
 
