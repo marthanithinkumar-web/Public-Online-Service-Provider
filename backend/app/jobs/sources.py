@@ -603,6 +603,8 @@ def parse_india_post_gds(html, base_url):
         location='India',
         application_start_date=start_date,
         deadline=deadline,
+        deadline_cutoff_time=parse_explicit_deadline_cutoff(application_section.group(1)),
+        deadline_timezone='Asia/Kolkata',
         application_url=application_url,
         summary='Active official India Post Gramin Dak Sevak engagement. Confirm circle-wise vacancies, eligibility, fee, reservation rules and documents on the official portal.',
         confidence=0.96,
@@ -614,7 +616,7 @@ def parse_isro_opportunities(html, base_url):
     document = parse_html(html)
     items = []
     seen = set()
-    today = date.today()
+    today = india_today()
     for record in _table_records(document):
         title = _first(record, ('post', 'position', 'recruitment'))
         advert = _first(record, ('advertisement number', 'advertisement no', 'advt'))
