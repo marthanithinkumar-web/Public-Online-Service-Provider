@@ -179,7 +179,11 @@ export function deadlineText(value?:string|null|JobNotification){
   if(!deadline)return 'Unverified—check official source'
   const today=indiaToday()
   if(deadline<today)return 'Closed—deadline passed'
-  if(deadline===today)return 'Deadline today—check official portal'
+  if(deadline===today){
+    const cutoff=String(job?.deadline_cutoff_time||'')
+    if(job&&/^(?:[01]\\d|2[0-3]):[0-5]\\d$/.test(cutoff))return `Deadline today · closes ${cutoff} IST`
+    return 'Deadline today—check official portal'
+  }
   const start=new Date(`${today}T00:00:00Z`)
   const end=new Date(`${deadline}T00:00:00Z`)
   const days=Math.round((end.getTime()-start.getTime())/86400000)
