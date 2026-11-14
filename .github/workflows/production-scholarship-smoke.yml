@@ -121,7 +121,7 @@ jobs:
                       assert item.get('application_status') == 'open', item['title']
               else:
                   assert item.get('application_status') == 'open', item['title']
-                  assert re.search(r'\\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|open for applications|registration\\b.{0,80}\\b(?:is|are)\\s+(?:currently\\s+)?open|application process is open)\\b', str(item.get('status_evidence') or ''), re.I), item['title']
+                  assert re.search(r'\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|open for applications|registration\b.{0,80}\b(?:is|are)\s+(?:currently\s+)?open|application process is open)\b', str(item.get('status_evidence') or ''), re.I), item['title']
               source_checked=item.get('source_checked_at') or item.get('verified_at')
               assert source_checked, item.get('title')
               source_checked_at=datetime.fromisoformat(str(source_checked).replace('Z','+00:00'))
