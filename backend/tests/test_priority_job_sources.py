@@ -285,3 +285,32 @@ def test_drdo_end_date_is_used_only_on_official_drdo_vacancy_detail(monkeypatch)
     )
     notice_enrichment.enrich_job_item(item)
     assert item.deadline == date(2026, 11, 9)
+
+
+def test_sbi_grouped_parser_extracts_explicit_application_cutoff_time():
+    html = '''
+      <p>RECRUITMENT OF SPECIALIST CADRE OFFICERS ON REGULAR BASIS (Last date to apply: 13.11.2099 at 17:00 hrs IST)</p>
+      <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/28</p>
+      <ul>
+        <li><a href="https://sbi.bank.in/documents/adv28.pdf/document-id">DOWNLOAD ADVERTISEMENT English</a></li>
+        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-28/apply">APPLY ONLINE</a></li>
+      </ul>
+    '''
+    items = parse_sbi(html, 'https://sbi.bank.in/web/careers/current-openings')
+    assert len(items) == 1
+    assert items[0].deadline.isoformat() == '2099-11-13'
+    assert items[0].deadline_cutoff_time.isoformat(timespec='minutes') == '17:00'
+
+
+def test_generic_rbi_parser_extracts_explicit_application_cutoff_time():
+    html = '''
+      <ul>
+        <li><a href="/Scripts/bs_viewcontent.aspx?Id=5999">
+          Direct Recruitment for Officers Grade B - Last date to apply: 13.11.2099 at 17:00 IST
+        </a></li>
+      </ul>
+    '''
+    items = parse_rbi(html, 'https://opportunities.rbi.org.in/Scripts/Vacancies.aspx')
+    assert len(items) == 1
+    assert items[0].deadline.isoformat() == '2099-11-13'
+    assert items[0].deadline_cutoff_time.isoformat(timespec='minutes') == '17:00'
