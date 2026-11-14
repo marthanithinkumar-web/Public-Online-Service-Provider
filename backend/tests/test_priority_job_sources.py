@@ -314,3 +314,20 @@ def test_generic_rbi_parser_extracts_explicit_application_cutoff_time():
     assert len(items) == 1
     assert items[0].deadline.isoformat() == '2099-11-13'
     assert items[0].deadline_cutoff_time.isoformat(timespec='minutes') == '17:00'
+
+
+def test_sbi_grouped_parser_includes_current_manager_security_opening():
+    html = '''
+      <p>RECRUITMENT OF SPECIALIST CADRE OFFICERS ON REGULAR BASIS FOR THE POST OF MANAGER(SECURITY)/DEPUTY MANAGER (Apply Online from 04.11.2026 TO 25.11.2026)</p>
+      <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/28</p>
+      <ul>
+        <li><a href="https://sbi.bank.in/documents/77530/57941334/03112026_1_ADV_Security_Officer.pdf/69e017fe-5e1c-6312-c285-8855f9882102?t=1793713497818">DOWNLOAD ADVERTISEMENT English</a></li>
+        <li><a href="https://ibpsreg.ibps.in/sbirscooct26/">APPLY ONLINE (04.11.2026 to 25.11.2026)</a></li>
+      </ul>
+    '''
+    items = parse_sbi(html, 'https://sbi.bank.in/web/careers/current-openings')
+    assert len(items) == 1
+    assert 'MANAGER(SECURITY)/DEPUTY MANAGER' in items[0].title
+    assert items[0].deadline.isoformat() == '2026-11-25'
+    assert items[0].official_notice_url.startswith('https://sbi.bank.in/documents/')
+    assert items[0].application_url == 'https://ibpsreg.ibps.in/sbirscooct26/'
