@@ -41,6 +41,9 @@ def test_public_job_filters_match_source_type_featured_and_limit(client):
         source.last_successful_sync_at = checked
         source.consecutive_failures = 0
         featured.last_seen_at = checked
+        # Persist the source and item freshness evidence before the request runs
+        # in a new Flask application context.
+        db.session.commit()
         featured_slug = featured.slug
 
     response = client.get('/api/jobs/?q=UPSC&type=government&featured=true&limit=1')
