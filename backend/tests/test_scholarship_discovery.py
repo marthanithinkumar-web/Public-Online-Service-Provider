@@ -652,3 +652,35 @@ def test_refresh_snapshot_writes_valid_json_with_trailing_newline(tmp_path):
     parsed = json.loads(written)
     assert parsed['count'] == payload['count'] == 1
     assert parsed['items'][0]['slug'] == 'nsp-json-roundtrip'
+
+
+def test_scholarship_catalog_uses_item_timezone_and_cutoff():
+    from app.scholarships.catalog import _active, _normalise_deadline_today
+
+    now = datetime(2026, 11, 15, 0, 30, tzinfo=timezone.utc)
+    new_york_item = {
+        'title': 'Synthetic timezone scholarship',
+        'status': 'active',
+        'source_type': 'official',
+        'is_official': True,
+        'source_checked_at': now.isoformat(),
+        'application_status': 'open',
+        'deadline': '2026-11-14',
+        'deadline_type': 'student_application',
+        'deadline_timezone': 'America/New_York',
+        'status_evidence': 'Student Application Open till: 14-11-2026',
+    }
+    normalized = _normalise_deadline_today(new_york_item, now=now)
+    assert normalized['application_status'] == 'deadline_today'
+    assert _active(normalized, now=now) is True
+
+    india_cutoff_item = {
+        **new_york_item,
+        'deadline': '2026-11-15',
+        'deadline_timezone': 'Asia/Kolkata',
+        'deadline_cutoff_time': '17:00',
+        'application_status': 'deadline_today',
+    }
+    after_cutoff = datetime(2026, 11, 15, 12, 0, tzinfo=timezone.utc)  # 17:30 IST
+    india_cutoff_item['source_checked_at'] = after_cutoff.isoformat()
+    assert _active(india_cutoff_item, now=after_cutoff) is False

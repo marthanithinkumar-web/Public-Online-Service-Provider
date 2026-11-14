@@ -1,6 +1,6 @@
 import json
 import re
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
@@ -44,11 +44,24 @@ def _fresh_source_check(item, now=None):
     )
 
 
-def _normalise_deadline_today(item, today):
+def _local_deadline_now(item, now=None):
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    tz = ZoneInfo(str(item.get('deadline_timezone') or 'Asia/Kolkata'))
+    return current.astimezone(tz)
+
+
+def _normalise_deadline_today(item, today=None, now=None):
     value = dict(item)
+    try:
+        local = _local_deadline_now(value, now=now)
+    except Exception:
+        return value
+    local_today = today or local.date()
     if (
         value.get('deadline')
-        and str(value.get('deadline'))[:10] == today.isoformat()
+        and str(value.get('deadline'))[:10] == local_today.isoformat()
         and str(value.get('application_status') or '').lower() == 'open'
     ):
         value['application_status'] = 'deadline_today'
@@ -63,7 +76,8 @@ def _active(item, today=None, now=None):
 
     A verification deadline is never substituted for a student application
     deadline. Date-only deadlines that fall today are shown with a warning
-    state, not counted as verified-open.
+    state, not counted as verified-open. A published cutoff is enforced in the
+    item's own timezone.
     """
     if str(item.get('status') or '').lower() != 'active' or item.get('stale_source'):
         return False
@@ -73,10 +87,6 @@ def _active(item, today=None, now=None):
     if not evidence or not _fresh_source_check(item, now=now):
         return False
     application_status = str(item.get('application_status') or '').lower()
-    current = now or datetime.now(timezone.utc)
-    if current.tzinfo is None:
-        current = current.replace(tzinfo=timezone.utc)
-    india_today = today or current.astimezone(ZoneInfo('Asia/Kolkata')).date()
     deadline = item.get('deadline')
     if deadline and item.get('deadline_type') != 'student_application':
         return False
@@ -84,12 +94,24 @@ def _active(item, today=None, now=None):
         return application_status == 'open' and bool(ROLLING_OPEN_EVIDENCE.search(evidence))
     try:
         end = date.fromisoformat(str(deadline)[:10])
-    except (TypeError, ValueError):
+        local = _local_deadline_now(item, now=now)
+    except (TypeError, ValueError, KeyError):
         return False
-    if end < india_today:
+    local_today = today or local.date()
+    if end < local_today:
         return False
-    if end == india_today:
-        return application_status == 'deadline_today'
+    if end == local_today:
+        if application_status != 'deadline_today':
+            return False
+        cutoff_value = item.get('deadline_cutoff_time')
+        if cutoff_value:
+            try:
+                cutoff = time.fromisoformat(str(cutoff_value))
+            except ValueError:
+                return False
+            if local.timetz().replace(tzinfo=None) >= cutoff:
+                return False
+        return True
     return application_status == 'open'
 
 
@@ -111,17 +133,13 @@ def load_catalog(query='', today=None, now=None):
     current = now or datetime.now(timezone.utc)
     if current.tzinfo is None:
         current = current.replace(tzinfo=timezone.utc)
-    india_date = today or current.astimezone(ZoneInfo('Asia/Kolkata')).date()
     items = []
     for raw_item in payload.get('items', []):
         if not isinstance(raw_item, dict):
             continue
-        item = _normalise_deadline_today(raw_item, india_date)
-        if _active(item, india_date, now=current) and _matches(item, query):
+        item = _normalise_deadline_today(raw_item, today=today, now=current)
+        if _active(item, today=today, now=current) and _matches(item, query):
             items.append(item)
-    for item in items:
-        if item.get('deadline') and str(item.get('deadline'))[:10] == india_date.isoformat() and item.get('application_status') == 'open':
-            item['application_status'] = 'deadline_today'
     items.sort(key=lambda item: (
         0 if item.get('source_type') == 'official' else 1,
         item.get('deadline') or '9999-12-31',

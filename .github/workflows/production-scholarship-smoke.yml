@@ -11,6 +11,8 @@ on:
       - 'backend/app/routes/scholarships.py'
       - 'backend/tests/test_scholarship_discovery.py'
       - 'frontend/src/services/scholarships.ts'
+      - 'frontend/scripts/seo-catalog.mjs'
+      - 'frontend/scripts/verify-active-listing-rules.mjs'
       - 'frontend/src/pages/Scholarships.tsx'
       - 'frontend/src/pages/ScholarshipDetail.tsx'
       - '.github/workflows/scholarship-notifications.yml'
@@ -86,7 +88,8 @@ jobs:
             "$API_URL/api/scholarships/?q=aicte" -o /tmp/aicte.json
           python - <<'PY'
           import json
-          from datetime import date, datetime, timedelta, timezone
+          import re
+          from datetime import date, datetime, time as datetime_time, timedelta, timezone
           from zoneinfo import ZoneInfo
 
           with open('/tmp/scholarships.json', encoding='utf-8') as handle:
@@ -96,17 +99,29 @@ jobs:
           assert payload.get('official_count', 0) >= 5, payload.get('official_count')
           assert payload.get('private_count', 0) >= 0
           now=datetime.now(timezone.utc)
-          today=now.astimezone(ZoneInfo('Asia/Kolkata')).date()
 
           for item in items:
               assert item.get('source_type') == 'official', item.get('title')
               assert item.get('is_official') is True, item.get('title')
               assert item.get('status') == 'active', item.get('title')
               assert item.get('application_status') in {'open','deadline_today'}, item.get('title')
-              assert item.get('deadline_type') == 'student_application', item.get('title')
               assert str(item.get('status_evidence') or '').strip(), item.get('title')
               if item.get('deadline'):
-                  assert date.fromisoformat(item['deadline'][:10]) >= today, item['title']
+                  assert item.get('deadline_type') == 'student_application', item.get('title')
+                  deadline_tz=ZoneInfo(str(item.get('deadline_timezone') or 'Asia/Kolkata'))
+                  local_now=now.astimezone(deadline_tz)
+                  deadline_date=date.fromisoformat(item['deadline'][:10])
+                  assert deadline_date >= local_now.date(), item['title']
+                  if deadline_date == local_now.date():
+                      assert item.get('application_status') == 'deadline_today', item['title']
+                      cutoff=item.get('deadline_cutoff_time')
+                      if cutoff:
+                          assert local_now.timetz().replace(tzinfo=None) < datetime_time.fromisoformat(str(cutoff)), item['title']
+                  else:
+                      assert item.get('application_status') == 'open', item['title']
+              else:
+                  assert item.get('application_status') == 'open', item['title']
+                  assert re.search(r'\\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|open for applications|registration\\b.{0,80}\\b(?:is|are)\\s+(?:currently\\s+)?open|application process is open)\\b', str(item.get('status_evidence') or ''), re.I), item['title']
               source_checked=item.get('source_checked_at') or item.get('verified_at')
               assert source_checked, item.get('title')
               source_checked_at=datetime.fromisoformat(str(source_checked).replace('Z','+00:00'))

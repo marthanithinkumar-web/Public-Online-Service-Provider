@@ -110,14 +110,11 @@ const hasSafePublicSlug=item=>{
   return slug.length<=200&&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)&&Boolean(item?.title)
 }
 
-function indiaToday(){
-  return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
-}
 function hasCurrentDeadline(item){
   const deadline=String(item?.deadline||'')
   if(!/^\d{4}-\d{2}-\d{2}$/.test(deadline))return false
   const parsed=new Date(deadline+'T00:00:00Z')
-  return !Number.isNaN(parsed.getTime())&&parsed.toISOString().slice(0,10)===deadline&&deadline>=indiaToday()
+  return !Number.isNaN(parsed.getTime())&&parsed.toISOString().slice(0,10)===deadline&&['open','deadline_today'].includes(jobDeadlineState(item))
 }
 function jobSourceIsFresh(item){
   const source=item?.source||{}
@@ -182,12 +179,12 @@ function isVerifiedScholarship(item){
   if(deadline&&item?.deadline_type!=='student_application')return false
   if(!deadline)return status==='open'&&/\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|open for applications|registration\b.{0,80}\b(?:is|are)\s+(?:currently\s+)?open|application process is open)\b/i.test(String(item?.status_evidence||''))
   if(!hasCurrentDeadline(item))return false
-  if(deadline===indiaToday())return status==='deadline_today'
-  return status==='open'
+  const deadlineState=jobDeadlineState(item)
+  if(deadlineState==='deadline_today')return status==='deadline_today'
+  return deadlineState==='open'&&status==='open'
 }
 export function readScholarships(){
-  const today=indiaToday()
   return readSnapshot('scholarships.json')
-    .map(item=>item?.deadline===today&&item?.application_status==='open'?{...item,application_status:'deadline_today'}:item)
+    .map(item=>jobDeadlineState(item)==='deadline_today'&&item?.application_status==='open'?{...item,application_status:'deadline_today'}:item)
     .filter(item=>isVerifiedScholarship(item)&&hasSafePublicSlug(item))
 }
