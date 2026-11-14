@@ -376,4 +376,4 @@ def test_job_model_deadline_status_uses_the_job_timezone():
         deadline_timezone='America/New_York',
     )
     now = datetime(2026, 11, 15, 0, 30, tzinfo=timezone.utc)  # 19:30 EST on 14 Nov
-    assert job.deadline_status(now=now) == 'open'
+    assert job.deadline_status(now=now) == 'deadline_today'
