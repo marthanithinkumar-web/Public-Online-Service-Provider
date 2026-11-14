@@ -44,6 +44,17 @@ def _fresh_source_check(item, now=None):
     )
 
 
+def _normalise_deadline_today(item, today):
+    value = dict(item)
+    if (
+        value.get('deadline')
+        and str(value.get('deadline'))[:10] == today.isoformat()
+        and str(value.get('application_status') or '').lower() == 'open'
+    ):
+        value['application_status'] = 'deadline_today'
+    return value
+
+
 def _active(item, today=None, now=None):
     """Return only fresh, evidence-backed official student-application opportunities.
 
@@ -78,7 +89,7 @@ def _active(item, today=None, now=None):
     if end < india_today:
         return False
     if end == india_today:
-        return application_status in {'open', 'deadline_today'}
+        return application_status == 'deadline_today'
     return application_status == 'open'
 
 
@@ -101,10 +112,13 @@ def load_catalog(query='', today=None, now=None):
     if current.tzinfo is None:
         current = current.replace(tzinfo=timezone.utc)
     india_date = today or current.astimezone(ZoneInfo('Asia/Kolkata')).date()
-    items = [
-        dict(item) for item in payload.get('items', [])
-        if isinstance(item, dict) and _active(item, india_date, now=current) and _matches(item, query)
-    ]
+    items = []
+    for raw_item in payload.get('items', []):
+        if not isinstance(raw_item, dict):
+            continue
+        item = _normalise_deadline_today(raw_item, india_date)
+        if _active(item, india_date, now=current) and _matches(item, query):
+            items.append(item)
     for item in items:
         if item.get('deadline') and str(item.get('deadline'))[:10] == india_date.isoformat() and item.get('application_status') == 'open':
             item['application_status'] = 'deadline_today'
