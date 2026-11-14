@@ -27,7 +27,7 @@
       "eligibility_source": "official_source_unstructured",
       "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
       "application_requirements_source": "https://scholarships.gov.in/Students",
-      "application_status": "open",
+      "application_status": "deadline_today",
       "application_deadline": "2026-11-15",
       "application_deadline_type": "student_application",
       "deadline_type": "student_application",
@@ -965,6 +965,6 @@
   ],
   "official_count": 27,
   "private_count": 0,
-  "verified_open_count": 27,
-  "deadline_today_count": 0
+  "verified_open_count": 26,
+  "deadline_today_count": 1
 }
