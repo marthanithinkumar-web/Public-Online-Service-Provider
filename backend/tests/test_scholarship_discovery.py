@@ -618,3 +618,37 @@ def test_scholarship_catalog_marks_open_deadline_today_as_warning_not_verified_o
     assert result['items'][0]['application_status'] == 'deadline_today'
     assert result['verified_open_count'] == 0
     assert result['deadline_today_count'] == 1
+
+
+def test_refresh_snapshot_writes_valid_json_with_trailing_newline(tmp_path):
+    path = tmp_path / 'scholarships.json'
+    item = {
+        'id': 'nsp-json-roundtrip',
+        'slug': 'nsp-json-roundtrip',
+        'title': 'JSON Roundtrip Scholarship',
+        'provider': 'Government of India',
+        'source_name': 'National Scholarship Portal',
+        'source_url': 'https://scholarships.gov.in/All-Scholarships',
+        'application_url': 'https://scholarships.gov.in/Students',
+        'deadline': '2026-11-30',
+        'status': 'active',
+        'application_status': 'open',
+        'deadline_type': 'student_application',
+        'status_evidence': 'Student Application Open till : 30-11-2026',
+        'source_checked_at': NOW.isoformat(),
+        'verified_at': NOW.isoformat(),
+        'last_seen_at': NOW.isoformat(),
+        'source_key': 'nsp',
+        'source_type': 'official',
+        'is_official': True,
+        'record_type': 'scholarship',
+    }
+    path.write_text(json.dumps({'generated_at': NOW.isoformat(), 'items': [item]}), encoding='utf-8')
+
+    payload = refresh_snapshot(path, today=date(2026, 9, 4), discover=False, now=NOW)
+
+    written = path.read_text(encoding='utf-8')
+    assert written.endswith('\n')
+    parsed = json.loads(written)
+    assert parsed['count'] == payload['count'] == 1
+    assert parsed['items'][0]['slug'] == 'nsp-json-roundtrip'
