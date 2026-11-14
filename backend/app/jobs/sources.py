@@ -122,34 +122,67 @@ def parse_explicit_deadline(value):
 
 
 def parse_explicit_deadline_cutoff_time(value):
-    """Extract a time only when it is attached to explicit application-deadline wording."""
+    """Extract a cutoff only when it is explicitly attached to an application deadline."""
     text = clean(value)
-    date_token = r'(?:20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]20\d{2}|\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}|[A-Za-z]{3,9}\s+\d{1,2},?\s+20\d{2})'
-    time_token = r'(\d{1,2}[.:]\d{2}\s*(?:AM|PM)?)'
-    patterns = (
-        rf'\bon or before\s*{time_token}\s*(?:hrs?|hours?)\s+on\s*{date_token}',
-        rf'(?:last date(?: and time)?(?:\s+for\s+(?:receipt|submission|applying|online application|filling|registration|applications?)(?:\s+of\s+(?:online\s+)?applications?)?)?|last date to apply|closing date(?: for applications?)?|application deadline|apply by)[^.;]{0,180}?{date_token}[^.;]{0,80}?(?:at|by)\s*{time_token}\s*(?:hrs?|hours?|IST|Indian Standard Time)?',
-        rf'(?:last date|application deadline|closing date)[^.;]{0,120}?{time_token}\s*(?:hrs?|hours?)\s*(?:IST|Indian Standard Time)?',
+    date_token = (
+        r'(?:20\d{2}-\d{1,2}-\d{1,2}|'
+        r'\d{1,2}[./-]\d{1,2}[./-]20\d{2}|'
+        r'\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}|'
+        r'[A-Za-z]{3,9}\s+\d{1,2},?\s+20\d{2})'
     )
-    for pattern in patterns:
-        match = re.search(pattern, text, re.I)
+    time_token = r'(\d{1,2}[.:]\d{2}\s*(?:AM|PM)?)'
+
+    def as_time(raw):
+        raw = re.sub(r'\s+', '', raw).replace('.', ':')
+        match = re.fullmatch(r'(\d{1,2}):(\d{2})(AM|PM)?', raw, re.I)
         if not match:
-            continue
-        raw = re.sub(r'\s+', '', match.group(1)).replace('.', ':')
-        clock = re.fullmatch(r'(\d{1,2}):(\d{2})(AM|PM)?', raw, re.I)
-        if not clock:
-            continue
-        hour, minute = int(clock.group(1)), int(clock.group(2))
-        meridiem = (clock.group(3) or '').upper()
+            return None
+        hour, minute = int(match.group(1)), int(match.group(2))
+        meridiem = (match.group(3) or '').upper()
         if minute > 59 or hour > (12 if meridiem else 23) or hour < (1 if meridiem else 0):
-            continue
+            return None
         if meridiem == 'AM':
             hour = 0 if hour == 12 else hour
         elif meridiem == 'PM':
             hour = 12 if hour == 12 else hour + 12
         return time(hour, minute)
-    return None
 
+    # "On or before 17:00 hrs on 13.11.2099" places the time before the date.
+    match = re.search(
+        rf'\bon or before\s*{time_token}\s*(?:hrs?|hours?)\s+on\s*{date_token}',
+        text,
+        re.I,
+    )
+    if match:
+        parsed = as_time(match.group(1))
+        if parsed is not None:
+            return parsed
+
+    # Other notices put the date first: "Last date to apply: 13.11.2099 at
+    # 17:00 hrs IST". Locate the date after explicit application-deadline
+    # wording, then inspect only the text immediately following that date.
+    deadline_label = re.compile(
+        r'\b(?:last date(?: and time)?|last date to apply|'
+        r'closing date(?: for applications?)?|application deadline|apply by)\b',
+        re.I,
+    )
+    for label in deadline_label.finditer(text):
+        segment = text[label.end():label.end() + 300]
+        date_match = re.search(date_token, segment, re.I)
+        if not date_match:
+            continue
+        after_date = segment[date_match.end():date_match.end() + 100]
+        match = re.search(
+            rf'\b(?:at|by)\s*{time_token}\s*(?:hrs?|hours?|IST|Indian Standard Time)?',
+            after_date,
+            re.I,
+        )
+        if match:
+            parsed = as_time(match.group(1))
+            if parsed is not None:
+                return parsed
+
+    return None
 
 class OfficialHTMLParser(HTMLParser):
     def __init__(self):
