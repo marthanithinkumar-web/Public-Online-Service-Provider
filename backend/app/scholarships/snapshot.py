@@ -4,7 +4,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from .catalog import CATALOG_PATH, _active
+from .catalog import CATALOG_PATH, _active, _normalise_deadline_today
 from .discovery import dedupe_items, discover_official_scholarships, is_official_url, slugify, source_key_for_url
 from .source_enrichment import enrich_scholarships
 
@@ -107,7 +107,7 @@ def refresh_snapshot(path=CATALOG_PATH,today=None,*,discover=True,strict=False,n
         still_current=(not item.get('deadline') or str(item.get('deadline'))[:10]>=check_date.isoformat()) and str(item.get('status') or '').lower() not in {'closed','expired','cancelled','withdrawn'}
         if not discover or (not source_health.get('ok') and still_current and age is not None and age<=OFFICIAL_FAILURE_GRACE_DAYS):
             item['stale_source']=True;item['application_status']='unverified';stale_preserved.append(item)
-    items=dedupe_items([*discovered,*preserved]);items=[item for item in items if _active(item,check_date,now=now)];items.sort(key=lambda item:(0 if item.get('source_type')=='official' else 1,item.get('deadline') or '9999-12-31',item.get('title') or ''))
+    items=dedupe_items([*discovered,*preserved]);items=[_normalise_deadline_today(item,check_date) for item in items];items=[item for item in items if _active(item,check_date,now=now)];items.sort(key=lambda item:(0 if item.get('source_type')=='official' else 1,item.get('deadline') or '9999-12-31',item.get('title') or ''))
     active_keys={(slugify(item.get('title')),slugify(item.get('region') or 'india')) for item in items}
     discovered_keys={(slugify(item.get('title')),slugify(item.get('region') or 'india')) for item in discovered}
     previous_keys={(slugify(item.get('title')),slugify(item.get('region') or 'india')) for item in previous_items}
