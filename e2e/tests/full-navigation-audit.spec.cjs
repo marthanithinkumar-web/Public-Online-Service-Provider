@@ -92,12 +92,23 @@ test('government, recharge, jobs and scholarship cards open their actual detail/
   const jobCards = page.locator('.job-card')
   if (await jobCards.count()) {
     const jobCard = jobCards.first()
-    await jobCard.getByRole('link', { name: 'View Details & Apply', exact: true }).click()
+    // The detail link remains available even when the notice is deadline-today
+    // without a verified cutoff; that state must not offer assisted submission.
+    const detailLink = jobCard.locator('h3 a').first()
+    await expect(detailLink).toBeVisible()
+    await detailLink.click()
     await expect(page).toHaveURL(/\/jobs\//)
-    await expect(page.getByRole('link', { name: /Apply with assistance/i })).toBeVisible()
-    await page.getByRole('link', { name: /Apply with assistance/i }).click()
-    await expect(page).toHaveURL(/\/services\/apply-government-job\?job=/)
-    await expectRealPage(page)
+    const statusLabel = await page.locator('.job-detail-deadline > span').innerText()
+    const assistanceLink = page.getByRole('link', { name: /Apply with assistance/i })
+    if (statusLabel === 'Deadline today—check official portal') {
+      await expect(assistanceLink).toHaveCount(0)
+      await expect(page.getByRole('link', { name: /Check official portal/i })).toBeVisible()
+    } else {
+      await expect(assistanceLink).toBeVisible()
+      await assistanceLink.click()
+      await expect(page).toHaveURL(/\/services\/apply-government-job\?job=/)
+      await expectRealPage(page)
+    }
   } else {
     // Empty results are valid when all available snapshot entries fail the
     // verified-active deadline/source rules.
