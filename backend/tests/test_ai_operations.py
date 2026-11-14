@@ -57,8 +57,9 @@ def test_ai_job_context_uses_public_freshness_and_cutoff_eligibility(client):
                 external_id=external_id,
                 title=title,
                 organization='Official Recruitment Board',
-                official_notice_url=f'https://example.gov/notices/{external_id}',
-                application_url=f'https://example.gov/apply/{external_id}',
+                # Synthetic fixture URLs use an allow-listed official host; this test never fetches them.
+                official_notice_url=f'https://ssc.gov.in/test-fixtures/notices/{external_id}',
+                application_url=f'https://ssc.gov.in/test-fixtures/apply/{external_id}',
                 deadline=deadline,
                 deadline_cutoff_time=cutoff,
                 deadline_timezone='Asia/Kolkata',
