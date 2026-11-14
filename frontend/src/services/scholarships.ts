@@ -70,7 +70,9 @@ function filter(data:ScholarshipFeed,q=''){
     const hay=[item.title,item.provider,item.source_name,item.source_type,item.region,item.education_level,item.category,item.eligibility,item.academic_year].join(' ').toLowerCase()
     return tokens.every(token=>hay.includes(token))
   }).sort(compareScholarships)
-  return {...data,items,count:items.length}
+  const verifiedOpenCount=items.filter(item=>item.application_status==='open').length
+  const deadlineTodayCount=items.filter(item=>item.application_status==='deadline_today').length
+  return {...data,items,count:items.length,verified_open_count:verifiedOpenCount,deadline_today_count:deadlineTodayCount}
 }
 async function snapshot(){
   const response=await fetch('/data/scholarships.json',{cache:'force-cache',headers:{Accept:'application/json'}})
