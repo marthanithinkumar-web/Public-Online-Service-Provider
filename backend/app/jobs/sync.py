@@ -128,6 +128,10 @@ def sync_source(source, session=None):
             if 'notice_excluded_result_only' in (item.warnings or []):
                 continue
             job, _, duplicate = upsert_item(source, item, allow_missing_deadline=definition.allow_missing_deadline, missing_deadline_max_age_days=definition.missing_deadline_max_age_days)
+            # New rows do not receive their database ID until the session flushes.
+            # Flush before recording IDs so the cleanup pass cannot demote a row
+            # that was just observed in this successful official-source parse.
+            db.session.flush()
             if job.source_id == source.id:
                 seen_job_ids.add(job.id)
             duplicates += int(duplicate); published += int(job.status == 'published')
