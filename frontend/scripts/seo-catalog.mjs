@@ -186,5 +186,8 @@ function isVerifiedScholarship(item){
   return status==='open'
 }
 export function readScholarships(){
-  return readSnapshot('scholarships.json').filter(item=>isVerifiedScholarship(item)&&hasSafePublicSlug(item))
+  const today=indiaToday()
+  return readSnapshot('scholarships.json')
+    .map(item=>item?.deadline===today&&item?.application_status==='open'?{...item,application_status:'deadline_today'}:item)
+    .filter(item=>isVerifiedScholarship(item)&&hasSafePublicSlug(item))
 }
