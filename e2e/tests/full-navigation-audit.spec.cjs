@@ -119,12 +119,29 @@ test('government, recharge, jobs and scholarship cards open their actual detail/
   await expect(page.getByText('Loading scholarships…')).toHaveCount(0)
   const scholarshipCards = page.locator('.service-card')
   if (await scholarshipCards.count()) {
-    const scholarshipCard = scholarshipCards.first()
-    await scholarshipCard.getByRole('link', { name: 'View Details & Apply', exact: true }).click()
-    await expect(page).toHaveURL(/\/scholarships\//)
-    await page.getByRole('link', { name: 'Apply with Assistance', exact: true }).click()
-    await expect(page).toHaveURL(/\/services\/scholarship-application-assistance\?scholarship=/)
-    await expectRealPage(page)
+    // The earliest-deadline card can be deadline-today. It must remain
+    // discoverable with an official-portal warning, but must not offer
+    // assisted submission when the official cutoff is unknown.
+    const deadlineTodayLink = page.getByRole('link', { name: 'Check Official Portal', exact: true }).first()
+    if (await deadlineTodayLink.count()) {
+      await deadlineTodayLink.click()
+      await expect(page).toHaveURL(/\\/scholarships\\//)
+      await expect(page.getByRole('link', { name: 'Official source details', exact: true })).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Apply with Assistance', exact: true })).toHaveCount(0)
+      await page.goto('/scholarships')
+    }
+
+    // Exercise assisted application only for a verified-open student
+    // opportunity, never for deadline-today or renewal-only schemes.
+    const verifiedOpenLink = page.getByRole('link', { name: 'View Details & Apply', exact: true }).first()
+    if (await verifiedOpenLink.count()) {
+      await verifiedOpenLink.click()
+      await expect(page).toHaveURL(/\\/scholarships\\//)
+      await expect(page.getByRole('link', { name: 'Official source details', exact: true })).toBeVisible()
+      await page.getByRole('link', { name: 'Apply with Assistance', exact: true }).click()
+      await expect(page).toHaveURL(/\\/services\\/scholarship-application-assistance\\?scholarship=/)
+      await expectRealPage(page)
+    }
   } else {
     await expect(scholarshipCards).toHaveCount(0)
   }
