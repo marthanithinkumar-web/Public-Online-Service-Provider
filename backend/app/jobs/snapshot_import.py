@@ -84,6 +84,20 @@ def _retired_external_id(external_id, job_id):
     return f"{prefix}{str(external_id)[:300 - len(prefix)]}"
 
 
+
+def _deadline_is_current(deadline, timezone_name, cutoff_time, now=None):
+    """Evaluate an imported deadline in the opportunity's own timezone."""
+    tz = ZoneInfo(str(timezone_name or 'Asia/Kolkata'))
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    local = current.astimezone(tz)
+    if deadline < local.date():
+        return False, 'expired'
+    if deadline == local.date() and cutoff_time and local.timetz().replace(tzinfo=None) >= cutoff_time:
+        return False, 'cutoff'
+    return True, None
+
 def import_verified_snapshot(path):
     data = _load_snapshot(path)
     _acquire_snapshot_import_lock()
@@ -123,22 +137,23 @@ def import_verified_snapshot(path):
 
         # The verified snapshot can be a few hours or days old by the time a
         # queued Render deploy starts. Validate the full snapshot, but only import
-        # records with an explicit, current deadline in India.
+        # records whose deadline remains open in that opportunity's own timezone.
         deadline = _parse_date(item.get('deadline'))
         if deadline is None:
             undated_snapshot_items_skipped += 1
             continue
-        if deadline < india_today():
-            expired_snapshot_items_skipped += 1
-            continue
         try:
-            deadline_tz = ZoneInfo(str(item.get('deadline_timezone') or 'Asia/Kolkata'))
+            deadline_tz = str(item.get('deadline_timezone') or 'Asia/Kolkata')
+            ZoneInfo(deadline_tz)
         except Exception as exc:
             raise ValueError(f'Job {slug} has an invalid deadline timezone.') from exc
         cutoff_time = _parse_time(item.get('deadline_cutoff_time'))
-        local_now = datetime.now(timezone.utc).astimezone(deadline_tz)
-        if deadline == local_now.date() and cutoff_time and local_now.timetz().replace(tzinfo=None) >= cutoff_time:
-            cutoff_snapshot_items_skipped += 1
+        is_current, deadline_reason = _deadline_is_current(deadline, deadline_tz, cutoff_time)
+        if not is_current:
+            if deadline_reason == 'cutoff':
+                cutoff_snapshot_items_skipped += 1
+            else:
+                expired_snapshot_items_skipped += 1
             continue
         normalized_items.append((item, digest, slug, source_key))
 

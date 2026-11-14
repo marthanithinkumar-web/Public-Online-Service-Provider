@@ -1,5 +1,5 @@
 import json
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from app.jobs.snapshot_import import import_verified_snapshot
@@ -179,3 +179,25 @@ def test_verified_snapshot_rejects_items_from_failed_or_stale_sources(client, tm
         with pytest.raises(ValueError, match='fresh successful official-source check'):
             import_verified_snapshot(path)
         assert JobNotification.query.filter_by(slug='stale-source-job').count() == 0
+
+
+def test_snapshot_import_deadline_uses_opportunity_timezone_and_cutoff():
+    from app.jobs.snapshot_import import _deadline_is_current
+
+    # 00:30 UTC on 15 Nov is still 19:30 on 14 Nov in New York.
+    before_local_deadline = datetime(2026, 11, 15, 0, 30, tzinfo=timezone.utc)
+    assert _deadline_is_current(
+        date(2026, 11, 14),
+        'America/New_York',
+        None,
+        now=before_local_deadline,
+    ) == (True, None)
+
+    # 22:00 UTC is 17:00 EST; the explicit cutoff has just been reached.
+    at_local_cutoff = datetime(2026, 11, 14, 22, 0, tzinfo=timezone.utc)
+    assert _deadline_is_current(
+        date(2026, 11, 14),
+        'America/New_York',
+        time(17, 0),
+        now=at_local_cutoff,
+    ) == (False, 'cutoff')

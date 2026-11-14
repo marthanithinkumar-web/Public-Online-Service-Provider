@@ -2,7 +2,7 @@ from app.jobs import sources
 from app.jobs.priority_sources import parse_drdo, parse_kvs, parse_rbi, parse_sbi
 from app.jobs import snapshot, notice_enrichment
 from app.jobs.sources import JobItem, SOURCE_DEFINITIONS, parse_all_dates, parse_date, parse_explicit_deadline
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 
 
 def test_employment_news_all_jobs_is_removed_and_priority_sources_are_registered():
@@ -331,3 +331,49 @@ def test_sbi_grouped_parser_includes_current_manager_security_opening():
     assert items[0].deadline.isoformat() == '2026-11-25'
     assert items[0].official_notice_url.startswith('https://sbi.bank.in/documents/')
     assert items[0].application_url == 'https://ibpsreg.ibps.in/sbirscooct26/'
+
+
+def test_job_snapshot_serializes_deadline_today_warning_and_cutoff():
+    definition = next(source for source in SOURCE_DEFINITIONS if source.key == 'rbi')
+    now = datetime(2026, 11, 14, 20, 2, tzinfo=timezone.utc)  # 01:32 IST on 15 Nov
+    checked_at = now.isoformat().replace('+00:00', 'Z')
+    no_cutoff = JobItem(
+        external_id='snapshot-today-no-cutoff',
+        title='Synthetic deadline-today notice',
+        organization='Reserve Bank of India',
+        official_notice_url=definition.listing_url,
+        deadline=date(2026, 11, 15),
+        deadline_timezone='Asia/Kolkata',
+        confidence=0.95,
+    )
+    warning = snapshot._serialize_item(no_cutoff, definition, checked_at, now=now)
+    assert warning['application_status'] == 'deadline_today'
+    assert warning['status_label'] == 'Deadline today—check official portal'
+    assert warning['can_apply'] is False
+    assert warning['source_checked_at'] == checked_at
+
+    with_cutoff = JobItem(
+        external_id='snapshot-today-with-cutoff',
+        title='Synthetic deadline-today cutoff notice',
+        organization='Reserve Bank of India',
+        official_notice_url=definition.listing_url,
+        deadline=date(2026, 11, 15),
+        deadline_cutoff_time=time(17, 0),
+        deadline_timezone='Asia/Kolkata',
+        confidence=0.95,
+    )
+    allowed = snapshot._serialize_item(with_cutoff, definition, checked_at, now=now)
+    assert allowed['application_status'] == 'deadline_today'
+    assert allowed['can_apply'] is True
+    assert '17:00 Asia/Kolkata' in allowed['status_label']
+
+
+def test_job_model_deadline_status_uses_the_job_timezone():
+    from app.models.job import JobNotification
+
+    job = JobNotification(
+        deadline=date(2026, 11, 14),
+        deadline_timezone='America/New_York',
+    )
+    now = datetime(2026, 11, 15, 0, 30, tzinfo=timezone.utc)  # 19:30 EST on 14 Nov
+    assert job.deadline_status(now=now) == 'open'

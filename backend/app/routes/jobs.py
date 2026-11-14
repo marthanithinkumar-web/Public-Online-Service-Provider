@@ -34,7 +34,7 @@ def _public_query():
     return JobNotification.query.filter(
         JobNotification.status == 'published',
         JobNotification.deadline.isnot(None),
-        JobNotification.deadline >= _india_today(),
+        JobNotification.deadline >= (_india_today() - timedelta(days=1)),
         JobNotification.last_seen_at >= freshness_cutoff,
         JobNotification.source.has(and_(
             JobSource.last_sync_status.in_(['success', 'running']),

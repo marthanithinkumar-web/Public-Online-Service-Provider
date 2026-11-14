@@ -2,26 +2,39 @@
 import argparse
 import hashlib
 import json
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from .notice_enrichment import enrich_job_item
 from .official_fetch import fetch_official_page, validate_official_url
 from .rules import item_hash, slugify, target_status, unique_slug
-from .sources import SOURCE_DEFINITIONS, india_today
+from .sources import SOURCE_DEFINITIONS
 
 
 def utc_now(): return datetime.now(timezone.utc).replace(microsecond=0)
 def _iso(value): return value.isoformat() if value else None
 
 
-def _is_open(job, today, now=None):
+def _is_open(job, today=None, now=None):
     raw = job.get('deadline')
     if not raw:
         return False
     try:
-        return date.fromisoformat(str(raw)[:10]) >= today
-    except (TypeError, ValueError):
+        deadline = date.fromisoformat(str(raw)[:10])
+        tz = ZoneInfo(str(job.get('deadline_timezone') or 'Asia/Kolkata'))
+        current = now or utc_now()
+        if current.tzinfo is None:
+            current = current.replace(tzinfo=timezone.utc)
+        local = current.astimezone(tz)
+        if deadline < local.date():
+            return False
+        if deadline == local.date() and job.get('deadline_cutoff_time'):
+            cutoff = time.fromisoformat(str(job['deadline_cutoff_time']))
+            if local.timetz().replace(tzinfo=None) >= cutoff:
+                return False
+        return True
+    except (TypeError, ValueError, KeyError):
         return False
 
 
@@ -30,12 +43,74 @@ def _safe_previous(existing):
     return {'items':existing.get('items') if isinstance(existing.get('items'),list) else [],'sources':existing.get('sources') if isinstance(existing.get('sources'),list) else []}
 
 
-def _serialize_item(item,definition,checked_at,previous=None):
+def _serialize_item(item, definition, checked_at, previous=None, now=None):
     validate_official_url(item.official_notice_url)
-    if item.application_url:validate_official_url(item.application_url)
-    content_hash=item_hash(item);previous=previous or {}
-    source={'key':definition.key,'name':definition.name,'listing_url':definition.listing_url,'last_sync_completed_at':checked_at,'last_successful_sync_at':checked_at,'consecutive_failures':0,'last_sync_status':'success'}
-    return {'id':int(content_hash[:12],16),'slug':unique_slug(item,content_hash),'title':item.title[:500],'organization':item.organization[:500],'job_type':item.job_type if item.job_type in {'government','private'} else 'government','appointment_type':item.appointment_type,'location':item.location,'qualification':item.qualification,'age_limit':item.age_limit,'application_fee':item.application_fee,'vacancies':item.vacancies,'salary':item.salary,'summary':item.summary,'issue_date':_iso(item.issue_date),'application_start_date':_iso(item.application_start_date),'deadline':_iso(item.deadline),'deadline_cutoff_time':item.deadline_cutoff_time.isoformat(timespec='minutes') if item.deadline_cutoff_time else None,'deadline_timezone':item.deadline_timezone or 'Asia/Kolkata','official_notice_url':item.official_notice_url,'application_url':item.application_url,'status':'published','verification_status':'official_source_checked','confidence':float(item.confidence or 0),'is_featured':bool(previous.get('is_featured',False)),'source':source,'first_seen_at':previous.get('first_seen_at') or checked_at,'last_seen_at':checked_at,'published_at':previous.get('published_at') or checked_at,'content_hash':content_hash}
+    if item.application_url:
+        validate_official_url(item.application_url)
+    content_hash = item_hash(item)
+    previous = previous or {}
+    current = now or datetime.fromisoformat(checked_at.replace('Z', '+00:00'))
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    timezone_name = item.deadline_timezone or 'Asia/Kolkata'
+    local = current.astimezone(ZoneInfo(timezone_name))
+    deadline = item.deadline
+    cutoff = item.deadline_cutoff_time
+    if deadline == local.date():
+        application_status = 'deadline_today'
+        can_apply = bool(cutoff and local.timetz().replace(tzinfo=None) < cutoff)
+        if cutoff:
+            status_label = f'Deadline today—closes at {cutoff.isoformat(timespec="minutes")} {timezone_name}'
+        else:
+            status_label = 'Deadline today—check official portal'
+    else:
+        application_status = 'open'
+        can_apply = True
+        status_label = 'Verified open'
+    source = {
+        'key': definition.key,
+        'name': definition.name,
+        'listing_url': definition.listing_url,
+        'last_sync_completed_at': checked_at,
+        'last_successful_sync_at': checked_at,
+        'consecutive_failures': 0,
+        'last_sync_status': 'success',
+    }
+    return {
+        'id': int(content_hash[:12], 16),
+        'slug': unique_slug(item, content_hash),
+        'title': item.title[:500],
+        'organization': item.organization[:500],
+        'job_type': item.job_type if item.job_type in {'government', 'private'} else 'government',
+        'appointment_type': item.appointment_type,
+        'location': item.location,
+        'qualification': item.qualification,
+        'age_limit': item.age_limit,
+        'application_fee': item.application_fee,
+        'vacancies': item.vacancies,
+        'salary': item.salary,
+        'summary': item.summary,
+        'issue_date': _iso(item.issue_date),
+        'application_start_date': _iso(item.application_start_date),
+        'deadline': _iso(deadline),
+        'deadline_cutoff_time': cutoff.isoformat(timespec='minutes') if cutoff else None,
+        'deadline_timezone': timezone_name,
+        'application_status': application_status,
+        'can_apply': can_apply,
+        'status_label': status_label,
+        'source_checked_at': checked_at,
+        'official_notice_url': item.official_notice_url,
+        'application_url': item.application_url,
+        'status': 'published',
+        'verification_status': 'official_source_checked',
+        'confidence': float(item.confidence or 0),
+        'is_featured': bool(previous.get('is_featured', False)),
+        'source': source,
+        'first_seen_at': previous.get('first_seen_at') or checked_at,
+        'last_seen_at': checked_at,
+        'published_at': previous.get('published_at') or checked_at,
+        'content_hash': content_hash,
+    }
 
 
 def _fallback_job_hash(job):
@@ -81,7 +156,6 @@ def _ensure_unique_slugs(jobs):
 def build_snapshot(existing=None, session=None, now=None):
     now = now or utc_now()
     checked_at = now.isoformat().replace('+00:00', 'Z')
-    today = india_today(now)
     previous = _safe_previous(existing)
     previous_jobs = previous['items']
     previous_by_hash = {
@@ -147,7 +221,6 @@ def build_snapshot(existing=None, session=None, now=None):
                 source_seen_hashes.add(digest)
                 status = target_status(
                     item,
-                    today=today,
                     now=now,
                     allow_missing_deadline=definition.allow_missing_deadline,
                     missing_deadline_max_age_days=definition.missing_deadline_max_age_days,
@@ -157,7 +230,7 @@ def build_snapshot(existing=None, session=None, now=None):
                     continue
                 if digest in seen_hashes:
                     continue
-                serialized = _serialize_item(item, definition, checked_at, previous_by_hash.get(digest))
+                serialized = _serialize_item(item, definition, checked_at, previous_by_hash.get(digest), now=now)
                 seen_hashes.add(digest)
                 jobs.append(serialized)
                 published_count += 1
@@ -168,7 +241,7 @@ def build_snapshot(existing=None, session=None, now=None):
             review_count += sum(
                 1 for old_job in previous_items
                 if old_job.get('content_hash') and old_job.get('content_hash') not in source_seen_hashes
-                and _is_open(old_job, today, now=now)
+                and _is_open(old_job, now=now)
             )
             sources.append({
                 'key': definition.key, 'name': definition.name,
