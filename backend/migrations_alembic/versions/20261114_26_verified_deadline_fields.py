@@ -44,8 +44,12 @@ def upgrade():
         "UPDATE job_sources SET last_successful_sync_at = last_sync_completed_at "
         "WHERE last_sync_status = 'success' AND last_sync_completed_at IS NOT NULL"
     )
-    op.alter_column("job_notifications", "deadline_timezone", server_default=None)
-    op.alter_column("job_sources", "consecutive_failures", server_default=None)
+    # SQLite cannot DROP a column default with ALTER COLUMN. Keeping these
+    # harmless defaults in SQLite preserves migration parity for the test suite;
+    # PostgreSQL drops them because the application model owns the defaults.
+    if op.get_bind().dialect.name != "sqlite":
+        op.alter_column("job_notifications", "deadline_timezone", server_default=None)
+        op.alter_column("job_sources", "consecutive_failures", server_default=None)
 
 
 def downgrade():
