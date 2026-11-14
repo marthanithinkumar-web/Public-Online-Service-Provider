@@ -1,5 +1,6 @@
 import json
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from app.jobs.snapshot_import import import_verified_snapshot
 from app.jobs.sources import SOURCE_DEFINITIONS
@@ -20,6 +21,8 @@ def _snapshot(source, items):
             'listing_url': source.listing_url,
             'enabled': True,
             'last_sync_completed_at': checked,
+            'last_successful_sync_at': checked,
+            'consecutive_failures': 0,
             'last_sync_status': 'success',
             'fetched_count': len(items),
             'published_count': len(items),
@@ -46,6 +49,8 @@ def _item(source, digest, slug, title):
         'issue_date': None,
         'application_start_date': None,
         'deadline': (date.today() + timedelta(days=30)).isoformat(),
+        'deadline_cutoff_time': None,
+        'deadline_timezone': 'Asia/Kolkata',
         'official_notice_url': source.listing_url,
         'application_url': None,
         'status': 'published',
@@ -55,7 +60,7 @@ def _item(source, digest, slug, title):
         'first_seen_at': checked,
         'last_seen_at': checked,
         'published_at': checked,
-        'source': {'key': source.key},
+        'source': {'key': source.key, 'last_sync_status': 'success', 'last_sync_completed_at': checked, 'last_successful_sync_at': checked, 'consecutive_failures': 0},
     }
 
 
@@ -87,7 +92,7 @@ def test_verified_snapshot_import_exactly_replaces_active_public_set(client, tmp
 
         assert result['active_total'] == 2
         assert JobNotification.query.filter_by(status='published').count() == 2
-        assert JobNotification.query.filter_by(slug='legacy-job').one().status == 'expired'
+        assert JobNotification.query.filter_by(slug='legacy-job').one().status == 'needs_review'
         assert JobSource.query.filter_by(key='retired_source').one().enabled is False
         assert JobSource.query.filter_by(key=source.key).one().enabled is True
 
@@ -141,3 +146,58 @@ def test_verified_snapshot_skips_deadlines_that_expire_before_render_import(clie
         assert JobNotification.query.filter_by(slug='still-open').one().status == 'published'
         assert JobNotification.query.filter_by(slug='expired-between-build-and-deploy').count() == 0
 
+
+
+def test_verified_snapshot_skips_deadline_after_explicit_cutoff(client, tmp_path):
+    source = SOURCE_DEFINITIONS[0]
+    item = _item(source, 'a' * 64, 'cutoff-passed', 'Cutoff Passed')
+    item['deadline'] = datetime.now(timezone.utc).astimezone(ZoneInfo('Asia/Kolkata')).date().isoformat()
+    item['deadline_timezone'] = 'Asia/Kolkata'
+    item['deadline_cutoff_time'] = '00:01'
+    path = tmp_path / 'jobs.json'
+    path.write_text(json.dumps(_snapshot(source, [item])), encoding='utf-8')
+
+    with client.application.app_context():
+        result = import_verified_snapshot(path)
+        assert result['imported'] == 0
+        assert result['cutoff_snapshot_items_skipped'] == 1
+        assert JobNotification.query.filter_by(slug='cutoff-passed').count() == 0
+
+
+def test_verified_snapshot_rejects_items_from_failed_or_stale_sources(client, tmp_path):
+    source = SOURCE_DEFINITIONS[0]
+    item = _item(source, 'b' * 64, 'stale-source-job', 'Stale Source Job')
+    snapshot = _snapshot(source, [item])
+    snapshot['sources'][0]['last_sync_status'] = 'failed'
+    snapshot['sources'][0]['last_successful_sync_at'] = None
+    item['source']['last_sync_status'] = 'failed'
+    path = tmp_path / 'jobs.json'
+    path.write_text(json.dumps(snapshot), encoding='utf-8')
+
+    with client.application.app_context():
+        import pytest
+        with pytest.raises(ValueError, match='fresh successful official-source check'):
+            import_verified_snapshot(path)
+        assert JobNotification.query.filter_by(slug='stale-source-job').count() == 0
+
+
+def test_snapshot_import_deadline_uses_opportunity_timezone_and_cutoff():
+    from app.jobs.snapshot_import import _deadline_is_current
+
+    # 00:30 UTC on 15 Nov is still 19:30 on 14 Nov in New York.
+    before_local_deadline = datetime(2026, 11, 15, 0, 30, tzinfo=timezone.utc)
+    assert _deadline_is_current(
+        date(2026, 11, 14),
+        'America/New_York',
+        None,
+        now=before_local_deadline,
+    ) == (True, None)
+
+    # 22:00 UTC is 17:00 EST; the explicit cutoff has just been reached.
+    at_local_cutoff = datetime(2026, 11, 14, 22, 0, tzinfo=timezone.utc)
+    assert _deadline_is_current(
+        date(2026, 11, 14),
+        'America/New_York',
+        time(17, 0),
+        now=at_local_cutoff,
+    ) == (False, 'cutoff')

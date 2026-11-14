@@ -110,14 +110,38 @@ const hasSafePublicSlug=item=>{
   return slug.length<=200&&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)&&Boolean(item?.title)
 }
 
-function indiaToday(){
-  return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
-}
 function hasCurrentDeadline(item){
   const deadline=String(item?.deadline||'')
   if(!/^\d{4}-\d{2}-\d{2}$/.test(deadline))return false
   const parsed=new Date(deadline+'T00:00:00Z')
-  return !Number.isNaN(parsed.getTime())&&parsed.toISOString().slice(0,10)===deadline&&deadline>=indiaToday()
+  return !Number.isNaN(parsed.getTime())&&parsed.toISOString().slice(0,10)===deadline&&['open','deadline_today'].includes(jobDeadlineState(item))
+}
+function jobSourceIsFresh(item){
+  const source=item?.source||{}
+  if(!['success','running'].includes(String(source.last_sync_status||'')))return false
+  const checked=Date.parse(String(source.last_successful_sync_at||source.last_sync_completed_at||''))
+  const seen=Date.parse(String(item?.last_seen_at||''))
+  const age=Date.now()-checked
+  const seenAge=Date.now()-seen
+  return Number.isFinite(checked)&&Number.isFinite(seen)&&age>=-5*60*1000&&age<=36*60*60*1000&&seenAge>=-5*60*1000&&seenAge<=36*60*60*1000
+}
+function jobDeadlineState(item){
+  const deadline=String(item?.deadline||'')
+  const timeZone=String(item?.deadline_timezone||'Asia/Kolkata')
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(deadline))return 'unverified'
+  let parts
+  try{
+    const formatted=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date())
+    const value=Object.fromEntries(formatted.map(part=>[part.type,part.value]))
+    parts={date:`${value.year}-${value.month}-${value.day}`,time:`${value.hour}:${value.minute}`}
+  }catch{return 'unverified'}
+  if(deadline<parts.date)return 'closed'
+  if(deadline>parts.date)return 'open'
+  const cutoff=String(item?.deadline_cutoff_time||'').slice(0,5)
+  return cutoff&&parts.time>=cutoff?'closed':'deadline_today'
+}
+function isVerifiedOpenJob(item){
+  return item?.status==='published'&&jobSourceIsFresh(item)&&hasCurrentDeadline(item)&&jobDeadlineState(item)==='open'
 }
 
 function uniqueBySlug(items){
@@ -133,7 +157,7 @@ function uniqueBySlug(items){
 export function readJobs(){
   // Older snapshots can carry forward a legacy duplicate slug. Keep one
   // canonical public URL until the next backend refresh repairs the source.
-  return uniqueBySlug(readSnapshot('jobs.json').filter(item=>item?.status==='published'&&hasCurrentDeadline(item)&&hasSafePublicSlug(item)))
+  return uniqueBySlug(readSnapshot('jobs.json').filter(item=>isVerifiedOpenJob(item)&&hasSafePublicSlug(item)))
 }
 
 // Only government recruitment detail pages are part of the SEO index surface.
@@ -155,9 +179,12 @@ function isVerifiedScholarship(item){
   if(deadline&&item?.deadline_type!=='student_application')return false
   if(!deadline)return status==='open'&&/\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|open for applications|registration\b.{0,80}\b(?:is|are)\s+(?:currently\s+)?open|application process is open)\b/i.test(String(item?.status_evidence||''))
   if(!hasCurrentDeadline(item))return false
-  if(deadline===indiaToday())return status==='deadline_today'
-  return status==='open'
+  const deadlineState=jobDeadlineState(item)
+  if(deadlineState==='deadline_today')return status==='deadline_today'
+  return deadlineState==='open'&&status==='open'
 }
 export function readScholarships(){
-  return readSnapshot('scholarships.json').filter(item=>isVerifiedScholarship(item)&&hasSafePublicSlug(item))
+  return readSnapshot('scholarships.json')
+    .map(item=>jobDeadlineState(item)==='deadline_today'&&item?.application_status==='open'?{...item,application_status:'deadline_today'}:item)
+    .filter(item=>isVerifiedScholarship(item)&&hasSafePublicSlug(item))
 }

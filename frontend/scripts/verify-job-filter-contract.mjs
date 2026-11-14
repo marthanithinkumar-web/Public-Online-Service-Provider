@@ -10,7 +10,11 @@ const api=read('backend/app/routes/jobs.py')
 
 const required=[
   ['published status',/job\.status!=='published'/],
-  ['current explicit deadline',/hasCurrentDeadline\(job\.deadline\)/],
+  ['current explicit deadline state',/function deadlineState\(job:JobNotification\)/],
+  ['deadline closes after its date',/if\(deadline<local\.date\)return 'closed'/],
+  ['same-day cutoff closes at the official minute',/if\(cutoff&&local\.time\.slice\(0,5\)>=cutoff\)return 'closed'/],
+  ['fresh official source verification',/function sourceIsFresh\(job:JobNotification\)/],
+  ['public feed requires fresh source and deadline state',/function isVerifiedPublicJob\(job:JobNotification\)[\s\S]*?sourceIsFresh\(job\)[\s\S]*?deadlineState\(job\)/],
   ['government/private type',/job\.job_type!==type/],
   ['featured flag',/!job\.is_featured/],
   ['search all normalized tokens',/tokens\.every\(token=>searchable\.includes\(token\)\)/],

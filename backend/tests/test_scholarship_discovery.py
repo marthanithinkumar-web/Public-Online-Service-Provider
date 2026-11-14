@@ -529,3 +529,158 @@ def test_nsp_parser_does_not_publish_scheme_before_its_official_open_date():
     assert item['application_status'] == 'unverified'
     assert item['review_reason'] == 'official_scheme_not_yet_opened'
     assert 'Scheme Open from : 15-11-2026' in item['status_evidence']
+
+
+def test_current_nsp_cards_keep_yasasvi_and_free_coaching_open_but_csss_unopened():
+    html = '''
+    <html><body>
+      <div>Academic Year 2026-27</div>
+      <button>Department of Social Justice &amp; Empowerment (Backward Classes)</button>
+      <div>PM YASASVI Central Sector Scheme Of Top Class Education In Schools For OBC, EBC And DNT Students (Merit Based Scheme)</div>
+      <div>Scheme Open from : 22-10-2026</div>
+      <div>Student Application Open till : 30-11-2026</div>
+      <div>PM YASASVI Central Sector Scheme Of Top Class Education In College For OBC, EBC And DNT Students (Merit Based Scheme)</div>
+      <div>Scheme Open from : 01-06-2026</div>
+      <div>Student Application Open till : 30-11-2026</div>
+      <button>Department of Social Justice &amp; Empowerment</button>
+      <div>Free Coaching For SCs OBCs And Beneficiaries Of PM Cares Children Scheme (Welfare Based Scheme)</div>
+      <div>Scheme Open from : 03-08-2026</div>
+      <div>Student Application Open till : 30-11-2026</div>
+      <button>Department of Higher Education</button>
+      <div>PM-USP - Central Sector Scheme Of Scholarship For College And University Students (CSSS) (Merit Based Scheme)</div>
+      <div>Scheme : NOT YET OPENED</div>
+      <div>Student Application Open till : 30-11-2026</div>
+      <button>Ministry of Labour &amp; Employment</button>
+      <div>Financial Assistance For Education To The Wards Of Beedi/Cine/IOMC/LSDM- Pre Matric (Welfare Based Scheme)</div>
+      <div>Scheme Open from : 01-06-2026</div>
+      <div>Student Application Closed on : 31-10-2026</div>
+      <div>Defective Application Verification Open till:15-11-2026</div>
+    </body></html>
+    '''
+    src = source('nsp', 'National Scholarship Portal', 'https://scholarships.gov.in/All-Scholarships', 'nsp')
+    checked = datetime(2026, 11, 13, 21, 10, tzinfo=timezone.utc)
+
+    items = parse_nsp(html, src, now=checked)
+    by_title = {item['title'].lower(): item for item in items}
+    school = next(item for title, item in by_title.items() if 'top class education in schools' in title)
+    college = next(item for title, item in by_title.items() if 'top class education in college' in title)
+    coaching = next(item for title, item in by_title.items() if 'free coaching' in title)
+    csss = next(item for title, item in by_title.items() if 'central sector scheme of scholarship for college and university students' in title)
+    beedi = next(item for title, item in by_title.items() if 'beedi' in title)
+
+    assert school['application_open_date'] == '2026-10-22'
+    assert school['deadline'] == '2026-11-30'
+    assert school['application_status'] == 'open'
+    assert college['application_open_date'] == '2026-06-01'
+    assert college['application_status'] == 'open'
+    assert coaching['application_open_date'] == '2026-08-03'
+    assert coaching['application_status'] == 'open'
+    assert csss['application_status'] == 'unverified'
+    assert csss['review_reason'] == 'official_scheme_not_yet_opened'
+    assert beedi['application_status'] == 'closed'
+    assert beedi['deadline'] == '2026-10-31'
+
+
+def test_scholarship_catalog_marks_open_deadline_today_as_warning_not_verified_open(tmp_path, monkeypatch):
+    from app.scholarships import catalog
+
+    checked = '2026-11-15T10:00:00+00:00'
+    payload = {
+        'generated_at': checked,
+        'items': [{
+            'id': 'nsp-nmms',
+            'slug': 'nmms',
+            'title': 'National Means Cum Merit Scholarship',
+            'provider': 'Department of School Education & Literacy',
+            'status': 'active',
+            'application_status': 'open',
+            'deadline': '2026-11-15',
+            'application_deadline': '2026-11-15',
+            'application_deadline_type': 'student_application',
+            'deadline_type': 'student_application',
+            'source_url': 'https://scholarships.gov.in/All-Scholarships',
+            'source_type': 'official',
+            'source_key': 'nsp',
+            'is_official': True,
+            'source_checked_at': checked,
+            'verified_at': checked,
+            'status_evidence': 'Student Application Open till : 15-11-2026',
+            'stale_source': False,
+        }],
+    }
+    path = tmp_path / 'scholarships.json'
+    path.write_text(json.dumps(payload), encoding='utf-8')
+    monkeypatch.setattr(catalog, 'CATALOG_PATH', path)
+
+    result = catalog.load_catalog(now=datetime(2026, 11, 15, 12, 0, tzinfo=timezone.utc))
+
+    assert result['count'] == 1
+    assert result['items'][0]['application_status'] == 'deadline_today'
+    assert result['verified_open_count'] == 0
+    assert result['deadline_today_count'] == 1
+
+
+def test_refresh_snapshot_writes_valid_json_with_trailing_newline(tmp_path):
+    path = tmp_path / 'scholarships.json'
+    item = {
+        'id': 'nsp-json-roundtrip',
+        'slug': 'nsp-json-roundtrip',
+        'title': 'JSON Roundtrip Scholarship',
+        'provider': 'Government of India',
+        'source_name': 'National Scholarship Portal',
+        'source_url': 'https://scholarships.gov.in/All-Scholarships',
+        'application_url': 'https://scholarships.gov.in/Students',
+        'deadline': '2026-11-30',
+        'status': 'active',
+        'application_status': 'open',
+        'deadline_type': 'student_application',
+        'status_evidence': 'Student Application Open till : 30-11-2026',
+        'source_checked_at': NOW.isoformat(),
+        'verified_at': NOW.isoformat(),
+        'last_seen_at': NOW.isoformat(),
+        'source_key': 'nsp',
+        'source_type': 'official',
+        'is_official': True,
+        'record_type': 'scholarship',
+    }
+    path.write_text(json.dumps({'generated_at': NOW.isoformat(), 'items': [item]}), encoding='utf-8')
+
+    payload = refresh_snapshot(path, today=date(2026, 9, 4), discover=False, now=NOW)
+
+    written = path.read_text(encoding='utf-8')
+    assert written.endswith('\n')
+    parsed = json.loads(written)
+    assert parsed['count'] == payload['count'] == 1
+    assert parsed['items'][0]['slug'] == 'nsp-json-roundtrip'
+
+
+def test_scholarship_catalog_uses_item_timezone_and_cutoff():
+    from app.scholarships.catalog import _active, _normalise_deadline_today
+
+    now = datetime(2026, 11, 15, 0, 30, tzinfo=timezone.utc)
+    new_york_item = {
+        'title': 'Synthetic timezone scholarship',
+        'status': 'active',
+        'source_type': 'official',
+        'is_official': True,
+        'source_checked_at': now.isoformat(),
+        'application_status': 'open',
+        'deadline': '2026-11-14',
+        'deadline_type': 'student_application',
+        'deadline_timezone': 'America/New_York',
+        'status_evidence': 'Student Application Open till: 14-11-2026',
+    }
+    normalized = _normalise_deadline_today(new_york_item, now=now)
+    assert normalized['application_status'] == 'deadline_today'
+    assert _active(normalized, now=now) is True
+
+    india_cutoff_item = {
+        **new_york_item,
+        'deadline': '2026-11-15',
+        'deadline_timezone': 'Asia/Kolkata',
+        'deadline_cutoff_time': '17:00',
+        'application_status': 'deadline_today',
+    }
+    after_cutoff = datetime(2026, 11, 15, 12, 0, tzinfo=timezone.utc)  # 17:30 IST
+    india_cutoff_item['source_checked_at'] = after_cutoff.isoformat()
+    assert _active(india_cutoff_item, now=after_cutoff) is False

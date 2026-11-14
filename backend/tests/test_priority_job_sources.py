@@ -2,7 +2,7 @@ from app.jobs import sources
 from app.jobs.priority_sources import parse_drdo, parse_kvs, parse_rbi, parse_sbi
 from app.jobs import snapshot, notice_enrichment
 from app.jobs.sources import JobItem, SOURCE_DEFINITIONS, parse_all_dates, parse_date, parse_explicit_deadline
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 
 
 def test_employment_news_all_jobs_is_removed_and_priority_sources_are_registered():
@@ -285,3 +285,95 @@ def test_drdo_end_date_is_used_only_on_official_drdo_vacancy_detail(monkeypatch)
     )
     notice_enrichment.enrich_job_item(item)
     assert item.deadline == date(2026, 11, 9)
+
+
+def test_sbi_grouped_parser_extracts_explicit_application_cutoff_time():
+    html = '''
+      <p>RECRUITMENT OF SPECIALIST CADRE OFFICERS ON REGULAR BASIS (Last date to apply: 13.11.2099 at 17:00 hrs IST)</p>
+      <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/28</p>
+      <ul>
+        <li><a href="https://sbi.bank.in/documents/adv28.pdf/document-id">DOWNLOAD ADVERTISEMENT English</a></li>
+        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-28/apply">APPLY ONLINE</a></li>
+      </ul>
+    '''
+    items = parse_sbi(html, 'https://sbi.bank.in/web/careers/current-openings')
+    assert len(items) == 1
+    assert items[0].deadline.isoformat() == '2099-11-13'
+    assert items[0].deadline_cutoff_time.isoformat(timespec='minutes') == '17:00'
+
+
+def test_generic_rbi_parser_extracts_explicit_application_cutoff_time():
+    html = '''
+      <ul>
+        <li><a href="/Scripts/bs_viewcontent.aspx?Id=5999">
+          Direct Recruitment for Officers Grade B - Last date to apply: 13.11.2099 at 17:00 IST
+        </a></li>
+      </ul>
+    '''
+    items = parse_rbi(html, 'https://opportunities.rbi.org.in/Scripts/Vacancies.aspx')
+    assert len(items) == 1
+    assert items[0].deadline.isoformat() == '2099-11-13'
+    assert items[0].deadline_cutoff_time.isoformat(timespec='minutes') == '17:00'
+
+
+def test_sbi_grouped_parser_includes_current_manager_security_opening():
+    html = '''
+      <p>RECRUITMENT OF SPECIALIST CADRE OFFICERS ON REGULAR BASIS FOR THE POST OF MANAGER(SECURITY)/DEPUTY MANAGER (Apply Online from 04.11.2026 TO 25.11.2026)</p>
+      <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/28</p>
+      <ul>
+        <li><a href="https://sbi.bank.in/documents/77530/57941334/03112026_1_ADV_Security_Officer.pdf/69e017fe-5e1c-6312-c285-8855f9882102?t=1793713497818">DOWNLOAD ADVERTISEMENT English</a></li>
+        <li><a href="https://ibpsreg.ibps.in/sbirscooct26/">APPLY ONLINE (04.11.2026 to 25.11.2026)</a></li>
+      </ul>
+    '''
+    items = parse_sbi(html, 'https://sbi.bank.in/web/careers/current-openings')
+    assert len(items) == 1
+    assert 'MANAGER(SECURITY)/DEPUTY MANAGER' in items[0].title
+    assert items[0].deadline.isoformat() == '2026-11-25'
+    assert items[0].official_notice_url.startswith('https://sbi.bank.in/documents/')
+    assert items[0].application_url == 'https://ibpsreg.ibps.in/sbirscooct26/'
+
+
+def test_job_snapshot_serializes_deadline_today_warning_and_cutoff():
+    definition = next(source for source in SOURCE_DEFINITIONS if source.key == 'rbi')
+    now = datetime(2026, 11, 14, 20, 2, tzinfo=timezone.utc)  # 01:32 IST on 15 Nov
+    checked_at = now.isoformat().replace('+00:00', 'Z')
+    no_cutoff = JobItem(
+        external_id='snapshot-today-no-cutoff',
+        title='Synthetic deadline-today notice',
+        organization='Reserve Bank of India',
+        official_notice_url=definition.listing_url,
+        deadline=date(2026, 11, 15),
+        deadline_timezone='Asia/Kolkata',
+        confidence=0.95,
+    )
+    warning = snapshot._serialize_item(no_cutoff, definition, checked_at, now=now)
+    assert warning['application_status'] == 'deadline_today'
+    assert warning['status_label'] == 'Deadline today—check official portal'
+    assert warning['can_apply'] is False
+    assert warning['source_checked_at'] == checked_at
+
+    with_cutoff = JobItem(
+        external_id='snapshot-today-with-cutoff',
+        title='Synthetic deadline-today cutoff notice',
+        organization='Reserve Bank of India',
+        official_notice_url=definition.listing_url,
+        deadline=date(2026, 11, 15),
+        deadline_cutoff_time=time(17, 0),
+        deadline_timezone='Asia/Kolkata',
+        confidence=0.95,
+    )
+    allowed = snapshot._serialize_item(with_cutoff, definition, checked_at, now=now)
+    assert allowed['application_status'] == 'deadline_today'
+    assert allowed['can_apply'] is True
+    assert '17:00 Asia/Kolkata' in allowed['status_label']
+
+
+def test_job_model_deadline_status_uses_the_job_timezone():
+    from app.models.job import JobNotification
+
+    job = JobNotification(
+        deadline=date(2026, 11, 14),
+        deadline_timezone='America/New_York',
+    )
+    now = datetime(2026, 11, 15, 0, 30, tzinfo=timezone.utc)  # 19:30 EST on 14 Nov
+    assert job.deadline_status(now=now) == 'deadline_today'

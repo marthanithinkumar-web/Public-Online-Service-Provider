@@ -3,7 +3,7 @@ from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse
 
 from .official_fetch import validate_official_url
-from .sources import JobItem, SourceDefinition, _first, _looks_like_initial_recruitment, _row_url, _table_records, clean, parse_all_dates, parse_date, parse_explicit_deadline, parse_html, india_today
+from .sources import JobItem, SourceDefinition, _first, _looks_like_initial_recruitment, _row_url, _table_records, clean, parse_all_dates, parse_date, parse_explicit_deadline, parse_explicit_deadline_cutoff_time, parse_html, india_today
 
 _EXCLUDED = (
     'result', 'results', 'admit card', 'call letter', 'answer key', 'interview schedule',
@@ -210,6 +210,8 @@ def _grouped_official_parser(organization, summary, fallback=None):
                 official_notice_url=official_notice_url,
                 location='India',
                 deadline=deadline,
+                deadline_cutoff_time=parse_explicit_deadline_cutoff_time(' '.join([title] + [label for _, label in application_candidates] + [label for _, label in notice_candidates])),
+                deadline_timezone='Asia/Kolkata',
                 application_url=application_url,
                 summary=summary,
                 confidence=0.96,
@@ -265,6 +267,8 @@ def _generic_official_parser(organization, summary):
                 official_notice_url=base_url if is_application_link else notice_url,
                 location='India',
                 deadline=deadline,
+                deadline_cutoff_time=parse_explicit_deadline_cutoff_time(text),
+                deadline_timezone='Asia/Kolkata',
                 application_url=application_url,
                 summary=summary,
                 confidence=0.92 if deadline else 0.84,
@@ -315,7 +319,7 @@ def parse_kvs(html, base_url):
         published_text = _first(record, ('published on', 'published date', 'publication date', 'date'))
         issue_date = parse_date(published_text)
         deadline = parse_explicit_deadline(title)
-        if deadline is not None and deadline < date.today():
+        if deadline is not None and deadline < india_today():
             continue
         slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')[:72]
         items.append(JobItem(
@@ -326,6 +330,8 @@ def parse_kvs(html, base_url):
             location='India',
             issue_date=issue_date,
             deadline=deadline,
+            deadline_cutoff_time=parse_explicit_deadline_cutoff_time(' '.join(str(value) for value in record.values())),
+            deadline_timezone='Asia/Kolkata',
             summary='Official KVS recruitment notice. Confirm post-specific eligibility, closing date and application instructions in the linked official notice.',
             confidence=0.95 if deadline else 0.9,
             warnings=[] if deadline else ['Closing date must be confirmed in the linked official KVS notice.'],

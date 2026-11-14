@@ -15,7 +15,21 @@ export type ScholarshipFeed={
 }
 
 const api=axios.create({baseURL:apiBase,timeout:5000})
-const indiaToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())
+const zonedParts=(timeZone='Asia/Kolkata')=>{
+  const parts=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date())
+  const value=Object.fromEntries(parts.map(part=>[part.type,part.value]))
+  return {date:`${value.year}-${value.month}-${value.day}`,time:`${value.hour}:${value.minute}`}
+}
+const scholarshipDeadlineState=(item:Scholarship)=>{
+  const deadline=String(item.deadline||'')
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(deadline))return 'unverified'
+  let local
+  try{local=zonedParts(item.deadline_timezone||'Asia/Kolkata')}catch{return 'unverified'}
+  if(deadline<local.date)return 'closed'
+  if(deadline>local.date)return 'open'
+  const cutoff=String(item.deadline_cutoff_time||'').slice(0,5)
+  return cutoff&&local.time>=cutoff?'closed':'deadline_today'
+}
 const rollingOpenEvidence=/\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|open for applications|registration\b.{0,80}\b(?:is|are)\s+(?:currently\s+)?open|application process is open)\b/i
 const sourceCheckIsFresh=(item:Scholarship)=>{
   const checked=Date.parse(item.source_checked_at||item.verified_at||item.last_seen_at||'')
@@ -23,7 +37,7 @@ const sourceCheckIsFresh=(item:Scholarship)=>{
   return Number.isFinite(checked)&&age>=-5*60*1000&&age<=36*60*60*1000
 }
 export const scholarshipStatusLabel=(item:Scholarship)=>{
-  if(item.application_status==='deadline_today')return 'Deadline today—check official portal'
+  if(item.application_status==='deadline_today'){const cutoff=String(item.deadline_cutoff_time||'').slice(0,5);return cutoff?`Deadline today—closes at ${cutoff} ${item.deadline_timezone||'Asia/Kolkata'}`:'Deadline today—check official portal'}
   if(item.application_status==='open'&&item.application_scope==='renewal_only')return 'Verified open — renewal only'
   if(item.application_status==='open')return 'Verified open'
   if(item.application_status==='closed'||item.status==='closed')return 'Closed—deadline passed'
@@ -42,10 +56,9 @@ const isActive=(item:Scholarship)=>{
   const status=item.application_status
   if(item.deadline&&item.deadline_type!=='student_application')return false
   if(!item.deadline)return status==='open'&&rollingOpenEvidence.test(String(item.status_evidence||''))
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(item.deadline))return false
-  const end=new Date(item.deadline+'T00:00:00Z')
-  if(Number.isNaN(end.getTime())||end.toISOString().slice(0,10)!==item.deadline||item.deadline<indiaToday())return false
-  if(item.deadline===indiaToday())return status==='deadline_today'
+  const deadlineState=scholarshipDeadlineState(item)
+  if(deadlineState==='closed'||deadlineState==='unverified')return false
+  if(deadlineState==='deadline_today')return status==='open'||status==='deadline_today'
   return status==='open'
 }
 function scholarshipPriority(item:Scholarship){
@@ -65,12 +78,14 @@ function compareScholarships(a:Scholarship,b:Scholarship){
 }
 function filter(data:ScholarshipFeed,q=''){
   const tokens=q.toLowerCase().replace(/[^a-z0-9]+/g,' ').split(' ').filter(Boolean)
-  const items=(data.items||[]).filter(isActive).filter(item=>{
+  const items: Scholarship[]=(data.items||[]).filter(isActive).map((item): Scholarship => scholarshipDeadlineState(item)==='deadline_today'&&item.application_status==='open'?{...item,application_status:'deadline_today'}:item).filter(item=>{
     if(!tokens.length)return true
     const hay=[item.title,item.provider,item.source_name,item.source_type,item.region,item.education_level,item.category,item.eligibility,item.academic_year].join(' ').toLowerCase()
     return tokens.every(token=>hay.includes(token))
   }).sort(compareScholarships)
-  return {...data,items,count:items.length}
+  const verifiedOpenCount=items.filter(item=>item.application_status==='open').length
+  const deadlineTodayCount=items.filter(item=>item.application_status==='deadline_today').length
+  return {...data,items,count:items.length,verified_open_count:verifiedOpenCount,deadline_today_count:deadlineTodayCount}
 }
 async function snapshot(){
   const response=await fetch('/data/scholarships.json',{cache:'force-cache',headers:{Accept:'application/json'}})

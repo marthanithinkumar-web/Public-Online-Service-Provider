@@ -4,7 +4,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from .catalog import CATALOG_PATH, _active
+from .catalog import CATALOG_PATH, _active, _normalise_deadline_today
 from .discovery import dedupe_items, discover_official_scholarships, is_official_url, slugify, source_key_for_url
 from .source_enrichment import enrich_scholarships
 
@@ -107,7 +107,7 @@ def refresh_snapshot(path=CATALOG_PATH,today=None,*,discover=True,strict=False,n
         still_current=(not item.get('deadline') or str(item.get('deadline'))[:10]>=check_date.isoformat()) and str(item.get('status') or '').lower() not in {'closed','expired','cancelled','withdrawn'}
         if not discover or (not source_health.get('ok') and still_current and age is not None and age<=OFFICIAL_FAILURE_GRACE_DAYS):
             item['stale_source']=True;item['application_status']='unverified';stale_preserved.append(item)
-    items=dedupe_items([*discovered,*preserved]);items=[item for item in items if _active(item,check_date,now=now)];items.sort(key=lambda item:(0 if item.get('source_type')=='official' else 1,item.get('deadline') or '9999-12-31',item.get('title') or ''))
+    items=dedupe_items([*discovered,*preserved]);items=[_normalise_deadline_today(item,check_date) for item in items];items=[item for item in items if _active(item,check_date,now=now)];items.sort(key=lambda item:(0 if item.get('source_type')=='official' else 1,item.get('deadline') or '9999-12-31',item.get('title') or ''))
     active_keys={(slugify(item.get('title')),slugify(item.get('region') or 'india')) for item in items}
     discovered_keys={(slugify(item.get('title')),slugify(item.get('region') or 'india')) for item in discovered}
     previous_keys={(slugify(item.get('title')),slugify(item.get('region') or 'india')) for item in previous_items}
@@ -143,7 +143,7 @@ def refresh_snapshot(path=CATALOG_PATH,today=None,*,discover=True,strict=False,n
             unverified_candidates.append(value)
     unverified_items=dedupe_items(unverified_candidates)
     official_count=sum(1 for item in items if item.get('source_type')=='official');private_count=sum(1 for item in items if item.get('source_type')=='private');stale_source_count=len(stale_items)
-    refreshed={'generated_at':now.isoformat(),'count':len(items),'official_count':official_count,'private_count':private_count,'verified_open_count':sum(1 for item in items if item.get('application_status')=='open'),'deadline_today_count':sum(1 for item in items if item.get('application_status')=='deadline_today'),'stale_source_count':stale_source_count,'closed_count':len(closed_items),'unverified_count':len(stale_items)+len(unverified_items),'discovery':{'mode':'official_daily_discovery' if discover else 'expiry_only','checked_at':now.isoformat(),'source_health':health},'items':items,'closed_items':closed_items,'stale_items':stale_items,'unverified_items':unverified_items};path.write_text(json.dumps(refreshed,ensure_ascii=False,indent=2)+'\\n',encoding='utf-8');return refreshed
+    refreshed={'generated_at':now.isoformat(),'count':len(items),'official_count':official_count,'private_count':private_count,'verified_open_count':sum(1 for item in items if item.get('application_status')=='open'),'deadline_today_count':sum(1 for item in items if item.get('application_status')=='deadline_today'),'stale_source_count':stale_source_count,'closed_count':len(closed_items),'unverified_count':len(stale_items)+len(unverified_items),'discovery':{'mode':'official_daily_discovery' if discover else 'expiry_only','checked_at':now.isoformat(),'source_health':health},'items':items,'closed_items':closed_items,'stale_items':stale_items,'unverified_items':unverified_items};path.write_text(json.dumps(refreshed,ensure_ascii=False,indent=2)+'\n',encoding='utf-8');return refreshed
 
 def main():
     parser=argparse.ArgumentParser(description='Discover current scholarships from official sources and refresh the public snapshot.');parser.add_argument('--output',default=str(CATALOG_PATH));parser.add_argument('--no-discover',action='store_true',help='Only remove closed/stale entries; do not contact official sources.');parser.add_argument('--strict',action='store_true',help='Fail rather than publish when the primary official discovery source is unhealthy.');args=parser.parse_args();payload=refresh_snapshot(args.output,discover=not args.no_discover,strict=args.strict);healthy=sum(1 for source in payload.get('discovery',{}).get('source_health',{}).values() if source.get('ok'));print(f"Published {payload['count']} active scholarships ({payload['official_count']} official, {payload['private_count']} private/partner); {healthy} official sources healthy.")

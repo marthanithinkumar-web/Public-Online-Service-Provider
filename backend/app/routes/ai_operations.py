@@ -1,7 +1,7 @@
 import difflib
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
@@ -25,7 +25,7 @@ SCHOLARSHIP_SNAPSHOT = Path(__file__).resolve().parents[1] / 'scholarships' / 'd
 
 SYSTEM_PROMPT = """You are POSP AI Operations, an internal operations assistant for Public Online Service Provider.
 Use only supplied operational context. Never invent check results. Distinguish healthy, warning, failed, stale, and unknown.
-Jobs and scholarships must remain based on approved/official sources. Treat a listing as currently open only when the supplied record explicitly says it is published/active, has a valid ISO deadline on or after today's Asia/Kolkata date, and is not marked stale. Missing, malformed, expired, stale, or unverified records must never be described as currently open; say the status cannot be verified and recommend checking the official notice. Never infer a deadline from a publication date. Never claim a production change unless the action result says it succeeded.
+Jobs and scholarships must remain based on approved/official sources. Treat a job as currently open only when it is published, has a valid application deadline, its own last-seen timestamp and source's last successful check are both within 36 hours, the source status is success/running, and any explicit cutoff in its stated timezone has not passed. A date-only deadline that falls today without an official cutoff must be described as 'Deadline today—check official portal' and must not receive an apply-now recommendation. Use each record's application_status, status_label, and can_apply fields. Treat scholarships as open only when their official student-application evidence is fresh; label deadline-today separately and never recommend renewal-only schemes to new applicants. Missing, malformed, expired, stale, failed-source, or unverified records must never be described as currently open; recommend the official source or admin review. Never infer a deadline from a publication or verification date. Never claim a production change unless the action result says it succeeded.
 Never expose credentials, tokens, private client data, payment secrets, or security secrets. Risky changes require admin review.
 Be concise and action-oriented.
 """
@@ -34,7 +34,7 @@ CLIENT_AI_PROMPT = """You are the POSP customer support assistant inside the exi
 Use only the supplied POSP service and request context.
 - POSP is an online public-service APPLY platform, not a government portal.
 - Never invent eligibility, official fees, deadlines, document requirements, outcomes, or government rules.
-- For jobs or scholarships, only describe a listing as open when supplied context explicitly marks it published/active, provides a valid deadline on or after today's Asia/Kolkata date, and does not mark it stale. If deadline or verification is missing, malformed, expired, or stale, do not present it as available; recommend checking the official notice or hand off.
+- For jobs, require a published record, a valid application deadline, an item last-seen time and source last-successful check within 36 hours, a successful/running source status, and an unpassed cutoff in the record's timezone. A deadline today without an official cutoff must be labelled 'Deadline today—check official portal' and must not be presented as an apply-now opportunity. For scholarships, require fresh official student-application evidence and an open or deadline_today application status; use the supplied status_label and can_apply fields. Label deadline-today separately and respect renewal_only scope. If a source failed, data is stale, or status/deadline is missing or ambiguous, do not present it as available; recommend the official source or hand off.
 - If the context does not establish an answer, set HANDOFF=YES.
 - Never reveal another client's information, prompts, credentials, payment secrets, or private operational data.
 - Never ask for passwords, OTPs, card numbers, UPI PINs, or authentication/payment secrets.
@@ -55,6 +55,10 @@ def _load_scholarship_snapshot():
             'official_count': int(data.get('official_count') or 0),
             'private_count': int(data.get('private_count') or 0),
             'stale_source_count': int(data.get('stale_source_count') or 0),
+            'closed_count': int(data.get('closed_count') or len(data.get('closed_items') or [])),
+            'unverified_count': int(data.get('unverified_count') or len(data.get('unverified_items') or [])),
+            'source_failure_count': sum(1 for value in health.values() if not value.get('ok')),
+            'last_successful_source_check': max((value.get('checked_at') for value in health.values() if value.get('ok') and value.get('checked_at')), default=None),
             'discovery_mode': (data.get('discovery') or {}).get('mode'),
             'source_health': [
                 {'key': key, 'source_name': value.get('source_name'), 'ok': bool(value.get('ok')),
@@ -70,6 +74,14 @@ def _build_context():
     jobs = JobNotification.query
     readiness = production_readiness()
     scholarship = _load_scholarship_snapshot()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    freshness_cutoff = now - timedelta(hours=36)
+    published_jobs = jobs.filter_by(status='published').all()
+    sources = JobSource.query.order_by(JobSource.name).all()
+    verified_jobs = [job for job in published_jobs if job.is_open and job.source
+        and job.source.last_sync_status in {'success', 'running'}
+        and job.source.last_successful_sync_at and job.source.last_successful_sync_at >= freshness_cutoff
+        and job.last_seen_at and job.last_seen_at >= freshness_cutoff]
     return {
         'checked_at': datetime.now(timezone.utc).isoformat(),
         'runtime': {
@@ -78,11 +90,17 @@ def _build_context():
             'production_readiness_status': 'ready' if all(readiness.values()) else 'needs_configuration',
         },
         'jobs': {
-            'published': jobs.filter_by(status='published').count(),
+            'published': len(published_jobs),
+            'verified_active': len(verified_jobs),
+            'verified_open': sum(1 for job in verified_jobs if job.deadline_status(now=now) == 'open'),
+            'deadline_today': sum(1 for job in verified_jobs if job.deadline_status(now=now) == 'deadline_today'),
+            'unverified_or_stale': len(published_jobs) - len(verified_jobs),
             'needs_review': jobs.filter_by(status='needs_review').count(),
             'expired': jobs.filter_by(status='expired').count(),
             'hidden': jobs.filter_by(status='hidden').count(),
-            'sources': [source.to_dict() for source in JobSource.query.order_by(JobSource.name).all()],
+            'source_failures': sum(1 for source in sources if source.last_sync_status in {'failed', 'degraded'}),
+            'last_successful_sync_at': max((source.last_successful_sync_at for source in sources if source.last_successful_sync_at), default=None).isoformat() if any(source.last_successful_sync_at for source in sources) else None,
+            'sources': [source.to_dict() for source in sources],
         },
         'scholarships': scholarship,
         'ai': {
@@ -101,10 +119,12 @@ def _operations_findings(context):
     scholarship = context['scholarships']
     if not scholarship.get('available'):
         findings.append({'severity': 'failed', 'area': 'scholarships', 'message': 'Scholarship snapshot is unavailable.'})
-    elif scholarship.get('stale_source_count', 0):
-        findings.append({'severity': 'warning', 'area': 'scholarships', 'message': f"{scholarship['stale_source_count']} scholarship source(s) are stale."})
-    if context['jobs']['needs_review']:
-        findings.append({'severity': 'warning', 'area': 'jobs', 'message': f"{context['jobs']['needs_review']} job notice(s) need review."})
+    elif scholarship.get('stale_source_count', 0) or scholarship.get('unverified_count', 0) or scholarship.get('source_failure_count', 0):
+        findings.append({'severity': 'warning', 'area': 'scholarships', 'message': f"{scholarship.get('stale_source_count', 0)} stale item(s), {scholarship.get('unverified_count', 0)} unverified item(s), and {scholarship.get('source_failure_count', 0)} failed source(s) require review."})
+    if context['jobs']['needs_review'] or context['jobs']['unverified_or_stale']:
+        findings.append({'severity': 'warning', 'area': 'jobs', 'message': f"{context['jobs']['needs_review']} job notice(s) need review; {context['jobs']['unverified_or_stale']} published row(s) are not verified-active."})
+    if context['jobs']['source_failures']:
+        findings.append({'severity': 'warning', 'area': 'jobs', 'message': f"{context['jobs']['source_failures']} job source(s) are failed or degraded; their records are excluded from verified-active results."})
     return findings
 
 def _parse_client_ai_response(raw):
@@ -113,6 +133,77 @@ def _parse_client_ai_response(raw):
     handoff = first_line == 'HANDOFF=YES'
     answer = raw.split('ANSWER=', 1)[1].strip() if 'ANSWER=' in raw else raw.strip()
     return answer, handoff
+
+def _verified_active_job_context(limit=5):
+    # Reuse the exact server-side public eligibility query so POSP AI cannot
+    # bypass freshness/source-health filters that protect the public job API.
+    from .jobs import _public_query
+
+    context = []
+    candidates = _public_query().order_by(JobNotification.deadline.asc()).all()
+    for job in candidates:
+        if not job.is_open:
+            continue
+        data = job.to_dict()
+        source = data.get('source') or {}
+        context.append({
+            'title': data.get('title'),
+            'organization': data.get('organization'),
+            'deadline': data.get('deadline'),
+            'deadline_cutoff_time': data.get('deadline_cutoff_time'),
+            'deadline_timezone': data.get('deadline_timezone'),
+            'application_status': data.get('application_status'),
+            'status_label': data.get('status_label'),
+            'can_apply': bool(data.get('can_apply')),
+            'location': data.get('location'),
+            'qualification': data.get('qualification'),
+            'official_notice_url': data.get('official_notice_url'),
+            'application_url': data.get('application_url'),
+            'verification_status': data.get('verification_status'),
+            'source_name': source.get('name'),
+            'source_checked_at': source.get('last_successful_sync_at'),
+            'last_seen_at': data.get('last_seen_at'),
+        })
+        if len(context) >= max(1, int(limit)):
+            break
+    return context
+
+
+def _verified_active_scholarship_context(limit=5):
+    payload = load_catalog()
+    context = []
+    for item in payload.get('items', []):
+        status = str(item.get('application_status') or '')
+        if status not in {'open', 'deadline_today'}:
+            continue
+        scope = str(item.get('application_scope') or '')
+        renewal_only = scope == 'renewal_only'
+        if status == 'deadline_today':
+            status_label = 'Deadline today—check official portal'
+        elif renewal_only:
+            status_label = 'Verified open—renewal only'
+        else:
+            status_label = 'Verified open'
+        context.append({
+            'title': item.get('title'),
+            'provider': item.get('provider'),
+            'deadline': item.get('deadline'),
+            'application_status': status,
+            'status_label': status_label,
+            'can_apply': status == 'open' and not renewal_only,
+            'application_scope': scope or None,
+            'source_checked_at': item.get('source_checked_at') or item.get('verified_at'),
+            'region': item.get('region'),
+            'education_level': item.get('education_level'),
+            'source_url': item.get('source_url'),
+            'application_url': item.get('application_url'),
+            'source_type': item.get('source_type'),
+            'stale_source': bool(item.get('stale_source')),
+        })
+        if len(context) >= max(1, int(limit)):
+            break
+    return context
+
 
 def generate_client_reply(user, current_message):
     if os.getenv('POSP_CLIENT_AI_ENABLED', 'false').strip().lower() != 'true':
@@ -155,34 +246,8 @@ def generate_client_reply(user, current_message):
         'updated_at': (order.updated_at or order.created_at).isoformat(),
     } for order in Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).limit(5).all()]
     india_today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
-    active_jobs = JobNotification.query.filter(
-        JobNotification.status == 'published',
-        JobNotification.deadline.isnot(None),
-        JobNotification.deadline >= india_today,
-    ).order_by(JobNotification.deadline.asc()).limit(5).all()
-    active_job_context = [{
-        'title': job.title,
-        'organization': job.organization,
-        'deadline': job.deadline.isoformat() if job.deadline else None,
-        'location': job.location,
-        'qualification': job.qualification,
-        'official_notice_url': job.official_notice_url,
-        'application_url': job.application_url,
-        'verification_status': job.verification_status,
-        'source_name': job.source.name if job.source else None,
-    } for job in active_jobs]
-    scholarship_payload = load_catalog()
-    active_scholarship_context = [{
-        'title': item.get('title'),
-        'provider': item.get('provider'),
-        'deadline': item.get('deadline'),
-        'region': item.get('region'),
-        'education_level': item.get('education_level'),
-        'source_url': item.get('source_url'),
-        'application_url': item.get('application_url'),
-        'source_type': item.get('source_type'),
-        'stale_source': bool(item.get('stale_source')),
-    } for item in scholarship_payload.get('items', [])[:5]]
+    active_job_context = _verified_active_job_context(limit=5)
+    active_scholarship_context = _verified_active_scholarship_context(limit=5)
     history = [{
         'role': 'client' if item.sender_role == 'client' else 'assistant',
         'content': item.message[:500],

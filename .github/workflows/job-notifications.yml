@@ -58,7 +58,7 @@ jobs:
         run: |
           python - <<'PY'
           import json
-          from datetime import date, datetime
+          from datetime import date, datetime, time as datetime_time, timedelta
           from pathlib import Path
           from zoneinfo import ZoneInfo
           from app.jobs.sources import SOURCE_BY_KEY
@@ -71,7 +71,7 @@ jobs:
           configured_keys = set(SOURCE_BY_KEY)
           snapshot_keys = {source.get('key') for source in data['sources'] if source.get('key')}
           assert snapshot_keys == configured_keys, f'Snapshot/source-registry mismatch: snapshot-only={sorted(snapshot_keys-configured_keys)}, registry-only={sorted(configured_keys-snapshot_keys)}'
-          today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+          now = datetime.now(ZoneInfo('UTC'))
           for item in data['items']:
               assert item['status'] == 'published'
               assert item['official_notice_url'].startswith('https://')
@@ -79,8 +79,32 @@ jobs:
               assert source_key in SOURCE_BY_KEY
               deadline = item.get('deadline')
               assert deadline, f"Published job has no explicit application deadline: {item.get('title')}"
-              assert date.fromisoformat(str(deadline)[:10]) >= today, f"Expired job remains in public snapshot: {item.get('title')} ({deadline})"
-          print(f"Validated {len(data['items'])} current published notice(s) from {len(data['sources'])} configured official source(s), using India-local deadline dates.")
+              deadline_date = date.fromisoformat(str(deadline)[:10])
+              deadline_tz = ZoneInfo(str(item.get('deadline_timezone') or 'Asia/Kolkata'))
+              local_now = now.astimezone(deadline_tz)
+              assert deadline_date >= local_now.date(), f"Expired job remains in public snapshot: {item.get('title')} ({deadline})"
+              application_status = item.get('application_status')
+              assert application_status in {'open', 'deadline_today'}, f"Unverified job remains public: {item.get('title')}"
+              if deadline_date == local_now.date():
+                  assert application_status == 'deadline_today', f"Deadline-today job is incorrectly marked open: {item.get('title')}"
+                  cutoff = item.get('deadline_cutoff_time')
+                  if not cutoff:
+                      assert item.get('can_apply') is False, f"Deadline-today job without a verified cutoff offers apply-now: {item.get('title')}"
+                  else:
+                      assert local_now.timetz().replace(tzinfo=None) < datetime_time.fromisoformat(str(cutoff)), f"Job is published after its official cutoff: {item.get('title')}"
+              else:
+                  assert application_status == 'open', f"Future-dated job has an invalid application status: {item.get('title')}"
+              assert item.get('deadline_timezone'), f"Published job has no deadline timezone: {item.get('title')}"
+              source = item.get('source') or {}
+              assert source.get('last_sync_status') == 'success', f"Published job source is not healthy: {item.get('title')}"
+              source_checked = source.get('last_successful_sync_at')
+              assert source_checked, f"Published job source has no successful check time: {item.get('title')}"
+              source_checked_at = datetime.fromisoformat(str(source_checked).replace('Z', '+00:00'))
+              if source_checked_at.tzinfo is None:
+                  source_checked_at = source_checked_at.replace(tzinfo=ZoneInfo('UTC'))
+              source_age = now - source_checked_at.astimezone(ZoneInfo('UTC'))
+              assert timedelta(0) <= source_age <= timedelta(hours=36), f"Published job source check is stale or future-dated: {item.get('title')}"
+          print(f"Validated {len(data['items'])} current published notice(s) from {len(data['sources'])} configured official source(s), using each opportunity's deadline timezone.")
           PY
           cp frontend/public/data/jobs.json /tmp/verified-jobs.json
 
@@ -124,6 +148,8 @@ jobs:
           import os
           import time
           import urllib.request
+          from datetime import date, datetime, time as datetime_time, timezone
+          from zoneinfo import ZoneInfo
           from pathlib import Path
 
           snapshot_path = Path(os.environ['SNAPSHOT_PATH'])
@@ -145,11 +171,11 @@ jobs:
 
           # Keep exact snapshot verification strict, but allow enough time for a
           # queued/cold Render deployment to finish and import the committed data.
-          deadline = time.time() + 20 * 60
+          verification_deadline = time.time() + 20 * 60
           last_total = None
           last_sources = 0
           last_sha = None
-          while time.time() < deadline:
+          while time.time() < verification_deadline:
               jobs = get_json(os.environ['JOBS_URL'])
               sources = get_json(os.environ['SOURCES_URL'])
               status = get_json(os.environ['SNAPSHOT_STATUS_URL'])
@@ -158,6 +184,24 @@ jobs:
               last_sha = str(status.get('sha256') or '')
               drift = abs(last_total - expected)
               exact_snapshot = bool(status.get('ready')) and last_sha == expected_sha
+              for item in jobs.get('items') or []:
+                  item_deadline = item.get('deadline')
+                  assert item_deadline, f"Production API returned an undated job: {item.get('title')}"
+                  deadline_date = date.fromisoformat(str(item_deadline)[:10])
+                  deadline_tz = ZoneInfo(str(item.get('deadline_timezone') or 'Asia/Kolkata'))
+                  local_now = datetime.now(timezone.utc).astimezone(deadline_tz)
+                  assert deadline_date >= local_now.date(), f"Production API returned an expired job: {item.get('title')}"
+                  application_status = item.get('application_status')
+                  assert application_status in {'open', 'deadline_today'}, f"Production API returned an unverified job: {item.get('title')}"
+                  if deadline_date == local_now.date():
+                      assert application_status == 'deadline_today', f"Production API mislabels deadline-today job: {item.get('title')}"
+                      cutoff = item.get('deadline_cutoff_time')
+                      if not cutoff:
+                          assert item.get('can_apply') is False, f"Production API exposes apply-now after unknown cutoff: {item.get('title')}"
+                      else:
+                          assert local_now.timetz().replace(tzinfo=None) < datetime_time.fromisoformat(str(cutoff)), f"Production API returned a job after its official cutoff: {item.get('title')}"
+                  else:
+                      assert application_status == 'open', f"Production API mislabels a future job: {item.get('title')}"
               print(
                   f"Production verification: {last_total} active published job(s), "
                   f"{last_sources} source(s); snapshot {expected}, allowed drift {tolerance}; "

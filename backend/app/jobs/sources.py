@@ -1,7 +1,7 @@
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 from html import unescape
 from html.parser import HTMLParser
 from typing import Callable
@@ -35,6 +35,8 @@ class JobItem:
     issue_date: date | None = None
     application_start_date: date | None = None
     deadline: date | None = None
+    deadline_cutoff_time: time | None = None
+    deadline_timezone: str = 'Asia/Kolkata'
     application_url: str | None = None
     confidence: float = 0.0
     warnings: list[str] = field(default_factory=list)
@@ -118,6 +120,69 @@ def parse_explicit_deadline(value):
                 return deadline
     return None
 
+
+def parse_explicit_deadline_cutoff_time(value):
+    """Extract a cutoff only when it is explicitly attached to an application deadline."""
+    text = clean(value)
+    date_token = (
+        r'(?:20\d{2}-\d{1,2}-\d{1,2}|'
+        r'\d{1,2}[./-]\d{1,2}[./-]20\d{2}|'
+        r'\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}|'
+        r'[A-Za-z]{3,9}\s+\d{1,2},?\s+20\d{2})'
+    )
+    time_token = r'(\d{1,2}[.:]\d{2}\s*(?:AM|PM)?)'
+
+    def as_time(raw):
+        raw = re.sub(r'\s+', '', raw).replace('.', ':')
+        match = re.fullmatch(r'(\d{1,2}):(\d{2})(AM|PM)?', raw, re.I)
+        if not match:
+            return None
+        hour, minute = int(match.group(1)), int(match.group(2))
+        meridiem = (match.group(3) or '').upper()
+        if minute > 59 or hour > (12 if meridiem else 23) or hour < (1 if meridiem else 0):
+            return None
+        if meridiem == 'AM':
+            hour = 0 if hour == 12 else hour
+        elif meridiem == 'PM':
+            hour = 12 if hour == 12 else hour + 12
+        return time(hour, minute)
+
+    # "On or before 17:00 hrs on 13.11.2099" places the time before the date.
+    match = re.search(
+        rf'\bon or before\s*{time_token}\s*(?:hrs?|hours?)\s+on\s*{date_token}',
+        text,
+        re.I,
+    )
+    if match:
+        parsed = as_time(match.group(1))
+        if parsed is not None:
+            return parsed
+
+    # Other notices put the date first: "Last date to apply: 13.11.2099 at
+    # 17:00 hrs IST". Locate the date after explicit application-deadline
+    # wording, then inspect only the text immediately following that date.
+    deadline_label = re.compile(
+        r'\b(?:last date(?: and time)?|last date to apply|'
+        r'closing date(?: for applications?)?|application deadline|apply by)\b',
+        re.I,
+    )
+    for label in deadline_label.finditer(text):
+        segment = text[label.end():label.end() + 300]
+        date_match = re.search(date_token, segment, re.I)
+        if not date_match:
+            continue
+        after_date = segment[date_match.end():date_match.end() + 100]
+        match = re.search(
+            rf'\b(?:at|by)\s*{time_token}\s*(?:hrs?|hours?|IST|Indian Standard Time)?',
+            after_date,
+            re.I,
+        )
+        if match:
+            parsed = as_time(match.group(1))
+            if parsed is not None:
+                return parsed
+
+    return None
 
 class OfficialHTMLParser(HTMLParser):
     def __init__(self):

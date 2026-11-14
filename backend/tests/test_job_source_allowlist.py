@@ -33,3 +33,7 @@ def test_priority_and_private_sources_are_registered_for_sync_and_snapshot():
     # Check that declared sources are present without requiring the two registries
     # to have identical sizes.
     assert {source.key for source in SOURCE_DEFINITIONS}.issubset(SOURCE_BY_KEY)
+
+
+def test_sbi_linked_ibps_application_host_is_approved():
+    assert validate_official_url('https://ibpsreg.ibps.in/sbirscooct26/') == 'https://ibpsreg.ibps.in/sbirscooct26/'
