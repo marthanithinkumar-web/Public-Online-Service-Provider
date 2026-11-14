@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from app.jobs.sources import JobItem
 from app.jobs.sync import upsert_item
@@ -35,6 +35,12 @@ def test_public_job_filters_match_source_type_featured_and_limit(client):
         featured.is_featured = True
         upsert_item(source, _filter_item('filter-upsc-private', 'Graduate Private Assistant', 'private'))
         db.session.commit()
+        checked = datetime.now(timezone.utc).replace(tzinfo=None)
+        source.last_sync_status = 'success'
+        source.last_sync_completed_at = checked
+        source.last_successful_sync_at = checked
+        source.consecutive_failures = 0
+        featured.last_seen_at = checked
         featured_slug = featured.slug
 
     response = client.get('/api/jobs/?q=UPSC&type=government&featured=true&limit=1')
