@@ -65,7 +65,7 @@ function compareScholarships(a:Scholarship,b:Scholarship){
 }
 function filter(data:ScholarshipFeed,q=''){
   const tokens=q.toLowerCase().replace(/[^a-z0-9]+/g,' ').split(' ').filter(Boolean)
-  const items=(data.items||[]).filter(isActive).map(item=>item.deadline===indiaToday()&&item.application_status==='open'?{...item,application_status:'deadline_today'}:item).filter(item=>{
+  const items: Scholarship[]=(data.items||[]).filter(isActive).map((item): Scholarship => item.deadline===indiaToday()&&item.application_status==='open'?{...item,application_status:'deadline_today'}:item).filter(item=>{
     if(!tokens.length)return true
     const hay=[item.title,item.provider,item.source_name,item.source_type,item.region,item.education_level,item.category,item.eligibility,item.academic_year].join(' ').toLowerCase()
     return tokens.every(token=>hay.includes(token))
