@@ -119,6 +119,19 @@ class JobNotification(db.Model):
         return self.status == 'published' and self.deadline_status() != 'closed' and self.deadline_status() != 'unverified'
 
     def to_dict(self, include_admin=False):
+        deadline_status = self.deadline_status()
+        if deadline_status == 'closed':
+            status_label = 'Closed—deadline passed'
+        elif deadline_status == 'deadline_today':
+            if self.deadline_cutoff_time is None:
+                status_label = 'Deadline today—check official portal'
+            else:
+                cutoff = self.deadline_cutoff_time.isoformat(timespec='minutes')
+                status_label = f'Deadline today—closes at {cutoff} {self.deadline_timezone or "Asia/Kolkata"}'
+        elif deadline_status == 'open':
+            status_label = 'Verified open'
+        else:
+            status_label = 'Unverified—check official source'
         data = {
             'id': self.id,
             'slug': self.slug,
@@ -140,9 +153,9 @@ class JobNotification(db.Model):
             'deadline': self.deadline.isoformat() if self.deadline else None,
             'deadline_cutoff_time': self.deadline_cutoff_time.isoformat(timespec='minutes') if self.deadline_cutoff_time else None,
             'deadline_timezone': self.deadline_timezone or 'Asia/Kolkata',
-            'application_status': self.deadline_status(),
-            'can_apply': self.deadline_status() == 'open' or (self.deadline_status() == 'deadline_today' and self.deadline_cutoff_time is not None),
-            'status_label': ('Closed—deadline passed' if self.deadline_status() == 'closed' else ('Deadline today—check official portal' if self.deadline_status() == 'deadline_today' and not self.deadline_cutoff_time else ('Deadline today' if self.deadline_status() == 'deadline_today' else ('Verified open' if self.deadline_status() == 'open' else 'Unverified—check official source'))),
+            'application_status': deadline_status,
+            'can_apply': deadline_status == 'open' or (deadline_status == 'deadline_today' and self.deadline_cutoff_time is not None),
+            'status_label': status_label,
             'official_notice_url': self.official_notice_url,
             'application_url': self.application_url,
             'status': self.status,
