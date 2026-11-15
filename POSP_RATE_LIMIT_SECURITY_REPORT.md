@@ -2,9 +2,10 @@
 
 ## Status
 
-Implementation and local backend verification are complete. The Redis-backed
-cross-worker CI test, merge/push, and post-deployment checks are pending. Do
-not treat production activation as verified until those checks finish.
+Implementation, local and CI verification, merge, and deployment are complete.
+The production service is live at merge commit `c730b8c`; post-deployment
+`/health` and strict `/readiness` checks passed. Production quota thresholds
+were not probed with repeated requests, to avoid locking out legitimate users.
 
 ## Root cause
 
@@ -51,16 +52,17 @@ in logs or responses.
 - Render's project dashboard shows the existing
   `public-online-service-provider-rate-limit` Key Value service running Valkey
   8.1.4. No replacement instance was created.
-- Before this remediation was deployed, production `/readiness` returned
-  HTTP 200 with all ten checks true, including
-  `shared_rate_limit_connectivity=true`. This endpoint PINGs the configured
+- After this remediation was deployed, production `/health` and strict
+  `/readiness` both returned HTTP 200. Readiness reported all ten checks true,
+  including `shared_rate_limit_connectivity=true` and
+  `shared_rate_limit_storage=true`. This endpoint PINGs the configured
   `RATELIMIT_STORAGE_URI`; it does not reveal the URI.
 - The exact secret URL was not copied into this report. An exact hostname
   comparison between the service's masked environment variable and the
   dashboard resource is not independently recorded.
-- CI now provisions Redis 7 and tests that independent limiter instances
-  (simulating workers) share counters and use separate remote-address keys.
-  That CI result is pending.
+- CI run #1017 provisions Redis 7 and passed the test that independent limiter
+  instances (simulating workers) share counters and use separate
+  remote-address keys.
 - Production quota thresholds were not probed with repeated requests, to avoid
   locking out legitimate users or creating load.
 
@@ -79,7 +81,7 @@ in logs or responses.
 | Bounded fallback | Non-auth rate-limited requests fail closed after the five-minute window |
 | Redis recovery | Limiter resumes using the shared backend after the simulated reconnect |
 | Readiness PING failure | Readiness reports failure without returning connection details |
-| Redis cross-worker integration | Added to CI; skipped locally because no Redis server is installed |
+| Redis cross-worker integration | **Passed in CI #1017** against Redis 7; skipped locally because no Redis server is installed |
 | Backend compilation | Passed |
 | `git diff --check` | Passed |
 | Lint/format | No Python linter or formatter is configured in the repository |
@@ -104,11 +106,15 @@ not a failing test. CI is configured to run it against its Redis service.
 
 ## Deployment and remaining work
 
-- CI's Redis cross-worker test is pending.
-- The changes have not yet been pushed/merged or deployed.
-- After successful CI and deployment, verify the Render service commit, then
-  check production `/health` and strict `/readiness`. Do not test quota limits
-  by flooding production endpoints.
+- PR #260 was merged into `main`; merge commit
+  `c730b8c4058adc0b8843cb4dab78641ca919caba`.
+- Render confirms commit `c730b8c` deployed successfully and is live.
+- Post-deployment checks at 11:08 IST on 2026-11-15 returned HTTP 200 from
+  `/health` and strict `/readiness`; all ten readiness checks passed, including
+  the shared limiter storage and connectivity checks.
 - Confirm the masked production `RATELIMIT_STORAGE_URI` hostname maps to the
   existing named Valkey resource without copying credentials into logs,
-  responses, or reports.
+  responses, or reports. The current report confirms a successful PING to the
+  configured URI but does not independently record an exact hostname match.
+- Production quota thresholds were not probed by repeated requests; limits
+  were measured locally and shared-counter behavior was verified in CI.
