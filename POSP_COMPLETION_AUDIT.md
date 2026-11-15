@@ -15,8 +15,10 @@ Exact-head-green PR #259 (`dccdfe4fae4037db685c55a4e50bdd072d8537ca`) and the
 follow-up snapshot-integrity changes are in `main`; the resulting commits were
 pushed. The daily refresh workflows committed scholarship and jobs data
 (`f141af9`, `8c6e6e8`). This pass added `a818b93` and `00ccde8`; job refresh
-run #126 published snapshot `a1b9716`, which was fast-forwarded into local
-`main`. The jobs snapshot digest marker matches the committed snapshot.
+run #126 published snapshot `a1b9716`. Commit `3ef5504` adds filesystem-safe
+aliases for long job slugs. Job refresh #127 passed and pushed snapshot
+`8cef1ae`, which was fast-forwarded into local `main`; the production API
+matched the new snapshot digest.
 
 Production revalidation corrected one earlier finding: the official NSP page
 now explicitly lists NMMS student applications through 2026-11-15 (and
@@ -25,25 +27,25 @@ NMMS `deadline_today`; that is current evidence, not a verification-date
 mix-up. The scholarship should leave the public feed after its student
 application deadline. The live feed currently has 27 scholarships (26
 verified-open and one deadline-today) and three verified-open job records.
-Across the 20 job sources, six report success, nine degraded, and five failed.
+Across the 20 job sources, six report success, ten degraded, and four failed.
 KVS and IBPS checks succeeded but yielded no published jobs; SEBI was blocked
-with HTTP 530. The production source registry now points DRDO-RAC to the
-official RAC site, but its latest source status is failed with two consecutive
-failures. The parser successfully read the official page locally and returned
-its expired notice, which is not published; production source connectivity or
-runtime diagnostics still require owner-authorized logs.
+with HTTP 530 and is degraded with three consecutive failures. The production
+source registry now points DRDO-RAC to the official RAC site, but its latest
+source status is failed with three consecutive failures. The parser
+successfully read the official page locally and returned its expired notice,
+which is not published; production source connectivity or runtime diagnostics
+still require owner-authorized logs.
 
-The frontend build regenerated the sitemap to 172 URLs, matching the live
-sitemap count. Two of the three live job records have indexable detail pages;
-the third has a 237-character slug and is excluded by the SEO catalog's
-200-character path guard. Production `robots.txt` allows crawlers to reach
-routes and all 12 configured private routes return `noindex, nofollow,
-noarchive`. The latest production smoke run failed because its robots assertion
-incorrectly expected private routes to be disallowed; that contradictory
-assertion has been removed and production smoke #116 passed. Browser E2E #470
-exposed an obsolete sitemap-size threshold; the catalog-based correction was
-committed in `00ccde8` and E2E #471 passed. A test-fixture isolation issue
-found during the full-suite rerun was also corrected.
+The frontend build now generates 173 canonical URLs, including detail pages
+for all three live job records. The 237-character source slug is served through
+the stable `/jobs/notice-136282380084494` route; production sitemap inclusion,
+HTTP response, hydrated job content, and canonical URL were verified. Production
+`robots.txt` allows crawlers to reach routes and all 12 configured private
+routes return `noindex, nofollow, noarchive`. Production smoke #117 passed.
+Browser E2E #470 exposed an obsolete sitemap-size threshold; the catalog-based
+correction was committed in `00ccde8` and E2E #471 passed. E2E #473 and CI
+#1012 passed after adding and exercising the long-slug route. A test-fixture
+isolation issue found during the full-suite rerun was also corrected.
 
 ## Executive summary
 
@@ -56,10 +58,11 @@ API readiness probe pass.
 
 The largest verified gaps are external activation and incomplete source health:
 
-- Of 20 production job sources, six report success, nine degraded, and five
+- Of 20 production job sources, six report success, ten degraded, and four
   failed. KVS and IBPS reported successful checks with zero published notices;
-  SEBI and DRDO-RAC report failures. The live job feed and sitemap were
-  revalidated after the refresh.
+  SEBI remains blocked with HTTP 530 (degraded, three consecutive failures)
+  and DRDO-RAC remains failed with three consecutive failures. The live job
+  feed and sitemap were revalidated after refresh #127.
 - NMMS is currently deadline-today per the official NSP student-application
   row, not expired as the earlier snapshot indicated. The feed must remove it
   after 2026-11-15 and continue excluding expired listings.
@@ -83,14 +86,14 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 | 1. Repository audit | Partial | Inspected repository structure, current history, 288 local/remote branch refs, 10 open PRs, core docs/configuration, tests, and live endpoints. Not every historical branch diff or commit was individually reviewed. |
 | 2. Preserve previous requirements | Partial | Worktree was clean at start; the current main feature set and tests were retained. No stale branch was blindly merged. |
 | 3. Platform features | Partial | Existing auth, client/admin workflows, orders, fees, uploads, receipts, notifications, and management functions have implementation and backend coverage. External live user journeys and all roles were not independently exercised in production. |
-| 4. Jobs and scholarships | Partial | Scheduled refresh is configured for 07:45 IST; 20 sources are configured; backend/frontend filters, snapshot integrity, deadline, and freshness rules have regression coverage. Current production status is 6 successful, 9 degraded, 5 failed. KVS/IBPS succeeded with no published jobs; SEBI remains blocked with HTTP 530; the production DRDO-RAC registry points to the official RAC URL but reports failed with two consecutive failures. The parser reads the official RAC page locally and rejects its expired notice. The production API matched snapshot `a1b9716`; source health remains unresolved. The NSP official page confirms NMMS student applications through 2026-11-15; verify post-deadline removal. |
+| 4. Jobs and scholarships | Partial | Scheduled refresh is configured for 07:45 IST; 20 sources are configured; backend/frontend filters, snapshot integrity, deadline, and freshness rules have regression coverage. Current production status is 6 successful, 10 degraded, 4 failed. KVS/IBPS succeeded with no published jobs; SEBI remains blocked with HTTP 530 and three consecutive failures; the production DRDO-RAC registry points to the official RAC URL but reports failed with three consecutive failures. The parser reads the official RAC page locally and rejects its expired notice. Refresh #127 passed and the production API matched snapshot `8cef1ae` and its exact digest; source health remains unresolved. The NSP official page confirms NMMS student applications through 2026-11-15; verify post-deadline removal. |
 | 5. POSP AI | Incomplete | Existing in-client support chat and admin operations AI are present with grounded context and safe error handling. `render.yaml` sets `POSP_CLIENT_AI_ENABLED=false` and `POSP_AI_MODEL=gemini-2.5-flash`; requested settings are `true` and `gemini-3.5-flash-lite`. No provider key/model API check was performed, so operational status is unverified. |
 | 6. WhatsApp Cloud API | Incomplete | Webhook verification/signature handling, inbound/outbound services, status updates, templates, consent, and admin monitoring are implemented and tested. Production `/api/whatsapp/config` reports disabled and notifications unavailable. |
-| 7. SEO/indexing | Partial | Public metadata/canonicals/structured data, sitemap and robots generation, prerendering, and private-route `X-Robots-Tag` behavior are implemented. Production homepage, sitemap, and robots return HTTP 200; all 12 private routes return HTTP 200 with a noindex header. The build and production sitemap each contain 172 URLs. Only two of three live job records have prerendered detail URLs; the third's 237-character slug exceeds the SEO path guard. Google Search Console indexing status is inaccessible here. |
+| 7. SEO/indexing | Partial | Public metadata/canonicals/structured data, sitemap and robots generation, prerendering, and private-route `X-Robots-Tag` behavior are implemented. Production sitemap now contains 173 URLs; all three live job detail routes, including the long-slug alias, were verified. All 12 private routes return HTTP 200 with a noindex header. Google Search Console indexing status is inaccessible here. |
 | 8. Security/reliability | Partial | Production startup rejects a missing/weak `SECRET_KEY`; auth/admin tests, input validation, upload limits, rate limiting, private storage, payment verification, backups, and readiness checks exist. Live readiness reported database, SMTP, S3, shared rate limits, and Razorpay checks ready. This is not a penetration test or restore drill. |
-| 9. Testing/integration | Partial | Backend suite: 318 passed, 129 warnings; frontend typecheck/build passed. Production smoke #116, CI #1009, and authenticated browser E2E #471 passed. E2E #470's stale `>2000` URL assertion was corrected. Job refresh #126 passed and the production API matched its exact 3-job snapshot and 20-source registry. External AI, WhatsApp, real transaction/refund, and restore tests remain unverified. |
-| 10. Git/merging | Partial | 288 branches and 10 open PRs were found. Changes were pushed in `a818b93` and `00ccde8`; job-refresh snapshot `a1b9716` was automatically pushed and fast-forwarded locally. Historical branch contents were not all reviewed; stale PRs were not merged. |
-| 11. Deployment | Partial | Live health/readiness endpoints return HTTP 200, with all ten readiness checks true. Job refresh verified the production API against the exact committed snapshot hash. The RAC source registry is updated, but its latest health is failed. No authenticated Render control-plane view was available; AI and WhatsApp remain disabled. |
+| 9. Testing/integration | Partial | Backend suite: 318 passed, 129 warnings; frontend typecheck/build passed. Production smoke #117, scholarship smoke #95, CI #1012, and authenticated browser E2E #473 passed. E2E #473 exercised the new long-slug alias. Job refresh #127 passed and the production API matched its exact 3-job snapshot and 20-source registry. External AI, WhatsApp, real transaction/refund, and restore tests remain unverified. |
+| 10. Git/merging | Partial | 288 branches and 10 open PRs were found. Commits `a818b93`, `00ccde8`, and `3ef5504` were pushed; automated snapshot refreshes `a1b9716` and `8cef1ae` were fast-forwarded locally. Historical branch contents were not all reviewed; stale PRs were not merged. |
+| 11. Deployment | Partial | Live health/readiness endpoints return HTTP 200, with all ten readiness checks true. Production sitemap has 173 URLs and the long-job alias page returns the expected job and canonical URL. Job refresh #127 verified the exact committed snapshot; DRDO-RAC remains failed. No authenticated Render control-plane view was available; AI and WhatsApp remain disabled. |
 | 12. Final destination | Incomplete | Work is not production-complete until the external AI/WhatsApp configuration and the remaining feed/source/deployment checks are verified. |
 
 ## Verified completed behavior
@@ -117,26 +120,27 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
   credentials, webhook configuration, and Razorpay connectivity.
 - Production frontend, API health, robots, sitemap, and private-route noindex
   header returned HTTP 200 during this audit.
-- The current SEO build generated 172 canonical public URLs. Private pages are intentionally
+- The current SEO build generated 173 canonical public URLs. Private pages are intentionally
   not blocked in `robots.txt`: crawlers must be able to read their `noindex`
   response headers. The production `/my-orders` response includes
   `X-Robots-Tag: noindex, nofollow, noarchive`.
-- Of the three current SBI job records, two have prerendered detail pages. The
-  third has a 237-character slug and is excluded by the SEO catalog's
-  200-character filesystem-path guard; a safe route strategy is still needed
-  before claiming complete job-detail SEO coverage.
+- All three current SBI job records have prerendered detail pages. The
+  237-character source slug uses the short stable route
+  `/jobs/notice-136282380084494`; its production page content and canonical
+  URL were verified after deployment.
 - `Employment News All Jobs` is absent from the source search and the build
   includes a regression check to prevent its reintroduction.
 
 ## Broken or incomplete behavior observed
 
 - **Priority-source health:** the latest production source endpoint reports
-  six successes, nine degraded, and five failures across 20 sources. KVS and
+  six successes, ten degraded, and four failures across 20 sources. KVS and
   IBPS checks succeeded (six and 12 fetched, respectively) with no published
   jobs.
-  SEBI is blocked with HTTP 530. The `drdo_rac` registry now uses
+  SEBI is blocked with HTTP 530 and is degraded with three consecutive
+  failures. The `drdo_rac` registry now uses
   `https://rac.gov.in/index.php?lang=en&id=0`, but its latest production status
-  is failed with two consecutive failures. The parser successfully fetches
+  is failed with three consecutive failures. The parser successfully fetches
   and parses the official page in this environment, extracting the explicit
   extended application deadline and not the later page-update date; that
   notice is expired and not published. The production cause cannot be diagnosed
@@ -170,13 +174,11 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 - **WhatsApp activation:** production config says Cloud API is disabled. A
   source implementation and webhook tests do not establish Meta activation,
   verified webhook delivery, approved templates, or message delivery.
-- **SEO validation:** the local build and production sitemap each report 172
-  URLs, with the current deadline-today NMMS detail included. The live feed has
-  three jobs but only two have prerendered detail pages because one slug is
-  237 characters and exceeds the existing 200-character path guard. Do not
-  increase the guard without checking filesystem and client-route behavior.
-  Search Console coverage and indexing errors cannot be inspected without
-  Search Console access.
+- **SEO validation:** the local build and production sitemap each report 173
+  URLs, with all three current job details included. The 237-character source
+  slug uses a short stable ID-based route, and the production page hydrates with
+  the expected title and canonical. Search Console coverage and indexing errors
+  cannot be inspected without Search Console access.
 - **History/branch review:** 288 branches exist, mostly historical feature/fix
   branches. The 10 open PRs were enumerated; only the latest source-freshness
   PR (#259) was selected for detailed integration because its changes directly
@@ -206,8 +208,13 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 - Commit `a818b93`: CI #1009 and production smoke #116 passed.
 - Commit `00ccde8`: authenticated browser E2E #471 passed after correcting the
   stale sitemap-size assertion found by E2E #470.
-- Job refresh #126 passed; it published snapshot `a1b9716`, and the production
-  API's jobs total, source count, and snapshot SHA matched the committed data.
+- Commit `3ef5504`: CI #1012, production smoke #117, scholarship smoke #95,
+  and authenticated browser E2E #473 passed. Production sitemap and the
+  long-slug route were verified after deployment.
+- Job refresh #126 passed and published snapshot `a1b9716`.
+- Job refresh #127 passed, published snapshot `8cef1ae`, and verified that
+  the production API matched the exact 3-job/20-source snapshot and SHA
+  `2b2ea51f95071814d3b91523772e06444b74b746abb02e211fe941085ed4ad38`.
 - Initial frontend validation attempts before `npm ci` failed because the
   checkout had no installed frontend dependencies; the subsequent locked
   install and reruns succeeded.
@@ -227,12 +234,12 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 
 ## Deployment and next work
 
-1. Investigate DRDO-RAC's two consecutive production source failures using
+1. Investigate DRDO-RAC's three consecutive production source failures using
    owner-authorized Render logs; the production endpoint confirms the corrected
    official RAC URL but hides the error cause. Do not bypass source controls.
-2. Resolve the SEBI HTTP 530 block through an approved official source or
-   owner-authorized network access; verify KVS and IBPS parsing and keep all
-   unavailable sources fail-closed.
+2. Resolve the SEBI HTTP 530 block (three consecutive degraded checks) through
+   an approved official source or owner-authorized network access; verify KVS
+   and IBPS parsing and keep all unavailable sources fail-closed.
 3. Check that the scholarship refresh removes NMMS after its 2026-11-15
    student-application deadline and that the production API and sitemap
    converge on the following refresh.
@@ -242,9 +249,8 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
    settings, and consent; perform owner-authorized inbound/outbound delivery
    tests before enabling production messaging.
 6. Inspect GSC coverage, validate canonical/noindex behavior for all private
-   routes and pagination, resolve any reported indexing issues, and provide a
-   safe indexable route for the current valid job notice whose slug exceeds the
-   SEO path-length guard.
+   routes and pagination, and resolve any reported indexing issues for the new
+   long-slug canonical route.
 7. Perform owner-authorized end-to-end payment/refund, database backup/restore,
    and representative client/admin production journeys.
 
