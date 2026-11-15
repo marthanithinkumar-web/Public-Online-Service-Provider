@@ -82,7 +82,7 @@ services:
       - key: POSP_AI_PROVIDER
         value: gemini
       - key: POSP_AI_MODEL
-        value: gemini-2.5-flash
+        value: gemini-3.5-flash-lite
       - key: POSP_CLIENT_AI_ENABLED
         value: "false"
       # WhatsApp Cloud API: values are set in the Render dashboard

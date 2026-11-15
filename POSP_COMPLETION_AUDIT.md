@@ -68,16 +68,17 @@ The largest verified gaps are external activation and incomplete source health:
 - NMMS is currently deadline-today per the official NSP student-application
   row, not expired as the earlier snapshot indicated. The feed must remove it
   after 2026-11-15 and continue excluding expired listings.
-- Render's checked-in configuration disables client AI and selects a model
-  different from the requested `gemini-3.5-flash-lite`. Model availability and
-  deployed credentials cannot be verified without a provider credential.
+- `render.yaml` now selects the requested `gemini-3.5-flash-lite` model. Google's
+  official catalog marks it stable, and the existing `v1beta` `generateContent`
+  endpoint matches the documented API. Client AI remains disabled until a
+  production credential and successful live call are verified.
 - The production WhatsApp configuration endpoint reports Cloud API disabled
   and status notifications unavailable. This is not a successful production
   messaging integration.
-- Google Search Console coverage, Meta message delivery, AI provider calls,
-  live payment transaction completion, and restore-drill activation require
-  authorized external accounts or controlled transactions and are not proven
-  by source code or readiness alone.
+- Google Search Console coverage, Meta message delivery, and AI provider calls
+  require authorized external accounts. No live payment/refund was initiated.
+  The encrypted backup restore drill and Razorpay read-only production
+  confirmation have passed, but these do not verify a user transaction.
 
 ## Requirements assessment
 
@@ -88,14 +89,14 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 | 1. Repository audit | Partial | Inspected repository structure, current history, 288 local/remote branch refs, 10 open PRs, core docs/configuration, tests, and live endpoints. Not every historical branch diff or commit was individually reviewed. |
 | 2. Preserve previous requirements | Partial | Worktree was clean at start; the current main feature set and tests were retained. No stale branch was blindly merged. |
 | 3. Platform features | Partial | Existing auth, client/admin workflows, orders, fees, uploads, receipts, notifications, and management functions have implementation and backend coverage. External live user journeys and all roles were not independently exercised in production. |
-| 4. Jobs and scholarships | Partial | Scheduled refresh is configured for 07:45 IST; 20 sources are configured; backend/frontend filters, snapshot integrity, deadline, and freshness rules have regression coverage. Current production status is 6 successful, 11 degraded, 3 failed. KVS/IBPS succeeded with no published jobs; SEBI remains blocked with HTTP 530 and four consecutive failures; the production DRDO-RAC registry points to the official RAC URL but reports failed with four consecutive failures. The parser reads the official RAC page locally and rejects its expired notice. Refresh #128 passed and the production API matched snapshot `c5669c0` and its exact digest; source health remains unresolved. The NSP official page confirms NMMS student applications through 2026-11-15; verify post-deadline removal. |
-| 5. POSP AI | Incomplete | Existing in-client support chat and admin operations AI are present with grounded context and safe error handling. `render.yaml` sets `POSP_CLIENT_AI_ENABLED=false` and `POSP_AI_MODEL=gemini-2.5-flash`; requested settings are `true` and `gemini-3.5-flash-lite`. No provider key/model API check was performed, so operational status is unverified. |
+| 4. Jobs and scholarships | Partial | Scheduled refresh is configured for 07:45 IST; 20 sources are configured; backend/frontend filters, snapshot integrity, deadline, and freshness rules have regression coverage. Run #128 started at 14:47 IST, over seven hours after its scheduled time. Current production status is 6 successful, 11 degraded, 3 failed. KVS/IBPS succeeded with no published jobs; SEBI remains blocked with HTTP 530 and four consecutive failures; the production DRDO-RAC registry points to the official RAC URL but reports failed with four consecutive failures. The parser reads the official RAC page locally and rejects its expired notice. Refresh #128 passed and production matched snapshot `c5669c0` and its exact digest; source health and schedule reliability remain unresolved. The NSP official page confirms NMMS student applications through 2026-11-15; verify expiry after the deadline. |
+| 5. POSP AI | Incomplete | Existing in-client support chat and admin operations AI are present with grounded context and safe error handling. `render.yaml` now selects the requested stable `gemini-3.5-flash-lite` model, and the existing `v1beta` `generateContent` request method matches Google's API documentation. `POSP_CLIENT_AI_ENABLED` remains false because no production key or successful live call has been verified. |
 | 6. WhatsApp Cloud API | Incomplete | Webhook verification/signature handling, inbound/outbound services, status updates, templates, consent, and admin monitoring are implemented and tested. Production `/api/whatsapp/config` reports disabled and notifications unavailable. |
 | 7. SEO/indexing | Partial | Public metadata/canonicals/structured data, sitemap and robots generation, prerendering, and private-route `X-Robots-Tag` behavior are implemented. Production sitemap now contains 173 URLs; all three live job detail routes, including the long-slug alias, were verified. All 12 private routes return HTTP 200 with a noindex header. Google Search Console indexing status is inaccessible here. |
-| 8. Security/reliability | Partial | Production startup rejects a missing/weak `SECRET_KEY`; auth/admin tests, input validation, upload limits, rate limiting, private storage, payment verification, backups, and readiness checks exist. Live readiness reported database, SMTP, S3, shared rate limits, and Razorpay checks ready. This is not a penetration test or restore drill. |
-| 9. Testing/integration | Partial | Backend suite: 318 passed, 129 warnings; frontend typecheck/build passed. Production smoke #117, scholarship smoke #95, CI #1012, and authenticated browser E2E #473 passed. E2E #473 exercised the new long-slug alias. Job refresh #128 passed and the production API matched its exact 3-job snapshot and 20-source registry. External AI, WhatsApp, real transaction/refund, and restore tests remain unverified. |
+| 8. Security/reliability | Partial | Production startup rejects a missing/weak `SECRET_KEY`; auth/admin tests, input validation, upload limits, rate limiting, private storage, payment verification, backups, and readiness checks exist. Current live readiness is 10/10. Restore drill #12 successfully decrypted and restored the latest encrypted backup into a disposable PostgreSQL database and validated core tables. Razorpay production confirmation #21 verified live credentials, webhook configuration, read-only API authentication, and safe public checkout config. No penetration test or live payment/refund was performed. |
+| 9. Testing/integration | Partial | Backend suite: 318 passed, 129 warnings; frontend typecheck/build passed. Production smoke #117, scholarship smoke #95, CI #1012, and authenticated browser E2E #473 passed. E2E #473 exercised the new long-slug alias. Job refresh #128 passed and production matched its exact 3-job snapshot and 20-source registry. Restore drill #12 and Razorpay production confirmation #21 passed. External AI, WhatsApp, and real transaction/refund tests remain unverified. |
 | 10. Git/merging | Partial | 288 branches and 10 open PRs were found. Commits `a818b93`, `00ccde8`, and `3ef5504` were pushed; automated snapshot refreshes `a1b9716`, `8cef1ae`, and `c5669c0` were fast-forwarded locally. Historical branch contents were not all reviewed; stale PRs were not merged. |
-| 11. Deployment | Partial | Live health/readiness endpoints return HTTP 200, with all ten readiness checks true. Production sitemap has 173 URLs and the long-job alias page returns the expected job and canonical URL. Job refresh #128 verified the exact committed snapshot and digest; DRDO-RAC remains failed. No authenticated Render control-plane view was available; AI and WhatsApp remain disabled. |
+| 11. Deployment | Partial | Live health/readiness endpoints return HTTP 200, with all ten readiness checks true. Production sitemap has 173 URLs and the long-job alias page returns the expected job and canonical URL. Job refresh #128 verified the exact committed snapshot and digest; DRDO-RAC remains failed. The public WhatsApp config is disabled. No authenticated Render control-plane or Google Search Console view was available; client AI also remains disabled. |
 | 12. Final destination | Incomplete | Work is not production-complete until the external AI/WhatsApp configuration and the remaining feed/source/deployment checks are verified. |
 
 ## Verified completed behavior
@@ -120,6 +121,12 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
   database, persistent document storage and connectivity, shared rate-limit
   storage and connectivity, SMTP delivery/connectivity, Razorpay live
   credentials, webhook configuration, and Razorpay connectivity.
+- Razorpay production confirmation #21 passed: the deployed live credentials,
+  webhook, read-only API authentication, and safe public checkout response
+  were verified. No payment or refund was created.
+- Full encrypted database restore drill #12 passed on 2026-11-09. It restored
+  and validated the latest backup in a disposable PostgreSQL instance and
+  removed the disposable target and plaintext dump.
 - Production frontend, API health, robots, sitemap, and private-route noindex
   header returned HTTP 200 during this audit.
 - The current SEO build generated 173 canonical public URLs. Private pages are intentionally
@@ -169,10 +176,11 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
   2,000 URLs while the verified production sitemap contains 172. The test
   assertion is stale; it now checks a catalog-derived minimum and every
   catalog service URL. The fix is committed in `00ccde8`; E2E #471 passed.
-- **AI activation/configuration:** the checked-in Render blueprint explicitly
-  disables client AI and has a different model. There is no evidence here of
-  an accessible production Gemini key or a successful call to the requested
-  model. Do not describe client AI as operational until this is verified.
+- **AI activation/configuration:** `render.yaml` now selects the requested
+  stable `gemini-3.5-flash-lite` model. Google's official catalog and API docs
+  confirm the model and the existing `v1beta` `generateContent` endpoint.
+  Client AI remains disabled because there is no verified production key or
+  successful live model call. Do not describe it as operational.
 - **WhatsApp activation:** production config says Cloud API is disabled. A
   source implementation and webhook tests do not establish Meta activation,
   verified webhook delivery, approved templates, or message delivery.
@@ -220,6 +228,9 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 - Job refresh #128 passed, published snapshot `c5669c0`, and production
   reports the exact 3-job/20-source snapshot ready with SHA
   `f6b83268b3c650af965017f353cc28754bc9f9c283afefed3b695321fd3611fd`.
+- Restore drill #12 passed with a disposable PostgreSQL restore and validation.
+- Razorpay confirmation #21 passed for live configuration, webhook, read-only
+  authentication, and public checkout secret-safety checks.
 - Initial frontend validation attempts before `npm ci` failed because the
   checkout had no installed frontend dependencies; the subsequent locked
   install and reruns succeeded.
@@ -229,10 +240,11 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 - No credentials were copied into the report or queried from private
   configuration.
 - Production readiness checks show the deployed DB, SMTP, storage, limiter, and
-  Razorpay configuration are reachable. They do not prove a payment was
-  captured/refunded or a backup was restored.
-- AI and WhatsApp are intentionally classified as unverified/disabled based on
-  their production-visible configuration. No Meta or model call was attempted.
+  Razorpay configuration are reachable. Razorpay read-only confirmation and
+  the isolated restore drill passed. No live payment/refund was created.
+- AI and WhatsApp remain unverified/disabled based on production-visible
+  configuration. Google's requested model is valid, but no production key or
+  model call was available; no Meta message was sent.
 - `robots.txt` is not an access-control mechanism; private APIs remain protected
   by authentication/authorization. The frontend noindex header only controls
   indexing behavior.
@@ -256,11 +268,12 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 6. Inspect GSC coverage, validate canonical/noindex behavior for all private
    routes and pagination, and resolve any reported indexing issues for the new
    long-slug canonical route.
-7. Perform owner-authorized end-to-end payment/refund, database backup/restore,
-   and representative client/admin production journeys.
+7. Perform owner-authorized end-to-end payment/refund and representative
+   client/admin production journeys. The isolated encrypted backup restore
+   drill has passed.
 
-The job refresh workflow is configured for 02:15 UTC (07:45 IST), but the
-latest scheduled run observed before this merge started at 08:55 UTC on
-2026-11-14. Scheduled GitHub Actions timing is therefore not verified to meet
-the requested refresh time; monitor future runs and use a more reliable
-scheduler if this delay persists.
+The job refresh workflow is configured for 02:15 UTC (07:45 IST), but
+scheduled run #128 started at 09:17 UTC (14:47 IST) on 2026-11-15, over seven
+hours late. The feed was successfully refreshed, but GitHub Actions did not
+meet the requested 07:45 IST timing. A more reliable scheduler requires
+owner-authorized deployment configuration.

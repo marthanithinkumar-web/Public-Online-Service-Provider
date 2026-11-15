@@ -20,15 +20,15 @@ Production success is not inferred from code or a Git push.
 | 1 | Repository audit | Partial | Inspected repository structure, current history, 288 branch refs, 10 open PRs, core documentation/configuration, tests, and live endpoints. Not every historical branch diff or commit was individually reviewed. |
 | 2 | Preserve previous requirements | Partial | Kept existing architecture and features; merged verified PR #259 and snapshot-integrity follow-up into `main`. No stale branch was blindly merged. |
 | 3 | Platform features | Partial | Existing auth/role checks, client/admin workflows, applications/orders, fee rules, uploads, receipts, and notifications have implementation and backend coverage. All live user journeys and roles were not independently exercised in production. |
-| 4 | Jobs and scholarships | Partial | Official-source validation, deadline/freshness logic, filters, snapshots, and scheduled refresh are implemented and regression-tested. Current production reports 20 sources: 6 successful, 11 degraded, 3 failed. KVS/IBPS checks succeeded with no published jobs; SEBI remains blocked with HTTP 530 (degraded, four consecutive failures). The official DRDO-RAC URL is configured, but it reports failed with four consecutive failures; its parser reads the official page locally and rejects its expired notice. Refresh #128 verified production against the exact new snapshot; source health remains unresolved. |
-| 5 | POSP AI | Incomplete | Existing in-client and admin AI workflows are present, but Render config disables client AI and selects `gemini-2.5-flash`, not the requested enabled `gemini-3.5-flash-lite`. No provider credential or successful model call was verified. |
+| 4 | Jobs and scholarships | Partial | Official-source validation, deadline/freshness logic, filters, snapshots, and scheduled refresh are implemented and regression-tested. Current production reports 20 sources: 6 successful, 11 degraded, 3 failed. KVS/IBPS checks succeeded with no published jobs; SEBI remains blocked with HTTP 530 (degraded, four consecutive failures). The official DRDO-RAC URL is configured, but it reports failed with four consecutive failures; its parser reads the official page locally and rejects its expired notice. Refresh #128 verified the exact production snapshot, but started at 14:47 IST, over seven hours after the configured 07:45 IST schedule. |
+| 5 | POSP AI | Incomplete | Existing in-client and admin AI workflows are present. `render.yaml` now selects the requested `gemini-3.5-flash-lite`; Google's official model catalog marks it stable and documents the existing `v1beta` `generateContent` endpoint. Client AI remains disabled because no production key or successful live call was verified. |
 | 6 | WhatsApp Cloud API | Incomplete | Webhook, messaging, templates, consent, and status-handling code has tests. Production config reports Cloud API disabled and status notifications unavailable; no authorized end-to-end Meta message test was performed. |
 | 7 | SEO and indexing | Partial | Metadata, canonical URLs, structured data, sitemap/robots generation, prerendering, and private-route noindex behavior are implemented. Production sitemap has 173 URLs and all three current job detail pages are present. The 237-character source slug uses `/jobs/notice-136282380084494`; production content and canonical were verified. Search Console was unavailable. |
-| 8 | Security and reliability | Partial | AuthZ, input validation, upload limits, rate limiting, storage, payment verification, backup tooling, and readiness checks exist. Live readiness is healthy, but no penetration test or restore drill was performed. |
-| 9 | Testing and integration | Partial | Backend suite, frontend typecheck/build, production smoke #117, scholarship smoke #95, CI #1012, and authenticated browser E2E #473 passed. E2E #473 exercises the new long-slug alias. Job refresh #128 passed and production matched its exact 3-job/20-source snapshot. Account-authorized AI, WhatsApp, payment/refund, and restore tests remain outstanding. |
+| 8 | Security and reliability | Partial | AuthZ, input validation, upload limits, rate limiting, storage, payment verification, backup tooling, and readiness checks exist. Live readiness is 10/10. Restore drill #12 successfully restored and validated the latest encrypted backup in a disposable PostgreSQL instance; Razorpay confirmation #21 verified live config, webhook, read-only API auth, and public checkout secret safety. No penetration test or live payment/refund was performed. |
+| 9 | Testing and integration | Partial | Backend suite, frontend typecheck/build, production smoke #117, scholarship smoke #95, CI #1012, authenticated browser E2E #473, restore drill #12, Razorpay production confirmation #21, and job refresh #128 passed. Account-authorized AI, WhatsApp, real payment/refund, and live user-journey tests remain outstanding. |
 | 10 | Git and merging | Partial | PR #259 and the snapshot-integrity follow-up are in `main`; commits `a818b93`, `00ccde8`, and `3ef5504` are pushed, and automated snapshot refreshes `a1b9716`, `8cef1ae`, and `c5669c0` are pushed and fast-forwarded locally. Historical branch contents were not all reviewed. |
-| 11 | Deployment | Partial | Production health/readiness endpoints return HTTP 200 and readiness reports 10/10 checks true. Production sitemap has 173 URLs and the long-job route returns the correct hydrated detail and canonical URL. Refresh #128 verified the exact snapshot SHA on the production API. No authenticated Render control-plane check was available. |
-| 12 | Production-ready destination | Incomplete | External activation, failed/degraded sources, scheduler timing, and production transaction/restore checks prevent a production-complete claim. |
+| 11 | Deployment | Partial | Production health/readiness endpoints return HTTP 200 and readiness reports 10/10 checks true. Production sitemap has 173 URLs and the long-job route returns the correct hydrated detail and canonical URL. Refresh #128 verified the exact snapshot SHA on the production API. Current WhatsApp config remains disabled; no authenticated Render control-plane or Search Console view was available. |
+| 12 | Production-ready destination | Incomplete | External AI/WhatsApp activation, failed/degraded sources, scheduler timing, Search Console verification, and live transaction/representative journey checks prevent a production-complete claim. |
 
 ## Implemented and verified behavior
 
@@ -43,12 +43,19 @@ Production success is not inferred from code or a Git push.
 - Production currently has 27 scholarships (26 verified-open and one
   deadline-today) and three current SBI job records. The official NSP listing
   supports NMMS's student-application deadline of 2026-11-15; its later
-  verification date is not treated as an application deadline.
+  verification date is not treated as an application deadline. At 15:14 IST,
+  the production API still marked NMMS `deadline_today`.
 - The DRDO-RAC parser now targets the official RAC site and uses an explicit
   application deadline rather than a page-update date. Its test confirms that
   the current expired notice is not published. It parsed the live official page
   locally, but production reports four consecutive source failures; no cause is
   inferred from the public endpoint.
+- `render.yaml` selects `gemini-3.5-flash-lite`, which Google's official
+  [model catalog](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite)
+  lists as stable. The existing
+  [Gemini `generateContent` endpoint](https://ai.google.dev/api/generate-content)
+  matches the documented `v1beta` API. Client AI remains disabled because a
+  production credential and successful live call are not verified.
 - Job refresh #126 committed snapshot `a1b9716`. Production reported three
   active notices, 20 sources, and the exact snapshot SHA
   `3f4ad588dd70a28b7991af2f1bc0ce5b37d7b667bbdc91b036e53cb934ab58b7`.
@@ -58,6 +65,11 @@ Production success is not inferred from code or a Git push.
 - Job refresh #128 passed (workflow run `43698513507`) and pushed snapshot
   `c5669c0`; the production API reports the exact snapshot SHA
   `f6b83268b3c650af965017f353cc28754bc9f9c283afefed3b695321fd3611fd` ready.
+- Production readiness returned HTTP 200 with all 10 checks true. Razorpay
+  confirmation #21 verified live configuration and read-only API
+  authentication without creating a transaction.
+- Restore drill #12 (2026-11-09) restored the latest encrypted backup to a
+  disposable PostgreSQL database and validated the core application tables.
 - Commit `3ef5504` adds short stable ID-based URLs for long source slugs. The
   production sitemap contains all three job details, and the alias page
   hydrates the correct notice with the matching canonical URL.
@@ -81,12 +93,16 @@ Production success is not inferred from code or a Git push.
 - Added stable, filesystem-safe routes for source slugs exceeding 200
   characters and aligned client lookup, canonical metadata, sitemap, and
   prerender generation.
+- Updated the Render blueprint to select the requested verified Gemini model
+  while retaining the disabled client-AI flag until credentials and live
+  compatibility can be checked.
 - Regenerated the public sitemap from the current verified snapshots.
 
 ## Files changed
 
 - `.github/workflows/production-smoke.yml`
 - `POSP_COMPLETION_AUDIT.md`
+- `render.yaml`
 - `backend/app/jobs/priority_sources.py`
 - `backend/app/jobs/verified_snapshot.sha256`
 - `backend/tests/test_priority_job_sources.py`
@@ -113,6 +129,7 @@ Production success is not inferred from code or a Git push.
 | Frontend `npm run build` | Passed; 173 sitemap URLs and all 3 job-detail canonicals verified |
 | Production `/health` | HTTP 200 |
 | Production `/readiness` | HTTP 200; 10/10 checks true |
+| Render blueprint YAML validation | **Passed**; requested Gemini model selected, client AI still disabled pending credentials |
 | Production private-route noindex | 12 routes returned expected noindex headers |
 | Production smoke workflow #115 | Failed on obsolete robots.txt expectation |
 | Production smoke workflow #116 | **Passed** after workflow correction |
@@ -124,9 +141,11 @@ Production success is not inferred from code or a Git push.
 | CI #1012 | **Passed** |
 | Job refresh #126 | **Passed**; production API matched 3-item snapshot and all 20 sources |
 | Job refresh #127 | **Passed**; production matched the exact 3-job, 20-source snapshot |
-| Job refresh #128 | **Passed**; workflow run `43698513507`; production snapshot `c5669c0` ready |
+| Job refresh #128 | **Passed**; workflow run `43698513507`; production snapshot `c5669c0` ready; started over seven hours after scheduled time |
 | Job snapshot integrity | **Passed**; production SHA matched `f6b83268b3c650af965017f353cc28754bc9f9c283afefed3b695321fd3611fd` |
 | Job-source health | 6 successful, 11 degraded, 3 failed of 20; DRDO-RAC failed and SEBI degraded |
+| Razorpay confirmation #21 | **Passed**; live configuration, webhook, read-only API auth and secret-safe public config verified |
+| Full encrypted restore drill #12 | **Passed**; latest backup restored and validated in a disposable database |
 
 Backend warnings include test JWT keys shorter than the recommended minimum
 and an existing deprecated `datetime.utcnow()` use. They did not fail the
@@ -140,13 +159,13 @@ suite.
 - The DRDO-RAC correction and initial audit are in `a818b93`; the sitemap E2E
   correction is in `00ccde8`, and long-slug SEO routing is in `3ef5504`.
   Automated job refreshes pushed `a1b9716`, `8cef1ae`, and `c5669c0`; local
-  `main` was fast-forwarded to `c5669c0` and matched `origin/main` before this final
-  report-only update.
+  `main` was fast-forwarded to `c5669c0` before later report updates.
 - CI #1012, production smoke #117, scholarship smoke #95, and authenticated
   browser E2E #473 passed. Job refresh #128 passed and verified the exact
   snapshot SHA on the production API. The production registry reports the
   corrected RAC URL, but DRDO-RAC remains failed and SEBI degraded after four
-  consecutive failures.
+  consecutive failures. The live feed currently has three jobs and 27
+  scholarships; NMMS remains deadline-today on 2026-11-15.
 
 ## External blockers and remaining work
 
@@ -162,9 +181,10 @@ suite.
    inbound/outbound delivery tests before enabling production messaging.
 6. Obtain Search Console access to inspect indexing/canonical status for the
    newly deployed long-slug route and other public pages.
-7. Run owner-authorized payment/refund, backup/restore, and representative
-   client/admin production journeys.
-8. Verify the actual refresh schedule. The configured 07:45 IST time is not
-   established by configuration alone; prior scheduled runs started late.
-9. Obtain authenticated Render control-plane access if deployment status must
-    be confirmed beyond public endpoint checks.
+7. Perform owner-authorized payment/refund and representative client/admin
+   production journeys. The isolated encrypted restore drill has passed.
+8. Improve scheduling reliability: run #128 started at 14:47 IST instead of
+   the configured 07:45 IST. GitHub Actions schedule configuration alone
+   cannot guarantee the requested timing.
+9. Obtain authenticated Render control-plane and Search Console access for
+   configuration and indexing verification.
