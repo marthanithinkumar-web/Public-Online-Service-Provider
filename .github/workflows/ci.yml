@@ -41,6 +41,12 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U psp -d psp_db" --health-interval 5s --health-timeout 5s --health-retries 12
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 12
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -70,6 +76,11 @@ jobs:
           DATABASE_URL: postgresql://psp:psp_pass@localhost:5432/psp_db
           PYTHONPATH: ${{ github.workspace }}/backend
         run: python -m pytest -q backend/tests
+      - name: Verify shared Redis counters across app workers
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend
+          RATELIMIT_TEST_REDIS_URL: redis://localhost:6379/15
+        run: python -m pytest -q backend/tests/test_rate_limits_redis_integration.py
 
   frontend:
     name: Frontend typecheck and build

@@ -59,6 +59,8 @@ services:
         value: "20000"
       - key: RATELIMIT_STORAGE_URI
         sync: false
+      - key: STRICT_PRODUCTION_READINESS
+        value: "1"
       - key: S3_BUCKET
         sync: false
       - key: S3_ENDPOINT_URL
