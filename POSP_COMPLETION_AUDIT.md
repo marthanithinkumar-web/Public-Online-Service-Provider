@@ -21,6 +21,9 @@ aliases for long job slugs. Job refresh #127 passed and pushed snapshot
 matched the new snapshot digest. Scheduled refresh #128 also passed and
 pushed snapshot `c5669c0`; production reports it ready with the exact digest
 `f6b83268b3c650af965017f353cc28754bc9f9c283afefed3b695321fd3611fd`.
+Scholarship refresh #96 also passed and committed `6964fbb`; a live API check
+returned 27 scholarships, with NMMS still explicitly `deadline_today` on
+2026-11-15.
 
 Production revalidation corrected one earlier finding: the official NSP page
 now explicitly lists NMMS student applications through 2026-11-15 (and
@@ -89,7 +92,7 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 | 1. Repository audit | Partial | Inspected repository structure, current history, 288 local/remote branch refs, 10 open PRs, core docs/configuration, tests, and live endpoints. Not every historical branch diff or commit was individually reviewed. |
 | 2. Preserve previous requirements | Partial | Worktree was clean at start; the current main feature set and tests were retained. No stale branch was blindly merged. |
 | 3. Platform features | Partial | Existing auth, client/admin workflows, orders, fees, uploads, receipts, notifications, and management functions have implementation and backend coverage. External live user journeys and all roles were not independently exercised in production. |
-| 4. Jobs and scholarships | Partial | Scheduled refresh is configured for 07:45 IST; 20 sources are configured; backend/frontend filters, snapshot integrity, deadline, and freshness rules have regression coverage. Run #128 started at 14:47 IST, over seven hours after its scheduled time. Current production status is 6 successful, 11 degraded, 3 failed. KVS/IBPS succeeded with no published jobs; SEBI remains blocked with HTTP 530 and four consecutive failures; the production DRDO-RAC registry points to the official RAC URL but reports failed with four consecutive failures. The parser reads the official RAC page locally and rejects its expired notice. Refresh #128 passed and production matched snapshot `c5669c0` and its exact digest; source health and schedule reliability remain unresolved. The NSP official page confirms NMMS student applications through 2026-11-15; verify expiry after the deadline. |
+| 4. Jobs and scholarships | Partial | Scheduled refresh is configured for 07:45 IST; 20 sources are configured; backend/frontend filters, snapshot integrity, deadline, and freshness rules have regression coverage. Run #128 started at 14:47 IST, over seven hours after its scheduled time. Current production status is 6 successful, 11 degraded, 3 failed. KVS/IBPS succeeded with no published jobs; SEBI remains blocked with HTTP 530 and four consecutive failures; the production DRDO-RAC registry points to the official RAC URL but reports failed with four consecutive failures. The parser reads the official RAC page locally and rejects its expired notice. Job refresh #128 passed and production matched snapshot `c5669c0` and its exact digest. Scholarship refresh #96 passed and committed `6964fbb`; the live API currently returns 27 records and NMMS remains deadline-today. Source health and schedule reliability remain unresolved. |
 | 5. POSP AI | Incomplete | Existing in-client support chat and admin operations AI are present with grounded context and safe error handling. `render.yaml` now selects the requested stable `gemini-3.5-flash-lite` model, and the existing `v1beta` `generateContent` request method matches Google's API documentation. `POSP_CLIENT_AI_ENABLED` remains false because no production key or successful live call has been verified. |
 | 6. WhatsApp Cloud API | Incomplete | Webhook verification/signature handling, inbound/outbound services, status updates, templates, consent, and admin monitoring are implemented and tested. Production `/api/whatsapp/config` reports disabled and notifications unavailable. |
 | 7. SEO/indexing | Partial | Public metadata/canonicals/structured data, sitemap and robots generation, prerendering, and private-route `X-Robots-Tag` behavior are implemented. Production sitemap now contains 173 URLs; all three live job detail routes, including the long-slug alias, were verified. All 12 private routes return HTTP 200 with a noindex header. Google Search Console indexing status is inaccessible here. |
@@ -228,6 +231,9 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 - Job refresh #128 passed, published snapshot `c5669c0`, and production
   reports the exact 3-job/20-source snapshot ready with SHA
   `f6b83268b3c650af965017f353cc28754bc9f9c283afefed3b695321fd3611fd`.
+- Scholarship refresh #96 passed and published commit `6964fbb`; production
+  still reports 27 scholarships, with NMMS at its student-application
+  deadline-today status for 2026-11-15.
 - Restore drill #12 passed with a disposable PostgreSQL restore and validation.
 - Razorpay confirmation #21 passed for live configuration, webhook, read-only
   authentication, and public checkout secret-safety checks.

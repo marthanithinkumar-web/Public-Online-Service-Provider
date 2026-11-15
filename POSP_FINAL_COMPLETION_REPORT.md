@@ -70,6 +70,8 @@ Production success is not inferred from code or a Git push.
   authentication without creating a transaction.
 - Restore drill #12 (2026-11-09) restored the latest encrypted backup to a
   disposable PostgreSQL database and validated the core application tables.
+- Scholarship refresh #96 passed and committed `6964fbb`; the live feed
+  returned 27 scholarships, with NMMS still `deadline_today` on 2026-11-15.
 - Commit `3ef5504` adds short stable ID-based URLs for long source slugs. The
   production sitemap contains all three job details, and the alias page
   hydrates the correct notice with the matching canonical URL.
@@ -142,6 +144,7 @@ Production success is not inferred from code or a Git push.
 | Job refresh #126 | **Passed**; production API matched 3-item snapshot and all 20 sources |
 | Job refresh #127 | **Passed**; production matched the exact 3-job, 20-source snapshot |
 | Job refresh #128 | **Passed**; workflow run `43698513507`; production snapshot `c5669c0` ready; started over seven hours after scheduled time |
+| Scholarship refresh #96 | **Passed**; commit `6964fbb`; live API returned 27 scholarships and NMMS deadline-today |
 | Job snapshot integrity | **Passed**; production SHA matched `f6b83268b3c650af965017f353cc28754bc9f9c283afefed3b695321fd3611fd` |
 | Job-source health | 6 successful, 11 degraded, 3 failed of 20; DRDO-RAC failed and SEBI degraded |
 | Razorpay confirmation #21 | **Passed**; live configuration, webhook, read-only API auth and secret-safe public config verified |
@@ -158,7 +161,8 @@ suite.
   before this pass.
 - The DRDO-RAC correction and initial audit are in `a818b93`; the sitemap E2E
   correction is in `00ccde8`, and long-slug SEO routing is in `3ef5504`.
-  Automated job refreshes pushed `a1b9716`, `8cef1ae`, and `c5669c0`; local
+  Automated job refreshes pushed `a1b9716`, `8cef1ae`, and `c5669c0`; scholarship
+  refresh #96 pushed `6964fbb`; local
   `main` was fast-forwarded to `c5669c0` before later report updates.
 - CI #1012, production smoke #117, scholarship smoke #95, and authenticated
   browser E2E #473 passed. Job refresh #128 passed and verified the exact
