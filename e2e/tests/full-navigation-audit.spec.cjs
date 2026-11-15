@@ -125,7 +125,7 @@ test('government, recharge, jobs and scholarship cards open their actual detail/
     const deadlineTodayLink = page.getByRole('link', { name: 'Check Official Portal', exact: true }).first()
     if (await deadlineTodayLink.count()) {
       await deadlineTodayLink.click()
-      await expect(page).toHaveURL(/\/scholarships\//)
+      await expect(page).toHaveURL(new RegExp('/scholarships/'))
       await expect(page.getByRole('link', { name: 'Official source details', exact: true })).toBeVisible()
       await expect(page.getByRole('link', { name: 'Apply with Assistance', exact: true })).toHaveCount(0)
       await page.goto('/scholarships')
