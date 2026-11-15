@@ -131,6 +131,7 @@ test('government, recharge, jobs and scholarship cards open their actual detail/
       await page.goto('/scholarships')
     }
 
+    // Route assertions below use URL predicates to avoid ambiguous escaped regex literals.
     // Exercise assisted application only for a verified-open student
     // opportunity, never for deadline-today or renewal-only schemes.
     const verifiedOpenLink = page.getByRole('link', { name: 'View Details & Apply', exact: true }).first()
