@@ -118,3 +118,9 @@ not a failing test. CI is configured to run it against its Redis service.
   configured URI but does not independently record an exact hostname match.
 - Production quota thresholds were not probed by repeated requests; limits
   were measured locally and shared-counter behavior was verified in CI.
+
+
+## Follow-up verification — 2026-11-16
+- No rate-limiter code change was introduced by PR #261 or the job snapshot commit `e6859cd66bfdac646f58a7ffcbfac9b52dab09b1`; the PR #260 implementation remains the current code path. The latest backend deployment is live on that snapshot commit and Render health returned HTTP 200; the job workflow's live API probe passed.
+- Readiness and shared Redis/Valkey connectivity were not re-probed after the latest deployment. Retain the prior 2026-11-15 10/10 readiness evidence as the last confirmed result; do not describe it as a fresh 2026-11-16 readiness check.
+- Deployment-safety note: the backend auto-deploy start command executed `pre_migrate.py`, `flask db upgrade` and `python seed.py`; logs showed database revision `20261114_26` and the 136-service catalog-ready message. No database contents were queried in this audit, and any seed/migration data effect is unverified. Under the production no-database-touch rule, block further backend deployments until an owner-authorized DB-free start/deploy path is available.
