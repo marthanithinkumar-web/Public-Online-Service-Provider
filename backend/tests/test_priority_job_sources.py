@@ -1,7 +1,21 @@
 from app.jobs import sources
-from app.jobs.priority_sources import parse_drdo, parse_drdo_rac, parse_kvs, parse_rbi, parse_sbi
+from app.jobs.priority_sources import (
+    parse_drdo,
+    parse_drdo_rac,
+    parse_kvs,
+    parse_rbi,
+    parse_sebi,
+    parse_sbi,
+)
 from app.jobs import snapshot, notice_enrichment
-from app.jobs.sources import JobItem, SOURCE_DEFINITIONS, parse_all_dates, parse_date, parse_explicit_deadline
+from app.jobs.sources import (
+    JobItem,
+    SOURCE_DEFINITIONS,
+    parse_all_dates,
+    parse_date,
+    parse_explicit_deadline,
+    parse_explicit_deadline_cutoff_time,
+)
 from datetime import date, datetime, time, timezone
 
 
@@ -18,6 +32,10 @@ def test_employment_news_all_jobs_is_removed_and_priority_sources_are_registered
     drdo_rac = next(source for source in sources.SOURCE_DEFINITIONS if source.key == 'drdo_rac')
     assert drdo_rac.listing_url == 'https://rac.gov.in/index.php?lang=en&id=0'
     assert drdo_rac.parser is parse_drdo_rac
+    sebi = next(source for source in sources.SOURCE_DEFINITIONS if source.key == 'sebi')
+    assert sebi.listing_url == 'https://www.sebi.gov.in/sebiweb/about/AboutAction.do?doVacancies=yes'
+    assert sebi.parser is parse_sebi
+    assert not sebi.allow_missing_deadline
 
 
 def test_priority_parser_keeps_recruitment_notice_and_excludes_results():
@@ -45,6 +63,81 @@ def test_dotted_dates_and_explicit_deadline_labels():
     assert parse_explicit_deadline('Last date 30 October 2026') == date(2026, 10, 30)
     assert parse_explicit_deadline('Last date for submission of online applications: 09.11.2026') == date(2026, 11, 9)
     assert parse_explicit_deadline('Online applications from 19.10.2026 to 09.11.2026') == date(2026, 11, 9)
+
+
+def test_hyphenated_month_dates_parse_for_official_notice_dates_and_deadlines():
+    assert parse_date('14-Aug-2026') == date(2026, 8, 14)
+    assert parse_all_dates('Online registration from 02-Nov-2026 to 23-Nov-2026') == [
+        date(2026, 11, 2),
+        date(2026, 11, 23),
+    ]
+    assert parse_explicit_deadline('Last date to apply: 23-Nov-2026') == date(2026, 11, 23)
+    cutoff = parse_explicit_deadline_cutoff_time(
+        'Last date to apply: 23-Nov-2026 at 17:00 hrs IST'
+    )
+    assert cutoff.isoformat(timespec='minutes') == '17:00'
+
+
+def test_sebi_parser_uses_recent_recruitment_rows_and_excludes_archive_results(monkeypatch):
+    import app.jobs.priority_sources as priority_sources
+
+    monkeypatch.setattr(priority_sources, 'india_today', lambda: date(2026, 11, 15))
+    html = '''
+      <table>
+        <tr><th>Date</th><th>Title</th></tr>
+        <tr><td>14-Aug-2026</td><td><a href="/sebiweb/other/careerdetail.jsp?careerId=157">Recruitment of Security Coordinator - Last date to apply: 23-Nov-2026</a></td></tr>
+        <tr><td>12-Aug-2026</td><td><a href="/sebiweb/other/careerdetail.jsp?careerId=158">Final Result for Officer Grade A Recruitment</a></td></tr>
+        <tr><td>10-Apr-2026</td><td><a href="/sebiweb/other/careerdetail.jsp?careerId=160">Application for the post of Part-Time Counsellor (on contract basis)</a></td></tr>
+        <tr><td>12-Feb-2026</td><td><a href="/sebiweb/other/careerdetail.jsp?careerId=161">Recruitment of Officer Grade A - Information Handout and Scribe Declaration</a></td></tr>
+        <tr><td>14-Nov-2024</td><td><a href="/sebiweb/other/careerdetail.jsp?careerId=159">Recruitment of Executive Director</a></td></tr>
+      </table>
+    '''
+
+    items = parse_sebi(
+        html,
+        'https://www.sebi.gov.in/sebiweb/about/AboutAction.do?doVacancies=yes',
+    )
+
+    assert len(items) == 2
+    assert items[0].issue_date == date(2026, 8, 14)
+    assert items[0].deadline == date(2026, 11, 23)
+    assert items[0].official_notice_url == 'https://www.sebi.gov.in/sebiweb/other/careerdetail.jsp?careerId=157'
+    assert items[1].title == 'Application for the post of Part-Time Counsellor (on contract basis)'
+    assert items[1].issue_date == date(2026, 4, 10)
+
+
+def test_sebi_parser_rejects_an_unrecognized_listing_page():
+    import pytest
+
+    with pytest.raises(ValueError, match='dated listing table'):
+        parse_sebi(
+            '<html><body>Maintenance</body></html>',
+            'https://www.sebi.gov.in/sebiweb/about/AboutAction.do?doVacancies=yes',
+        )
+
+
+def test_sebi_archive_notice_with_expired_deadline_is_not_published(monkeypatch):
+    import app.jobs.priority_sources as priority_sources
+
+    source = next(item for item in SOURCE_DEFINITIONS if item.key == 'sebi')
+    html = '''
+      <table>
+        <tr><th>Date</th><th>Title</th></tr>
+        <tr><td>14-Aug-2026</td><td><a href="/sebiweb/other/careerdetail.jsp?careerId=157">Recruitment of Security Coordinator - Last date to apply: 03-Sep-2026</a></td></tr>
+      </table>
+    '''
+    monkeypatch.setattr(priority_sources, 'india_today', lambda: date(2026, 11, 15))
+    monkeypatch.setattr(snapshot, 'SOURCE_DEFINITIONS', (source,))
+    monkeypatch.setattr(snapshot, 'fetch_official_page', lambda url, session=None: html)
+    monkeypatch.setattr(snapshot, 'enrich_job_item', lambda item, session=None: item)
+
+    result = snapshot.build_snapshot(
+        now=datetime(2026, 11, 15, 12, 0, tzinfo=timezone.utc),
+    )
+
+    assert result['count'] == 0
+    assert result['sources'][0]['last_sync_status'] == 'success'
+    assert result['sources'][0]['fetched_count'] == 1
 
 
 def test_html_notice_supplies_explicit_dotted_deadline(monkeypatch):
