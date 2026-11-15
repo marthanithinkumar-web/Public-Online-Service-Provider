@@ -1,11 +1,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import {fileURLToPath} from 'node:url'
-import {readCatalog,readIndexableJobs,readScholarships,readStartupDefaultServices,siteUrl} from './seo-catalog.mjs'
+import {jobRouteSlug,readCatalog,readIndexableJobs,readScholarships,readStartupDefaultServices,siteUrl} from './seo-catalog.mjs'
 
 const scriptDir=path.dirname(fileURLToPath(import.meta.url))
 const distDir=path.resolve(scriptDir,'../dist')
-const [sampleJob]=readIndexableJobs()
+const jobs=readIndexableJobs()
 const [sampleScholarship]=readScholarships()
 const startupServices=readStartupDefaultServices()
 const requiredPages=[
@@ -16,7 +16,7 @@ const requiredPages=[
   'scholarships/index.html',
   'services/apply-government-job',
   'services/residence-certificate',
-  ...(sampleJob?[`jobs/${sampleJob.slug}`]:[]),
+  ...jobs.map(job=>`jobs/${jobRouteSlug(job)}`),
   ...(sampleScholarship?[`scholarships/${sampleScholarship.slug}`]:[]),
 ]
 const legacyEmploymentNewsUrl='https://employmentnews.gov.in/NewEmp/AllJobs.aspx?k=All'
@@ -43,7 +43,12 @@ for(const route of noindexRoutes){
 const sitemap=fs.readFileSync(path.join(distDir,'sitemap.xml'),'utf8')
 if(!sitemap.includes(`<loc>${siteUrl}/</loc>`)) throw new Error('sitemap.xml does not use the configured site URL')
 if(!sitemap.includes(`<loc>${siteUrl}/government-services</loc>`)) throw new Error('Service directory is missing from sitemap.xml')
-if(sampleJob&&!sitemap.includes(`<loc>${siteUrl}/jobs/${sampleJob.slug}</loc>`)) throw new Error('Job detail URLs are missing from sitemap.xml')
+for(const job of jobs){
+  const route=`/jobs/${jobRouteSlug(job)}`
+  if(!sitemap.includes(`<loc>${siteUrl}${route}</loc>`))throw new Error(`Job detail URL is missing from sitemap.xml: ${route}`)
+  const html=fs.readFileSync(path.join(distDir,route.slice(1)),'utf8')
+  if(!html.includes(`<link rel="canonical" href="${siteUrl}${route}" />`))throw new Error(`Job detail canonical is incorrect: ${route}`)
+}
 if(sampleScholarship&&!sitemap.includes(`<loc>${siteUrl}/scholarships/${sampleScholarship.slug}</loc>`)) throw new Error('Scholarship detail URLs are missing from sitemap.xml')
 
 const catalog=JSON.parse(fs.readFileSync(path.join(distDir,'seo-catalog.json'),'utf8'))

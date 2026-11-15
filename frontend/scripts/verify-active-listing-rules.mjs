@@ -1,4 +1,4 @@
-import {readIndexableJobs,readScholarships} from './seo-catalog.mjs'
+import {jobRouteSlug,readIndexableJobs,readScholarships} from './seo-catalog.mjs'
 
 function localParts(timeZone='Asia/Kolkata'){
   const parts=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date())
@@ -8,6 +8,10 @@ function localParts(timeZone='Asia/Kolkata'){
 const rollingEvidence=/\b(?:currently accepting applications|applications? (?:are )?(?:currently )?open|open for applications|registration\b.{0,80}\b(?:is|are)\s+(?:currently\s+)?open|application process is open)\b/i
 const jobs=readIndexableJobs()
 const scholarships=readScholarships()
+const jobRouteSlugs=jobs.map(job=>jobRouteSlug(job))
+if(new Set(jobRouteSlugs).size!==jobRouteSlugs.length)throw new Error('Public job route slugs are not unique')
+if(jobRouteSlugs.some(slug=>slug.length>200))throw new Error('A public job route slug exceeds the filesystem-safe limit')
+if(jobRouteSlug({id:42,slug:'a'.repeat(201)})!=='notice-42')throw new Error('Long job slugs must use their stable ID route')
 for(const job of jobs){
   const local=localParts(job.deadline_timezone||'Asia/Kolkata')
   if(!job.deadline||job.deadline<=local.date)throw new Error(`SEO job is undated, expired or due today: ${job.slug}`)

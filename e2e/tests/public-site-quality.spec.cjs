@@ -162,6 +162,22 @@ test('mobile navigation, static SEO files, Bing marker, and official-only URLs r
     expect(locations).toContain(`${OFFICIAL_ORIGIN}/services/${service.slug}`)
   }
 
+  const jobsResponse = await request.get('/data/jobs.json')
+  expect(jobsResponse.ok()).toBe(true)
+  const jobsData = await jobsResponse.json()
+  const longSlugJob = (jobsData.items || []).find((job) =>
+    job.job_type === 'government' &&
+    String(job.slug || '').length > 200 &&
+    locations.includes(`${OFFICIAL_ORIGIN}/jobs/notice-${job.id}`)
+  )
+  if (longSlugJob) {
+    const route = `/jobs/notice-${longSlugJob.id}`
+    const response = await page.goto(route, { waitUntil: 'domcontentloaded' })
+    expect(response?.status(), `${route} returned an error status`).toBeLessThan(400)
+    await expect(page.getByRole('heading', { name: longSlugJob.title, exact: true })).toBeVisible()
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', `${OFFICIAL_ORIGIN}${route}`)
+  }
+
   const officialFiles = `${robots}\n${sitemap}\n${JSON.stringify(catalog)}\n${structuredData}`
   for (const retired of RETIRED_ORIGINS) expect(officialFiles).not.toContain(retired)
 })

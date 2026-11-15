@@ -159,11 +159,17 @@ export async function fetchJobs(params:Record<string,string|number|boolean>={}){
   }
 }
 
+export function jobRouteSlug(job:Pick<JobNotification,'id'|'slug'>){
+  if(job.slug.length<=200)return job.slug
+  if(!Number.isSafeInteger(job.id)||job.id<=0)throw new Error('Long job slug has no safe numeric ID.')
+  return `notice-${job.id}`
+}
+
 export async function fetchJob(slug:string){
   try{
     const data=await fetchSnapshot()
-    const job=(data.items||[]).find(item=>item.slug===slug&&isVerifiedPublicJob(item))
-    if(job){void api.get(`/jobs/${encodeURIComponent(slug)}`,{timeout:3500}).catch(()=>undefined);return {job}}
+    const job=(data.items||[]).find(item=>(item.slug===slug||jobRouteSlug(item)===slug)&&isVerifiedPublicJob(item))
+    if(job){void api.get(`/jobs/${encodeURIComponent(job.slug)}`,{timeout:3500}).catch(()=>undefined);return {job}}
   }catch{
     // Fall through to the live API when the snapshot cannot be loaded.
   }
@@ -179,7 +185,7 @@ export async function fetchJobSources(){
   }
 }
 
-export const jobPath=(job:Pick<JobNotification,'slug'>)=>`/jobs/${job.slug}`
+export const jobPath=(job:Pick<JobNotification,'id'|'slug'>)=>`/jobs/${jobRouteSlug(job)}`
 
 export function formatJobDate(value?:string|null){
   if(!value)return 'See official notice'

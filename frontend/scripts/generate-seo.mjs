@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import {fileURLToPath} from 'node:url'
-import {publicRoutes,readCatalog,readIndexableJobs,readScholarships,siteUrl} from './seo-catalog.mjs'
+import {jobRouteSlug,publicRoutes,readCatalog,readIndexableJobs,readScholarships,siteUrl} from './seo-catalog.mjs'
 
 const scriptDir=path.dirname(fileURLToPath(import.meta.url))
 const publicDir=path.resolve(scriptDir,'../public')
@@ -11,7 +11,7 @@ const scholarships=readScholarships()
 const urls=[
   ...publicRoutes,
   ...services.map(service=>`/services/${service.slug}`),
-  ...jobs.map(job=>`/jobs/${job.slug}`),
+  ...jobs.map(job=>`/jobs/${jobRouteSlug(job)}`),
   ...scholarships.map(item=>`/scholarships/${item.slug}`),
 ]
 if(new Set(urls).size!==urls.length)throw new Error('Duplicate public URL generated for sitemap.xml')

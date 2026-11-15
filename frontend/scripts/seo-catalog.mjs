@@ -103,11 +103,23 @@ function readSnapshot(name){
   return Array.isArray(payload?.items)?payload.items:[]
 }
 
-// Detail snapshots are emitted as extensionless files. Keep their names within
-// a conservative filesystem limit and exclude malformed snapshot records.
+const MAX_SOURCE_JOB_SLUG_LENGTH=500
+const MAX_JOB_ROUTE_SLUG_LENGTH=200
+
+// Keep source identifiers independent from the shorter filesystem-safe SEO URL.
+export function jobRouteSlug(item){
+  const slug=String(item?.slug||'')
+  if(slug.length<=MAX_JOB_ROUTE_SLUG_LENGTH)return slug
+  const id=Number(item?.id)
+  if(!Number.isSafeInteger(id)||id<=0)throw new Error(`Long job slug has no safe numeric ID: ${slug}`)
+  return `notice-${id}`
+}
+
+// Detail snapshots are emitted as extensionless files; reject malformed or
+// excessively large source identifiers before deriving a safe route slug.
 const hasSafePublicSlug=item=>{
   const slug=String(item?.slug||'')
-  return slug.length<=200&&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)&&Boolean(item?.title)
+  return slug.length<=MAX_SOURCE_JOB_SLUG_LENGTH&&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)&&Boolean(item?.title)
 }
 
 function hasCurrentDeadline(item){
@@ -157,7 +169,14 @@ function uniqueBySlug(items){
 export function readJobs(){
   // Older snapshots can carry forward a legacy duplicate slug. Keep one
   // canonical public URL until the next backend refresh repairs the source.
-  return uniqueBySlug(readSnapshot('jobs.json').filter(item=>isVerifiedOpenJob(item)&&hasSafePublicSlug(item)))
+  const jobs=uniqueBySlug(readSnapshot('jobs.json').filter(item=>isVerifiedOpenJob(item)&&hasSafePublicSlug(item)))
+  const routeSlugs=new Set()
+  for(const job of jobs){
+    const routeSlug=jobRouteSlug(job)
+    if(routeSlugs.has(routeSlug))throw new Error(`Duplicate public job route slug: ${routeSlug}`)
+    routeSlugs.add(routeSlug)
+  }
+  return jobs
 }
 
 // Only government recruitment detail pages are part of the SEO index surface.
