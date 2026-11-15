@@ -63,6 +63,7 @@ def parse_date(value):
     for pattern in (
         r'(?<!\d)(20\d{2})-(\d{1,2})-(\d{1,2})(?!\d)',
         r'\b(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\b',
+        r'\b(\d{1,2})[-\s]+([A-Za-z]{3,9})[-\s]+(20\d{2})\b',
         r'\b(\d{1,2})\s+([A-Za-z]{3,9})\s+(20\d{2})\b',
         r'\b([A-Za-z]{3,9})\s+(\d{1,2})\s+(20\d{2})\b',
     ):
@@ -82,6 +83,7 @@ def parse_all_dates(value):
     text = clean(value).replace(',', ' ')
     candidates = re.findall(
         r'20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]20\d{2}|'
+        r'\d{1,2}[-\s]+[A-Za-z]{3,9}[-\s]+20\d{2}|'
         r'\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}|[A-Za-z]{3,9}\s+\d{1,2}\s+20\d{2}',
         text,
         re.I,
@@ -92,7 +94,7 @@ def parse_all_dates(value):
 def parse_explicit_deadline(value):
     """Extract only application dates attached to explicit deadline language."""
     text = clean(value)
-    token = r'(?:20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]20\d{2}|\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}|[A-Za-z]{3,9}\s+\d{1,2},?\s+20\d{2})'
+    token = r'(?:20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]20\d{2}|\d{1,2}[-\s]+[A-Za-z]{3,9}[-\s]+20\d{2}|[A-Za-z]{3,9}\s+\d{1,2},?\s+20\d{2})'
     time_clause = r'(?:\s+\d{1,2}[.:]\d{2}\s*(?:hrs?|hours?)\s+on)?'
     closing_patterns = (
         rf'(?:last date(?: and time)?(?:\s+for\s+(?:receipt|submission|applying|online application|filling|registration|applications?)(?:\s+of\s+(?:online\s+)?applications?)?)?|last date to apply|closing date(?: for applications?)?|application deadline|applications? close(?:s)? on|apply by)\s*[:\-]?\s*({token})',
@@ -127,7 +129,7 @@ def parse_explicit_deadline_cutoff_time(value):
     date_token = (
         r'(?:20\d{2}-\d{1,2}-\d{1,2}|'
         r'\d{1,2}[./-]\d{1,2}[./-]20\d{2}|'
-        r'\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}|'
+        r'\d{1,2}[-\s]+[A-Za-z]{3,9}[-\s]+20\d{2}|'
         r'[A-Za-z]{3,9}\s+\d{1,2},?\s+20\d{2})'
     )
     time_token = r'(\d{1,2}[.:]\d{2}\s*(?:AM|PM)?)'

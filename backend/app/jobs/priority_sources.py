@@ -1,4 +1,5 @@
 import re
+from datetime import timedelta
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse
 
@@ -8,13 +9,15 @@ from .sources import JobItem, SourceDefinition, _first, _looks_like_initial_recr
 _EXCLUDED = (
     'result', 'results', 'admit card', 'call letter', 'answer key', 'interview schedule',
     'shortlisted', 'selected candidates', 'selection list', 'marks', 'score card',
-    'corrigendum', 'addendum', 'cancellation', 'cancelled', 'document verification',
+    'information handout', 'scribe declaration', 'corrigendum', 'addendum',
+    'cancellation', 'cancelled', 'document verification',
     'exam city', 'response sheet', 'notice regarding exam', 'final result',
 )
 
 _RECRUITMENT = re.compile(
     r'\b(recruitment|vacanc(?:y|ies)|current openings?|career opportunities?|'
-    r'engagement of|invites? applications?|applications? invited|apply online|advertisement|advt\.?|'
+    r'engagement of|invites? applications?|applications? invited|application for (?:the )?(?:post|position)|'
+    r'inviting applications|apply online|advertisement|advt\.?|'
     r'probationary officer|junior associate|specialist cadre|officer grade|'
     r'assistant manager|manager grade|teaching posts?|non[- ]teaching posts?|'
     r'faculty posts?|staff recruitment)\b',
@@ -337,10 +340,58 @@ def parse_kvs(html, base_url):
             warnings=[] if deadline else ['Closing date must be confirmed in the linked official KVS notice.'],
         ))
     return items
-parse_sebi = _generic_official_parser(
-    'Securities and Exchange Board of India (SEBI)',
-    'Official SEBI recruitment opportunity. Confirm stream, eligibility, vacancies, fee, dates and application instructions in the official notice.',
-)
+def parse_sebi(html, base_url):
+    """Parse dated SEBI vacancy rows and discard archived/result-only notices."""
+    records = list(_table_records(parse_html(html)))
+    has_dated_titles = any(
+        _first(record, ('date',)) and _first(record, ('title',))
+        for record in records
+    )
+    if not has_dated_titles:
+        raise ValueError('SEBI vacancies page did not contain its dated listing table.')
+
+    today = india_today()
+    oldest_issue_date = today - timedelta(days=365)
+    items = []
+    seen = set()
+    for record in records:
+        title = _first(record, ('title', 'subject', 'vacancy'))
+        issue_date = parse_date(_first(record, ('date', 'published')))
+        if not title or not issue_date:
+            continue
+        if issue_date < oldest_issue_date or not _RECRUITMENT.search(title):
+            continue
+        if any(term in title.lower() for term in _EXCLUDED):
+            continue
+
+        notice_url = _row_url(record, base_url)
+        if not notice_url:
+            continue
+        validate_official_url(notice_url)
+        identity = (title.casefold(), notice_url)
+        if identity in seen:
+            continue
+        seen.add(identity)
+
+        slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')[:120]
+        deadline = parse_explicit_deadline(title)
+        items.append(JobItem(
+            external_id=f'sebi-{issue_date.isoformat()}-{slug}',
+            title=title[:500],
+            organization='Securities and Exchange Board of India (SEBI)',
+            official_notice_url=notice_url,
+            location='India',
+            issue_date=issue_date,
+            deadline=deadline,
+            deadline_timezone='Asia/Kolkata',
+            summary='Official SEBI recruitment notice. Confirm stream, eligibility, vacancies, fee, dates and application instructions in the linked official notice.',
+            confidence=0.96,
+            warnings=[] if deadline else ['Confirm the application deadline in the official SEBI notice.'],
+        ))
+
+    return sorted(items, key=lambda item: (item.issue_date or today, item.title), reverse=True)
+
+
 parse_ibps = _generic_official_parser(
     'Institute of Banking Personnel Selection (IBPS)',
     'Official IBPS recruitment process notice. Confirm participating organisations, eligibility, vacancies, fee and dates in the official notification.',
@@ -401,7 +452,12 @@ PRIORITY_OFFICIAL_SOURCES = (
     SourceDefinition('nvs', 'Navodaya Vidyalaya Samiti', 'https://navodaya.gov.in/nvs/en/Recruitment/', parse_nvs, allow_missing_deadline=True, missing_deadline_max_age_days=60),
     SourceDefinition('sainik_schools', 'Sainik Schools Society', 'https://sainikschoolsociety.in/', parse_sainik, allow_missing_deadline=True, missing_deadline_max_age_days=60),
     SourceDefinition('kvs', 'Kendriya Vidyalaya Sangathan', 'https://kvs.gov.in/en/interview-notice/', parse_kvs, allow_missing_deadline=True, missing_deadline_max_age_days=60),
-    SourceDefinition('sebi', 'Securities and Exchange Board of India', 'https://www.sebi.gov.in/sebiweb/other/careerdetail.jsp?careerId=1', parse_sebi, allow_missing_deadline=True, missing_deadline_max_age_days=60),
+    SourceDefinition(
+        'sebi',
+        'Securities and Exchange Board of India',
+        'https://www.sebi.gov.in/sebiweb/about/AboutAction.do?doVacancies=yes',
+        parse_sebi,
+    ),
     SourceDefinition('ibps', 'Institute of Banking Personnel Selection', 'https://www.ibps.in/', parse_ibps, allow_missing_deadline=True, missing_deadline_max_age_days=45),
     SourceDefinition('drdo_rac', 'Defence Research and Development Organisation — Recruitment and Assessment Centre', 'https://rac.gov.in/index.php?lang=en&id=0', parse_drdo_rac),
 )
