@@ -136,10 +136,10 @@ test('government, recharge, jobs and scholarship cards open their actual detail/
     const verifiedOpenLink = page.getByRole('link', { name: 'View Details & Apply', exact: true }).first()
     if (await verifiedOpenLink.count()) {
       await verifiedOpenLink.click()
-      await expect(page).toHaveURL(/\\/scholarships\\//)
+      await expect(page).toHaveURL(url => url.pathname.startsWith('/scholarships/'))
       await expect(page.getByRole('link', { name: 'Official source details', exact: true })).toBeVisible()
       await page.getByRole('link', { name: 'Apply with Assistance', exact: true }).click()
-      await expect(page).toHaveURL(/\\/services\\/scholarship-application-assistance\\?scholarship=/)
+      await expect(page).toHaveURL(url => url.pathname === '/services/scholarship-application-assistance' && url.searchParams.has('scholarship'))
       await expectRealPage(page)
     }
   } else {
