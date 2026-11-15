@@ -323,3 +323,11 @@ After the items above are complete and tested, continue the existing full improv
 - The authenticated E2E run `43689233588` failed before tests executed because `e2e/tests/full-navigation-audit.spec.cjs:128` contained an invalid escaped regex `/\\\\/scholarships\\\\//`. Corrected the route assertion to the valid `/\\/scholarships\\//` in commit `773ce801f7cb0af8bbd7f0993b7b8f957ee6d91f`.
 - CI run `43689233632` completed frontend typecheck/build and operational-script safety successfully, but backend tests failed 1 / 314. The new NSP expired-deadline regression invoked `refresh_snapshot(strict=True)`, which intentionally rejects a one-card fixture because strict production refresh requires at least five official listings. Changed this focused test to `strict=False` in commit `151511ef1ea81d57f1de1127498f22ca0417a194`; the test continues to assert that the expired 2026-08-31 NMMS student deadline is removed from active items and retained as closed.
 - These are test-harness fixes, not proof of completion. Fresh exact-head CI and authenticated E2E must pass after the latest branch changes. No merge or deploy is authorized until that verification succeeds.
+
+
+## 2026-11-15 — Second E2E syntax failure fixed
+
+- The authenticated E2E run on head `6c39f4649575d6c65de051f05a9d8d36f71ec988` passed setup and frontend/backend startup but failed during Playwright test parsing. The first scholarship route assertion had been corrected, but two additional assertions at lines 139 and 142 still contained invalid double-escaped regular-expression delimiters.
+- Replaced those remaining regex assertions with Playwright URL predicates: scholarship detail paths must start with `/scholarships/`, and the assisted-application route must equal `/services/scholarship-application-assistance` and include the `scholarship` query parameter. Commit: `abf5244cd0802b162aeaf4e4724a10b17439ebb4`.
+- Checked the full E2E spec for any remaining adjacent double-backslash sequences; none were found. This is still awaiting a fresh exact-head E2E run.
+- Backend CI for the same earlier head was still running when this note was written. The new regression fixture was separately corrected to avoid invoking the unrelated strict minimum-five-listings gate; it still requires exact-head backend test success.
