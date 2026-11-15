@@ -115,10 +115,10 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 | 5. POSP AI | Incomplete | Existing in-client support chat and admin operations AI are present with grounded context and safe error handling. `render.yaml` now selects the requested stable `gemini-3.5-flash-lite` model, and the existing `v1beta` `generateContent` request method matches Google's API documentation. `POSP_CLIENT_AI_ENABLED` remains false because no production key or successful live call has been verified. |
 | 6. WhatsApp Cloud API | Incomplete | Webhook verification/signature handling, inbound/outbound services, status updates, templates, consent, and admin monitoring are implemented and tested. Production `/api/whatsapp/config` reports disabled and notifications unavailable. The Meta app is unpublished; callback and verify-token fields are empty and webhook verification is disabled. |
 | 7. SEO/indexing | Partial | Public metadata/canonicals/structured data, sitemap and robots generation, prerendering, and private-route `X-Robots-Tag` behavior are implemented. Production sitemap contains 173 URLs; all three live job detail routes, including the long-slug alias, were verified. All 12 private routes return HTTP 200 with a noindex header. Search Console confirms the sitemap is successfully submitted (170 discovered pages); its overview shows 11 indexed and 166 not indexed. The latest detailed report lists 164 discovered-not-indexed and two alternate-canonical URLs; inspect representative pages and resolve indexing causes. |
-| 8. Security/reliability | Partial | Production startup rejects a missing/weak `SECRET_KEY`; auth/admin tests, input validation, upload limits, rate limiting, private storage, payment verification, backups, and readiness checks exist. Current live readiness is 10/10. Restore drill #12 successfully decrypted and restored the latest encrypted backup into a disposable PostgreSQL database and validated core tables. Razorpay production confirmation #21 verified live credentials, webhook configuration, read-only API authentication, and safe public checkout config. No penetration test or live payment/refund was performed. |
-| 9. Testing/integration | Partial | Backend suite: 318 passed, 129 warnings; frontend typecheck/build passed. Production smoke #117, scholarship smoke #95, CI #1012 and #1014, and authenticated browser E2E #473 passed. CI #1014 passed operational-script safety, backend tests, and frontend typecheck/build. E2E #473 exercised the new long-slug alias. Job refresh #128 passed and production matched its exact 3-job snapshot and 20-source registry. Restore drill #12 and Razorpay production confirmation #21 passed. External AI, WhatsApp, and real transaction/refund tests remain unverified. |
+| 8. Security/reliability | Partial | Production startup rejects a missing/weak `SECRET_KEY`; auth/admin tests, input validation, upload limits, private storage, payment verification, backups, and readiness checks exist. The Flask-Limiter 2.9.0 global-default bug is fixed with constructor defaults (500/hour and 2,000/day). Redis outage fallback is process-local, preserves limits, fails auth closed, and fails other rate-limited routes closed after five minutes. Production deployment of this remediation is pending. Restore drill #12 and Razorpay confirmation #21 passed; no penetration test or live payment/refund was performed. |
+| 9. Testing/integration | Partial | Latest full local backend suite: 334 passed, one Redis integration test skipped because no local Redis server is installed, and 129 warnings. CI now runs that shared-counter integration test against a Redis service; its result is pending. Frontend typecheck/build, prior production smoke #117, scholarship smoke #95, CI #1012/#1014, authenticated browser E2E #473, restore drill #12, Razorpay confirmation #21, and job refresh #128 passed. External AI, WhatsApp, and live transaction/refund tests remain outstanding. |
 | 10. Git/merging | Partial | 288 branches and 10 open PRs were found. Commits `a818b93`, `00ccde8`, `3ef5504`, `0de334e`, and `6de1846` were pushed; automated snapshot refreshes `a1b9716`, `8cef1ae`, and `c5669c0` were fast-forwarded locally. Historical branch contents were not all reviewed; stale PRs were not merged. |
-| 11. Deployment | Partial | Live health/readiness endpoints return HTTP 200, with all ten readiness checks true. Render shows the API service live at `6de1846`; its free instance may sleep and delay requests by 50 seconds or more. Search Console confirms sitemap submission but reports 166 not-indexed pages. Job refresh #128 verified the exact committed snapshot and digest; DRDO-RAC remains failed. The public WhatsApp config is disabled and the Meta app is unpublished; client AI also remains disabled. |
+| 11. Deployment | Partial | Before this limiter change, production `/health` and `/readiness` returned HTTP 200 and readiness reported all ten checks true. The Render project contains the existing Valkey 8 service `public-online-service-provider-rate-limit`; deployed readiness successfully PINGed the configured shared store. The exact secret URL was not copied or exposed. This limiter remediation and strict readiness setting have not yet been deployed; production behavior must be rechecked after CI and deployment. The API's free instance may sleep. AI and WhatsApp remain disabled. |
 | 12. Final destination | Incomplete | Work is not production-complete until the external AI/WhatsApp configuration and the remaining feed/source/deployment checks are verified. |
 
 ## Verified completed behavior
@@ -226,7 +226,9 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 ## Test/build results
 
 - `python -m pytest -q backend/tests` from the repository root with
-  `PYTHONPATH=backend`: **318 passed**, 129 warnings, 183.38s.
+  `PYTHONPATH=backend`: **334 passed, 1 skipped**, 129 warnings, 135.88s.
+  The one skip is the Redis cross-worker integration test; no local Redis
+  server was available. CI now provisions Redis 7 and runs that test explicitly.
   Warnings include the deliberately short test JWT key and a deprecated
   `datetime.utcnow()` use in an existing test.
 - `npm ci`: **100 packages installed; 0 vulnerabilities** reported by npm.
@@ -312,3 +314,31 @@ scheduled run #128 started at 09:17 UTC (14:47 IST) on 2026-11-15, over seven
 hours late. The feed was successfully refreshed, but GitHub Actions did not
 meet the requested 07:45 IST timing. A more reliable scheduler requires
 owner-authorized deployment configuration.
+
+## Distributed rate-limiting remediation
+
+- **Root cause:** the application assigned `limiter._default_limits` after
+  constructing Flask-Limiter 2.9.0. That private assignment did not register
+  default limit groups, so ordinary unannotated routes had no global limits.
+- **Fix:** register `2000 per day` and `500 per hour` in the supported
+  `Limiter(default_limits=...)` constructor, retaining route-specific limits
+  and the existing `RATELIMIT_STORAGE_URI` / `get_remote_address` behavior.
+- **Outage policy:** Flask-Limiter uses its logged per-process memory fallback
+  for ordinary endpoints for at most five minutes. Sensitive auth-blueprint
+  routes fail closed with HTTP 503 in production as soon as the shared store
+  is unavailable or unconfigured. Other rate-limited routes fail closed after
+  the fallback window. Readiness reports the Redis PING result and production
+  strict mode returns HTTP 503 on any required dependency failure. The fallback
+  is not distributed.
+- **Operational routes:** `/health` is a liveness-only response and
+  `/readiness` checks the database and configured dependencies; both bypass
+  rate-limit quotas. Neither exposes connection details.
+- **Local verification:** Flask-Limiter 2.9.0 was confirmed from the pinned
+  requirement. Tests exercised the actual 500/hour and 2,000/day behavior on
+  unannotated routes, login/registration/password-reset caps, health/readiness
+  exemptions, storage failure, fallback, fail-closed auth, bounded fallback,
+  recovery, and readiness PING failure. The full local backend suite passed
+  334 tests. The real Redis cross-worker test is wired into CI but has not yet
+  run in this local environment.
+- **Deployment:** the Render blueprint now sets strict readiness to `1`;
+  production deploy and post-deploy health/readiness checks are pending.
