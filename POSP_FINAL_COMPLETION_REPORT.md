@@ -20,14 +20,14 @@ Production success is not inferred from code or a Git push.
 | 1 | Repository audit | Partial | Inspected repository structure, current history, 288 branch refs, 10 open PRs, core documentation/configuration, tests, and live endpoints. Not every historical branch diff or commit was individually reviewed. |
 | 2 | Preserve previous requirements | Partial | Kept existing architecture and features; merged verified PR #259 and snapshot-integrity follow-up into `main`. No stale branch was blindly merged. |
 | 3 | Platform features | Partial | Existing auth/role checks, client/admin workflows, applications/orders, fee rules, uploads, receipts, and notifications have implementation and backend coverage. All live user journeys and roles were not independently exercised in production. |
-| 4 | Jobs and scholarships | Partial | Official-source validation, deadline/freshness logic, filters, snapshots, and scheduled refresh are implemented and regression-tested. Current production reports 20 sources: 6 successful, 10 degraded, 4 failed. KVS/IBPS checks succeeded with no published jobs; SEBI remains blocked with HTTP 530 (degraded, three consecutive failures). The official DRDO-RAC URL is configured, but it reports failed with three consecutive failures; its parser reads the official page locally and rejects its expired notice. Refresh #127 verified production against the exact new snapshot; source health remains unresolved. |
+| 4 | Jobs and scholarships | Partial | Official-source validation, deadline/freshness logic, filters, snapshots, and scheduled refresh are implemented and regression-tested. Current production reports 20 sources: 6 successful, 11 degraded, 3 failed. KVS/IBPS checks succeeded with no published jobs; SEBI remains blocked with HTTP 530 (degraded, four consecutive failures). The official DRDO-RAC URL is configured, but it reports failed with four consecutive failures; its parser reads the official page locally and rejects its expired notice. Refresh #128 verified production against the exact new snapshot; source health remains unresolved. |
 | 5 | POSP AI | Incomplete | Existing in-client and admin AI workflows are present, but Render config disables client AI and selects `gemini-2.5-flash`, not the requested enabled `gemini-3.5-flash-lite`. No provider credential or successful model call was verified. |
 | 6 | WhatsApp Cloud API | Incomplete | Webhook, messaging, templates, consent, and status-handling code has tests. Production config reports Cloud API disabled and status notifications unavailable; no authorized end-to-end Meta message test was performed. |
 | 7 | SEO and indexing | Partial | Metadata, canonical URLs, structured data, sitemap/robots generation, prerendering, and private-route noindex behavior are implemented. Production sitemap has 173 URLs and all three current job detail pages are present. The 237-character source slug uses `/jobs/notice-136282380084494`; production content and canonical were verified. Search Console was unavailable. |
 | 8 | Security and reliability | Partial | AuthZ, input validation, upload limits, rate limiting, storage, payment verification, backup tooling, and readiness checks exist. Live readiness is healthy, but no penetration test or restore drill was performed. |
-| 9 | Testing and integration | Partial | Backend suite, frontend typecheck/build, production smoke #117, scholarship smoke #95, CI #1012, and authenticated browser E2E #473 passed. E2E #473 exercises the new long-slug alias. Job refresh #127 passed and production matched its exact 3-job/20-source snapshot. Account-authorized AI, WhatsApp, payment/refund, and restore tests remain outstanding. |
-| 10 | Git and merging | Partial | PR #259 and the snapshot-integrity follow-up are in `main`; commits `a818b93`, `00ccde8`, and `3ef5504` are pushed, and automated snapshot refreshes `a1b9716` and `8cef1ae` are pushed and fast-forwarded locally. Historical branch contents were not all reviewed. |
-| 11 | Deployment | Partial | Production health/readiness endpoints return HTTP 200 and readiness reports 10/10 checks true. Production sitemap has 173 URLs and the long-job route returns the correct hydrated detail and canonical URL. Refresh #127 verified the exact snapshot SHA on the production API. No authenticated Render control-plane check was available. |
+| 9 | Testing and integration | Partial | Backend suite, frontend typecheck/build, production smoke #117, scholarship smoke #95, CI #1012, and authenticated browser E2E #473 passed. E2E #473 exercises the new long-slug alias. Job refresh #128 passed and production matched its exact 3-job/20-source snapshot. Account-authorized AI, WhatsApp, payment/refund, and restore tests remain outstanding. |
+| 10 | Git and merging | Partial | PR #259 and the snapshot-integrity follow-up are in `main`; commits `a818b93`, `00ccde8`, and `3ef5504` are pushed, and automated snapshot refreshes `a1b9716`, `8cef1ae`, and `c5669c0` are pushed and fast-forwarded locally. Historical branch contents were not all reviewed. |
+| 11 | Deployment | Partial | Production health/readiness endpoints return HTTP 200 and readiness reports 10/10 checks true. Production sitemap has 173 URLs and the long-job route returns the correct hydrated detail and canonical URL. Refresh #128 verified the exact snapshot SHA on the production API. No authenticated Render control-plane check was available. |
 | 12 | Production-ready destination | Incomplete | External activation, failed/degraded sources, scheduler timing, and production transaction/restore checks prevent a production-complete claim. |
 
 ## Implemented and verified behavior
@@ -47,7 +47,7 @@ Production success is not inferred from code or a Git push.
 - The DRDO-RAC parser now targets the official RAC site and uses an explicit
   application deadline rather than a page-update date. Its test confirms that
   the current expired notice is not published. It parsed the live official page
-  locally, but production reports three consecutive source failures; no cause is
+  locally, but production reports four consecutive source failures; no cause is
   inferred from the public endpoint.
 - Job refresh #126 committed snapshot `a1b9716`. Production reported three
   active notices, 20 sources, and the exact snapshot SHA
@@ -55,11 +55,14 @@ Production success is not inferred from code or a Git push.
 - Job refresh #127 passed, pushed snapshot `8cef1ae`, and verified that the
   production API matched its exact snapshot SHA
   `2b2ea51f95071814d3b91523772e06444b74b746abb02e211fe941085ed4ad38`.
+- Job refresh #128 passed (workflow run `43698513507`) and pushed snapshot
+  `c5669c0`; the production API reports the exact snapshot SHA
+  `f6b83268b3c650af965017f353cc28754bc9f9c283afefed3b695321fd3611fd` ready.
 - Commit `3ef5504` adds short stable ID-based URLs for long source slugs. The
   production sitemap contains all three job details, and the alias page
   hydrates the correct notice with the matching canonical URL.
-- The latest source health is six successful, ten degraded, and four failed;
-  DRDO-RAC is failed and SEBI is degraded after three consecutive failures
+- The latest source health is six successful, eleven degraded, and three
+  failed; DRDO-RAC is failed and SEBI is degraded after four consecutive failures
   each. They remain operational blockers.
 - `Employment News All Jobs` remains excluded.
 - The existing in-client support, admin, application, payment, storage, and
@@ -121,8 +124,9 @@ Production success is not inferred from code or a Git push.
 | CI #1012 | **Passed** |
 | Job refresh #126 | **Passed**; production API matched 3-item snapshot and all 20 sources |
 | Job refresh #127 | **Passed**; production matched the exact 3-job, 20-source snapshot |
-| Job snapshot integrity | **Passed**; production SHA matched `2b2ea51f95071814d3b91523772e06444b74b746abb02e211fe941085ed4ad38` |
-| Job-source health | 6 successful, 10 degraded, 4 failed of 20; DRDO-RAC failed and SEBI degraded |
+| Job refresh #128 | **Passed**; workflow run `43698513507`; production snapshot `c5669c0` ready |
+| Job snapshot integrity | **Passed**; production SHA matched `f6b83268b3c650af965017f353cc28754bc9f9c283afefed3b695321fd3611fd` |
+| Job-source health | 6 successful, 11 degraded, 3 failed of 20; DRDO-RAC failed and SEBI degraded |
 
 Backend warnings include test JWT keys shorter than the recommended minimum
 and an existing deprecated `datetime.utcnow()` use. They did not fail the
@@ -135,21 +139,21 @@ suite.
   before this pass.
 - The DRDO-RAC correction and initial audit are in `a818b93`; the sitemap E2E
   correction is in `00ccde8`, and long-slug SEO routing is in `3ef5504`.
-  Automated job refreshes pushed `a1b9716` and `8cef1ae`; local `main` was
-  fast-forwarded to `8cef1ae` and matched `origin/main` before this final
+  Automated job refreshes pushed `a1b9716`, `8cef1ae`, and `c5669c0`; local
+  `main` was fast-forwarded to `c5669c0` and matched `origin/main` before this final
   report-only update.
 - CI #1012, production smoke #117, scholarship smoke #95, and authenticated
-  browser E2E #473 passed. Job refresh #127 passed and verified the exact
+  browser E2E #473 passed. Job refresh #128 passed and verified the exact
   snapshot SHA on the production API. The production registry reports the
-  corrected RAC URL, but DRDO-RAC remains failed and SEBI degraded after three
+  corrected RAC URL, but DRDO-RAC remains failed and SEBI degraded after four
   consecutive failures.
 
 ## External blockers and remaining work
 
-1. Investigate DRDO-RAC's three consecutive production source failures in
+1. Investigate DRDO-RAC's four consecutive production source failures in
    owner-authorized Render logs; the production endpoint confirms the corrected
    official RAC URL but omits the failure reason. Do not bypass source controls.
-2. Resolve SEBI's HTTP 530 (three consecutive degraded checks) via an approved
+2. Resolve SEBI's HTTP 530 (four consecutive degraded checks) via an approved
    official source or owner-authorized network; monitor KVS/IBPS parser results.
 3. Check post-deadline NMMS removal and production feed/sitemap convergence.
 4. Configure and verify the requested Gemini model using an authorized key,

@@ -18,7 +18,9 @@ pushed. The daily refresh workflows committed scholarship and jobs data
 run #126 published snapshot `a1b9716`. Commit `3ef5504` adds filesystem-safe
 aliases for long job slugs. Job refresh #127 passed and pushed snapshot
 `8cef1ae`, which was fast-forwarded into local `main`; the production API
-matched the new snapshot digest.
+matched the new snapshot digest. Scheduled refresh #128 also passed and
+pushed snapshot `c5669c0`; production reports it ready with the exact digest
+`f6b83268b3c650af965017f353cc28754bc9f9c283afefed3b695321fd3611fd`.
 
 Production revalidation corrected one earlier finding: the official NSP page
 now explicitly lists NMMS student applications through 2026-11-15 (and
@@ -27,11 +29,11 @@ NMMS `deadline_today`; that is current evidence, not a verification-date
 mix-up. The scholarship should leave the public feed after its student
 application deadline. The live feed currently has 27 scholarships (26
 verified-open and one deadline-today) and three verified-open job records.
-Across the 20 job sources, six report success, ten degraded, and four failed.
+Across the 20 job sources, six report success, eleven degraded, and three failed.
 KVS and IBPS checks succeeded but yielded no published jobs; SEBI was blocked
-with HTTP 530 and is degraded with three consecutive failures. The production
+with HTTP 530 and is degraded with four consecutive failures. The production
 source registry now points DRDO-RAC to the official RAC site, but its latest
-source status is failed with three consecutive failures. The parser
+source status is failed with four consecutive failures. The parser
 successfully read the official page locally and returned its expired notice,
 which is not published; production source connectivity or runtime diagnostics
 still require owner-authorized logs.
@@ -58,11 +60,11 @@ API readiness probe pass.
 
 The largest verified gaps are external activation and incomplete source health:
 
-- Of 20 production job sources, six report success, ten degraded, and four
+- Of 20 production job sources, six report success, eleven degraded, and three
   failed. KVS and IBPS reported successful checks with zero published notices;
-  SEBI remains blocked with HTTP 530 (degraded, three consecutive failures)
-  and DRDO-RAC remains failed with three consecutive failures. The live job
-  feed and sitemap were revalidated after refresh #127.
+  SEBI remains blocked with HTTP 530 (degraded, four consecutive failures)
+  and DRDO-RAC remains failed with four consecutive failures. The live job
+  feed and sitemap were revalidated after refresh #128.
 - NMMS is currently deadline-today per the official NSP student-application
   row, not expired as the earlier snapshot indicated. The feed must remove it
   after 2026-11-15 and continue excluding expired listings.
@@ -86,14 +88,14 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 | 1. Repository audit | Partial | Inspected repository structure, current history, 288 local/remote branch refs, 10 open PRs, core docs/configuration, tests, and live endpoints. Not every historical branch diff or commit was individually reviewed. |
 | 2. Preserve previous requirements | Partial | Worktree was clean at start; the current main feature set and tests were retained. No stale branch was blindly merged. |
 | 3. Platform features | Partial | Existing auth, client/admin workflows, orders, fees, uploads, receipts, notifications, and management functions have implementation and backend coverage. External live user journeys and all roles were not independently exercised in production. |
-| 4. Jobs and scholarships | Partial | Scheduled refresh is configured for 07:45 IST; 20 sources are configured; backend/frontend filters, snapshot integrity, deadline, and freshness rules have regression coverage. Current production status is 6 successful, 10 degraded, 4 failed. KVS/IBPS succeeded with no published jobs; SEBI remains blocked with HTTP 530 and three consecutive failures; the production DRDO-RAC registry points to the official RAC URL but reports failed with three consecutive failures. The parser reads the official RAC page locally and rejects its expired notice. Refresh #127 passed and the production API matched snapshot `8cef1ae` and its exact digest; source health remains unresolved. The NSP official page confirms NMMS student applications through 2026-11-15; verify post-deadline removal. |
+| 4. Jobs and scholarships | Partial | Scheduled refresh is configured for 07:45 IST; 20 sources are configured; backend/frontend filters, snapshot integrity, deadline, and freshness rules have regression coverage. Current production status is 6 successful, 11 degraded, 3 failed. KVS/IBPS succeeded with no published jobs; SEBI remains blocked with HTTP 530 and four consecutive failures; the production DRDO-RAC registry points to the official RAC URL but reports failed with four consecutive failures. The parser reads the official RAC page locally and rejects its expired notice. Refresh #128 passed and the production API matched snapshot `c5669c0` and its exact digest; source health remains unresolved. The NSP official page confirms NMMS student applications through 2026-11-15; verify post-deadline removal. |
 | 5. POSP AI | Incomplete | Existing in-client support chat and admin operations AI are present with grounded context and safe error handling. `render.yaml` sets `POSP_CLIENT_AI_ENABLED=false` and `POSP_AI_MODEL=gemini-2.5-flash`; requested settings are `true` and `gemini-3.5-flash-lite`. No provider key/model API check was performed, so operational status is unverified. |
 | 6. WhatsApp Cloud API | Incomplete | Webhook verification/signature handling, inbound/outbound services, status updates, templates, consent, and admin monitoring are implemented and tested. Production `/api/whatsapp/config` reports disabled and notifications unavailable. |
 | 7. SEO/indexing | Partial | Public metadata/canonicals/structured data, sitemap and robots generation, prerendering, and private-route `X-Robots-Tag` behavior are implemented. Production sitemap now contains 173 URLs; all three live job detail routes, including the long-slug alias, were verified. All 12 private routes return HTTP 200 with a noindex header. Google Search Console indexing status is inaccessible here. |
 | 8. Security/reliability | Partial | Production startup rejects a missing/weak `SECRET_KEY`; auth/admin tests, input validation, upload limits, rate limiting, private storage, payment verification, backups, and readiness checks exist. Live readiness reported database, SMTP, S3, shared rate limits, and Razorpay checks ready. This is not a penetration test or restore drill. |
-| 9. Testing/integration | Partial | Backend suite: 318 passed, 129 warnings; frontend typecheck/build passed. Production smoke #117, scholarship smoke #95, CI #1012, and authenticated browser E2E #473 passed. E2E #473 exercised the new long-slug alias. Job refresh #127 passed and the production API matched its exact 3-job snapshot and 20-source registry. External AI, WhatsApp, real transaction/refund, and restore tests remain unverified. |
-| 10. Git/merging | Partial | 288 branches and 10 open PRs were found. Commits `a818b93`, `00ccde8`, and `3ef5504` were pushed; automated snapshot refreshes `a1b9716` and `8cef1ae` were fast-forwarded locally. Historical branch contents were not all reviewed; stale PRs were not merged. |
-| 11. Deployment | Partial | Live health/readiness endpoints return HTTP 200, with all ten readiness checks true. Production sitemap has 173 URLs and the long-job alias page returns the expected job and canonical URL. Job refresh #127 verified the exact committed snapshot; DRDO-RAC remains failed. No authenticated Render control-plane view was available; AI and WhatsApp remain disabled. |
+| 9. Testing/integration | Partial | Backend suite: 318 passed, 129 warnings; frontend typecheck/build passed. Production smoke #117, scholarship smoke #95, CI #1012, and authenticated browser E2E #473 passed. E2E #473 exercised the new long-slug alias. Job refresh #128 passed and the production API matched its exact 3-job snapshot and 20-source registry. External AI, WhatsApp, real transaction/refund, and restore tests remain unverified. |
+| 10. Git/merging | Partial | 288 branches and 10 open PRs were found. Commits `a818b93`, `00ccde8`, and `3ef5504` were pushed; automated snapshot refreshes `a1b9716`, `8cef1ae`, and `c5669c0` were fast-forwarded locally. Historical branch contents were not all reviewed; stale PRs were not merged. |
+| 11. Deployment | Partial | Live health/readiness endpoints return HTTP 200, with all ten readiness checks true. Production sitemap has 173 URLs and the long-job alias page returns the expected job and canonical URL. Job refresh #128 verified the exact committed snapshot and digest; DRDO-RAC remains failed. No authenticated Render control-plane view was available; AI and WhatsApp remain disabled. |
 | 12. Final destination | Incomplete | Work is not production-complete until the external AI/WhatsApp configuration and the remaining feed/source/deployment checks are verified. |
 
 ## Verified completed behavior
@@ -134,13 +136,13 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 ## Broken or incomplete behavior observed
 
 - **Priority-source health:** the latest production source endpoint reports
-  six successes, ten degraded, and four failures across 20 sources. KVS and
+  six successes, eleven degraded, and three failures across 20 sources. KVS and
   IBPS checks succeeded (six and 12 fetched, respectively) with no published
   jobs.
-  SEBI is blocked with HTTP 530 and is degraded with three consecutive
+  SEBI is blocked with HTTP 530 and is degraded with four consecutive
   failures. The `drdo_rac` registry now uses
   `https://rac.gov.in/index.php?lang=en&id=0`, but its latest production status
-  is failed with three consecutive failures. The parser successfully fetches
+  is failed with four consecutive failures. The parser successfully fetches
   and parses the official page in this environment, extracting the explicit
   extended application deadline and not the later page-update date; that
   notice is expired and not published. The production cause cannot be diagnosed
@@ -215,6 +217,9 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 - Job refresh #127 passed, published snapshot `8cef1ae`, and verified that
   the production API matched the exact 3-job/20-source snapshot and SHA
   `2b2ea51f95071814d3b91523772e06444b74b746abb02e211fe941085ed4ad38`.
+- Job refresh #128 passed, published snapshot `c5669c0`, and production
+  reports the exact 3-job/20-source snapshot ready with SHA
+  `f6b83268b3c650af965017f353cc28754bc9f9c283afefed3b695321fd3611fd`.
 - Initial frontend validation attempts before `npm ci` failed because the
   checkout had no installed frontend dependencies; the subsequent locked
   install and reruns succeeded.
@@ -234,10 +239,10 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 
 ## Deployment and next work
 
-1. Investigate DRDO-RAC's three consecutive production source failures using
+1. Investigate DRDO-RAC's four consecutive production source failures using
    owner-authorized Render logs; the production endpoint confirms the corrected
    official RAC URL but hides the error cause. Do not bypass source controls.
-2. Resolve the SEBI HTTP 530 block (three consecutive degraded checks) through
+2. Resolve the SEBI HTTP 530 block (four consecutive degraded checks) through
    an approved official source or owner-authorized network access; verify KVS
    and IBPS parsing and keep all unavailable sources fail-closed.
 3. Check that the scholarship refresh removes NMMS after its 2026-11-15
