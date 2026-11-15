@@ -22,13 +22,13 @@ Production success is not inferred from code or a Git push.
 | 3 | Platform features | Partial | Existing auth/role checks, client/admin workflows, applications/orders, fee rules, uploads, receipts, and notifications have implementation and backend coverage. All live user journeys and roles were not independently exercised in production. |
 | 4 | Jobs and scholarships | Partial | Official-source validation, deadline/freshness logic, filters, snapshots, and scheduled refresh are implemented and regression-tested. Current production reports 20 sources: 6 successful, 11 degraded, 3 failed. KVS/IBPS checks succeeded with no published jobs; SEBI remains blocked with HTTP 530 (degraded, four consecutive failures). The official DRDO-RAC URL is configured, but it reports failed with four consecutive failures; its parser reads the official page locally and rejects its expired notice. Refresh #128 verified the exact production snapshot, but started at 14:47 IST, over seven hours after the configured 07:45 IST schedule. |
 | 5 | POSP AI | Incomplete | Existing in-client and admin AI workflows are present. `render.yaml` now selects the requested `gemini-3.5-flash-lite`; Google's official model catalog marks it stable and documents the existing `v1beta` `generateContent` endpoint. Client AI remains disabled because no production key or successful live call was verified. |
-| 6 | WhatsApp Cloud API | Incomplete | Webhook, messaging, templates, consent, and status-handling code has tests. Production config reports Cloud API disabled and status notifications unavailable; no authorized end-to-end Meta message test was performed. |
-| 7 | SEO and indexing | Partial | Metadata, canonical URLs, structured data, sitemap/robots generation, prerendering, and private-route noindex behavior are implemented. Production sitemap has 173 URLs and all three current job detail pages are present. The 237-character source slug uses `/jobs/notice-136282380084494`; production content and canonical were verified. Search Console was unavailable. |
+| 6 | WhatsApp Cloud API | Incomplete | Webhook, messaging, templates, consent, and status-handling code has tests. Production config reports Cloud API disabled and status notifications unavailable. The Meta app remains in Development mode and is unpublished; callback and verify-token fields are empty and webhook verification is disabled. No production message was sent. |
+| 7 | SEO and indexing | Partial | Metadata, canonical URLs, structured data, sitemap/robots generation, prerendering, and private-route noindex behavior are implemented. Production sitemap has 173 URLs and all three current job detail pages are present. The 237-character source slug uses `/jobs/notice-136282380084494`; production content and canonical were verified. Search Console confirms the sitemap is successfully submitted (170 discovered pages); its overview shows 11 indexed and 166 not indexed. The latest detailed report, last updated 2026-11-09, lists 164 discovered-not-indexed and two alternate-canonical URLs. |
 | 8 | Security and reliability | Partial | AuthZ, input validation, upload limits, rate limiting, storage, payment verification, backup tooling, and readiness checks exist. Live readiness is 10/10. Restore drill #12 successfully restored and validated the latest encrypted backup in a disposable PostgreSQL instance; Razorpay confirmation #21 verified live config, webhook, read-only API auth, and public checkout secret safety. No penetration test or live payment/refund was performed. |
-| 9 | Testing and integration | Partial | Backend suite, frontend typecheck/build, production smoke #117, scholarship smoke #95, CI #1012, authenticated browser E2E #473, restore drill #12, Razorpay production confirmation #21, and job refresh #128 passed. Account-authorized AI, WhatsApp, real payment/refund, and live user-journey tests remain outstanding. |
-| 10 | Git and merging | Partial | PR #259 and the snapshot-integrity follow-up are in `main`; commits `a818b93`, `00ccde8`, and `3ef5504` are pushed, and automated snapshot refreshes `a1b9716`, `8cef1ae`, and `c5669c0` are pushed and fast-forwarded locally. Historical branch contents were not all reviewed. |
-| 11 | Deployment | Partial | Production health/readiness endpoints return HTTP 200 and readiness reports 10/10 checks true. Production sitemap has 173 URLs and the long-job route returns the correct hydrated detail and canonical URL. Refresh #128 verified the exact snapshot SHA on the production API. Current WhatsApp config remains disabled; no authenticated Render control-plane or Search Console view was available. |
-| 12 | Production-ready destination | Incomplete | External AI/WhatsApp activation, failed/degraded sources, scheduler timing, Search Console verification, and live transaction/representative journey checks prevent a production-complete claim. |
+| 9 | Testing and integration | Partial | Backend suite, frontend typecheck/build, production smoke #117, scholarship smoke #95, CI #1012 and #1014, authenticated browser E2E #473, restore drill #12, Razorpay production confirmation #21, and job refresh #128 passed. CI #1014 passed operational-script safety, backend tests, and frontend typecheck/build. Account-authorized AI, WhatsApp, real payment/refund, and live user-journey tests remain outstanding. |
+| 10 | Git and merging | Partial | PR #259 and the snapshot-integrity follow-up are in `main`; commits `a818b93`, `00ccde8`, `3ef5504`, `0de334e`, and `6de1846` are pushed, and automated snapshot refreshes `a1b9716`, `8cef1ae`, and `c5669c0` are pushed and fast-forwarded locally. Historical branch contents were not all reviewed. |
+| 11 | Deployment | Partial | Production health/readiness endpoints return HTTP 200 and readiness reports 10/10 checks true. Render shows the API service live at `6de1846`; its free instance may sleep and delay requests by 50 seconds or more. Production sitemap has 173 URLs and the long-job route returns the correct hydrated detail and canonical URL. Search Console confirms the sitemap submission but reports 166 not-indexed pages. Refresh #128 verified the exact snapshot SHA on the production API. The WhatsApp config remains disabled and the Meta app is unpublished. |
+| 12 | Production-ready destination | Incomplete | External AI/WhatsApp activation, failed/degraded sources, scheduler timing, Search Console indexing/canonical follow-up, and live transaction/representative journey checks prevent a production-complete claim. |
 
 ## Implemented and verified behavior
 
@@ -37,6 +37,19 @@ Production success is not inferred from code or a Git push.
   173 canonical sitemap URLs and verified all three current job detail pages.
 - Production `/health` and `/readiness` returned HTTP 200; readiness reported
   all 10 checks true.
+- Render's authenticated dashboard shows the API service live at commit
+  `6de1846`; the free instance may spin down and add 50 seconds or more to
+  requests. A paid-plan change requires owner approval for its cost.
+- Search Console's authenticated property shows the sitemap submission is
+  successful and was last read on 2026-11-15 with 170 discovered pages. The
+  overview shows 11 indexed and 166 not indexed; the detailed report last
+  updated 2026-11-09 lists 164 discovered-not-indexed URLs and two
+  alternate-canonical URLs. These counts do not by themselves establish that
+  Google considers the URLs erroneous.
+- The authenticated Meta app dashboard shows the WhatsApp app is in Development
+  mode and unpublished. The callback and verify-token fields are empty;
+  webhook verification is disabled, and Meta states unpublished apps only
+  receive test webhooks. No production message was sent.
 - Twelve private routes returned HTTP 200 with
   `X-Robots-Tag: noindex, nofollow, noarchive`; production `robots.txt` allows
   crawlers to see those headers.
@@ -141,6 +154,7 @@ Production success is not inferred from code or a Git push.
 | Authenticated browser E2E #471 | **Passed** after replacing the stale threshold with catalog coverage |
 | Authenticated browser E2E #473 | **Passed**, including long-slug alias page |
 | CI #1012 | **Passed** |
+| CI #1014 | **Passed**; operational-script safety, backend tests, frontend typecheck/build |
 | Job refresh #126 | **Passed**; production API matched 3-item snapshot and all 20 sources |
 | Job refresh #127 | **Passed**; production matched the exact 3-job, 20-source snapshot |
 | Job refresh #128 | **Passed**; workflow run `43698513507`; production snapshot `c5669c0` ready; started over seven hours after scheduled time |
@@ -161,11 +175,13 @@ suite.
   before this pass.
 - The DRDO-RAC correction and initial audit are in `a818b93`; the sitemap E2E
   correction is in `00ccde8`, and long-slug SEO routing is in `3ef5504`.
+  Commit `0de334e` selects the verified Gemini model, and `6de1846` records
+  subsequent scholarship verification; both are on `main`.
   Automated job refreshes pushed `a1b9716`, `8cef1ae`, and `c5669c0`; scholarship
   refresh #96 pushed `6964fbb`; local
   `main` was fast-forwarded to `c5669c0` before later report updates.
-- CI #1012, production smoke #117, scholarship smoke #95, and authenticated
-  browser E2E #473 passed. Job refresh #128 passed and verified the exact
+- CI #1012 and #1014, production smoke #117, scholarship smoke #95, and
+  authenticated browser E2E #473 passed. Job refresh #128 passed and verified the exact
   snapshot SHA on the production API. The production registry reports the
   corrected RAC URL, but DRDO-RAC remains failed and SEBI degraded after four
   consecutive failures. The live feed currently has three jobs and 27
@@ -183,12 +199,13 @@ suite.
    or keep AI disabled and report it unavailable.
 5. Configure Meta WABA credentials/templates/webhook and run authorized
    inbound/outbound delivery tests before enabling production messaging.
-6. Obtain Search Console access to inspect indexing/canonical status for the
-   newly deployed long-slug route and other public pages.
+6. Review Search Console's 164 discovered-not-indexed URLs and two
+   alternate-canonical URLs. Inspect representative pages, including the
+   long-slug route, and improve crawl discovery or content where warranted.
 7. Perform owner-authorized payment/refund and representative client/admin
    production journeys. The isolated encrypted restore drill has passed.
 8. Improve scheduling reliability: run #128 started at 14:47 IST instead of
    the configured 07:45 IST. GitHub Actions schedule configuration alone
    cannot guarantee the requested timing.
-9. Obtain authenticated Render control-plane and Search Console access for
-   configuration and indexing verification.
+9. Consider upgrading the free Render API instance to avoid cold-start delays;
+   this requires owner approval for a paid plan.

@@ -52,6 +52,21 @@ correction was committed in `00ccde8` and E2E #471 passed. E2E #473 and CI
 #1012 passed after adding and exercising the long-slug route. A test-fixture
 isolation issue found during the full-suite rerun was also corrected.
 
+Commit `0de334e` selected the verified Gemini model, and `6de1846` recorded
+subsequent production verification. Authenticated production-account checks on
+2026-11-15 confirmed CI #1014 passed all three jobs and the Render API service
+is live at commit `6de1846`. Render
+also reports that the free instance may spin down and add 50 seconds or more to
+requests. Search Console shows the sitemap submission is successful and was
+last read on 2026-11-15 with 170 discovered pages; its indexing overview shows
+11 indexed and 166 not indexed. The indexing report's last update (2026-11-09)
+lists 164 discovered-but-not-indexed URLs and two alternate-canonical URLs.
+The Meta app remains in Development mode and is unpublished; its WhatsApp use
+case is configured only as an unpublished setup:
+the webhook callback and verify-token fields are empty, verification is
+disabled, and Meta states unpublished apps receive test webhooks only. No
+production message was sent.
+
 ## Executive summary
 
 The repository is a mature React/TypeScript + Flask/SQLAlchemy service, not an
@@ -78,8 +93,12 @@ The largest verified gaps are external activation and incomplete source health:
 - The production WhatsApp configuration endpoint reports Cloud API disabled
   and status notifications unavailable. This is not a successful production
   messaging integration.
-- Google Search Console coverage, Meta message delivery, and AI provider calls
-  require authorized external accounts. No live payment/refund was initiated.
+- Search Console access confirms the sitemap is submitted, but indexing is
+  incomplete: 166 URLs are not indexed (164 discovered but not indexed and two
+  alternate canonicals in the latest detailed report). Meta's app remains
+  unpublished with no webhook configured, and no production message was sent.
+  AI provider calls still require a production credential and successful live
+  request. No live payment/refund was initiated.
   The encrypted backup restore drill and Razorpay read-only production
   confirmation have passed, but these do not verify a user transaction.
 
@@ -94,12 +113,12 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 | 3. Platform features | Partial | Existing auth, client/admin workflows, orders, fees, uploads, receipts, notifications, and management functions have implementation and backend coverage. External live user journeys and all roles were not independently exercised in production. |
 | 4. Jobs and scholarships | Partial | Scheduled refresh is configured for 07:45 IST; 20 sources are configured; backend/frontend filters, snapshot integrity, deadline, and freshness rules have regression coverage. Run #128 started at 14:47 IST, over seven hours after its scheduled time. Current production status is 6 successful, 11 degraded, 3 failed. KVS/IBPS succeeded with no published jobs; SEBI remains blocked with HTTP 530 and four consecutive failures; the production DRDO-RAC registry points to the official RAC URL but reports failed with four consecutive failures. The parser reads the official RAC page locally and rejects its expired notice. Job refresh #128 passed and production matched snapshot `c5669c0` and its exact digest. Scholarship refresh #96 passed and committed `6964fbb`; the live API currently returns 27 records and NMMS remains deadline-today. Source health and schedule reliability remain unresolved. |
 | 5. POSP AI | Incomplete | Existing in-client support chat and admin operations AI are present with grounded context and safe error handling. `render.yaml` now selects the requested stable `gemini-3.5-flash-lite` model, and the existing `v1beta` `generateContent` request method matches Google's API documentation. `POSP_CLIENT_AI_ENABLED` remains false because no production key or successful live call has been verified. |
-| 6. WhatsApp Cloud API | Incomplete | Webhook verification/signature handling, inbound/outbound services, status updates, templates, consent, and admin monitoring are implemented and tested. Production `/api/whatsapp/config` reports disabled and notifications unavailable. |
-| 7. SEO/indexing | Partial | Public metadata/canonicals/structured data, sitemap and robots generation, prerendering, and private-route `X-Robots-Tag` behavior are implemented. Production sitemap now contains 173 URLs; all three live job detail routes, including the long-slug alias, were verified. All 12 private routes return HTTP 200 with a noindex header. Google Search Console indexing status is inaccessible here. |
+| 6. WhatsApp Cloud API | Incomplete | Webhook verification/signature handling, inbound/outbound services, status updates, templates, consent, and admin monitoring are implemented and tested. Production `/api/whatsapp/config` reports disabled and notifications unavailable. The Meta app is unpublished; callback and verify-token fields are empty and webhook verification is disabled. |
+| 7. SEO/indexing | Partial | Public metadata/canonicals/structured data, sitemap and robots generation, prerendering, and private-route `X-Robots-Tag` behavior are implemented. Production sitemap contains 173 URLs; all three live job detail routes, including the long-slug alias, were verified. All 12 private routes return HTTP 200 with a noindex header. Search Console confirms the sitemap is successfully submitted (170 discovered pages); its overview shows 11 indexed and 166 not indexed. The latest detailed report lists 164 discovered-not-indexed and two alternate-canonical URLs; inspect representative pages and resolve indexing causes. |
 | 8. Security/reliability | Partial | Production startup rejects a missing/weak `SECRET_KEY`; auth/admin tests, input validation, upload limits, rate limiting, private storage, payment verification, backups, and readiness checks exist. Current live readiness is 10/10. Restore drill #12 successfully decrypted and restored the latest encrypted backup into a disposable PostgreSQL database and validated core tables. Razorpay production confirmation #21 verified live credentials, webhook configuration, read-only API authentication, and safe public checkout config. No penetration test or live payment/refund was performed. |
-| 9. Testing/integration | Partial | Backend suite: 318 passed, 129 warnings; frontend typecheck/build passed. Production smoke #117, scholarship smoke #95, CI #1012, and authenticated browser E2E #473 passed. E2E #473 exercised the new long-slug alias. Job refresh #128 passed and production matched its exact 3-job snapshot and 20-source registry. Restore drill #12 and Razorpay production confirmation #21 passed. External AI, WhatsApp, and real transaction/refund tests remain unverified. |
-| 10. Git/merging | Partial | 288 branches and 10 open PRs were found. Commits `a818b93`, `00ccde8`, and `3ef5504` were pushed; automated snapshot refreshes `a1b9716`, `8cef1ae`, and `c5669c0` were fast-forwarded locally. Historical branch contents were not all reviewed; stale PRs were not merged. |
-| 11. Deployment | Partial | Live health/readiness endpoints return HTTP 200, with all ten readiness checks true. Production sitemap has 173 URLs and the long-job alias page returns the expected job and canonical URL. Job refresh #128 verified the exact committed snapshot and digest; DRDO-RAC remains failed. The public WhatsApp config is disabled. No authenticated Render control-plane or Google Search Console view was available; client AI also remains disabled. |
+| 9. Testing/integration | Partial | Backend suite: 318 passed, 129 warnings; frontend typecheck/build passed. Production smoke #117, scholarship smoke #95, CI #1012 and #1014, and authenticated browser E2E #473 passed. CI #1014 passed operational-script safety, backend tests, and frontend typecheck/build. E2E #473 exercised the new long-slug alias. Job refresh #128 passed and production matched its exact 3-job snapshot and 20-source registry. Restore drill #12 and Razorpay production confirmation #21 passed. External AI, WhatsApp, and real transaction/refund tests remain unverified. |
+| 10. Git/merging | Partial | 288 branches and 10 open PRs were found. Commits `a818b93`, `00ccde8`, `3ef5504`, `0de334e`, and `6de1846` were pushed; automated snapshot refreshes `a1b9716`, `8cef1ae`, and `c5669c0` were fast-forwarded locally. Historical branch contents were not all reviewed; stale PRs were not merged. |
+| 11. Deployment | Partial | Live health/readiness endpoints return HTTP 200, with all ten readiness checks true. Render shows the API service live at `6de1846`; its free instance may sleep and delay requests by 50 seconds or more. Search Console confirms sitemap submission but reports 166 not-indexed pages. Job refresh #128 verified the exact committed snapshot and digest; DRDO-RAC remains failed. The public WhatsApp config is disabled and the Meta app is unpublished; client AI also remains disabled. |
 | 12. Final destination | Incomplete | Work is not production-complete until the external AI/WhatsApp configuration and the remaining feed/source/deployment checks are verified. |
 
 ## Verified completed behavior
@@ -184,14 +203,21 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
   confirm the model and the existing `v1beta` `generateContent` endpoint.
   Client AI remains disabled because there is no verified production key or
   successful live model call. Do not describe it as operational.
-- **WhatsApp activation:** production config says Cloud API is disabled. A
-  source implementation and webhook tests do not establish Meta activation,
-  verified webhook delivery, approved templates, or message delivery.
+- **WhatsApp activation:** production config says Cloud API is disabled. The
+  authenticated Meta app dashboard shows the app is unpublished; its webhook
+  callback and verify-token fields are empty and verification is disabled.
+  Meta states production webhooks are unavailable until publication. Source
+  implementation and webhook tests do not establish Meta activation, approved
+  templates, or message delivery.
 - **SEO validation:** the local build and production sitemap each report 173
   URLs, with all three current job details included. The 237-character source
   slug uses a short stable ID-based route, and the production page hydrates with
-  the expected title and canonical. Search Console coverage and indexing errors
-  cannot be inspected without Search Console access.
+  the expected title and canonical. Search Console confirms the sitemap is
+  successfully submitted with 170 discovered pages. Its overview reports 11
+  indexed and 166 not indexed; the latest detailed report lists 164
+  discovered-not-indexed and two alternate-canonical URLs. The data does not
+  establish that those URLs are errors; inspect representative URLs and improve
+  crawl discovery/content where appropriate.
 - **History/branch review:** 288 branches exist, mostly historical feature/fix
   branches. The 10 open PRs were enumerated; only the latest source-freshness
   PR (#259) was selected for detailed integration because its changes directly
@@ -224,6 +250,8 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 - Commit `3ef5504`: CI #1012, production smoke #117, scholarship smoke #95,
   and authenticated browser E2E #473 passed. Production sitemap and the
   long-slug route were verified after deployment.
+- CI #1014 passed all three jobs (operational script safety, backend tests,
+  frontend typecheck/build) at commit `6de1846`.
 - Job refresh #126 passed and published snapshot `a1b9716`.
 - Job refresh #127 passed, published snapshot `8cef1ae`, and verified that
   the production API matched the exact 3-job/20-source snapshot and SHA
@@ -248,9 +276,10 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 - Production readiness checks show the deployed DB, SMTP, storage, limiter, and
   Razorpay configuration are reachable. Razorpay read-only confirmation and
   the isolated restore drill passed. No live payment/refund was created.
-- AI and WhatsApp remain unverified/disabled based on production-visible
-  configuration. Google's requested model is valid, but no production key or
-  model call was available; no Meta message was sent.
+- AI remains disabled without a production key or successful live call. The
+  Meta app is unpublished and webhook setup is incomplete; no Meta message was
+  sent. Render currently uses a free API instance that may sleep; changing the
+  plan would require owner approval for the associated cost.
 - `robots.txt` is not an access-control mechanism; private APIs remain protected
   by authentication/authorization. The frontend noindex header only controls
   indexing behavior.
