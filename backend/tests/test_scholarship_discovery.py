@@ -686,7 +686,8 @@ def test_scholarship_catalog_uses_item_timezone_and_cutoff():
     assert _active(india_cutoff_item, now=after_cutoff) is False
 
 
-def test_nsp_expired_student_application_deadline_is_moved_to_closed_audit(tmp_path):
+def test_nsp_expired_student_application_deadline_is_moved_to_closed_audit(tmp_path, monkeypatch):
+    monkeypatch.setattr('app.scholarships.snapshot.enrich_scholarships', lambda items: items)
     now = datetime(2026, 11, 15, 7, 0, tzinfo=timezone.utc)
     html = '''
     <html><body>
