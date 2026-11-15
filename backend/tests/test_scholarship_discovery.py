@@ -684,3 +684,38 @@ def test_scholarship_catalog_uses_item_timezone_and_cutoff():
     after_cutoff = datetime(2026, 11, 15, 12, 0, tzinfo=timezone.utc)  # 17:30 IST
     india_cutoff_item['source_checked_at'] = after_cutoff.isoformat()
     assert _active(india_cutoff_item, now=after_cutoff) is False
+
+
+def test_nsp_expired_student_application_deadline_is_moved_to_closed_audit(tmp_path):
+    now = datetime(2026, 11, 15, 7, 0, tzinfo=timezone.utc)
+    html = '''
+    <html><body>
+      <div>Academic Year 2026-27</div>
+      <div>Department of School Education &amp; Literacy</div>
+      <div>National Means Cum Merit Scholarship (Merit Based Scheme)</div>
+      <div>Scheme Open from : 01-06-2026</div>
+      <div>Student Application Open till : 31-08-2026</div>
+      <div>Defective Application Verification Open till:15-09-2026</div>
+      <div>Institute Verification Open till:15-09-2026</div>
+    </body></html>
+    '''
+    src = source('nsp', 'National Scholarship Portal', 'https://scholarships.gov.in/All-Scholarships', 'nsp')
+    path = tmp_path / 'scholarships.json'
+    path.write_text('{"items": []}', encoding='utf-8')
+
+    def discoverer(now=None):
+        return parse_nsp(html, src, now=now), {
+            'nsp': {'ok': True, 'count': 1, 'checked_at': now.isoformat()},
+        }
+
+    payload = refresh_snapshot(path, now=now, discovery_func=discoverer, strict=True)
+
+    assert payload['items'] == []
+    assert payload['count'] == 0
+    assert payload['closed_count'] == 1
+    closed = payload['closed_items'][0]
+    assert closed['title'] == 'National Means Cum Merit Scholarship'
+    assert closed['deadline'] == '2026-08-31'
+    assert closed['application_status'] == 'closed'
+    assert closed['closure_reason'] == 'deadline_passed'
+    assert 'Student Application Open till : 31-08-2026' in closed['status_evidence']
