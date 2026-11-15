@@ -141,6 +141,47 @@
       "last_seen_at": "2026-11-14T08:55:47Z",
       "published_at": "2026-11-04T09:05:28Z",
       "content_hash": "8dc175ce2a9daaa51a66525cd5a3c16eda18d596907a306a7e4eac9d2fdda6e3"
+    },
+    {
+      "id": 240705314318650,
+      "slug": "state-bank-of-india-sbi-recruitment-of-specialist-cadre-officers-on-regular-basis-for-the-post-of-manager-security-deputy-manager-apply-online-from-04-11-2026-to-25-11-2026-daeb92c1",
+      "title": "RECRUITMENT OF SPECIALIST CADRE OFFICERS ON REGULAR BASIS FOR THE POST OF MANAGER(SECURITY)/DEPUTY MANAGER (Apply Online from 04.11.2026 TO 25.11.2026)",
+      "organization": "State Bank of India (SBI)",
+      "job_type": "government",
+      "appointment_type": null,
+      "location": "India",
+      "qualification": "Graduate in any discipline from a Government-recognized university or institution. Manager (Security): minimum 10 years commissioned service as Major/equivalent in Army/Navy/Air Force or 10 years as Deputy Commandant in paramilitary forces. Deputy Manager (Security): minimum 5 years commissioned service as Captain/equivalent or 5 years as Assistant Commandant in paramilitary forces.",
+      "age_limit": "25–40 years as on 31-10-2026",
+      "application_fee": "₹750 for UR/EWS/OBC; no fee/intimation charge for SC/ST",
+      "vacancies": "60",
+      "salary": "Manager (Security): ₹85,920–₹1,05,820; Deputy Manager (Security): ₹64,820–₹93,960",
+      "summary": "SBI Specialist Cadre Officers recruitment for Manager (Security) / Deputy Manager (Security), 60 vacancies. Online registration and fee payment: 04.11.2026–25.11.2026. Read the official notice for service-experience, medical-fitness and document requirements.",
+      "issue_date": null,
+      "application_start_date": "2026-11-04",
+      "deadline": "2026-11-25",
+      "deadline_cutoff_time": null,
+      "deadline_timezone": "Asia/Kolkata",
+      "application_status": "open",
+      "can_apply": true,
+      "status_label": "Verified open",
+      "source_checked_at": "2026-11-15T07:16:39.071Z",
+      "official_notice_url": "https://sbi.bank.in/documents/77530/57941334/03112026_1_ADV_Security%2BOfficer.pdf/69e017fe-5e1c-6312-c285-8855f9882102?t=1793713497818",
+      "application_url": "https://ibpsreg.ibps.in/sbirscooct26/",
+      "status": "published",
+      "verification_status": "official_source_checked",
+      "confidence": 0.96,
+      "is_featured": false,
+      "source": {
+        "key": "sbi",
+        "name": "State Bank of India — Careers",
+        "listing_url": "https://sbi.bank.in/web/careers/current-openings",
+        "last_sync_completed_at": "2026-11-14T08:55:47Z",
+        "last_sync_status": "success"
+      },
+      "first_seen_at": "2026-11-15T07:16:39.071Z",
+      "last_seen_at": "2026-11-15T07:16:39.071Z",
+      "published_at": "2026-11-15T07:16:39.071Z",
+      "content_hash": "daeb92c1693aa871f00662a5a3f10ebdcac7808868a5125b6921e4a1bf8f44a5"
     }
   ],
   "sources": [
@@ -359,7 +400,7 @@
       "last_error": "Official source returned no parseable listings; prior open records were preserved."
     }
   ],
-  "count": 4,
+  "count": 5,
   "review_count": 6746,
   "successful_sources": 6
 }
