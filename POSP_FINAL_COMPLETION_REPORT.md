@@ -25,8 +25,8 @@ or unresolved. Production success is not inferred from code or a Git push.
 | 6 | WhatsApp Cloud API | Incomplete | Webhook, messaging, templates, consent, and status-handling code has tests. Production config reports Cloud API disabled and status notifications unavailable; no authorized end-to-end Meta message test was performed. |
 | 7 | SEO and indexing | Partial | Metadata, canonical URLs, structured data, sitemap/robots generation, prerendering, and private-route noindex behavior are implemented. Production sitemap has 172 URLs and 12 private routes return `noindex, nofollow, noarchive`. Two of three current job records have prerendered detail URLs; a 237-character slug is excluded by the 200-character path guard. Search Console was unavailable. |
 | 8 | Security and reliability | Partial | AuthZ, input validation, upload limits, rate limiting, storage, payment verification, backup tooling, and readiness checks exist. Live readiness is healthy, but no penetration test or restore drill was performed. |
-| 9 | Testing and integration | Partial | Full backend tests and frontend typecheck/build passed. Production smoke #115 failed on an obsolete robots assertion; the correction is local and needs a pushed green rerun. Account-authorized AI, WhatsApp, payment/refund, and restore tests remain outstanding. |
-| 10 | Git and merging | Partial | PR #259 and the snapshot integrity follow-up are in `main`; previous pushes succeeded. The current local changes still need to be committed/pushed and verified. Historical branch contents were not all reviewed. |
+| 9 | Testing and integration | Partial | Full backend tests and frontend typecheck/build passed. Production smoke #116 and CI #1009 passed. Authenticated browser E2E #470 failed because a test expected more than 2,000 sitemap URLs (the verified sitemap has 172); the test now checks catalog completeness and a catalog-derived minimum, with rerun pending. Job refresh #126 was still running. Account-authorized AI, WhatsApp, payment/refund, and restore tests remain outstanding. |
+| 10 | Git and merging | Partial | PR #259 and the snapshot integrity follow-up are in `main`; this pass is committed and pushed as `a818b93`. Historical branch contents were not all reviewed. |
 | 11 | Deployment | Partial | Production frontend/API health and readiness endpoints return HTTP 200; readiness reports 10/10 checks true. No authenticated Render control-plane check was available. Local DRDO-RAC and smoke-workflow changes are not yet production-verified. |
 | 12 | Production-ready destination | Incomplete | External activation, failed/degraded sources, one SEO route gap, scheduler timing, and production transaction/restore checks prevent a production-complete claim. |
 
@@ -59,6 +59,8 @@ or unresolved. Production success is not inferred from code or a Git push.
   fixture, eliminating stale local SQLite schema coupling.
 - Removed production-smoke assertions that incorrectly required robots.txt to
   block private routes, while retaining private-route noindex checks.
+- Replaced the stale E2E sitemap threshold with catalog-derived coverage and
+  checks that every service catalog URL appears in the sitemap.
 - Regenerated the public sitemap from the current verified snapshots.
 
 ## Files changed
@@ -68,6 +70,7 @@ or unresolved. Production success is not inferred from code or a Git push.
 - `backend/app/jobs/priority_sources.py`
 - `backend/tests/test_priority_job_sources.py`
 - `backend/tests/test_scholarship_eligibility.py`
+- `e2e/tests/public-site-quality.spec.cjs`
 - `frontend/public/sitemap.xml`
 - `POSP_FINAL_COMPLETION_REPORT.md`
 
@@ -82,7 +85,9 @@ or unresolved. Production success is not inferred from code or a Git push.
 | Production `/health` | HTTP 200 |
 | Production `/readiness` | HTTP 200; 10/10 checks true |
 | Production private-route noindex | 12 routes returned expected noindex headers |
-| Production smoke workflow #115 | Failed on obsolete robots.txt expectation; local correction awaits push/rerun |
+| Production smoke workflow #115 | Failed on obsolete robots.txt expectation |
+| Production smoke workflow #116 | **Passed** after workflow correction |
+| Authenticated browser E2E #470 | Failed on stale `>2000` sitemap threshold; corrected test awaits rerun |
 | Job-source health | 6 successful, 10 degraded, 4 failed of 20 |
 
 Backend warnings include test JWT keys shorter than the recommended minimum
@@ -94,15 +99,21 @@ suite.
 - Starting main integration point: `8c6e6e8` (`Refresh verified official job snapshot`).
 - PR #259 and the snapshot integrity follow-up were already merged and pushed
   before this pass.
-- The local DRDO-RAC correction, test isolation, smoke-workflow correction,
-  sitemap, and reports are not yet recorded in a new commit at report creation.
-- Production frontend/API health checks pass, but deployment of this pass's
-  changes and the next green public smoke run are pending.
+- This pass's DRDO-RAC correction, test isolation, smoke-workflow correction,
+  sitemap, and reports are committed as `a818b93` and pushed to `main`;
+  `origin/main` was verified at the same commit.
+- The sitemap E2E assertion fix and latest report updates are included in a
+  follow-up commit after `a818b93`, then pushed to `main`.
+- Production frontend/API health checks pass, and smoke run #116 is green.
+  CI #1009 passed. The browser E2E exposed an outdated sitemap threshold, now
+  corrected locally; its rerun and job refresh #126 were pending at report
+  update time. Render deployment of the DRDO-RAC parser itself is not
+  independently confirmed.
 
 ## External blockers and remaining work
 
-1. Push the verified local changes, confirm CI, and obtain a green production
-   smoke rerun.
+1. Verify the browser E2E run after the sitemap test correction is green and
+   review job refresh #126. Production smoke #116 and CI #1009 already passed.
 2. Deploy DRDO-RAC correction and verify its production source status. Resolve
    SEBI's HTTP 530 via an approved official source or owner-authorized network;
    do not bypass access controls. Monitor KVS/IBPS parser results.

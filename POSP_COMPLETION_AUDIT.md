@@ -27,9 +27,9 @@ verified-open and one deadline-today) and three verified-open job records.
 Across the 20 job sources, six reported success, ten degraded, and four failed.
 KVS and IBPS checks succeeded but yielded no published jobs; SEBI was blocked
 with HTTP 530. The configured DRDO-RAC key incorrectly targeted the general
-DRDO vacancies page and failed to connect. The code now targets the official
-RAC site and parses its application deadline separately from page-update dates;
-production still needs to receive and verify that change.
+DRDO vacancies page and failed to connect. Commit `a818b93` now targets the
+official RAC site and parses its application deadline separately from
+page-update dates; production still needs to receive and verify that change.
 
 The frontend build regenerated the sitemap to 172 URLs, matching the live
 sitemap count. Two of the three live job records have indexable detail pages;
@@ -79,13 +79,13 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 | 1. Repository audit | Partial | Inspected repository structure, current history, 288 local/remote branch refs, 10 open PRs, core docs/configuration, tests, and live endpoints. Not every historical branch diff or commit was individually reviewed. |
 | 2. Preserve previous requirements | Partial | Worktree was clean at start; the current main feature set and tests were retained. No stale branch was blindly merged. |
 | 3. Platform features | Partial | Existing auth, client/admin workflows, orders, fees, uploads, receipts, notifications, and management functions have implementation and backend coverage. External live user journeys and all roles were not independently exercised in production. |
-| 4. Jobs and scholarships | Partial | Scheduled refresh is configured for 07:45 IST; 20 sources are configured; backend/frontend filters, snapshot integrity, deadline, and freshness rules have regression coverage. Production currently reports six successful, ten degraded, and four failed source checks. KVS/IBPS succeeded with no published jobs; SEBI was blocked; the DRDO-RAC URL/parser correction is implemented locally but awaits deployment verification. The NSP official page confirms NMMS student applications through 2026-11-15; remove it after that date and continue monitoring source health. |
+| 4. Jobs and scholarships | Partial | Scheduled refresh is configured for 07:45 IST; 20 sources are configured; backend/frontend filters, snapshot integrity, deadline, and freshness rules have regression coverage. Production currently reports six successful, ten degraded, and four failed source checks. KVS/IBPS succeeded with no published jobs; SEBI was blocked; the DRDO-RAC URL/parser correction is committed and pushed as `a818b93` but awaits deployment verification. The NSP official page confirms NMMS student applications through 2026-11-15; remove it after that date and continue monitoring source health. |
 | 5. POSP AI | Incomplete | Existing in-client support chat and admin operations AI are present with grounded context and safe error handling. `render.yaml` sets `POSP_CLIENT_AI_ENABLED=false` and `POSP_AI_MODEL=gemini-2.5-flash`; requested settings are `true` and `gemini-3.5-flash-lite`. No provider key/model API check was performed, so operational status is unverified. |
 | 6. WhatsApp Cloud API | Incomplete | Webhook verification/signature handling, inbound/outbound services, status updates, templates, consent, and admin monitoring are implemented and tested. Production `/api/whatsapp/config` reports disabled and notifications unavailable. |
 | 7. SEO/indexing | Partial | Public metadata/canonicals/structured data, sitemap and robots generation, prerendering, and private-route `X-Robots-Tag` behavior are implemented. Production homepage, sitemap, and robots return HTTP 200; all 12 private routes return HTTP 200 with a noindex header. The build and production sitemap each contain 172 URLs. Only two of three live job records have prerendered detail URLs; the third's 237-character slug exceeds the SEO path guard. Google Search Console indexing status is inaccessible here. |
 | 8. Security/reliability | Partial | Production startup rejects a missing/weak `SECRET_KEY`; auth/admin tests, input validation, upload limits, rate limiting, private storage, payment verification, backups, and readiness checks exist. Live readiness reported database, SMTP, S3, shared rate limits, and Razorpay checks ready. This is not a penetration test or restore drill. |
-| 9. Testing/integration | Partial | Current backend suite: 318 passed, 129 warnings. Frontend typecheck/build passed, and the refresh-shell, listing, SEO, and sitemap checks passed. Job refresh, scholarship refresh, and scholarship production smoke workflows passed on the current refresh. The latest production public smoke failed on the obsolete robots expectation; its correction is pending push and a green rerun. Production integrations requiring owner credentials or controlled transactions were not exercised. |
-| 10. Git/merging | Partial | 288 branches and 10 open PRs were found; PR #259 and the snapshot integrity follow-up are in pushed `main` (`8c6e6e8`). Historical branch contents were not all reviewed; stale PRs were not merged. |
+| 9. Testing/integration | Partial | Current backend suite: 318 passed, 129 warnings. Frontend typecheck/build passed. Production smoke #116 and CI #1009 passed. Authenticated browser E2E #470 failed on a stale sitemap-size assertion (`>2000`; actual 172); the test now validates all catalog service URLs and a catalog-derived minimum, with rerun pending. Job refresh #126 is still running. Production integrations requiring owner credentials or controlled transactions were not exercised. |
+| 10. Git/merging | Partial | 288 branches and 10 open PRs were found; PR #259 and the snapshot integrity follow-up are in pushed `main` (`8c6e6e8`), and this pass is committed/pushed as `a818b93`. Historical branch contents were not all reviewed; stale PRs were not merged. |
 | 11. Deployment | Partial | Live frontend/API endpoints respond; `/health` and `/readiness` return HTTP 200, with all ten readiness checks true. No authenticated Render control-plane view was available. AI and WhatsApp remain disabled, and source health is incomplete. |
 | 12. Final destination | Incomplete | Work is not production-complete until the external AI/WhatsApp configuration and the remaining feed/source/deployment checks are verified. |
 
@@ -135,7 +135,8 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
   RAC page and parses its explicit extended application deadline without
   treating its later page-update date as a deadline. This parser has offline
   regression coverage and was checked against the public RAC page, but the
-  correction is not yet deployed. SBI succeeded with 49 fetched and three
+  correction is committed/pushed as `a818b93`, but production deployment is
+  not yet verified. SBI succeeded with 49 fetched and three
   published records. The public source endpoint deliberately omits failure
   details; use authorized operational logs for further diagnosis. Failures are
   fail-closed, but source availability remains incomplete.
@@ -152,7 +153,12 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
   correctly allows crawling so crawlers can see `X-Robots-Tag`; all 12
   private routes returned HTTP 200 with `noindex, nofollow, noarchive`. The
   workflow correction removes the contradictory assertions and retains the
-  explicit private-route header checks; it is not yet pushed.
+  explicit private-route header checks. It is pushed in `a818b93`; smoke run
+  #116 passed.
+- **Browser E2E:** run #470 failed because its sitemap test expected more than
+  2,000 URLs while the verified production sitemap contains 172. The test
+  assertion is stale; it now checks a catalog-derived minimum and every
+  catalog service URL. A rerun after this fix is still required.
 - **AI activation/configuration:** the checked-in Render blueprint explicitly
   disables client AI and has a different model. There is no evidence here of
   an accessible production Gemini key or a successful call to the requested
@@ -193,6 +199,10 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 - PR #259 exact head `dccdfe4fae4037db685c55a4e50bdd072d8537ca`: GitHub CI's
   operational safety, backend tests, frontend typecheck/build, and authenticated
   Chromium E2E checks all reported success.
+- Commit `a818b93`: CI #1009 and production smoke #116 passed. Browser E2E
+  #470 exposed the stale sitemap-size assertion; its correction is in a
+  follow-up commit, and the post-fix rerun remains pending. Job refresh #126
+  remained in progress at update time.
 - Initial frontend validation attempts before `npm ci` failed because the
   checkout had no installed frontend dependencies; the subsequent locked
   install and reruns succeeded.
@@ -212,8 +222,10 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 
 ## Deployment and next work
 
-1. Push the production-smoke correction and verify its next run is green.
-2. Deploy the DRDO-RAC source correction and verify production source status.
+1. Verify the browser E2E run after the sitemap assertion fix is green. Review
+   the job refresh #126 result.
+2. Verify production has deployed the DRDO-RAC source correction and confirm
+   its production source status.
    Resolve the SEBI HTTP 530 block through an approved official source or
    owner-authorized network access; verify KVS and IBPS parsing and keep all
    unavailable sources fail-closed.

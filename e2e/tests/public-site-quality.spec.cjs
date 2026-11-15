@@ -154,10 +154,13 @@ test('mobile navigation, static SEO files, Bing marker, and official-only URLs r
   expect(catalog.some((service) => service.slug === 'residence-certificate')).toBe(true)
 
   const locations = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1])
-  expect(locations.length).toBeGreaterThan(2000)
+  expect(locations.length).toBeGreaterThanOrEqual(catalog.length + 13)
   expect(new Set(locations).size).toBe(locations.length)
   expect(locations.every((location) => location.startsWith(`${OFFICIAL_ORIGIN}/`))).toBe(true)
   expect(locations).toContain(`${OFFICIAL_ORIGIN}/services/residence-certificate`)
+  for (const service of catalog) {
+    expect(locations).toContain(`${OFFICIAL_ORIGIN}/services/${service.slug}`)
+  }
 
   const officialFiles = `${robots}\n${sitemap}\n${JSON.stringify(catalog)}\n${structuredData}`
   for (const retired of RETIRED_ORIGINS) expect(officialFiles).not.toContain(retired)
