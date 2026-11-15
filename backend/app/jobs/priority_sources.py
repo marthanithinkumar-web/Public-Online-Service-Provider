@@ -3,7 +3,7 @@ from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse
 
 from .official_fetch import validate_official_url
-from .sources import JobItem, SourceDefinition, _first, _looks_like_initial_recruitment, _row_url, _table_records, clean, parse_all_dates, parse_date, parse_explicit_deadline, parse_explicit_deadline_cutoff_time, parse_html, india_today
+from .sources import JobItem, SourceDefinition, _first, _looks_like_initial_recruitment, _row_url, _table_records, _visible_text, clean, parse_all_dates, parse_date, parse_explicit_deadline, parse_explicit_deadline_cutoff_time, parse_html, india_today
 
 _EXCLUDED = (
     'result', 'results', 'admit card', 'call letter', 'answer key', 'interview schedule',
@@ -351,6 +351,50 @@ parse_drdo = _generic_official_parser(
 )
 
 
+def parse_drdo_rac(html, base_url):
+    text = _visible_text(html)
+    if not re.search(r'Ongoing Recruitment Opportunities in DRDO', text, re.I):
+        return []
+    advertisement = re.search(
+        r'Lateral Recruitment of Scientists\s+Advertisement\s*#\s*(\d+)',
+        text,
+        re.I,
+    )
+    if not advertisement:
+        return []
+    date_pattern = r'(\d{1,2}[ -]+[A-Za-z]{3,9}[,\s-]+20\d{2})'
+    extended = re.search(
+        rf'Extended Form Submission date\s*:\s*{date_pattern}',
+        text,
+        re.I,
+    )
+    closing = re.search(rf'Closing date\s*:\s*{date_pattern}', text, re.I)
+    date_match = extended or closing
+    if not date_match:
+        return []
+    deadline = parse_date(re.sub(r'[-]+', ' ', date_match.group(1)))
+    if not deadline:
+        return []
+    number = advertisement.group(1)
+    notice = re.search(
+        rf'href\s*=\s*["\']([^"\']*advt_{re.escape(number)}\.pdf(?:\?[^"\']*)?)["\']',
+        html,
+        re.I,
+    )
+    notice_url = urljoin(base_url, notice.group(1)) if notice else base_url
+    validate_official_url(notice_url)
+    return [JobItem(
+        external_id=f'drdo-rac-advt-{number}',
+        title=f'DRDO-RAC Lateral Recruitment of Scientists (Advertisement {number})',
+        organization='Defence Research and Development Organisation — Recruitment and Assessment Centre',
+        official_notice_url=notice_url,
+        location='India',
+        deadline=deadline,
+        summary='Official DRDO-RAC scientist recruitment notice. Verify the current application status and eligibility on the official source.',
+        confidence=0.98,
+    )]
+
+
 PRIORITY_OFFICIAL_SOURCES = (
     SourceDefinition('rbi', 'Reserve Bank of India', 'https://opportunities.rbi.org.in/Scripts/Vacancies.aspx', parse_rbi, allow_missing_deadline=True, missing_deadline_max_age_days=60),
     SourceDefinition('sbi', 'State Bank of India — Careers', 'https://sbi.bank.in/web/careers/current-openings', parse_sbi, allow_missing_deadline=True, missing_deadline_max_age_days=60),
@@ -359,5 +403,5 @@ PRIORITY_OFFICIAL_SOURCES = (
     SourceDefinition('kvs', 'Kendriya Vidyalaya Sangathan', 'https://kvs.gov.in/en/interview-notice/', parse_kvs, allow_missing_deadline=True, missing_deadline_max_age_days=60),
     SourceDefinition('sebi', 'Securities and Exchange Board of India', 'https://www.sebi.gov.in/sebiweb/other/careerdetail.jsp?careerId=1', parse_sebi, allow_missing_deadline=True, missing_deadline_max_age_days=60),
     SourceDefinition('ibps', 'Institute of Banking Personnel Selection', 'https://www.ibps.in/', parse_ibps, allow_missing_deadline=True, missing_deadline_max_age_days=45),
-    SourceDefinition('drdo_rac', 'Defence Research and Development Organisation (DRDO) — Vacancies', 'https://drdo.gov.in/drdo/offerings/vacancies', parse_drdo, allow_missing_deadline=True, missing_deadline_max_age_days=60),
+    SourceDefinition('drdo_rac', 'Defence Research and Development Organisation — Recruitment and Assessment Centre', 'https://rac.gov.in/index.php?lang=en&id=0', parse_drdo_rac),
 )

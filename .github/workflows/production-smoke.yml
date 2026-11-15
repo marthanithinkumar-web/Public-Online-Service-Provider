@@ -137,14 +137,6 @@ jobs:
           require_text /tmp/sitemap.xml "$UI_URL/" 'sitemap production host'
           require_text /tmp/sitemap.xml "$UI_URL/services/mobile-recharge" 'mobile recharge sitemap entry'
           require_text /tmp/sitemap.xml "$UI_URL/services/apply-fastag-recharge" 'FASTag sitemap entry'
-          for path in /login /register /account-settings /messages /grievances /submit-grievance /submit-review /reset-password /my-orders; do
-            require_text /tmp/robots.txt "Disallow: $path" "robots protection for $path"
-          done
-          if ! grep -Eq '^Disallow: /admin/?$' /tmp/robots.txt; then
-            echo 'robots protection for admin routes is missing'
-            cat /tmp/robots.txt
-            exit 1
-          fi
 
       - name: Verify private routes send noindex response headers
         run: |

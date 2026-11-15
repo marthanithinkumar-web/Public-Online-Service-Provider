@@ -1,5 +1,5 @@
 from app.jobs import sources
-from app.jobs.priority_sources import parse_drdo, parse_kvs, parse_rbi, parse_sbi
+from app.jobs.priority_sources import parse_drdo, parse_drdo_rac, parse_kvs, parse_rbi, parse_sbi
 from app.jobs import snapshot, notice_enrichment
 from app.jobs.sources import JobItem, SOURCE_DEFINITIONS, parse_all_dates, parse_date, parse_explicit_deadline
 from datetime import date, datetime, time, timezone
@@ -15,6 +15,9 @@ def test_employment_news_all_jobs_is_removed_and_priority_sources_are_registered
     assert keys.index('rbi') < keys.index('ssc')
     assert keys.index('sbi') < keys.index('ssc')
     assert all('employmentnews.gov.in/NewEmp/AllJobs.aspx' not in source.listing_url for source in sources.SOURCE_DEFINITIONS)
+    drdo_rac = next(source for source in sources.SOURCE_DEFINITIONS if source.key == 'drdo_rac')
+    assert drdo_rac.listing_url == 'https://rac.gov.in/index.php?lang=en&id=0'
+    assert drdo_rac.parser is parse_drdo_rac
 
 
 def test_priority_parser_keeps_recruitment_notice_and_excludes_results():
@@ -267,6 +270,69 @@ def test_drdo_vacancy_parser_keeps_individual_official_vacancy_page():
     assert len(items) == 1
     assert items[0].organization == 'Defence Research and Development Organisation (DRDO)'
     assert items[0].official_notice_url == 'https://drdo.gov.in/drdo/offerings/vacancies/npol-kochi-invites-application-consultant'
+
+
+def test_drdo_rac_parser_uses_extended_application_deadline_not_page_update_date():
+    html = '''
+      <h2>Ongoing Recruitment Opportunities in DRDO</h2>
+      <h3>Lateral Recruitment of Scientists</h3>
+      <small>Advertisement #</small><span>157</span>
+      <a href="download/advt_157.pdf">Advertisement</a>
+      <p>Closing date: 19-June-2026 (16:00 hrs. IST)</p>
+      <p>Extended Form Submission date: 30 Jun 2026 (16:00 hrs. IST)</p>
+      <p>Last updated on: 22 Oct, 2026</p>
+      <h4>Advertisement No. 156</h4>
+      <p>Final cutoff marks for shortlisted candidates</p>
+    '''
+    items = parse_drdo_rac(html, 'https://rac.gov.in/index.php?lang=en&id=0')
+
+    assert len(items) == 1
+    assert items[0].title == 'DRDO-RAC Lateral Recruitment of Scientists (Advertisement 157)'
+    assert items[0].deadline == date(2026, 6, 30)
+    assert items[0].official_notice_url == 'https://rac.gov.in/download/advt_157.pdf'
+    assert items[0].application_url is None
+
+
+def test_drdo_rac_parser_rejects_result_only_or_undated_notices():
+    result_only = '''
+      <h2>Ongoing Recruitment Opportunities in DRDO</h2>
+      <h3>Final Result for Lateral Recruitment of Scientists</h3>
+      <p>Advertisement # 157</p>
+      <p>Last updated on: 22 Oct, 2026</p>
+    '''
+    undated = '''
+      <h2>Ongoing Recruitment Opportunities in DRDO</h2>
+      <h3>Lateral Recruitment of Scientists</h3>
+      <p>Advertisement # 158</p>
+      <p>Last updated on: 22 Oct, 2026</p>
+    '''
+
+    assert parse_drdo_rac(result_only, 'https://rac.gov.in/index.php?lang=en&id=0') == []
+    assert parse_drdo_rac(undated, 'https://rac.gov.in/index.php?lang=en&id=0') == []
+
+
+def test_drdo_rac_expired_notice_is_not_published_by_snapshot(monkeypatch):
+    source = next(item for item in SOURCE_DEFINITIONS if item.key == 'drdo_rac')
+    html = '''
+      <h2>Ongoing Recruitment Opportunities in DRDO</h2>
+      <h3>Lateral Recruitment of Scientists</h3>
+      <small>Advertisement #</small><span>157</span>
+      <a href="download/advt_157.pdf">Advertisement</a>
+      <p>Closing date: 19-June-2026 (16:00 hrs. IST)</p>
+      <p>Extended Form Submission date: 30 Jun 2026 (16:00 hrs. IST)</p>
+      <p>Last updated on: 22 Oct, 2026</p>
+    '''
+    monkeypatch.setattr(snapshot, 'SOURCE_DEFINITIONS', (source,))
+    monkeypatch.setattr(snapshot, 'fetch_official_page', lambda url, session=None: html)
+    monkeypatch.setattr(snapshot, 'enrich_job_item', lambda item, session=None: item)
+
+    result = snapshot.build_snapshot(
+        now=datetime(2026, 11, 15, 12, 0, tzinfo=timezone.utc),
+    )
+
+    assert result['count'] == 0
+    assert result['sources'][0]['last_sync_status'] == 'success'
+    assert result['sources'][0]['fetched_count'] == 1
 
 
 def test_drdo_end_date_is_used_only_on_official_drdo_vacancy_detail(monkeypatch):
