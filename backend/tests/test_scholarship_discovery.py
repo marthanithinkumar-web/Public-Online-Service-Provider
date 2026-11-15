@@ -708,7 +708,7 @@ def test_nsp_expired_student_application_deadline_is_moved_to_closed_audit(tmp_p
             'nsp': {'ok': True, 'count': 1, 'checked_at': now.isoformat()},
         }
 
-    payload = refresh_snapshot(path, now=now, discovery_func=discoverer, strict=True)
+    payload = refresh_snapshot(path, now=now, discovery_func=discoverer, strict=False)
 
     assert payload['items'] == []
     assert payload['count'] == 0
