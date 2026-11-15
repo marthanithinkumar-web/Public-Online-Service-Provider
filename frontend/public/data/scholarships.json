@@ -1,42 +1,7 @@
 {
-  "generated_at": "2026-11-13T21:10:56+00:00",
-  "count": 27,
+  "generated_at": "2026-11-15T07:13:49.915Z",
+  "count": 26,
   "items": [
-    {
-      "id": "nsp-national-means-cum-merit-scholarship",
-      "slug": "national-means-cum-merit-scholarship",
-      "title": "National Means Cum Merit Scholarship",
-      "provider": "Department of School Education & Literacy",
-      "source_name": "National Scholarship Portal",
-      "source_url": "https://scholarships.gov.in/All-Scholarships",
-      "application_url": "https://scholarships.gov.in/Students",
-      "deadline": "2026-11-15",
-      "region": "India",
-      "education_level": "Students",
-      "category": "Merit Based",
-      "eligibility": "Detailed scheme conditions are not exposed in structured text by this official listing. Open the linked official scheme details before applying.",
-      "status": "active",
-      "source_key": "nsp",
-      "source_type": "official",
-      "is_official": true,
-      "record_type": "scholarship",
-      "academic_year": "2026-27",
-      "discovery_method": "official_page",
-      "verified_at": "2026-11-13T21:10:56+00:00",
-      "last_seen_at": "2026-11-13T21:10:56+00:00",
-      "eligibility_source": "official_source_unstructured",
-      "application_requirements_note": "For Academic Year 2026-27, National Scholarship Portal states that One Time Registration (OTR) is mandatory to apply. Scheme-specific eligibility and the official scheme specification remain controlling.",
-      "application_requirements_source": "https://scholarships.gov.in/Students",
-      "application_status": "deadline_today",
-      "application_deadline": "2026-11-15",
-      "application_deadline_type": "student_application",
-      "deadline_type": "student_application",
-      "deadline_timezone": "Asia/Kolkata",
-      "deadline_cutoff_time": null,
-      "status_evidence": "Student Application Open till : 15-11-2026",
-      "source_checked_at": "2026-11-13T21:10:56+00:00",
-      "stale_source": false
-    },
     {
       "id": "nsp-aicte-pragati-scholarship-scheme-for-girl-students-technical-degree",
       "slug": "aicte-pragati-scholarship-scheme-for-girl-students-technical-degree",
@@ -963,8 +928,8 @@
       "application_scope": null
     }
   ],
-  "official_count": 27,
+  "official_count": 26,
   "private_count": 0,
   "verified_open_count": 26,
-  "deadline_today_count": 1
+  "deadline_today_count": 0
 }
