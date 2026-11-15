@@ -687,6 +687,7 @@ def test_scholarship_catalog_uses_item_timezone_and_cutoff():
 
 
 def test_nsp_expired_student_application_deadline_is_moved_to_closed_audit(tmp_path, monkeypatch):
+    # Isolate deadline eligibility; source-page enrichment is covered separately.
     monkeypatch.setattr('app.scholarships.snapshot.enrich_scholarships', lambda items: items)
     now = datetime(2026, 11, 15, 7, 0, tzinfo=timezone.utc)
     html = '''
