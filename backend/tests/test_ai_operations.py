@@ -38,7 +38,7 @@ def test_ai_job_context_uses_public_freshness_and_cutoff_eligibility(client):
     from app.routes.ai_operations import _verified_active_job_context
     from app.utils.database import db
 
-    with client.application.app_context():
+    with client.application.test_request_context('/'): 
         checked = datetime.now(timezone.utc).replace(tzinfo=None)
         fresh_source = JobSource.query.filter_by(key='employment_news').one()
         fresh_source.last_sync_status = 'success'
