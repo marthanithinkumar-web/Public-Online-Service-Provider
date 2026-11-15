@@ -331,3 +331,10 @@ After the items above are complete and tested, continue the existing full improv
 - Replaced those remaining regex assertions with Playwright URL predicates: scholarship detail paths must start with `/scholarships/`, and the assisted-application route must equal `/services/scholarship-application-assistance` and include the `scholarship` query parameter. Commit: `abf5244cd0802b162aeaf4e4724a10b17439ebb4`.
 - Checked the full E2E spec for any remaining adjacent double-backslash sequences; none were found. This is still awaiting a fresh exact-head E2E run.
 - Backend CI for the same earlier head was still running when this note was written. The new regression fixture was separately corrected to avoid invoking the unrelated strict minimum-five-listings gate; it still requires exact-head backend test success.
+
+
+## 2026-11-15 — NSP expiry test made deterministic/offline
+
+- Inspection of `source_enrichment.py` showed `refresh_snapshot()` performs optional official-page enrichment, which makes an unrelated network request. The new expiry regression does not test enrichment and should not depend on NSP availability.
+- Updated `test_nsp_expired_student_application_deadline_is_moved_to_closed_audit` to monkeypatch `app.scholarships.snapshot.enrich_scholarships` to identity, keeping the test focused on expiry classification and deterministic/offline.
+- Commit: `e4c83480e08264bd69aa73ef4eaed347e5551ebc`. Fresh exact-head CI is required; previous in-progress test results are not proof.
