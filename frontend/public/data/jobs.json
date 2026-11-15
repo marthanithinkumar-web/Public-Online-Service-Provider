@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-14T08:55:47Z",
+  "generated_at": "2026-11-15T07:17:49.539Z",
   "items": [
     {
       "id": 219697436843038,
@@ -115,17 +115,17 @@
       "job_type": "government",
       "appointment_type": null,
       "location": "India",
-      "qualification": null,
-      "age_limit": null,
+      "qualification": "B.E. (Fire) from NFSC Nagpur; or B.E./B.Tech. in Safety & Fire Engineering or Fire Technology & Safety Engineering; or equivalent 4-year Fire Safety degree; or Graduate Member of the Institution of Fire Engineers (India/UK); or Divisional Officers course from NFSC Nagpur. Experience requirements differ by qualification and must be checked in the official notice.",
+      "age_limit": "21–40 years as on 31-10-2026",
       "application_fee": null,
-      "vacancies": null,
+      "vacancies": "17",
       "salary": null,
-      "summary": "Official SBI recruitment opening. Confirm cadre, eligibility, vacancies, fee, dates and application instructions on SBI Careers.",
+      "summary": "SBI Specialist Cadre Officers recruitment for Assistant Manager – Engineer (Fire), 17 vacancies. Online registration and fee payment: 04.11.2026–25.11.2026. Read the official notice for qualification-specific fire-service experience and document requirements.",
       "issue_date": null,
-      "application_start_date": null,
+      "application_start_date": "2026-11-04",
       "deadline": "2026-11-25",
-      "official_notice_url": "https://sbi.bank.in/web/careers/current-openings",
-      "application_url": null,
+      "official_notice_url": "https://sbi.bank.in/documents/77530/57941334/04112026_FINAL%2BDRAFT%2BADVERTISEMENT%2BCRPD-SCO_29_ENGINEER.pdf/4d1be5a0-727d-61b5-1ea4-85570f437345?t=1793788834905",
+      "application_url": "https://ibpsreg.ibps.in/sbiameoct26/",
       "status": "published",
       "verification_status": "official_source_checked",
       "confidence": 0.96,
@@ -138,9 +138,10 @@
         "last_sync_status": "success"
       },
       "first_seen_at": "2026-11-04T09:05:28Z",
-      "last_seen_at": "2026-11-14T08:55:47Z",
+      "last_seen_at": "2026-11-15T07:17:49.539Z",
       "published_at": "2026-11-04T09:05:28Z",
-      "content_hash": "8dc175ce2a9daaa51a66525cd5a3c16eda18d596907a306a7e4eac9d2fdda6e3"
+      "content_hash": "8dc175ce2a9daaa51a66525cd5a3c16eda18d596907a306a7e4eac9d2fdda6e3",
+      "source_checked_at": "2026-11-15T07:17:49.539Z"
     },
     {
       "id": 240705314318650,
