@@ -384,3 +384,5 @@ owner-authorized deployment configuration.
 - Added further coverage for scholarship services whose service name is generic but whose category is Scholarships & Student Welfare; order metadata now records the server's scholarship classification so the payment UI and payment guard agree.
 - The exact latest integration branch is fix/posp-fees-home-auth-zip-integration-verified-20261116, forked from code head 0d6f5ac61c5787560ad36cf30a002325969d739f. A fresh PR is being opened so all required workflows execute against the final head. Earlier draft PR #264 is superseded and will be closed after the replacement PR is open.
 - Do not use the earlier passing CI as final verification: the latest fee/category changes and corrected E2E selectors require a fresh full CI + browser E2E run.
+
+- Second browser run on 475ee714 had 26 passing tests and one test-only selector failure: the accessible label Search services first matched the header navigation link rather than the actual input. The test now targets #service-search input[type=search]. The login warm-up and responsive jobs tests passed in that run; the final head must rerun all checks.
