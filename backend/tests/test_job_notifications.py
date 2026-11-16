@@ -16,7 +16,6 @@ from app.jobs.sources import (
     parse_tgprb,
     parse_upsc,
     india_today,
-    parse_explicit_deadline_cutoff_time,
 )
 from app.jobs.snapshot import build_snapshot
 from app.jobs.rules import target_status
@@ -356,7 +355,6 @@ def test_public_snapshot_publishes_only_complete_official_notices(monkeypatch):
 
 
 def test_public_snapshot_keeps_verified_open_jobs_during_temporary_source_failure():
-    complete = _item(deadline=date(2099, 9, 30))
     html = '''<table><tr><th>Advertisement No.</th><th>Organization</th><th>Post</th><th>Last Date</th></tr>
     <tr><td>notice-1</td><td>Official Recruitment Board</td><td>Assistant Officer</td><td>30 September 2099</td></tr></table>'''
 

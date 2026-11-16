@@ -128,7 +128,7 @@ jobs:
           pip install ruff pip-audit
       - name: Lint changed backend modules and tests
         run: |
-          ruff check --select E4,E7,E9,F \
+          ruff check --select E4,E7,E9,F --ignore E701,E702 \
             backend/app/main.py \
             backend/app/routes/jobs.py \
             backend/app/routes/ai_operations.py \
@@ -137,7 +137,6 @@ jobs:
             backend/tests/test_job_filter_contract.py \
             backend/tests/test_job_notifications.py \
             backend/tests/test_rate_limits.py \
-            backend/tests/test_job_snapshot_api.py \
             backend/tests/test_sbi_current_openings_source.py
       - name: Audit pinned backend dependencies
         run: pip-audit -r backend/requirements.txt

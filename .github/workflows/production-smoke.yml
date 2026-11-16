@@ -224,6 +224,53 @@ jobs:
           require_text /tmp/sitemap.xml "$UI_URL/" 'sitemap production host'
           require_text /tmp/sitemap.xml "$UI_URL/services/mobile-recharge" 'mobile recharge sitemap entry'
           require_text /tmp/sitemap.xml "$UI_URL/services/apply-fastag-recharge" 'FASTag sitemap entry'
+          python - <<'PY'
+          import json
+          import os
+          import re
+
+          base=os.environ['UI_URL'].rstrip('/')
+          with open('/tmp/jobs.json', encoding='utf-8') as handle:
+              jobs=json.load(handle)
+          with open('/tmp/scholarships.json', encoding='utf-8') as handle:
+              scholarships=json.load(handle)
+          with open('/tmp/sitemap.xml', encoding='utf-8') as handle:
+              sitemap=handle.read()
+          urls=set(re.findall(r'<loc>([^<]+)</loc>', sitemap))
+
+          expected_jobs=set()
+          for item in jobs.get('items') or []:
+              if str(item.get('job_type') or '').lower() != 'government':
+                  continue
+              slug=str(item.get('slug') or '').strip()
+              if not slug:
+                  raise AssertionError(f"Public job has no canonical slug: {item.get('title')}")
+              if len(slug) > 200:
+                  identifier=item.get('id')
+                  if not str(identifier or '').isdigit() or int(identifier) <= 0:
+                      raise AssertionError(f"Long job slug has no safe numeric ID: {item.get('title')}")
+                  slug=f"notice-{int(identifier)}"
+              expected_jobs.add(f"{base}/jobs/{slug}")
+
+          expected_scholarships=set()
+          for item in scholarships.get('items') or []:
+              slug=str(item.get('slug') or '').strip()
+              if not slug:
+                  raise AssertionError(f"Public scholarship has no canonical slug: {item.get('title')}")
+              expected_scholarships.add(f"{base}/scholarships/{slug}")
+
+          actual_jobs={url for url in urls if url.startswith(f"{base}/jobs/")}
+          actual_scholarships={url for url in urls if url.startswith(f"{base}/scholarships/")}
+          assert actual_jobs == expected_jobs, {
+              'missing_jobs': sorted(expected_jobs-actual_jobs),
+              'unexpected_jobs': sorted(actual_jobs-expected_jobs),
+          }
+          assert actual_scholarships == expected_scholarships, {
+              'missing_scholarships': sorted(expected_scholarships-actual_scholarships),
+              'unexpected_scholarships': sorted(actual_scholarships-expected_scholarships),
+          }
+          print(f"Verified sitemap parity: {len(actual_jobs)} eligible job details and {len(actual_scholarships)} active scholarship details; no stale or unverified detail URLs.")
+          PY
 
       - name: Verify private routes send noindex response headers
         run: |

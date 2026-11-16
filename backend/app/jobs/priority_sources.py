@@ -4,7 +4,7 @@ from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse
 
 from .official_fetch import validate_official_url
-from .sources import JobItem, SourceDefinition, _first, _looks_like_initial_recruitment, _row_url, _table_records, _visible_text, clean, parse_all_dates, parse_date, parse_explicit_deadline, parse_explicit_deadline_cutoff_time, parse_html, india_today
+from .sources import JobItem, SourceDefinition, _first, _looks_like_initial_recruitment, _row_url, _table_records, _visible_text, clean, parse_date, parse_explicit_deadline, parse_explicit_deadline_cutoff_time, parse_html, india_today
 
 _EXCLUDED = (
     'result', 'results', 'admit card', 'call letter', 'answer key', 'interview schedule',

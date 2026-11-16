@@ -10,9 +10,6 @@ from .utils.startup_safety import should_skip_database_startup
 from .utils.readiness import production_readiness, readiness_status, persistent_storage_connectivity, shared_rate_limit_configured, shared_rate_limit_connectivity, smtp_connectivity, razorpay_connectivity
 from .models.user import User
 from .models.service import Category, Service
-from .models.job import JobSource
-from .models.payment import Payment
-from .models.push_subscription import PushSubscription
 from .routes import auth, services, orders, admin, reviews, grievances, categories, notifications, messages, jobs, fees, payments, admin_payments, scholarships, push, refunds, whatsapp, ai_operations
 from .scholarships.payment_guard import register_scholarship_payment_guard
 from .government_services import sync_verified_catalog

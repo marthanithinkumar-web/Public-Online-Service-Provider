@@ -5,7 +5,6 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
-import requests
 from flask import Blueprint, jsonify, request
 
 from ..models.admin_audit import AdminAuditLog
@@ -17,7 +16,7 @@ from ..scholarships.catalog import load_catalog
 from ..utils.database import db
 from ..utils.jwt_handler import get_request_user
 from ..utils.readiness import production_readiness
-from ..ai_core import call_model as _call_model, configured_model as _configured_model, configured_provider as _configured_provider, is_configured as _ai_is_configured, _extract_openai_text as _extract_response_text
+from ..ai_core import call_model as _call_model, configured_model as _configured_model, configured_provider as _configured_provider, is_configured as _ai_is_configured
 from .admin import _require_admin
 
 bp = Blueprint('ai_operations', __name__)
