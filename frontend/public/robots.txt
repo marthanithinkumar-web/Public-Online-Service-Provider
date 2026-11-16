@@ -1,4 +1,15 @@
 User-agent: *
 Allow: /
+Disallow: /login
+Disallow: /register
+Disallow: /admin
+Disallow: /request-reset
+Disallow: /reset-password
+Disallow: /my-orders
+Disallow: /account-settings
+Disallow: /messages
+Disallow: /grievances
+Disallow: /submit-grievance
+Disallow: /submit-review
 
 Sitemap: https://pospindia.onrender.com/sitemap.xml
