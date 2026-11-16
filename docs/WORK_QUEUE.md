@@ -350,3 +350,10 @@ After the items above are complete and tested, continue the existing full improv
 6. **P1 — SEO:** `generate-seo.mjs` overwrites robots.txt without private-route exclusions; PR #251 alone cannot fix this. Update generator and tests on a safe branch.
 7. **P1 — POSP AI:** client AI remains disabled in current main; no live provider call verified. Keep disabled until model, privacy and end-to-end checks pass.
 8. **Continuity:** PR #253 is closed without merge; its Beedi closure is present in PR #259's merged backend closed-items data and absent from the active frontend snapshot. PRs #232, #251 and #252 remain unmerged/stale and must be reconciled against current main before any merge.
+
+
+## POSP.zip integration continuation — 2026-11-16
+- Safe subset is in draft PR #263 (branch `integration/posp-zip-safe-ui-privacy-20261116`, head `66778915144ba901a170e4b190eeddf5c325d361`). Frontend typecheck/build and operational script safety passed; backend suite and authenticated browser E2E were still in progress at last check.
+- Do not merge until exact-head CI is green, main is revalidated, and the backend deploy path is proven DB-free under the owner's no-production-database-touch rule.
+- Remaining ZIP AI provider package/core and privacy prompt changes must be reconciled with open PRs #216/#235; preserve POSP_CLIENT_AI_ENABLED=false until explicit validation. Do not import archive render.yaml enablement, stale snapshots, built assets, SQLite DBs, pytest caches, uploads, nested .git repositories or line-ending-only changes.
+- Do not transplant archive job API/filter changes over PR #239; reconcile with current main and official-source eligibility rules first. The archive's responsive E2E test uses obsolete UI selectors and must be rewritten before adoption.
