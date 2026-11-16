@@ -1,6 +1,6 @@
 # POSP Final Completion Report
 
-**Report date:** 2026-11-15
+**Report date:** 2026-11-16
 **Repository:** `marthanithinkumar-web/public-online-service-provider`
 **Branch:** `main`
 
@@ -13,6 +13,39 @@ features are implemented and covered by tests. It means external activation,
 source health, and some coverage gaps remain unverified or unresolved.
 Production success is not inferred from code or a Git push.
 
+## Latest verified checkpoint — 2026-11-16
+
+The requirement totals remain **0 complete, 9 partial, and 3 incomplete**.
+This checkpoint is based on repository evidence at `main` commit
+`8a4ea50b0bee50fb07a591c18e686fde9f4948f4` and a read-only fetch of the
+official SBI vacancies page. It does not claim that the newest repository
+snapshots are live in production.
+
+- The scholarship snapshot on `main` contains 27 records and no longer contains
+  the expired National Means Cum Merit Scholarship (NMMS). This verifies the
+  committed static snapshot only; a live API/detail-route check was not
+  performed in this checkpoint.
+- The committed jobs snapshot still has only three published SBI notices
+  (`CRPD/SCO/2026-27/30`, `/27`, and `/26`). The approved official-source
+  fetcher and parser read the current SBI page and extracted five notices with
+  dated application deadlines: `/30`, `/27`, `/26`, `/28`, and `/29`. The
+  snapshot therefore remains incomplete for `/28` and `/29`; verify their
+  inclusion in a subsequent refresh and production feed before reporting
+  convergence.
+- No application, payment, refund, WhatsApp message, production database
+  access, migration, seed, or deployment was performed. The backend
+  auto-deploy start command still runs `pre_migrate.py`, `flask db upgrade`,
+  and `python seed.py`. Under the production DB no-touch rule, further backend
+  deployment is blocked until the owner authorizes a DB-free deployment path.
+- PR #263's four exact-head checks (backend tests, frontend typecheck/build,
+  operational script safety, and authenticated Chromium E2E) are green, but
+  the PR is still open. PR #262 is also open. Neither is represented as merged
+  or deployed by this checkpoint.
+- Files changed in this reporting increment: `POSP_FINAL_COMPLETION_REPORT.md`.
+  No automated tests were run for this documentation-only update;
+  `git diff --check` passed. The source and snapshot checks above were
+  read-only.
+
 ## Requirement status
 
 | # | Requirement area | Status | Evidence and remaining work |
@@ -20,14 +53,14 @@ Production success is not inferred from code or a Git push.
 | 1 | Repository audit | Partial | Inspected repository structure, current history, 288 branch refs, 10 open PRs, core documentation/configuration, tests, and live endpoints. Not every historical branch diff or commit was individually reviewed. |
 | 2 | Preserve previous requirements | Partial | Kept existing architecture and features; merged verified PR #259 and snapshot-integrity follow-up into `main`. No stale branch was blindly merged. |
 | 3 | Platform features | Partial | Existing auth/role checks, client/admin workflows, applications/orders, fee rules, uploads, receipts, and notifications have implementation and backend coverage. All live user journeys and roles were not independently exercised in production. |
-| 4 | Jobs and scholarships | Partial | Official-source validation, deadline/freshness logic, filters, snapshots, and scheduled refresh are implemented and regression-tested. Current production reports 20 sources: 6 successful, 11 degraded, 3 failed. KVS/IBPS checks succeeded with no published jobs; SEBI remains blocked with HTTP 530 (degraded, four consecutive failures). The official DRDO-RAC URL is configured, but it reports failed with four consecutive failures; its parser reads the official page locally and rejects its expired notice. Refresh #128 verified the exact production snapshot, but started at 14:47 IST, over seven hours after the configured 07:45 IST schedule. |
+| 4 | Jobs and scholarships | Partial | Official-source validation, deadline/freshness logic, filters, snapshots, and scheduled refresh are implemented and regression-tested. Historical production evidence reported 20 sources: 6 successful, 11 degraded, 3 failed. At the 2026-11-16 checkpoint, `main` has 27 scholarship records without expired NMMS, but this was not live-API verified. The committed jobs snapshot has three SBI records; the current official page and approved fetcher/parser show five dated notices, leaving `/28` and `/29` to reconcile in the next refresh and production feed. KVS/IBPS and source health remain subject to fresh checks. |
 | 5 | POSP AI | Incomplete | Existing in-client and admin AI workflows are present. `render.yaml` now selects the requested `gemini-3.5-flash-lite`; Google's official model catalog marks it stable and documents the existing `v1beta` `generateContent` endpoint. Client AI remains disabled because no production key or successful live call was verified. |
 | 6 | WhatsApp Cloud API | Incomplete | Webhook, messaging, templates, consent, and status-handling code has tests. Production config reports Cloud API disabled and status notifications unavailable. The Meta app remains in Development mode and is unpublished; callback and verify-token fields are empty and webhook verification is disabled. No production message was sent. |
 | 7 | SEO and indexing | Partial | Metadata, canonical URLs, structured data, sitemap/robots generation, prerendering, and private-route noindex behavior are implemented. Production sitemap has 173 URLs and all three current job detail pages are present. The 237-character source slug uses `/jobs/notice-136282380084494`; production content and canonical were verified. Search Console confirms the sitemap is successfully submitted (170 discovered pages); its overview shows 11 indexed and 166 not indexed. The latest detailed report, last updated 2026-11-09, lists 164 discovered-not-indexed and two alternate-canonical URLs. |
 | 8 | Security and reliability | Partial | AuthZ, input validation, upload limits, storage, payment verification, backup tooling, and readiness checks exist. The Flask-Limiter 2.9.0 global-default bug is fixed using constructor defaults (500/hour and 2,000/day). Redis failure falls back to bounded per-process limits for ordinary routes, fails auth closed, and fails other rate-limited routes closed after five minutes. The fix is deployed at Render commit `c730b8c`; production health and strict readiness returned HTTP 200, with all ten readiness checks true. Restore drill #12 and Razorpay confirmation #21 passed; no penetration test or live payment/refund was performed. |
-| 9 | Testing and integration | Partial | Latest full local backend suite: 334 passed, 1 Redis integration test skipped because no local Redis server is installed, 129 warnings. CI #1017 passed and ran the Redis 7 cross-worker shared-counter test. Frontend typecheck/build, production smoke #120, scholarship smoke #95, CI #1012/#1014, browser E2E #478, restore drill #12, Razorpay confirmation #21, and job refresh #128 passed. Account-authorized AI, WhatsApp, transaction/refund, and live user-journey tests remain outstanding. |
-| 10 | Git and merging | Partial | PR #259 and the snapshot-integrity follow-up are in `main`; commits `a818b93`, `00ccde8`, `3ef5504`, `0de334e`, and `6de1846` are pushed, and automated snapshot refreshes `a1b9716`, `8cef1ae`, and `c5669c0` are pushed and fast-forwarded locally. Historical branch contents were not all reviewed. |
-| 11 | Deployment | Partial | PR #260 was merged to `main` as `c730b8c` and deployed to the existing Render API service. At 11:08 IST on 2026-11-15, production `/health` and strict `/readiness` returned HTTP 200; readiness reported all ten checks true, including shared rate-limit storage/connectivity. No credentials were copied or exposed. The exact secret URL was not recorded or exposed. The free API instance may sleep. The WhatsApp config remains disabled and the Meta app is unpublished. |
+| 9 | Testing and integration | Partial | Latest full local backend suite: 334 passed, 1 Redis integration test skipped because no local Redis server is installed, 129 warnings. CI #1017 passed and ran the Redis 7 cross-worker shared-counter test. PR #263's four exact-head checks passed but the PR remains open. Frontend typecheck/build, production smoke #120, scholarship smoke #95, CI #1012/#1014, browser E2E #478, restore drill #12, Razorpay confirmation #21, and job refresh #128 passed. Account-authorized AI, WhatsApp, transaction/refund, live user-journey checks, and fresh verification of the latest snapshots in production remain outstanding. |
+| 10 | Git and merging | Partial | PR #259, the snapshot-integrity follow-up, and PR #261 are in `main`; commits `a818b93`, `00ccde8`, `3ef5504`, `0de334e`, and `6de1846` are pushed, and automated snapshot refreshes `a1b9716`, `8cef1ae`, `c5669c0`, `d1dde83`, and `8a4ea50` are in `main`. PRs #262 and #263 remain open and are not merged or deployed. Historical branch contents were not all reviewed. |
+| 11 | Deployment | Partial | PR #260 was merged to `main` as `c730b8c` and deployed to the existing Render API service. At 11:08 IST on 2026-11-15, production `/health` and strict `/readiness` returned HTTP 200; readiness reported all ten checks true, including shared rate-limit storage/connectivity. No fresh production health/readiness check was performed for this checkpoint. The auto-deploy start command runs `pre_migrate.py`, `flask db upgrade`, and `python seed.py`; owner authorization for a DB-free path is required before further backend deployment. No credentials were copied or exposed. The exact secret URL was not recorded or exposed. The free API instance may sleep. The WhatsApp config remains disabled and the Meta app is unpublished. |
 | 12 | Production-ready destination | Incomplete | External AI/WhatsApp activation, failed/degraded sources, scheduler timing, Search Console indexing/canonical follow-up, and live transaction/representative journey checks prevent a production-complete claim. |
 
 ## Implemented and verified behavior
@@ -94,9 +127,15 @@ Production success is not inferred from code or a Git push.
 - Commit `3ef5504` adds short stable ID-based URLs for long source slugs. The
   production sitemap contains all three job details, and the alias page
   hydrates the correct notice with the matching canonical URL.
-- The latest source health is six successful, eleven degraded, and three
-  failed; DRDO-RAC is failed and SEBI is degraded after four consecutive failures
-  each. They remain operational blockers.
+- The last verified source-health snapshot (2026-11-15) reported six successful,
+  eleven degraded, and three failed; DRDO-RAC was failed and SEBI degraded after
+  four consecutive failures each. Current source health was not refreshed in
+  this checkpoint.
+- The 2026-11-16 repository checkpoint contains 27 scholarship records without
+  NMMS. A read-only fetch of the current official SBI page through the approved
+  fetcher/parser identified five dated open notices, while the committed jobs
+  snapshot still contains three SBI records; `/28` and `/29` need a verified
+  subsequent refresh and production-feed check.
 - `Employment News All Jobs` remains excluded.
 - The existing in-client support, admin, application, payment, storage, and
   messaging implementation was retained; no integration is called live solely
