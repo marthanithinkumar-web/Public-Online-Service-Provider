@@ -8,6 +8,7 @@ upstream career site is temporarily unreachable from Render.
 
 import argparse
 import json
+import os
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
@@ -358,6 +359,9 @@ def import_verified_snapshot(path):
 
 
 def main(argv=None):
+    if os.getenv('SKIP_DATABASE_BOOTSTRAP') == '1':
+        print('Skipping production job snapshot import because SKIP_DATABASE_BOOTSTRAP=1.')
+        return 0
     parser = argparse.ArgumentParser(description='Import the verified public job snapshot into the database.')
     parser.add_argument('--path', default='../frontend/public/data/jobs.json')
     args = parser.parse_args(argv)
