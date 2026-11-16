@@ -11,7 +11,7 @@ export default function PaymentPanel({order}:{order:any}){
   useEffect(()=>{if(order?.id)refresh()},[order?.id])
   if(!order?.id)return null
   const serviceLabel=String(order?.service||order?.service_name||order?.application_data?.service_name||'')
-  const scholarshipOnly=Boolean(order?.application_data?.scholarship_slug||order?.application_data?.scholarship_title||/scholarship/i.test(serviceLabel))
+  const scholarshipOnly=Boolean(order?.application_data?.is_scholarship_service||order?.application_data?.scholarship_slug||order?.application_data?.scholarship_title||/scholarship/i.test(serviceLabel))
   const assistance=Number(state?.breakdown?.assistance_fee_inr??order?.fee_inr??0)
   const officialStatus=scholarshipOnly?'none':(state?.breakdown?.official_fee_status??order?.official_fee_status??'unconfirmed')
   const official=scholarshipOnly?0:(state?.breakdown?.official_fee_inr==null?null:Number(state.breakdown.official_fee_inr))
