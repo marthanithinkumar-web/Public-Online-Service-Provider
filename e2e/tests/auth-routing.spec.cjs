@@ -148,6 +148,42 @@ test('homepage displays the configured public assistance fee', async ({ page }) 
   await expect(page.getByText('₹45', { exact: true })).toBeVisible()
 })
 
+test('service search cards use the current configured scholarship assistance fee', async ({ page }) => {
+  await page.route('**/api/**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+  })
+  await page.route('**/api/services', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([{
+        id: 501,
+        name: 'National Scholarship Portal (NSP) Assistance',
+        category: 'Scholarships & Student Welfare',
+        price_inr: 30,
+        official_fee_status: 'none',
+        official_fee_inr: 0,
+        keywords: 'scholarship nsp student',
+        is_active: true,
+      }]),
+    })
+  })
+  await page.route('**/api/fees/scholarship-assistance', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: { 'Cache-Control': 'no-store' },
+      body: JSON.stringify({ price_inr: 85, official_fee_inr: 0, official_fee_status: 'none' }),
+    })
+  })
+  await page.route('**/api/services/homepage-assistance-fee', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ price_inr: 30 }) })
+  })
+  await page.goto('/')
+  await page.getByLabel('Search services').fill('scholarship')
+  await expect(page.getByText('Applicable Assistance Fee ₹85', { exact: true })).toBeVisible()
+})
+
 test('client login waits for the in-flight Render API warm-up before posting credentials', async ({ page }) => {
   let releaseWarmup
   const warmupGate = new Promise((resolve) => { releaseWarmup = resolve })
