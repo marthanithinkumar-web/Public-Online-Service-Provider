@@ -36,7 +36,7 @@ const robots=[
   '',
   `Sitemap: ${siteUrl}/sitemap.xml`,
   '',
-].join('\\n')
+].join('\n')
 
 fs.writeFileSync(path.join(publicDir,'sitemap.xml'),xml)
 fs.writeFileSync(path.join(publicDir,'robots.txt'),robots)
