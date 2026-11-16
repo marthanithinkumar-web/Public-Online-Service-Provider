@@ -349,3 +349,8 @@ After the items above are complete and tested, continue the existing full improv
 - Copilot ZIP reconciliation: nested SEBI parser changes already landed in PR #261; package-lock changes already exist on main. Safe UI/filter/privacy changes are carried forward in this integration branch. Do not import the ZIP's invalid/unverified AI model default or Render setting that enables client AI; reconcile AI changes with open PRs #216/#226/#227/#235 first. Ignore generated assets, local DBs/caches/uploads and line-ending-only rewrites.
 - New branch: fix/posp-fees-home-auth-zip-integration-20261116. Exact-head CI/E2E and PR are pending. No merge/deploy has occurred.
 - Keep the official-source expired jobs/scholarships audit and PR #253 closure verification as independent open blockers; this fee/login PR does not close them.
+
+### Final-head verification rerun — 2026-11-16
+- First CI at c12531c passed backend tests, frontend typecheck/build and operational script safety; browser E2E failed on duplicate accessible labels. Selectors were corrected and category-only scholarship fee coverage was added after that run.
+- Replacement integration branch: fix/posp-fees-home-auth-zip-integration-verified-20261116 (forked from code head 0d6f5ac). Fresh PR #265 will carry final exact-head checks. PR #264 is superseded and should be closed after #265 is open.
+- Do not merge/deploy until all required checks pass on the final head.
