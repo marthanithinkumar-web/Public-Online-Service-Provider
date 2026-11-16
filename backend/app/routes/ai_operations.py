@@ -135,16 +135,13 @@ def _parse_client_ai_response(raw):
     return answer, handoff
 
 def _verified_active_job_context(limit=5):
-    # Reuse the exact server-side public eligibility query so POSP AI cannot
-    # bypass freshness/source-health filters that protect the public job API.
-    from .jobs import _public_query
+    # Use the same read-only verified snapshot as the public jobs API so POSP
+    # AI cannot bypass deadline, cutoff, freshness or source-health filters.
+    from .jobs import _public_snapshot_jobs
 
     context = []
-    candidates = _public_query().order_by(JobNotification.deadline.asc()).all()
-    for job in candidates:
-        if not job.is_open:
-            continue
-        data = job.to_dict()
+    candidates = _public_snapshot_jobs()
+    for data in candidates:
         source = data.get('source') or {}
         context.append({
             'title': data.get('title'),
@@ -161,7 +158,7 @@ def _verified_active_job_context(limit=5):
             'application_url': data.get('application_url'),
             'verification_status': data.get('verification_status'),
             'source_name': source.get('name'),
-            'source_checked_at': source.get('last_successful_sync_at'),
+            'source_checked_at': data.get('source_checked_at') or source.get('last_successful_sync_at'),
             'last_seen_at': data.get('last_seen_at'),
         })
         if len(context) >= max(1, int(limit)):
