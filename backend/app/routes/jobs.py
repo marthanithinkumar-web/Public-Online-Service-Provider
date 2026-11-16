@@ -134,10 +134,13 @@ def _public_snapshot_jobs(now=None):
                 item['status_label'] = 'Deadline today—check official portal'
         jobs.append(item)
 
+    jobs.sort(
+        key=lambda item: _parse_timestamp(item.get('published_at')) or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
     jobs.sort(key=lambda item: (
         0 if item.get('is_featured') else 1,
         str(item.get('deadline') or '9999-12-31'),
-        -((_parse_timestamp(item.get('published_at')) or datetime.min.replace(tzinfo=timezone.utc)).timestamp()),
     ))
     return jobs
 
