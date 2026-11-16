@@ -347,3 +347,33 @@ owner-authorized deployment configuration.
   `/readiness` returned HTTP 200 at 11:08 IST; readiness reported all ten
   checks true, including shared rate-limit storage/connectivity. No production
   quota flooding was performed.
+
+## 2026-11-16 — Copilot ZIP review, fee correctness, login UX and startup database safety
+
+### Archive reconciliation
+- Re-materialized the exact uploaded POSP.zip. SHA-256: 306a55c63fbe23155929d6c07c915bca0e9a4a5550a7a860c74009f3477b3d0f; 9,453 ZIP entries / 8,312 files. The archive contains an outer working repository based on 303a61b and a nested repository based on 982419b.
+- The nested repository's only substantive code changes (SEBI source parsing and regression coverage) are already present through merged PR #261. The package-lock updates are already present on current main.
+- The outer working tree includes widespread line-ending rewrites, generated sitemap/snapshot/build files, local DB/cache/upload artifacts, and an AI provider refactor. The AI refactor was not copied: it defaults to an unverified gpt-6-luna model, overlaps existing AI PRs #216/#226/#227/#235, and its Render YAML enables client AI contrary to the currently disabled production setting. It must be reconciled after the existing AI work is consolidated and validated.
+- The obsolete responsive jobs E2E test was not copied unchanged because its featured/deadline controls do not exist in current main's Jobs UI. A replacement E2E test now targets the actual search/type/location/qualification/sort controls.
+
+### Included code fixes in this branch
+- Scholarship admin fee updates now update every service whose name or category identifies it as a scholarship service, not only the canonical Scholarship Application Assistance row.
+- New scholarship orders now read the current scholarship_assistance_fee_inr setting server-side, so stale browser/catalog prices cannot determine the charged assistance fee. Existing submitted orders retain their original fee.
+- The scholarship payment guard now covers all scholarship service/category variants, requires authentication/ownership before returning a guard result, and rejects official-fee/combined-fee payment attempts.
+- The client payment breakdown identifies all scholarship service aliases as assistance-only. Public scholarship fee and homepage fee responses use Cache-Control: no-store; public service catalog refreshes the configured scholarship fee before displaying scholarship service-card prices. Admin service management reloads its catalog after a fee change.
+- Homepage now fetches and displays the configured homepage assistance fee. Scholarship request pages fetch the current public fee before showing the fee summary.
+- Client and admin login now await the existing Render health warm-up before sending credentials, and display a connection status while the service is waking.
+- The live jobs API now enforces location and qualification filters as well as existing search/type/featured filters; this closes a mismatch where the frontend API fallback previously ignored two active UI filters. Job URL state and 120-character search limits are synchronized.
+- AI provider error logs no longer include client database IDs.
+
+### Production database safety
+- Current Render backend service configuration (service srv-da1k2r01ne8s73ck0io0) starts with SKIP_DATABASE_BOOTSTRAP=1 and then invokes pre-migration, Alembic, seed, and snapshot-import commands before Gunicorn.
+- Added explicit early exits to those four startup tasks when the existing flag is set. The Flask app factory already skips database bootstrap under the same flag. Added a subprocess regression test using a temporary SQLite path to prove these startup commands do not create/connect to that database when the flag is set.
+- No production database URL was read, no production DB connection was made, and no migration/seed/import/backfill or data modification was performed. No Render service configuration, environment variable, database, or Key Value setting was changed.
+
+### Verification state
+- New backend tests cover scholarship fee propagation to multiple service variants, dynamic fee capture for new orders, preservation of existing order fees, official-fee payment rejection, anonymous payment-probe rejection, public fee no-store headers, and database-free Render startup.
+- New E2E tests cover homepage fee display, current scholarship service-card fee, client/admin login warm-up ordering, and the actual responsive jobs filters.
+- Exact-head CI, authenticated E2E, merge, both Render deployments and post-deployment checks are pending. Do not call this branch verified until all exact-head checks finish green. Do not claim production fee behavior or login latency is fixed until live verification.
+- Render remains on the existing free plan. Cold-start duration can still depend on Render's free-instance wake-up time; the change prevents login from racing the wake-up and makes the wait visible, but does not change plan/billing.
+- The separate official-source expired jobs/scholarships blocker remains open. This work does not certify the live active listing set as clean.
