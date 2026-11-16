@@ -355,3 +355,5 @@ After the items above are complete and tested, continue the existing full improv
 - First CI at c12531c passed backend tests, frontend typecheck/build and operational script safety; browser E2E failed on duplicate accessible labels. Selectors were corrected and category-only scholarship fee coverage was added after that run.
 - Replacement integration branch: fix/posp-fees-home-auth-zip-integration-verified-20261116 (forked from code head 0d6f5ac). Fresh PR #265 will carry final exact-head checks. PR #264 is superseded and should be closed after #265 is open.
 - Do not merge/deploy until all required checks pass on the final head.
+
+- E2E follow-up: 26 tests passed on the prior head; one service-search test matched the header link rather than the input. Selector corrected to #service-search input[type=search]; final-head browser run required.
