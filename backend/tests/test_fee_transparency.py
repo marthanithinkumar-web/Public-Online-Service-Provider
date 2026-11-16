@@ -341,6 +341,12 @@ def test_scholarship_fee_update_covers_all_catalog_services_and_future_requests(
     assert saved_first.status_code == 200
     assert saved_first.get_json()['order']['fee_inr'] == 30
 
+    anonymous_official_payment = client.post(
+        f"/api/payments/orders/{second_order['id']}/checkout",
+        json={'purpose': 'official_fee'},
+    )
+    assert anonymous_official_payment.status_code == 401
+
     blocked_official_payment = client.post(
         f"/api/payments/orders/{second_order['id']}/checkout",
         json={'purpose': 'official_fee'},
