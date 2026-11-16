@@ -31,6 +31,26 @@ def test_support_chat_requires_registered_client(client):
     assert client.post('/api/messages/mine', json={'message': 'Hello'}).status_code == 401
 
 
+def test_client_ai_error_logs_do_not_include_client_identifier(client, monkeypatch, caplog):
+    from app.routes import ai_operations
+
+    token = _register(client, 'privacy-log@example.com', 'Privacy Log Client')
+
+    def fail_provider(*args, **kwargs):
+        raise RuntimeError('provider unavailable')
+
+    monkeypatch.setattr(ai_operations, 'generate_client_reply', fail_provider)
+    caplog.set_level('ERROR', logger='app.routes.messages')
+    response = client.post(
+        '/api/messages/mine',
+        json={'message': 'Please help with my application.'},
+        headers={'Authorization': f'Bearer {token}'},
+    )
+    assert response.status_code == 201
+    assert 'client_id=' not in caplog.text
+    assert 'error_type=RuntimeError' in caplog.text
+
+
 def test_private_client_admin_messaging_and_notifications(client):
     first_token = _register(client, 'chat-one@example.com', 'Chat One')
     second_token = _register(client, 'chat-two@example.com', 'Chat Two')
