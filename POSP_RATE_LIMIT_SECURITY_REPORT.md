@@ -137,3 +137,14 @@ not a failing test. CI is configured to run it against its Redis service.
   configured URI but does not independently record an exact hostname match.
 - Production quota thresholds were not probed by repeated requests; limits
   were measured locally and shared-counter behavior was verified in CI.
+
+## 2026-11-16 21:00 IST — verification boundary
+
+PR #267's exact-head backend test check passed as part of its four successful
+CI checks. This is not new rate-limit-specific evidence: no limiter
+configuration, Redis/Valkey connectivity, quota, outage, or production
+readiness check was run during this increment. PR #267 changes production
+database startup guards, not rate-limit behavior. The existing production
+Valkey PING evidence remains dated 2026-11-15; the masked hostname has not
+been independently matched to the named Render resource. No production
+quota-probing was performed.
