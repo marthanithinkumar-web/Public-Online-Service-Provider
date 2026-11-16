@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - backend/app/utils/readiness.py
+      - backend/app/utils/health/dependencies.py
       - backend/app/main.py
       - backend/app/routes/payments.py
       - backend/.env.production.example
@@ -29,17 +29,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Wait for deployed Razorpay readiness schema
+      - name: Wait for deployed DB-free external dependency health
         run: |
           set -Eeuo pipefail
           ready=0
           for attempt in $(seq 1 30); do
             if curl --silent --show-error --location --max-time 30 \
-              "$API_URL/readiness" -o /tmp/readiness.json; then
+              "$API_URL/health/dependencies" -o /tmp/health/dependencies.json; then
               if python - <<'PY'
           import json
           try:
-              with open('/tmp/readiness.json', encoding='utf-8') as handle:
+              with open('/tmp/health/dependencies.json', encoding='utf-8') as handle:
                   payload = json.load(handle)
           except Exception:
               raise SystemExit(1)
@@ -64,7 +64,7 @@ jobs:
           set -Eeuo pipefail
           python - <<'PY'
           import json
-          with open('/tmp/readiness.json', encoding='utf-8') as handle:
+          with open('/tmp/health/dependencies.json', encoding='utf-8') as handle:
               payload = json.load(handle)
           checks = payload.get('checks') or {}
           required = {
