@@ -180,7 +180,7 @@ test('service search cards use the current configured scholarship assistance fee
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ price_inr: 30 }) })
   })
   await page.goto('/')
-  await page.getByLabel('Search services').first().fill('scholarship')
+  await page.locator('#service-search input[type="search"]').fill('scholarship')
   await expect(page.getByText('Applicable Assistance Fee ₹85', { exact: true })).toBeVisible()
 })
 
