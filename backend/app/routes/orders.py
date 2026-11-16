@@ -160,6 +160,8 @@ def create_order():
     if not isinstance(application_data, dict):
         return jsonify({'error': 'Application information must use named fields.'}), 400
     application_data.setdefault('service_name', service.name)
+    if is_scholarship_service(service):
+        application_data['is_scholarship_service'] = True
     application_data.setdefault('request_mode', 'express' if len(application_data) == 1 else 'guided')
     try:
         selected_job = _bind_verified_job_context(service, application_data)
