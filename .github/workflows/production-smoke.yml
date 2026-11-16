@@ -131,7 +131,7 @@ jobs:
           items=jobs.get('items') or []
           assert isinstance(items, list), jobs
           assert int(jobs.get('count', jobs.get('total', len(items)))) >= len(items), jobs
-          assert isinstance(sources, dict) and isinstance(sources.get('sources'), list), sources
+          assert isinstance(sources, dict) and isinstance(sources.get('items'), list), sources
 
           def parse_timestamp(value):
               if not value:
