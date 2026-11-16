@@ -1,4 +1,6 @@
+import json
 from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from app.jobs.sources import (
     SOURCE_BY_KEY,
@@ -21,6 +23,7 @@ from app.jobs.rules import target_status
 from app.jobs.sync import fetch_official_page, sync_is_due, sync_source, trigger_background_sync, upsert_item
 from app.models.job import JobNotification, JobSource
 from app.models.user import User
+from app.routes import jobs as jobs_route
 from app.utils.database import db
 from app.utils.jwt_handler import create_token
 from app.utils.password import hash_password
@@ -53,6 +56,45 @@ def _item(**changes):
     )
     values.update(changes)
     return JobItem(**values)
+
+
+def _public_snapshot_item(slug, title, organization='Official Recruitment Board', deadline=None, status='published'):
+    checked = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+    today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+    return {
+        'id': len(slug),
+        'slug': slug,
+        'title': title,
+        'organization': organization,
+        'job_type': 'government',
+        'location': 'India',
+        'qualification': 'Any graduate',
+        'deadline': (deadline or today + timedelta(days=20)).isoformat() if deadline is not None else (today + timedelta(days=20)).isoformat(),
+        'deadline_cutoff_time': None,
+        'deadline_timezone': 'Asia/Kolkata',
+        'application_status': 'open',
+        'can_apply': True,
+        'status_label': 'Verified open',
+        'official_notice_url': 'https://employmentnews.gov.in/notices/' + slug + '.pdf',
+        'application_url': 'https://employmentnews.gov.in/apply/' + slug,
+        'verification_status': 'official_source_checked',
+        'status': status,
+        'source_checked_at': checked,
+        'last_seen_at': checked,
+        'published_at': checked,
+        'source': {
+            'key': 'employment_news',
+            'name': 'Employment News',
+            'last_sync_status': 'success',
+            'last_successful_sync_at': checked,
+        },
+    }
+
+
+def _write_public_job_snapshot(monkeypatch, tmp_path, items):
+    path = tmp_path / 'jobs.json'
+    path.write_text(json.dumps({'items': items, 'sources': []}), encoding='utf-8')
+    monkeypatch.setattr(jobs_route, '_SNAPSHOT_PATH', path)
 
 
 def test_employment_news_parser_extracts_only_present_details():
@@ -188,38 +230,29 @@ def test_active_official_source_keeps_undated_notice_in_review(client, monkeypat
         assert JobNotification.query.filter_by(external_id='active-undated').one().status == 'needs_review'
 
 
-def test_public_job_feed_excludes_review_hidden_and_expired(client):
-    with client.application.app_context():
-        source = JobSource.query.filter_by(key='employment_news').one()
-        _mark_source_verified(source)
-        visible, *_ = upsert_item(source, _item())
-        review, *_ = upsert_item(source, _item(external_id='review', title='Review Post', deadline=None, confidence=0.3))
-        expired, *_ = upsert_item(source, _item(external_id='expired', title='Expired Post', deadline=date.today() - timedelta(days=1)))
-        hidden, *_ = upsert_item(source, _item(external_id='hidden', title='Hidden Post'))
-        hidden.status = 'hidden'
-        db.session.commit()
-        visible_slug = visible.slug
-        assert review.status == 'needs_review'
-        assert expired.status == 'expired'
+def test_public_job_feed_excludes_review_hidden_and_expired(client, monkeypatch, tmp_path):
+    today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+    visible = _public_snapshot_item('visible-job', 'Visible Post')
+    review = _public_snapshot_item('review-job', 'Review Post', status='needs_review')
+    expired = _public_snapshot_item('expired-job', 'Expired Post', deadline=today - timedelta(days=1))
+    hidden = _public_snapshot_item('hidden-job', 'Hidden Post', status='hidden')
+    _write_public_job_snapshot(monkeypatch, tmp_path, [visible, review, expired, hidden])
+
     response = client.get('/api/jobs/')
     assert response.status_code == 200
-    assert [item['slug'] for item in response.get_json()['items']] == [visible_slug]
-    assert client.get(f'/api/jobs/{visible_slug}').status_code == 200
-    assert client.get(f'/api/jobs/{review.slug}').status_code == 404
+    assert [item['slug'] for item in response.get_json()['items']] == ['visible-job']
+    assert client.get('/api/jobs/visible-job').status_code == 200
+    assert client.get('/api/jobs/review-job').status_code == 404
 
 
-def test_public_job_search_matches_all_words(client):
-    with client.application.app_context():
-        source = JobSource.query.filter_by(key='employment_news').one()
-        _mark_source_verified(source)
-        match, *_ = upsert_item(source, _item(external_id='ssc-cgl', title='Combined Graduate Level', organization='Staff Selection Commission'))
-        upsert_item(source, _item(external_id='railway', title='Assistant Loco Pilot', organization='Railway Recruitment Board'))
-        db.session.commit()
-        match_slug = match.slug
+def test_public_job_search_matches_all_words(client, monkeypatch, tmp_path):
+    match = _public_snapshot_item('ssc-cgl', 'Combined Graduate Level', 'Staff Selection Commission')
+    other = _public_snapshot_item('railway', 'Assistant Loco Pilot', 'Railway Recruitment Board')
+    _write_public_job_snapshot(monkeypatch, tmp_path, [match, other])
+
     response = client.get('/api/jobs/?q=staff+graduate')
     assert response.status_code == 200
-    assert [item['slug'] for item in response.get_json()['items']] == [match_slug]
-
+    assert [item['slug'] for item in response.get_json()['items']] == ['ssc-cgl']
 
 def test_admin_can_review_and_feature_but_cannot_publish_expired(client):
     headers = _admin_headers(client)
