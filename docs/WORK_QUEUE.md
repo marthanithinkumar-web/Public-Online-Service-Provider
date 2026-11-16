@@ -339,26 +339,42 @@ After the items above are complete and tested, continue the existing full improv
 - Updated `test_nsp_expired_student_application_deadline_is_moved_to_closed_audit` to monkeypatch `app.scholarships.snapshot.enrich_scholarships` to identity, keeping the test focused on expiry classification and deterministic/offline.
 - Commit: `e4c83480e08264bd69aa73ef4eaed347e5551ebc`. Fresh exact-head CI is required; previous in-progress test results are not proof.
 
-## 2026-11-16 — POSP fee, login and Copilot ZIP integration
 
-- P0: Fix scholarship fee propagation across all scholarship service/category variants. The server now uses the persisted scholarship fee setting when creating new scholarship orders; existing orders retain their stored fee. Payment guard and client payment breakdown cover all variants.
-- P0: Display the configured homepage assistance fee, refresh scholarship fee values on public service cards and request pages, disable caching for the public fee endpoints, and reload the admin catalog after fee changes.
-- P1: Fix the client/admin login warm-up race, show an accessible secure-server connection status, and cache allowlisted API CORS preflight responses for 600 seconds to reduce repeated OPTIONS round-trips.
-- P1: Apply location and qualification filters in the live jobs API fallback, synchronize job filter state with the URL, and cap search length.
-- P1: Make the current Render backend startup sequence database-safe when its existing SKIP_DATABASE_BOOTSTRAP=1 flag is set. The pre-migrate, Alembic, seed, and snapshot importer commands now exit before database work; a subprocess test uses an isolated SQLite path. Do not remove this guard or change the existing production DB/Key Value settings.
-- CI migration verification explicitly sets POSP_ALLOW_DATABASE_MIGRATIONS=1 only for the isolated SQLite migration-chain job. Render does not set this opt-in, so production startup continues to skip migrations.
-- Copilot ZIP reconciliation: nested SEBI parser changes already landed in PR #261; package-lock changes already exist on main. Safe UI/filter/privacy changes are carried forward in this integration branch. Do not import the ZIP's invalid/unverified AI model default or Render setting that enables client AI; reconcile AI changes with open PRs #216/#226/#227/#235 first. Ignore generated assets, local DBs/caches/uploads and line-ending-only rewrites.
-- New branch: fix/posp-fees-home-auth-zip-integration-20261116. Exact-head CI/E2E and PR are pending. No merge/deploy has occurred.
-- Keep the official-source expired jobs/scholarships audit and PR #253 closure verification as independent open blockers; this fee/login PR does not close them.
+## Current POSP carry-forward checkpoint — 2026-11-16
 
-### Final-head verification rerun — 2026-11-16
-- First CI at c12531c passed backend tests, frontend typecheck/build and operational script safety; browser E2E failed on duplicate accessible labels. Selectors were corrected and category-only scholarship fee coverage was added after that run.
-- Replacement integration branch: fix/posp-fees-home-auth-zip-integration-verified-20261116 (forked from code head 0d6f5ac). Fresh PR #265 will carry final exact-head checks. PR #264 is superseded and should be closed after #265 is open.
-- Do not merge/deploy until all required checks pass on the final head.
+1. **P0 — Production database safety:** current Render backend auto-deploy runs `pre_migrate.py`, `flask db upgrade` and `seed.py`. A deployment on commit `e6859cd66bfdac646f58a7ffcbfac9b52dab09b1` executed these commands. Do not merge/deploy further backend changes until an owner-authorized DB-free deploy path is available. Do not inspect or modify production DB state.
+2. **P0 — Expired scholarship in raw public snapshot:** NMMS student application deadline was 2026-11-15; it remains in `frontend/public/data/scholarships.json` as active/deadline_today from the 2026-11-15 09:47:43Z snapshot. Verify the 2026-11-16 08:00 IST scholarship refresh moves it out of the public raw feed and confirms API/sitemap/detail exclusion. Do not confuse 2026-11-30 institute verification with the student application deadline.
+3. **P0 — Deadline today:** SBI CRPD/SCO/2026-27/30 has official last date 2026-11-16, no published cutoff time, and remains in the public snapshot. Label “Deadline today—check official portal”; recheck after the date and close if no official extension.
+4. **P1 — Job feed completeness:** latest job snapshot has 3 published records, 7/20 sources successful, 3 failed, 10 degraded, and 6,765 review records. Official SBI page shows five notices; /28 and /29 (25 Nov) are missing from POSP. Reconcile parser and next refresh; failures are not evidence of expiry.
+5. **P1 — POSP.zip:** archive SHA-256 `306a55c63fbe23155929d6c07c915bca0e9a4a5550a7a860c74009f3477b3d0f`. Two repository roots found. Nested-root SEBI changes are already merged in PR #261. Outer root is a 142-ahead/1-behind divergent branch with 76 tree differences and missing current WhatsApp/migration/rate-limit/report files. Do not merge wholesale. AI provider additions are blocked by client-AI enablement, unverified model ID, overlap with PRs #216/#235 and lack of live synthetic validation. Keep ZIP task open.
+6. **P1 — SEO:** `generate-seo.mjs` overwrites robots.txt without private-route exclusions; PR #251 alone cannot fix this. Update generator and tests on a safe branch.
+7. **P1 — POSP AI:** client AI remains disabled in current main; no live provider call verified. Keep disabled until model, privacy and end-to-end checks pass.
+8. **Continuity:** PR #253 is closed without merge; its Beedi closure is present in PR #259's merged backend closed-items data and absent from the active frontend snapshot. PRs #232, #251 and #252 remain unmerged/stale and must be reconciled against current main before any merge.
 
-- E2E follow-up: 26 tests passed on the prior head; one service-search test matched the header link rather than the input. Selector corrected to #service-search input[type=search]; final-head browser run required.
 
-## P0 — Render production database startup hard guard (2026-11-16)
-- First rolling deploy after PR #265 included a legacy instance that ran pre-migration/Alembic startup and imported 3 job snapshot records into the production DB. The logs show DB revision 20261114_26 and no recorded Running upgrade line; seed writes cannot be ruled out. No direct DB inspection or rollback was attempted. Treat this as a disclosed incident; never claim the no-production-DB-touch rule was fully maintained for that rollout.
-- The subsequent deploy on current code logged skips for pre-migration, Alembic, seed and snapshot import. New branch fix/render-no-db-startup-hard-guard-20261116 adds unconditional Render-environment protection, even if migration opt-in is present. CI migration validation remains isolated SQLite-only.
-- Do not connect to or alter the production DB to inspect or reverse the imported snapshot records. Preserve the incident note and require the hard-guard PR to pass CI before the next deployment.
+## POSP.zip integration continuation — 2026-11-16
+- Safe subset is in draft PR #263 (branch `integration/posp-zip-safe-ui-privacy-20261116`, head `66778915144ba901a170e4b190eeddf5c325d361`). Frontend typecheck/build and operational script safety passed; backend suite and authenticated browser E2E were still in progress at last check.
+- Do not merge until exact-head CI is green, main is revalidated, and the backend deploy path is proven DB-free under the owner's no-production-database-touch rule.
+- Remaining ZIP AI provider package/core and privacy prompt changes must be reconciled with open PRs #216/#235; preserve POSP_CLIENT_AI_ENABLED=false until explicit validation. Do not import archive render.yaml enablement, stale snapshots, built assets, SQLite DBs, pytest caches, uploads, nested .git repositories or line-ending-only changes.
+- Do not transplant archive job API/filter changes over PR #239; reconcile with current main and official-source eligibility rules first. The archive's responsive E2E test uses obsolete UI selectors and must be rewritten before adoption.
+
+## 2026-11-17 — POSP P0 carry-forward
+
+### P0 — POSP ZIP and DB-free job API integration
+- Exact archive SHA-256: 306a55c63fbe23155929d6c07c915bca0e9a4a5550a7a860c74009f3477b3d0f; recursive inspection found two repository roots and nested .git metadata. Never replace current main with the archive. Safe subsets already merged in #260, #261, #265 and #267; remaining AI provider refactor is blocked by open #216/#235/#226/#227 and the client-AI-disabled gate.
+- PR #268 is open on branch fix/posp-readonly-job-snapshot-and-robots-20261117, base 3dd43c6d66e092f1ee95e2c8a5136c864e5b3f27, head 70342642bc7c8f7a3ef9e66ff38a5fa46688a2ac. It replaces the public jobs API/AI job context with the verified static snapshot and adds DB-free health probes and robots/sitemap checks.
+- Exact-head CI #43952044459 and authenticated E2E #43952044707 were in progress at 2026-11-17 02:09 IST. Do not merge or deploy until every required check passes on the final head and main is revalidated.
+- The current main backend start command has SKIP_DATABASE_BOOTSTRAP=1; Render logs show pre-migration, Alembic, seed and snapshot import all skipped. No production database access was made in this run. Do not call /readiness or current main /api/jobs; both are DB-dependent. Use #268's DB-free probes/API after deployment.
+
+### P0 — Expired opportunity exposure
+- Live jobs snapshot generated 2026-11-16T19:30:32Z contains 2 verified SBI jobs, both due 2026-11-23. Live scholarship API contains 27 official active records, all due 2026-11-30; Beedi search returns zero and NMMS detail is unavailable.
+- Newly expired SBI AD30 (CRPD/SCO/2026-27/30, official last date 2026-11-16) and NMMS (student application closed 2026-11-15; institute verification 2026-11-30 is not an application deadline) are removed from live snapshots/API/sitemap. No verified expired or deadline-today item was found in the live active snapshot/API/sitemap this run.
+- Live sitemap contains 2 job and 27 scholarship detail URLs; Render build generated 172 canonical URLs. The tracked GitHub sitemap file is stale, so #268 now asserts generated and production sitemap parity.
+- Official SBI current-openings1 currently has four open notices: AD28 and AD29 (2026-11-25), AD26 and AD27 (2026-11-23). POSP has only AD26/AD27; the new #268 parser test covers all four and excludes expired AD30. Refresh after merge and verify both missing notices appear.
+- Job source health is 5/20 success, 11 degraded, 4 failed; 6,793 records remain in review. Keep stale/unverified records out of public surfaces; source failures do not prove open or expired.
+
+### P1 — Rate limits, SEO and POSP AI
+- Rate limiter uses Flask-Limiter 2.9.0, 500/hour + 2,000/day defaults, RATELIMIT_STORAGE_URI, explicit auth limits, and a five-minute bounded fallback. Existing Valkey resource is available (8.1.4). Do not call DB-backed readiness; verify shared connectivity via #268's DB-free /health/rate-limit after deployment.
+- Live robots.txt permits crawlers; Render YAML configures private-route X-Robots-Tag noindex headers, but live response headers were not exposed by this fetch. Verify through the production smoke after #268.
+- POSP client AI remains disabled; no new live Gemini provider call. Do not merge provider/model refactors or enable client AI until the existing model/privacy/synthetic E2E gate is satisfied.
+- Recheck Search Console after the 172-URL sitemap is recrawled; the last recorded 2026-11-15 report showed 11 indexed and 166 not indexed.

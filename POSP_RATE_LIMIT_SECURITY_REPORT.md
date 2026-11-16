@@ -118,3 +118,18 @@ not a failing test. CI is configured to run it against its Redis service.
   configured URI but does not independently record an exact hostname match.
 - Production quota thresholds were not probed by repeated requests; limits
   were measured locally and shared-counter behavior was verified in CI.
+
+
+## Follow-up verification — 2026-11-16
+- No rate-limiter code change was introduced by PR #261 or the job snapshot commit `e6859cd66bfdac646f58a7ffcbfac9b52dab09b1`; the PR #260 implementation remains the current code path. The latest backend deployment is live on that snapshot commit and Render health returned HTTP 200; the job workflow's live API probe passed.
+- Readiness and shared Redis/Valkey connectivity were not re-probed after the latest deployment. Retain the prior 2026-11-15 10/10 readiness evidence as the last confirmed result; do not describe it as a fresh 2026-11-16 readiness check.
+- Deployment-safety note: the backend auto-deploy start command executed `pre_migrate.py`, `flask db upgrade` and `python seed.py`; logs showed database revision `20261114_26` and the 136-service catalog-ready message. No database contents were queried in this audit, and any seed/migration data effect is unverified. Under the production no-database-touch rule, block further backend deployments until an owner-authorized DB-free start/deploy path is available.
+
+## 2026-11-17 continuation — current deployment and safe verification boundary
+
+- Current main 3dd43c6d66e092f1ee95e2c8a5136c864e5b3f27 is live on Render backend deploy dep-dbtllujncjis73dop00g. The deployed start command sets SKIP_DATABASE_BOOTSTRAP=1; logs explicitly skipped pre-migration, Alembic upgrade, seed and snapshot import at 2026-11-16 19:36:38Z–19:36:56Z. This run made no production database connection or query.
+- The existing Key Value resource public-online-service-provider-rate-limit is available (Valkey 8.1.4); no resource was created, deleted or reconfigured.
+- Current code still constructs Flask-Limiter 2.9.0 with default_limits=('2000 per day','500 per hour'), uses RATELIMIT_STORAGE_URI (not REDIS_URL), preserves explicit authentication limits, and bounds process-local fallback to five minutes. Authentication fails closed immediately on shared-store outage; other rate-limited routes fail closed after the fallback window. No production quota flood test was run.
+- Live /health returned HTTP 200 / {"status":"ok"}. The prior 2026-11-15 strict readiness result (10/10 checks, shared storage and connectivity true) remains the last confirmed shared Valkey PING. Do not re-run /readiness under the current no-production-database-touch rule because it performs a database SELECT.
+- Open PR #268 at head 70342642bc7c8f7a3ef9e66ff38a5fa46688a2ac adds DB-free /health/rate-limit and /health/dependencies endpoints and updates production smoke to verify shared storage and external dependencies without database access. Exact-head CI run 43952044459 and authenticated E2E 43952044707 were in progress at the checkpoint. Do not report production shared-store connectivity as freshly verified until those endpoints are deployed and return healthy.
+- Previous PR #268 head 0309594bd4daaa2fbe011b4f02e9688860e51689 failed its lint step before pip-audit ran. Follow-up commit 70342642... fixes the unused-import/path errors and scopes Ruff away from the repository's legacy E701/E702 one-line style; the new exact-head run must complete the dependency audit before merge.
