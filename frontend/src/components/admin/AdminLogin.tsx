@@ -5,6 +5,7 @@ import AuthLayout from '../ui/AuthLayout'
 
 export default function AdminLogin(){
   const [email,setEmail]=useState('')
+  const [serverWarm,setServerWarm]=useState(false)
   const [password,setPassword]=useState('')
   const [showPassword,setShowPassword]=useState(false)
   const [error,setError]=useState('')
@@ -14,7 +15,7 @@ export default function AdminLogin(){
   const requestedReturn=new URLSearchParams(location.search).get('returnTo')
   const safeReturn=requestedReturn&&requestedReturn.startsWith('/admin/')&&!requestedReturn.startsWith('//')?requestedReturn:'/admin/dashboard'
 
-  useEffect(()=>{void warmAuthServer()},[])
+  useEffect(()=>{let active=true;warmAuthServer().finally(()=>{if(active)setServerWarm(true)});return()=>{active=false}},[])
 
   const submit=async(e:React.FormEvent)=>{
     e.preventDefault()
@@ -51,6 +52,7 @@ export default function AdminLogin(){
         </label>
         {error&&<p className="info" role="alert">{error}</p>}
         {busy&&<p className="auth-hint" role="status">Signing in securely…</p>}
+        {!serverWarm&&<p className="auth-hint" role="status">Connecting to the secure server…</p>}
         <button className="btn btn-primary btn-block" type="submit" disabled={busy}>{busy?'Checking…':'Sign in securely'}</button>
       </form>
       <div className="auth-footer">
