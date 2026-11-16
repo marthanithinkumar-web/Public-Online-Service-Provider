@@ -18,8 +18,13 @@ Production success is not inferred from code or a Git push.
 The current remote `main` was fetched at `8a4ea50b0bee50fb07a591c18e686fde9f4948f4`;
 the prior local base was five commits behind. PRs #262 and #263 remain open
 against the older `e6859cd` base. PR #263's four CI checks passed; PR #262
-documents a DB-free backend deployment prerequisite. No merge or deployment
-was made during this increment.
+documents a DB-free backend deployment prerequisite. The smoke fix is
+committed as `fe854b0` and pushed on
+`fix/posp-scholarship-smoke-current-official-evidence-20261116`. A PR and
+branch-specific CI run could not be created because `gh` is unavailable and
+the current GitHub toolset exposes no PR-creation action. Use GitHub's
+[Create PR link](https://github.com/marthanithinkumar-web/Public-Online-Service-Provider/pull/new/fix/posp-scholarship-smoke-current-official-evidence-20261116)
+to open it. No merge or deployment was made during this increment.
 
 Production scholarship discovery smoke #97 failed after its retry loop; logs
 show two initial 30-second API timeouts but did not retain the response body.
@@ -29,7 +34,7 @@ are open through 2026-11-30, matching the API record. The smoke's blanket CSSS
 exclusion was stale, so it now requires open-status evidence when CSSS is
 present and still rejects `NOT YET OPENED` evidence. The updated criteria were
 run against the production listing and its `beedi`, `csss`, `nec`, and `aicte`
-searches; all passed. This workflow fix is not yet merged or deployed.
+searches; all passed. This workflow fix is not yet in a PR, merged, or deployed.
 
 ## Requirement status
 

@@ -17,7 +17,13 @@ The checkout was clean before this increment. Remote `main` was at
 commits behind, so the change was started from fetched `origin/main` rather
 than the stale base. PRs #262 and #263 remain open on the older `e6859cd` base.
 PR #263's four CI checks passed; PR #262 documents the unresolved DB-free
-backend deployment prerequisite. No merge or deployment was performed.
+backend deployment prerequisite. The smoke correction is committed as
+`fe854b0` and pushed to
+`fix/posp-scholarship-smoke-current-official-evidence-20261116`. No PR or
+branch-specific CI run exists: `gh` is unavailable and the GitHub toolset in
+this session has no PR-creation action. GitHub provided the
+[Create PR link](https://github.com/marthanithinkumar-web/Public-Online-Service-Provider/pull/new/fix/posp-scholarship-smoke-current-official-evidence-20261116).
+No merge or deployment was performed.
 
 Production scholarship discovery smoke #97 failed after its retry loop. Its
 logs show two initial 30-second API timeouts and no saved response body. The
@@ -29,7 +35,7 @@ record carries matching evidence. The smoke workflow's unconditional CSSS
 exclusion is stale for this official status. Its replacement validates positive
 open evidence and still rejects `NOT YET OPENED` records. The full relevant
 production-feed checks passed locally against the public API; the workflow
-change is not yet merged or deployed.
+change is not yet in a PR, merged, or deployed.
 
 ## Post-audit integration update
 
