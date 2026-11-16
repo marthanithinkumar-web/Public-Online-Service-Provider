@@ -205,3 +205,27 @@ def test_public_job_endpoints_do_not_open_database_connections(client, monkeypat
     response = client.get('/api/jobs/')
     assert response.status_code == 200
     assert response.get_json()['total'] == 1
+
+
+def test_cancelled_unverified_and_missing_application_link_jobs_are_excluded(client, monkeypatch, tmp_path):
+    cancelled = _job('cancelled')
+    cancelled['application_status'] = 'cancelled'
+    unverified = _job('unverified')
+    unverified['verification_status'] = 'unverified'
+    no_application_link = _job('no-application-link')
+    no_application_link['application_url'] = ''
+    _write_snapshot(monkeypatch, tmp_path, [cancelled, unverified, no_application_link])
+
+    response = client.get('/api/jobs/')
+    assert response.status_code == 200
+    assert response.get_json()['items'] == []
+
+
+def test_duplicate_snapshot_items_are_returned_once(client, monkeypatch, tmp_path):
+    item = _job('duplicate')
+    _write_snapshot(monkeypatch, tmp_path, [item, dict(item)])
+
+    response = client.get('/api/jobs/')
+    assert response.status_code == 200
+    assert response.get_json()['total'] == 1
+    assert [entry['slug'] for entry in response.get_json()['items']] == ['duplicate']
