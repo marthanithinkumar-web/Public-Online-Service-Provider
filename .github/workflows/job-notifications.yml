@@ -124,7 +124,7 @@ jobs:
             fi
             # The backend marker is deliberately committed with the snapshot.
             # Render's API service is rooted at backend/, so this guarantees the
-            # database-backed feed redeploys and imports the exact daily snapshot.
+            # The public jobs API serves this verified file read-only; no production DB import occurs.
             git add frontend/public/data/jobs.json backend/app/jobs/verified_snapshot.sha256
             git commit -m "Refresh verified official job snapshot [skip ci]"
             if git push origin HEAD:main; then
