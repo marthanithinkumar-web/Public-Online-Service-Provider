@@ -87,7 +87,7 @@ def create_app():
     configured_origins=os.getenv('CORS_ORIGINS');frontends=configured_origins or os.getenv('FRONTEND_URL','http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173');allowed_origins=[o.strip().rstrip('/') for o in frontends.split(',') if o.strip()]
     render_ui='https://pospindia.onrender.com'
     if render_ui not in allowed_origins:allowed_origins.append(render_ui)
-    CORS(app,resources={r'/api/*':{'origins':allowed_origins}},supports_credentials=True,allow_headers=['Content-Type','Authorization','X-Razorpay-Signature'],methods=['GET','POST','PUT','PATCH','DELETE','OPTIONS']);Migrate(app,db)
+    CORS(app,resources={r'/api/*':{'origins':allowed_origins,'max_age':600}},supports_credentials=True,allow_headers=['Content-Type','Authorization','X-Razorpay-Signature'],methods=['GET','POST','PUT','PATCH','DELETE','OPTIONS']);Migrate(app,db)
     from .utils.limiter import FALLBACK_MAX_SECONDS, limiter, storage_degraded
     upload_limit_mb=int(os.getenv('MAX_UPLOAD_MB','10'));app.config['MAX_UPLOAD_BYTES']=upload_limit_mb*1024*1024;app.config['MAX_CONTENT_LENGTH']=(upload_limit_mb+1)*1024*1024
     app.config['RATELIMIT_REQUIRE_SHARED_STORAGE']=os.getenv('FLASK_ENV')=='production'
