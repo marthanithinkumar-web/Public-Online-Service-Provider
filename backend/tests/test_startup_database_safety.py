@@ -1,15 +1,24 @@
 import os
 import subprocess
 import sys
+
+import pytest
 from pathlib import Path
 
 
-def test_render_startup_database_commands_skip_all_database_work_when_flagged(tmp_path):
+@pytest.mark.parametrize('flags', [
+    {'SKIP_DATABASE_BOOTSTRAP': '1'},
+    {'RENDER': 'true', 'SKIP_DATABASE_BOOTSTRAP': '0', 'POSP_ALLOW_DATABASE_MIGRATIONS': '1'},
+    {'RENDER_SERVICE_ID': 'srv-test', 'SKIP_DATABASE_BOOTSTRAP': '0', 'POSP_ALLOW_DATABASE_MIGRATIONS': '1'},
+])
+def test_render_startup_database_commands_skip_all_database_work_under_production_guards(tmp_path, flags):
     backend = Path(__file__).resolve().parents[1]
     database_file = tmp_path / 'must-not-be-created.sqlite'
     env = os.environ.copy()
+    for key in ('RENDER', 'RENDER_SERVICE_ID', 'POSP_ALLOW_DATABASE_MIGRATIONS', 'SKIP_DATABASE_BOOTSTRAP'):
+        env.pop(key, None)
+    env.update(flags)
     env.update({
-        'SKIP_DATABASE_BOOTSTRAP': '1',
         'DATABASE_URL': f'sqlite:///{database_file}',
         'RATELIMIT_STORAGE_URI': 'memory://',
         'FLASK_ENV': 'development',
@@ -38,4 +47,4 @@ def test_render_startup_database_commands_skip_all_database_work_when_flagged(tm
             f"stdout:\\n{result.stdout}\\nstderr:\\n{result.stderr}"
         )
 
-    assert not database_file.exists(), 'A database connection created the SQLite file despite the skip flag.'
+    assert not database_file.exists(), 'A database connection created the SQLite file despite the production startup guard.'
