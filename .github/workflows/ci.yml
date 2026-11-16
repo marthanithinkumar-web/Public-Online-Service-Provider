@@ -69,6 +69,7 @@ jobs:
           DATABASE_URL: sqlite:////tmp/posp-ci-migrations.db
           PYTHONPATH: ${{ github.workspace }}/backend
           SKIP_DATABASE_BOOTSTRAP: '1'
+          POSP_ALLOW_DATABASE_MIGRATIONS: '1'
         working-directory: backend
         run: flask --app app.main:create_app db upgrade --directory migrations_alembic
       - name: Run backend tests

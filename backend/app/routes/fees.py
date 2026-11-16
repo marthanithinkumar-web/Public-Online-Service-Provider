@@ -2,6 +2,7 @@ import math
 from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
+from sqlalchemy import or_
 
 from ..jobs.fee_rules import assess_official_fee, normalise_fee_configuration
 from ..middleware.auth import require_admin
@@ -9,7 +10,7 @@ from ..models.admin_audit import AdminAuditLog
 from ..models.job import JobNotification
 from ..models.order import Order
 from ..models.payment import Payment
-from ..models.service import PlatformSetting, Service
+from ..models.service import Category, PlatformSetting, Service
 from ..utils.database import db
 from ..utils.jwt_handler import get_request_user
 
@@ -86,12 +87,20 @@ def _update_assistance_fee(key, service_name, action, label, additional_service_
     else:
         db.session.add(PlatformSetting(key=key, value=f'{amount:.2f}'))
     service_names = (service_name, *additional_service_names)
-    services = Service.query.filter(Service.name.in_(service_names)).all()
+    if key == SCHOLARSHIP_FEE_KEY:
+        # Scholarship requests use several distinct catalog entries (ePASS, NSP,
+        # pre/post-matric, welfare and status assistance). Update by both service
+        # name and category so every current/future scholarship route is covered.
+        services = Service.query.outerjoin(Category, Service.category_id == Category.id).filter(
+            or_(Service.name.ilike('%scholarship%'), Category.name.ilike('%scholarship%'))
+        ).all()
+    else:
+        services = Service.query.filter(Service.name.in_(service_names)).all()
     for service in services:
         service.price_inr = amount
     db.session.add(AdminAuditLog(admin_id=admin.id, action=action, summary=f'Changed the website-wide {label} assistance fee to ₹{amount:.2f}.', details={'previous_fee_inr': previous, 'new_fee_inr': amount, 'service_catalog_updated': bool(services), 'service_catalog_updated_count': len(services), 'existing_requests_repriced': False}))
     db.session.commit()
-    return jsonify({'message': f'{label.capitalize()} assistance fee updated to ₹{amount:g} across the website.', 'price_inr': amount, 'existing_requests_repriced': False})
+    return jsonify({'message': f'{label.capitalize()} assistance fee updated to ₹{amount:g} across the website.', 'price_inr': amount, 'service_catalog_updated_count': len(services), 'existing_requests_repriced': False})
 
 
 @bp.get('/job-assistance')
@@ -110,7 +119,7 @@ def update_job_assistance_fee():
 @bp.get('/scholarship-assistance')
 def public_scholarship_assistance_fee():
     response = jsonify({'price_inr': scholarship_assistance_fee(), 'official_fee_inr': 0, 'official_fee_status': 'none'})
-    response.headers['Cache-Control'] = 'public, max-age=60, stale-while-revalidate=300'
+    response.headers['Cache-Control'] = 'no-store'
     return response
 
 

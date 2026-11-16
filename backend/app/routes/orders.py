@@ -15,6 +15,7 @@ from datetime import date, datetime, timedelta, timezone
 from secrets import token_hex
 from ..schemas.order_schema import OrderCreateSchema, OrderSchema
 from ..utils.jwt_handler import get_request_user
+from ..scholarships.payment_guard import is_scholarship_service
 import json
 
 bp = Blueprint('orders', __name__)
@@ -40,6 +41,15 @@ def _job_assistance_fee():
         return max(0.0, float(setting.value)) if setting else 30.0
     except (TypeError, ValueError):
         return 30.0
+
+def _scholarship_assistance_fee(service):
+    setting = db.session.get(PlatformSetting, 'scholarship_assistance_fee_inr')
+    try:
+        if setting:
+            return max(0.0, float(setting.value))
+    except (TypeError, ValueError):
+        pass
+    return max(0.0, float(service.price_inr or 0.0))
 
 
 def _generate_order_code():
@@ -150,6 +160,8 @@ def create_order():
     if not isinstance(application_data, dict):
         return jsonify({'error': 'Application information must use named fields.'}), 400
     application_data.setdefault('service_name', service.name)
+    if is_scholarship_service(service):
+        application_data['is_scholarship_service'] = True
     application_data.setdefault('request_mode', 'express' if len(application_data) == 1 else 'guided')
     try:
         selected_job = _bind_verified_job_context(service, application_data)
@@ -177,7 +189,7 @@ def create_order():
         order_data = dump_schema.dump(duplicate)
         order_data['can_submit_feedback'] = bool(first_order and first_order.id == duplicate.id and not Review.query.join(Order, Review.order_id == Order.id).filter(Order.user_id == user.id).first())
         return jsonify({'message': 'This request was already submitted recently.', 'duplicate': True, 'order': order_data}), 200
-    fee_inr = _job_assistance_fee() if selected_job else (service.price_inr or 0.0)
+    fee_inr = _job_assistance_fee() if selected_job else (_scholarship_assistance_fee(service) if is_scholarship_service(service) else (service.price_inr or 0.0))
     order = Order(order_code=_generate_order_code(), client_name=name, phone=phone, email=email, contact_method=contact_method, service=service, user_id=user.id, description=description, fee_inr=fee_inr, official_fee_inr=official_fee_inr, official_fee_status=official_fee_status, status='Submitted')
     db.session.add(order); db.session.flush()
     history_note = 'Official job application assistance requested by client.' if selected_job else 'Application submitted by client.'

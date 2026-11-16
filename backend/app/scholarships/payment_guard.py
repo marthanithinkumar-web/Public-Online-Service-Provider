@@ -1,8 +1,19 @@
 from flask import jsonify, request
 
 from ..models.order import Order
+from ..utils.jwt_handler import get_request_user
 
 SCHOLARSHIP_SERVICE_NAME = 'Scholarship Application Assistance'
+
+
+def is_scholarship_service(service):
+    """Recognize every scholarship service, including category-based variants."""
+    if not service:
+        return False
+    name = str(getattr(service, 'name', '') or '').casefold()
+    category = getattr(service, 'category', None)
+    category_name = str(getattr(category, 'name', '') or '').casefold()
+    return 'scholarship' in name or 'scholarship' in category_name
 
 
 def register_scholarship_payment_guard(app):
@@ -18,8 +29,11 @@ def register_scholarship_payment_guard(app):
         raw_order_id = request.path[len(prefix):-len(suffix)]
         if not raw_order_id.isdigit():
             return None
+        user = get_request_user()
+        if not user:
+            return None
         order = Order.query.filter_by(id=int(raw_order_id)).first()
-        if not order or not order.service or order.service.name != SCHOLARSHIP_SERVICE_NAME:
+        if not order or (not user.is_admin and order.user_id != user.id) or not is_scholarship_service(order.service):
             return None
         data = request.get_json(silent=True) or {}
         purpose = str(data.get('purpose') or 'assistance_fee').strip()

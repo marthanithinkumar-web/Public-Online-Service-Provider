@@ -134,3 +134,148 @@ test('authenticated desktop and mobile Track Request links open the tracking vie
   await expect(page).toHaveURL(/\/my-orders#track$/)
   await expect(page.getByRole('heading', { name: 'Track My Request', exact: true, level: 1 })).toBeVisible()
 })
+
+
+test('homepage displays the configured public assistance fee', async ({ page }) => {
+  await page.route('**/api/**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+  })
+  await page.route('**/api/services/homepage-assistance-fee', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ price_inr: 45 }) })
+  })
+  await page.goto('/')
+  await expect(page.getByText('Homepage assistance fee', { exact: true })).toBeVisible()
+  await expect(page.getByText('₹45', { exact: true })).toBeVisible()
+})
+
+test('service search cards use the current configured scholarship assistance fee', async ({ page }) => {
+  await page.route('**/api/**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+  })
+  await page.route('**/api/services', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([{
+        id: 501,
+        name: 'National Scholarship Portal (NSP) Assistance',
+        category: 'Scholarships & Student Welfare',
+        price_inr: 30,
+        official_fee_status: 'none',
+        official_fee_inr: 0,
+        keywords: 'scholarship nsp student',
+        is_active: true,
+      }]),
+    })
+  })
+  await page.route('**/api/fees/scholarship-assistance', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: { 'Cache-Control': 'no-store' },
+      body: JSON.stringify({ price_inr: 85, official_fee_inr: 0, official_fee_status: 'none' }),
+    })
+  })
+  await page.route('**/api/services/homepage-assistance-fee', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ price_inr: 30 }) })
+  })
+  await page.goto('/')
+  await page.locator('#service-search input[type="search"]').fill('scholarship')
+  await expect(page.getByText('Applicable Assistance Fee ₹85', { exact: true })).toBeVisible()
+})
+
+test('client login waits for the in-flight Render API warm-up before posting credentials', async ({ page }) => {
+  let releaseWarmup
+  const warmupGate = new Promise((resolve) => { releaseWarmup = resolve })
+  let healthStarted = false
+  let healthFinished = false
+  let loginRequestedBeforeWarmup = null
+  const token = fakeJwt({ userId: 101, isAdmin: false })
+
+  await page.route('**/api/**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+  })
+  await page.route('**/health', async (route) => {
+    healthStarted = true
+    await warmupGate
+    healthFinished = true
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) })
+  })
+  await page.route('**/api/auth/login', async (route) => {
+    loginRequestedBeforeWarmup = !healthFinished
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        token,
+        user: { id: 101, name: 'E2E Client', email: 'client-e2e@example.test', is_admin: false },
+      }),
+    })
+  })
+  await page.route('**/api/auth/profile', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ user: { id: 101, name: 'E2E Client', email: 'client-e2e@example.test', is_admin: false } }),
+    })
+  })
+  await page.route('**/api/orders/mine', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+  })
+  await page.route('**/api/notifications', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], unread: 0 }) })
+  })
+
+  await page.goto('/login')
+  await expect.poll(() => healthStarted).toBe(true)
+  await page.getByLabel('Email Address').fill('client-e2e@example.test')
+  await page.getByLabel('Password').first().fill('test-password')
+  await page.getByRole('button', { name: 'Login', exact: true }).click()
+  await page.waitForTimeout(100)
+  expect(loginRequestedBeforeWarmup).toBe(null)
+  releaseWarmup()
+  await expect(page).toHaveURL(/my-orders$/)
+  expect(loginRequestedBeforeWarmup).toBe(false)
+})
+
+
+test('administrator login also waits for the in-flight Render API warm-up', async ({ page }) => {
+  let releaseWarmup
+  const warmupGate = new Promise((resolve) => { releaseWarmup = resolve })
+  let healthStarted = false
+  let healthFinished = false
+  let loginRequestedBeforeWarmup = null
+  const token = fakeJwt({ userId: 1, isAdmin: true })
+
+  await page.route('**/api/**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+  })
+  await page.route('**/health', async (route) => {
+    healthStarted = true
+    await warmupGate
+    healthFinished = true
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) })
+  })
+  await page.route('**/api/auth/login', async (route) => {
+    loginRequestedBeforeWarmup = !healthFinished
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        token,
+        user: { id: 1, name: 'E2E Admin', email: 'admin-e2e@example.test', is_admin: true },
+      }),
+    })
+  })
+
+  await page.goto('/admin/login')
+  await expect.poll(() => healthStarted).toBe(true)
+  await page.getByLabel('Email address').fill('admin-e2e@example.test')
+  await page.getByLabel('Password').first().fill('test-password')
+  await page.getByRole('button', { name: 'Sign in securely' }).click()
+  await page.waitForTimeout(100)
+  expect(loginRequestedBeforeWarmup).toBe(null)
+  releaseWarmup()
+  await expect(page).toHaveURL(/dashboard$/)
+  expect(loginRequestedBeforeWarmup).toBe(false)
+})

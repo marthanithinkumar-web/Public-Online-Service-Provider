@@ -31,6 +31,9 @@ export async function register(name:string, phone:string, email:string, password
 }
 
 export async function login(email:string, password:string){
+  // The login pages start this health check on mount. Await the same in-flight
+  // warm-up so the credential POST does not race a sleeping Render instance.
+  await warmAuthServer()
   try{
     const res = await api.post('/auth/login', { email, password })
     return persistSession(res.data)

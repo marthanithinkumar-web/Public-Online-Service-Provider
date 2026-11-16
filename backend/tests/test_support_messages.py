@@ -78,3 +78,24 @@ def test_express_request_accepts_optional_application_details(client):
     )
     assert response.status_code == 201
     assert response.get_json()['order']['application_data']['request_mode'] == 'express'
+
+
+def test_client_ai_error_logs_do_not_include_client_identifier(client, monkeypatch, caplog):
+    from app.routes import ai_operations
+
+    token = _register(client, 'privacy-log@example.com', 'Privacy Log Client')
+
+    def fail_provider(*args, **kwargs):
+        raise RuntimeError('provider unavailable')
+
+    monkeypatch.setattr(ai_operations, 'generate_client_reply', fail_provider)
+    caplog.set_level('ERROR', logger='app.routes.messages')
+    response = client.post(
+        '/api/messages/mine',
+        json={'message': 'Please help with my application.'},
+        headers={'Authorization': f'Bearer {token}'},
+    )
+    assert response.status_code == 201
+    assert 'client_id=' not in caplog.text
+    assert 'error_type=RuntimeError' in caplog.text
+

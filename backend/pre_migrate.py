@@ -11,6 +11,10 @@ import os
 from sqlalchemy import inspect, text
 
 
+if __name__ == '__main__' and os.getenv('SKIP_DATABASE_BOOTSTRAP') == '1':
+    print('Skipping production database pre-migration task because SKIP_DATABASE_BOOTSTRAP=1.')
+    raise SystemExit(0)
+
 os.environ['SKIP_DATABASE_BOOTSTRAP'] = '1'
 
 from app.main import create_app  # noqa: E402

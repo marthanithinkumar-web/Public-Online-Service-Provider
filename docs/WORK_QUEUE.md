@@ -338,3 +338,22 @@ After the items above are complete and tested, continue the existing full improv
 - Inspection of `source_enrichment.py` showed `refresh_snapshot()` performs optional official-page enrichment, which makes an unrelated network request. The new expiry regression does not test enrichment and should not depend on NSP availability.
 - Updated `test_nsp_expired_student_application_deadline_is_moved_to_closed_audit` to monkeypatch `app.scholarships.snapshot.enrich_scholarships` to identity, keeping the test focused on expiry classification and deterministic/offline.
 - Commit: `e4c83480e08264bd69aa73ef4eaed347e5551ebc`. Fresh exact-head CI is required; previous in-progress test results are not proof.
+
+## 2026-11-16 — POSP fee, login and Copilot ZIP integration
+
+- P0: Fix scholarship fee propagation across all scholarship service/category variants. The server now uses the persisted scholarship fee setting when creating new scholarship orders; existing orders retain their stored fee. Payment guard and client payment breakdown cover all variants.
+- P0: Display the configured homepage assistance fee, refresh scholarship fee values on public service cards and request pages, disable caching for the public fee endpoints, and reload the admin catalog after fee changes.
+- P1: Fix the client/admin login warm-up race, show an accessible secure-server connection status, and cache allowlisted API CORS preflight responses for 600 seconds to reduce repeated OPTIONS round-trips.
+- P1: Apply location and qualification filters in the live jobs API fallback, synchronize job filter state with the URL, and cap search length.
+- P1: Make the current Render backend startup sequence database-safe when its existing SKIP_DATABASE_BOOTSTRAP=1 flag is set. The pre-migrate, Alembic, seed, and snapshot importer commands now exit before database work; a subprocess test uses an isolated SQLite path. Do not remove this guard or change the existing production DB/Key Value settings.
+- CI migration verification explicitly sets POSP_ALLOW_DATABASE_MIGRATIONS=1 only for the isolated SQLite migration-chain job. Render does not set this opt-in, so production startup continues to skip migrations.
+- Copilot ZIP reconciliation: nested SEBI parser changes already landed in PR #261; package-lock changes already exist on main. Safe UI/filter/privacy changes are carried forward in this integration branch. Do not import the ZIP's invalid/unverified AI model default or Render setting that enables client AI; reconcile AI changes with open PRs #216/#226/#227/#235 first. Ignore generated assets, local DBs/caches/uploads and line-ending-only rewrites.
+- New branch: fix/posp-fees-home-auth-zip-integration-20261116. Exact-head CI/E2E and PR are pending. No merge/deploy has occurred.
+- Keep the official-source expired jobs/scholarships audit and PR #253 closure verification as independent open blockers; this fee/login PR does not close them.
+
+### Final-head verification rerun — 2026-11-16
+- First CI at c12531c passed backend tests, frontend typecheck/build and operational script safety; browser E2E failed on duplicate accessible labels. Selectors were corrected and category-only scholarship fee coverage was added after that run.
+- Replacement integration branch: fix/posp-fees-home-auth-zip-integration-verified-20261116 (forked from code head 0d6f5ac). Fresh PR #265 will carry final exact-head checks. PR #264 is superseded and should be closed after #265 is open.
+- Do not merge/deploy until all required checks pass on the final head.
+
+- E2E follow-up: 26 tests passed on the prior head; one service-search test matched the header link rather than the input. Selector corrected to #service-search input[type=search]; final-head browser run required.

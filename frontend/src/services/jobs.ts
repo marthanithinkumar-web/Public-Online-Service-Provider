@@ -110,7 +110,7 @@ function isVerifiedPublicJob(job:JobNotification){
 }
 
 function filterSnapshot(data:JobFeedData,params:Record<string,string|number|boolean>){
-  const term=String(params.q||'').trim().toLowerCase()
+  const term=String(params.q||'').trim().slice(0,120).toLowerCase()
   const aliases:Record<string,string>={govt:'government',railways:'railway'}
   const tokens=Array.from(new Set(term.replace(/[^a-z0-9]+/g,' ').split(' ').filter(Boolean).map(token=>aliases[token]||token)))
   const requestedType=String(params.type||'').trim().toLowerCase()
