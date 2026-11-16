@@ -148,3 +148,13 @@ database startup guards, not rate-limit behavior. The existing production
 Valkey PING evidence remains dated 2026-11-15; the masked hostname has not
 been independently matched to the named Render resource. No production
 quota-probing was performed.
+
+## 2026-11-16 22:00 IST — verification boundary
+
+PR #267 remains at `5caefd594f336345bb96152fc5b300b81c0e27a4`; its backend CI
+job passed, including the Redis 7 shared-counter integration. Direct review
+found inaccurate database-startup skip log messages in the PR, but no
+rate-limiter code or configuration issue. This adds no new evidence for
+production Valkey hostname matching, PING, quotas, outage behavior, or
+readiness: those checks were not repeated, and no production quota-probing
+was performed. Existing production PING evidence remains dated 2026-11-15.
