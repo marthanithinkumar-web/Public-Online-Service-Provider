@@ -14,6 +14,18 @@ rate-limit quota, Redis outage, or production readiness checks. The production
 rate-limit evidence below remains dated 2026-11-15; this run made no rate-limit
 configuration, credential, or infrastructure changes.
 
+At 20:00 IST on 2026-11-16, the current `main` ref was refreshed to
+`336a71c1e38f055d33ca966e4fb1a6b21813e9bf`. Open PR #267's exact-head CI
+(`5caefd594f336345bb96152fc5b300b81c0e27a4`) passed the full backend job,
+including the Redis 7 shared-counter integration, along with frontend
+typecheck/build, operational script safety, and authenticated Chromium
+client/admin workflows. This is CI evidence only; it does not refresh the
+production Valkey hostname/PING or quota evidence in this report. PR #267
+remains unmerged and no production DB or rate-limit configuration was touched.
+Main CI #1038 subsequently passed on `da7be9d`; this is not new rate-limit
+storage or quota evidence. The latest failed scholarship smoke #98 is unrelated
+to limiter behavior and did not trigger any production DB access.
+
 ## Root cause
 
 The application assigned `limiter._default_limits` after constructing

@@ -36,6 +36,28 @@ present and still rejects `NOT YET OPENED` evidence. The updated criteria were
 run against the production listing and its `beedi`, `csss`, `nec`, and `aicte`
 searches; all passed. This workflow fix is not yet in a PR, merged, or deployed.
 
+### Latest integration checkpoint — 2026-11-16 20:00 IST
+
+The fetched `origin/main` is `336a71c1e38f055d33ca966e4fb1a6b21813e9bf`.
+PR #267 remains open and mergeable at exact head
+`5caefd594f336345bb96152fc5b300b81c0e27a4`; backend tests (including isolated
+migration-chain and Redis shared-counter checks), operational-script safety,
+frontend typecheck/build, and authenticated Chromium client/admin workflows
+all passed on that head. The Codex review attempt did not complete because of
+account usage limits. No merge or deployment was made. PR #263 is closed as
+superseded by merged PR #265; PR #262 remains open. The earlier rolling
+deployment's snapshot import and uncertainty about seed writes remain
+disclosed in PR #267; no production database inspection or repair was
+performed. Main CI #1038 and production public smoke #122 passed on
+`da7be9d`; scholarship smoke #98 failed after two 30-second feed timeouts and
+22 further attempts against main's old criteria. That workflow still
+unconditionally rejects CSSS, while the live feed carries an official open
+CSSS notice through 2026-11-30. A read-only rerun of the workflow's production
+API feed and search criteria passed: 27/27 official active items with fresh
+evidence, two PM YASASVI notices, open-evidence CSSS handling, and Beedi/CSSS/
+NEC/AICTE search checks. The pushed fix remains without a PR or merge; this
+did not dispatch the workflow or recheck its public-page step.
+
 ## Requirement status
 
 | # | Requirement area | Status | Evidence and remaining work |

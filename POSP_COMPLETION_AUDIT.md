@@ -386,3 +386,11 @@ owner-authorized deployment configuration.
   `/readiness` returned HTTP 200 at 11:08 IST; readiness reported all ten
   checks true, including shared rate-limit storage/connectivity. No production
   quota flooding was performed.
+
+## 2026-11-16 20:00 IST — current integration and CI evidence
+
+- Refreshed `origin/main` read-only to `336a71c1e38f055d33ca966e4fb1a6b21813e9bf` (`Refresh verified official job snapshot`). The checkout remains on `fix/posp-scholarship-smoke-current-official-evidence-20261116`; it was clean before this report update, and its two commits (`fe854b0`, `56e8603`) are already on the matching remote branch.
+- PR #267 remains open and mergeable at exact head `5caefd594f336345bb96152fc5b300b81c0e27a4`, based on current `main`. All four required checks passed on that head: backend tests (including clean isolated migration-chain and Redis shared-counter steps), operational script safety, frontend typecheck/build, and authenticated Chromium client/admin workflows. Its automated Codex review did not complete because of account usage limits; that is not a successful review. No merge, deployment, production DB inspection, or database repair was performed in this increment.
+- PR #263 is closed as superseded by merged PR #265; PR #262 remains open as documentation-only continuity work. PR #267 discloses the earlier rolling-deployment snapshot import and the unresolved uncertainty about seed writes; no further production DB access was performed.
+- Main CI #1038 passed and production public smoke #122 passed on `da7be9d`. Scholarship smoke #98 failed on the same main commit: its log records two 30-second feed timeouts and 22 further failed criterion attempts. That workflow version still unconditionally rejects CSSS, while a direct read-only production check observed CSSS active and officially open through 2026-11-30.
+- The pushed smoke correction (`fe854b0`) remains without a PR or merge. A focused read-only production API rerun of the workflow's feed and search criteria passed: 27/27 official, active items with fresh evidence; both PM YASASVI notices; CSSS with current official open evidence; and the Beedi, CSSS, NEC, and AICTE search conditions. This did not dispatch the workflow or recheck its public-page step.
