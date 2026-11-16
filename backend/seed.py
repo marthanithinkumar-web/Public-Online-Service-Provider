@@ -1,4 +1,9 @@
 import os
+
+if __name__ == '__main__' and os.getenv('SKIP_DATABASE_BOOTSTRAP') == '1':
+    print('Skipping production database seed because SKIP_DATABASE_BOOTSTRAP=1.')
+    raise SystemExit(0)
+
 from app.main import create_app
 from app.utils.database import db
 from app.models.service import Category, Service
