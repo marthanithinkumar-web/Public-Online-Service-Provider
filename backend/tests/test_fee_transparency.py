@@ -285,6 +285,7 @@ def test_scholarship_fee_update_covers_all_catalog_services_and_future_requests(
             'National Scholarship Portal (NSP) Assistance',
             'Pre-Matric Scholarship Assistance',
             'Post-Matric Scholarship Assistance',
+            'Student Welfare Assistance',
         ]
         services = []
         for name in names:
@@ -299,6 +300,7 @@ def test_scholarship_fee_update_covers_all_catalog_services_and_future_requests(
         db.session.commit()
         first_service_id = services[0].id
         second_service_id = services[2].id
+        category_only_service_id = services[5].id
 
     registration = client.post(
         '/api/auth/register',
@@ -323,7 +325,7 @@ def test_scholarship_fee_update_covers_all_catalog_services_and_future_requests(
     )
     assert changed.status_code == 200
     assert changed.get_json()['price_inr'] == 85
-    assert changed.get_json()['service_catalog_updated_count'] >= 6
+    assert changed.get_json()['service_catalog_updated_count'] >= 7
 
     with client.application.app_context():
         for name in names + ['Scholarship Application Assistance']:
@@ -341,6 +343,17 @@ def test_scholarship_fee_update_covers_all_catalog_services_and_future_requests(
     second_order = second.get_json()['order']
     assert second_order['fee_inr'] == 85
 
+    category_only_order = client.post(
+        '/api/orders/',
+        json={'service_id': category_only_service_id, 'contact_method': 'phone',
+              'application_data': {'student_name': 'Category Student'}},
+        headers=client_headers,
+    )
+    assert category_only_order.status_code == 201
+    category_order = category_only_order.get_json()['order']
+    assert category_order['fee_inr'] == 85
+    assert category_order['application_data']['is_scholarship_service'] is True
+
     saved_first = client.get(f"/api/orders/{first_order['id']}", headers=client_headers)
     assert saved_first.status_code == 200
     assert saved_first.get_json()['order']['fee_inr'] == 30
@@ -352,7 +365,7 @@ def test_scholarship_fee_update_covers_all_catalog_services_and_future_requests(
     assert anonymous_official_payment.status_code == 401
 
     blocked_official_payment = client.post(
-        f"/api/payments/orders/{second_order['id']}/checkout",
+        f"/api/payments/orders/{category_order['id']}/checkout",
         json={'purpose': 'official_fee'},
         headers=client_headers,
     )
