@@ -369,6 +369,7 @@ owner-authorized deployment configuration.
 ### Production database safety
 - Current Render backend service configuration (service srv-da1k2r01ne8s73ck0io0) starts with SKIP_DATABASE_BOOTSTRAP=1 and then invokes pre-migration, Alembic, seed, and snapshot-import commands before Gunicorn.
 - Added explicit early exits to those four startup tasks when the existing flag is set. The Flask app factory already skips database bootstrap under the same flag. Added a subprocess regression test using a temporary SQLite path to prove these startup commands do not create/connect to that database when the flag is set.
+- Alembic migration skipping is conditional on the production flag without the explicit POSP_ALLOW_DATABASE_MIGRATIONS=1 opt-in. Only the CI migration-chain job sets that opt-in while pointing at an isolated SQLite file; Render does not set it. This preserves a real CI migration-chain test while keeping production startup DB-free.
 - No production database URL was read, no production DB connection was made, and no migration/seed/import/backfill or data modification was performed. No Render service configuration, environment variable, database, or Key Value setting was changed.
 
 ### Verification state
