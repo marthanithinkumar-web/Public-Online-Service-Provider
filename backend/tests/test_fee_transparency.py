@@ -120,6 +120,10 @@ def test_homepage_fee_is_admin_controlled_without_changing_service_fees(client):
     public_default = client.get('/api/services/homepage-assistance-fee')
     assert public_default.status_code == 200
     assert public_default.get_json()['price_inr'] == 30
+    assert public_default.headers.get('Cache-Control') == 'no-store'
+    scholarship_fee = client.get('/api/fees/scholarship-assistance')
+    assert scholarship_fee.status_code == 200
+    assert scholarship_fee.headers.get('Cache-Control') == 'no-store'
 
     unauthorized = client.put('/api/admin/services/homepage-assistance-fee', json={'price_inr': 45})
     assert unauthorized.status_code == 401
