@@ -357,3 +357,8 @@ After the items above are complete and tested, continue the existing full improv
 - Do not merge/deploy until all required checks pass on the final head.
 
 - E2E follow-up: 26 tests passed on the prior head; one service-search test matched the header link rather than the input. Selector corrected to #service-search input[type=search]; final-head browser run required.
+
+## P0 — Render production database startup hard guard (2026-11-16)
+- First rolling deploy after PR #265 included a legacy instance that ran pre-migration/Alembic startup and imported 3 job snapshot records into the production DB. The logs show DB revision 20261114_26 and no recorded Running upgrade line; seed writes cannot be ruled out. No direct DB inspection or rollback was attempted. Treat this as a disclosed incident; never claim the no-production-DB-touch rule was fully maintained for that rollout.
+- The subsequent deploy on current code logged skips for pre-migration, Alembic, seed and snapshot import. New branch fix/render-no-db-startup-hard-guard-20261116 adds unconditional Render-environment protection, even if migration opt-in is present. CI migration validation remains isolated SQLite-only.
+- Do not connect to or alter the production DB to inspect or reverse the imported snapshot records. Preserve the incident note and require the hard-guard PR to pass CI before the next deployment.
