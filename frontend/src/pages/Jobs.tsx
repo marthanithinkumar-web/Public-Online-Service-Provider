@@ -29,6 +29,18 @@ export default function Jobs(){
       .then(data=>setJobs(data.items||[])).catch(()=>setError('We could not load the verified job feed. Please try again.')).finally(()=>setLoading(false))
   }
   useEffect(load,[submitted,type,location,qualification])
+  // Keep the controls and loaded results in sync with pasted URLs and browser navigation.
+  useEffect(()=>{
+    const nextQuery=(params.get('q')||'').slice(0,120)
+    setQuery(nextQuery)
+    setSubmitted(nextQuery)
+    const nextType=params.get('type')||''
+    setTypeState(['government','private'].includes(nextType)?nextType:'')
+    setLocation(params.get('location')||params.get('state')||'')
+    setQualification(params.get('qualification')||params.get('education')||'')
+    const nextSort=params.get('sort')||''
+    setSort((['priority','deadline_soonest','newest'].includes(nextSort)?nextSort:'priority') as SortOrder)
+  },[params])
   useEffect(()=>{fetchJobSources().then(data=>setSources(data.items||[])).catch(()=>{})},[])
 
   const updateLocation=(nextQuery:string,nextType:string,nextLocation=location,nextQualification=qualification,nextSort=sort)=>{
@@ -53,7 +65,7 @@ export default function Jobs(){
 
   return <div className="jobs-page">
     <section className="jobs-hero"><span className="eyebrow light">Jobs & opportunities</span><h1>Verified recruitment notices from official sources</h1><p>Search government and private opportunities gathered from approved official portals. Unclear details are held for review, never guessed.</p>
-      <form className="jobs-search" onSubmit={submit}><label className="visually-hidden" htmlFor="job-search">Search job notices</label><input id="job-search" type="search" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search title, organization, qualification or location"/><button type="submit">Search jobs</button></form>
+      <form className="jobs-search" onSubmit={submit}><label className="visually-hidden" htmlFor="job-search">Search job notices</label><input id="job-search" type="search" maxLength={120} value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search title, organization, qualification or location"/><button type="submit">Search jobs</button></form>
       <div className="jobs-trust-row"><span>✓ Official links only</span><span>✓ Updated daily</span><span>✓ No OTP, PIN or password requested</span></div>
     </section>
     <section className="jobs-directory" aria-labelledby="jobs-directory-title"><div className="section-header inline"><div><span className="eyebrow">Opportunity directory</span><h2 id="jobs-directory-title">Current published notices</h2>{!loading&&!error&&<p className="job-results-summary" role="status">{verifiedOpenCount} verified open · {deadlineTodayCount} deadline today{submitted?` · matching “${submitted}”`:''}</p>}</div>
