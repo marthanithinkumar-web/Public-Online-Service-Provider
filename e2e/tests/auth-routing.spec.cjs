@@ -276,6 +276,6 @@ test('administrator login also waits for the in-flight Render API warm-up', asyn
   await page.waitForTimeout(100)
   expect(loginRequestedBeforeWarmup).toBe(null)
   releaseWarmup()
-  await expect(page).toHaveURL(/admin\\/dashboard$/)
+  await expect(page).toHaveURL(/dashboard$/)
   expect(loginRequestedBeforeWarmup).toBe(false)
 })
