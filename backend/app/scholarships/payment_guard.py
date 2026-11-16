@@ -5,6 +5,16 @@ from ..models.order import Order
 SCHOLARSHIP_SERVICE_NAME = 'Scholarship Application Assistance'
 
 
+def is_scholarship_service(service):
+    """Recognize every scholarship service, including category-based variants."""
+    if not service:
+        return False
+    name = str(getattr(service, 'name', '') or '').casefold()
+    category = getattr(service, 'category', None)
+    category_name = str(getattr(category, 'name', '') or '').casefold()
+    return 'scholarship' in name or 'scholarship' in category_name
+
+
 def register_scholarship_payment_guard(app):
     """Keep scholarship requests assistance-only even if a client calls payment APIs directly."""
     @app.before_request
@@ -19,7 +29,7 @@ def register_scholarship_payment_guard(app):
         if not raw_order_id.isdigit():
             return None
         order = Order.query.filter_by(id=int(raw_order_id)).first()
-        if not order or not order.service or order.service.name != SCHOLARSHIP_SERVICE_NAME:
+        if not order or not is_scholarship_service(order.service):
             return None
         data = request.get_json(silent=True) or {}
         purpose = str(data.get('purpose') or 'assistance_fee').strip()
