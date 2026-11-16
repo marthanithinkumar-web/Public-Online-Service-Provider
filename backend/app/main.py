@@ -111,7 +111,7 @@ def create_app():
             state = {'started_at': time.monotonic(), 'expired_logged': False}
             app.extensions[fallback_state] = state
             app.logger.warning('Shared rate-limit storage is unavailable; using bounded per-process fallback.')
-        is_operational = request.path in {'/health', '/health/rate-limit', '/readiness'}
+        is_operational = request.path in {'/health', '/health/rate-limit', '/health/dependencies', '/readiness'}
         is_authentication = request.blueprint == 'auth'
         fallback_expired = time.monotonic() - state['started_at'] >= FALLBACK_MAX_SECONDS
         if not is_operational and (
@@ -149,6 +149,25 @@ def create_app():
                 'fallback_active': fallback,
             },
         }), (200 if ready else 503)
+
+    @app.get('/health/dependencies')
+    @limiter.exempt
+    def dependency_health():
+        # This probe intentionally checks external dependencies only. It never
+        # opens a connection to the production application database.
+        checks = {
+            **production_readiness(),
+            'persistent_storage_connectivity': persistent_storage_connectivity(),
+            'shared_rate_limit_connectivity': shared_rate_limit_connectivity(),
+            'smtp_connectivity': smtp_connectivity(),
+            'razorpay_connectivity': razorpay_connectivity(),
+        }
+        status = readiness_status(checks)
+        return jsonify({
+            'status': status,
+            'scope': 'external_dependencies_only',
+            'checks': checks,
+        }), (200 if status == 'ready' else 503)
 
     @app.get('/readiness')
     @limiter.exempt
