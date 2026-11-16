@@ -15,7 +15,7 @@ config = context.config
 fileConfig(config.config_file_name)
 logger = logging.getLogger('alembic.env')
 
-if os.getenv('SKIP_DATABASE_BOOTSTRAP') == '1':
+if os.getenv('SKIP_DATABASE_BOOTSTRAP') == '1' and os.getenv('POSP_ALLOW_DATABASE_MIGRATIONS') != '1':
     logger.info('Skipping Alembic database migration because SKIP_DATABASE_BOOTSTRAP=1.')
     raise SystemExit(0)
 
