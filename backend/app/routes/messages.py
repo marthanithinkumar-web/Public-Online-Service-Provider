@@ -69,7 +69,7 @@ def send_client_message():
         from .ai_operations import generate_client_reply
         ai_answer, ai_handoff, ai_error = generate_client_reply(user, value)
     except Exception as exc:
-        logger.exception('POSP client AI call raised an exception (client_id=%s, error_type=%s)', user.id, type(exc).__name__)
+        logger.exception('POSP client AI call raised an exception (error_type=%s)', type(exc).__name__)
         ai_answer, ai_handoff, ai_error = None, True, 'Client AI failed safely.'
 
     ai_elapsed_ms = round((time.perf_counter() - ai_started) * 1000)
@@ -79,7 +79,7 @@ def send_client_message():
     if ai_error:
         # Log only the safe provider error returned by ai_core; never log the
         # client's message, API key, authorization headers, or provider payload.
-        logger.warning('POSP client AI did not answer (client_id=%s, reason=%s)', user.id, ai_error)
+        logger.warning('POSP client AI did not answer (reason=%s)', ai_error)
 
     if ai_answer:
         ai_admin = User.query.filter_by(is_admin=True, is_active=True).order_by(User.id.asc()).first()
