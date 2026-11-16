@@ -69,7 +69,8 @@ def test_authentication_route_limits_are_preserved(client, path, limit):
 def test_operational_health_routes_are_exempt_from_default_limits(client, monkeypatch, path):
     monkeypatch.setenv('STRICT_PRODUCTION_READINESS', '0')
     monkeypatch.setattr('app.main.persistent_storage_connectivity', lambda: False)
-    monkeypatch.setattr('app.main.shared_rate_limit_connectivity', lambda: False)
+    monkeypatch.setattr('app.main.shared_rate_limit_configured', lambda: True)
+    monkeypatch.setattr('app.main.shared_rate_limit_connectivity', lambda: True)
     monkeypatch.setattr('app.main.smtp_connectivity', lambda: False)
     monkeypatch.setattr('app.main.razorpay_connectivity', lambda: False)
 
