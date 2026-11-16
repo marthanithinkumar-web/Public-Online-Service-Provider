@@ -119,7 +119,7 @@ def update_job_assistance_fee():
 @bp.get('/scholarship-assistance')
 def public_scholarship_assistance_fee():
     response = jsonify({'price_inr': scholarship_assistance_fee(), 'official_fee_inr': 0, 'official_fee_status': 'none'})
-    response.headers['Cache-Control'] = 'public, max-age=60, stale-while-revalidate=300'
+    response.headers['Cache-Control'] = 'no-store'
     return response
 
 
