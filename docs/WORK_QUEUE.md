@@ -343,7 +343,7 @@ After the items above are complete and tested, continue the existing full improv
 
 - P0: Fix scholarship fee propagation across all scholarship service/category variants. The server now uses the persisted scholarship fee setting when creating new scholarship orders; existing orders retain their stored fee. Payment guard and client payment breakdown cover all variants.
 - P0: Display the configured homepage assistance fee, refresh scholarship fee values on public service cards and request pages, disable caching for the public fee endpoints, and reload the admin catalog after fee changes.
-- P1: Fix the client/admin login warm-up race and show an accessible secure-server connection status while Render wakes.
+- P1: Fix the client/admin login warm-up race, show an accessible secure-server connection status, and cache allowlisted API CORS preflight responses for 600 seconds to reduce repeated OPTIONS round-trips.
 - P1: Apply location and qualification filters in the live jobs API fallback, synchronize job filter state with the URL, and cap search length.
 - P1: Make the current Render backend startup sequence database-safe when its existing SKIP_DATABASE_BOOTSTRAP=1 flag is set. The pre-migrate, Alembic, seed, and snapshot importer commands now exit before database work; a subprocess test uses an isolated SQLite path. Do not remove this guard or change the existing production DB/Key Value settings.
 - CI migration verification explicitly sets POSP_ALLOW_DATABASE_MIGRATIONS=1 only for the isolated SQLite migration-chain job. Render does not set this opt-in, so production startup continues to skip migrations.
