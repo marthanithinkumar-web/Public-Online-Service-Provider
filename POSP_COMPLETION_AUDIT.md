@@ -362,7 +362,7 @@ owner-authorized deployment configuration.
 - The scholarship payment guard now covers all scholarship service/category variants, requires authentication/ownership before returning a guard result, and rejects official-fee/combined-fee payment attempts.
 - The client payment breakdown identifies all scholarship service aliases as assistance-only. Public scholarship fee and homepage fee responses use Cache-Control: no-store; public service catalog refreshes the configured scholarship fee before displaying scholarship service-card prices. Admin service management reloads its catalog after a fee change.
 - Homepage now fetches and displays the configured homepage assistance fee. Scholarship request pages fetch the current public fee before showing the fee summary.
-- Client and admin login now await the existing Render health warm-up before sending credentials, and display a connection status while the service is waking.
+- Client and admin login now await the existing Render health warm-up before sending credentials, and display a connection status while the service is waking. Allowed API CORS preflight responses are cached for 600 seconds to reduce repeated OPTIONS round-trips; the origin allowlist is unchanged.
 - The live jobs API now enforces location and qualification filters as well as existing search/type/featured filters; this closes a mismatch where the frontend API fallback previously ignored two active UI filters. Job URL state and 120-character search limits are synchronized.
 - AI provider error logs no longer include client database IDs.
 
