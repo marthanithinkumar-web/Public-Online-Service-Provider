@@ -111,7 +111,7 @@ def create_app():
             state = {'started_at': time.monotonic(), 'expired_logged': False}
             app.extensions[fallback_state] = state
             app.logger.warning('Shared rate-limit storage is unavailable; using bounded per-process fallback.')
-        is_operational = request.path in {'/health', '/readiness'}
+        is_operational = request.path in {'/health', '/health/rate-limit', '/readiness'}
         is_authentication = request.blueprint == 'auth'
         fallback_expired = time.monotonic() - state['started_at'] >= FALLBACK_MAX_SECONDS
         if not is_operational and (
@@ -134,6 +134,22 @@ def create_app():
     @limiter.exempt
     def health():
         return jsonify({'status':'ok'}),200
+    @app.get('/health/rate-limit')
+    @limiter.exempt
+    def rate_limit_health():
+        configured = shared_rate_limit_configured()
+        connected = shared_rate_limit_connectivity()
+        fallback = storage_degraded()
+        ready = configured and connected and not fallback
+        return jsonify({
+            'status': 'ready' if ready else 'unavailable',
+            'checks': {
+                'shared_rate_limit_storage': configured,
+                'shared_rate_limit_connectivity': connected,
+                'fallback_active': fallback,
+            },
+        }), (200 if ready else 503)
+
     @app.get('/readiness')
     @limiter.exempt
     def readiness():
