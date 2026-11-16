@@ -198,6 +198,6 @@ test('client login waits for the in-flight Render API warm-up before posting cre
   await page.waitForTimeout(100)
   expect(loginRequestedBeforeWarmup).toBe(null)
   releaseWarmup()
-  await expect(page).toHaveURL(/\\/my-orders$/)
+  await expect(page).toHaveURL(/my-orders$/)
   expect(loginRequestedBeforeWarmup).toBe(false)
 })
