@@ -2,8 +2,6 @@ import React,{useEffect,useState} from 'react'
 import {emailPaymentReceipt,getPaymentStatus,openPaymentReceipt,payRequest,PaymentPurpose} from '../../services/payments'
 import '../../styles/payment-panel.css'
 
-const SCHOLARSHIP_SERVICE='Scholarship Application Assistance'
-
 export default function PaymentPanel({order}:{order:any}){
   const [state,setState]=useState<any>(null)
   const [busy,setBusy]=useState<PaymentPurpose|null>(null)
@@ -12,7 +10,8 @@ export default function PaymentPanel({order}:{order:any}){
   const refresh=async()=>{try{setState(await getPaymentStatus(Number(order.id)))}catch{}}
   useEffect(()=>{if(order?.id)refresh()},[order?.id])
   if(!order?.id)return null
-  const scholarshipOnly=order?.service===SCHOLARSHIP_SERVICE||order?.application_data?.service_name===SCHOLARSHIP_SERVICE
+  const serviceLabel=String(order?.service||order?.service_name||order?.application_data?.service_name||'')
+  const scholarshipOnly=Boolean(order?.application_data?.scholarship_slug||order?.application_data?.scholarship_title||/scholarship/i.test(serviceLabel))
   const assistance=Number(state?.breakdown?.assistance_fee_inr??order?.fee_inr??0)
   const officialStatus=scholarshipOnly?'none':(state?.breakdown?.official_fee_status??order?.official_fee_status??'unconfirmed')
   const official=scholarshipOnly?0:(state?.breakdown?.official_fee_inr==null?null:Number(state.breakdown.official_fee_inr))
