@@ -237,3 +237,45 @@ test('client login waits for the in-flight Render API warm-up before posting cre
   await expect(page).toHaveURL(/my-orders$/)
   expect(loginRequestedBeforeWarmup).toBe(false)
 })
+
+
+test('administrator login also waits for the in-flight Render API warm-up', async ({ page }) => {
+  let releaseWarmup
+  const warmupGate = new Promise((resolve) => { releaseWarmup = resolve })
+  let healthStarted = false
+  let healthFinished = false
+  let loginRequestedBeforeWarmup = null
+  const token = fakeJwt({ userId: 1, isAdmin: true })
+
+  await page.route('**/api/**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
+  })
+  await page.route('**/health', async (route) => {
+    healthStarted = true
+    await warmupGate
+    healthFinished = true
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) })
+  })
+  await page.route('**/api/auth/login', async (route) => {
+    loginRequestedBeforeWarmup = !healthFinished
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        token,
+        user: { id: 1, name: 'E2E Admin', email: 'admin-e2e@example.test', is_admin: true },
+      }),
+    })
+  })
+
+  await page.goto('/admin/login')
+  await expect.poll(() => healthStarted).toBe(true)
+  await page.getByLabel('Email address').fill('admin-e2e@example.test')
+  await page.getByLabel('Password').fill('test-password')
+  await page.getByRole('button', { name: 'Sign in securely' }).click()
+  await page.waitForTimeout(100)
+  expect(loginRequestedBeforeWarmup).toBe(null)
+  releaseWarmup()
+  await expect(page).toHaveURL(/admin\\/dashboard$/)
+  expect(loginRequestedBeforeWarmup).toBe(false)
+})
