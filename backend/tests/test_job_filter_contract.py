@@ -33,6 +33,8 @@ def test_public_job_filters_match_source_type_featured_and_limit(client):
             db.session.commit()
         featured, *_ = upsert_item(source, _filter_item('filter-upsc-featured', 'Graduate Assistant'))
         featured.is_featured = True
+        featured.location = 'Hyderabad, Telangana'
+        featured.qualification = 'Engineering degree'
         upsert_item(source, _filter_item('filter-upsc-private', 'Graduate Private Assistant', 'private'))
         db.session.commit()
         checked = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -46,7 +48,7 @@ def test_public_job_filters_match_source_type_featured_and_limit(client):
         db.session.commit()
         featured_slug = featured.slug
 
-    response = client.get('/api/jobs/?q=UPSC&type=government&featured=true&limit=1')
+    response = client.get('/api/jobs/?q=UPSC&type=government&featured=true&location=Hyderabad&qualification=Engineering&limit=1')
     assert response.status_code == 200
     assert response.get_json()['total'] == 1
     assert [item['slug'] for item in response.get_json()['items']] == [featured_slug]
@@ -54,3 +56,7 @@ def test_public_job_filters_match_source_type_featured_and_limit(client):
     no_match = client.get('/api/jobs/?q=upsc&type=private&featured=true')
     assert no_match.status_code == 200
     assert no_match.get_json()['items'] == []
+
+    wrong_location = client.get('/api/jobs/?q=upsc&type=government&featured=true&location=Delhi')
+    assert wrong_location.status_code == 200
+    assert wrong_location.get_json()['items'] == []
