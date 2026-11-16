@@ -1,5 +1,6 @@
 import logging
 import os
+from app.utils.startup_safety import should_skip_alembic_migrations
 from logging.config import fileConfig
 
 from flask import current_app
@@ -15,7 +16,7 @@ config = context.config
 fileConfig(config.config_file_name)
 logger = logging.getLogger('alembic.env')
 
-if os.getenv('SKIP_DATABASE_BOOTSTRAP') == '1' and os.getenv('POSP_ALLOW_DATABASE_MIGRATIONS') != '1':
+if should_skip_alembic_migrations():
     logger.info('Skipping Alembic database migration because SKIP_DATABASE_BOOTSTRAP=1.')
     raise SystemExit(0)
 
