@@ -94,13 +94,20 @@ def _public_snapshot_jobs(now=None):
     now_utc = now_utc.astimezone(timezone.utc)
 
     jobs = []
+    seen_slugs = set()
     for raw in _read_snapshot()['items']:
         if not isinstance(raw, dict) or raw.get('status') != 'published':
             continue
-        if not str(raw.get('title') or '').strip() or not str(raw.get('slug') or '').strip():
+        slug = str(raw.get('slug') or '').strip()
+        if not str(raw.get('title') or '').strip() or not slug or slug in seen_slugs:
+            continue
+        if raw.get('application_status') not in {'open', 'deadline_today'}:
+            continue
+        if raw.get('verification_status') != 'official_source_checked':
             continue
         notice_url = str(raw.get('official_notice_url') or '').strip()
-        if not notice_url.startswith('https://'):
+        application_url = str(raw.get('application_url') or '').strip()
+        if not notice_url.startswith('https://') or not application_url.startswith('https://'):
             continue
 
         source = raw.get('source')
@@ -133,6 +140,7 @@ def _public_snapshot_jobs(now=None):
             else:
                 item['status_label'] = 'Deadline today—check official portal'
         jobs.append(item)
+        seen_slugs.add(slug)
 
     jobs.sort(
         key=lambda item: _parse_timestamp(item.get('published_at')) or datetime.min.replace(tzinfo=timezone.utc),
