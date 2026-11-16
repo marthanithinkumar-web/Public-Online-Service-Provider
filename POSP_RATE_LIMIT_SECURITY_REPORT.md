@@ -7,6 +7,13 @@ The production service is live at merge commit `c730b8c`; post-deployment
 `/health` and strict `/readiness` checks passed. Production quota thresholds
 were not probed with repeated requests, to avoid locking out legitimate users.
 
+## 2026-11-16 verification boundary
+
+The current increment addressed scholarship smoke criteria and did not repeat
+rate-limit quota, Redis outage, or production readiness checks. The production
+rate-limit evidence below remains dated 2026-11-15; this run made no rate-limit
+configuration, credential, or infrastructure changes.
+
 ## Root cause
 
 The application assigned `limiter._default_limits` after constructing

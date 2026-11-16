@@ -1,6 +1,7 @@
 # POSP Completion Audit
 
 **Audit date:** 2026-11-15  
+**Latest evidence update:** 2026-11-16
 **Repository:** `marthanithinkumar-web/public-online-service-provider`  
 **Starting branch:** `main` at `023a581ed5a88180d263cdf83ad10fd9b025b556`
 
@@ -8,6 +9,27 @@ This audit distinguishes code/test evidence from production behavior and from
 external integrations that could not be verified without account credentials.
 It is a point-in-time assessment; the final completion report records changes
 made after this audit.
+
+## 2026-11-16 scheduled-run update
+
+The checkout was clean before this increment. Remote `main` was at
+`8a4ea50b0bee50fb07a591c18e686fde9f4948f4`; the prior local base was five
+commits behind, so the change was started from fetched `origin/main` rather
+than the stale base. PRs #262 and #263 remain open on the older `e6859cd` base.
+PR #263's four CI checks passed; PR #262 documents the unresolved DB-free
+backend deployment prerequisite. No merge or deployment was performed.
+
+Production scholarship discovery smoke #97 failed after its retry loop. Its
+logs show two initial 30-second API timeouts and no saved response body. The
+current public scholarship API returned HTTP 200 with 27 items, all 27
+official and active with fresh item-level evidence. A direct check of the
+official NSP listing on 2026-11-16 confirms PM-USP CSSS is open from
+2026-06-02 through the 2026-11-30 student-application deadline; the production
+record carries matching evidence. The smoke workflow's unconditional CSSS
+exclusion is stale for this official status. Its replacement validates positive
+open evidence and still rejects `NOT YET OPENED` records. The full relevant
+production-feed checks passed locally against the public API; the workflow
+change is not yet merged or deployed.
 
 ## Post-audit integration update
 
@@ -111,7 +133,7 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 | 1. Repository audit | Partial | Inspected repository structure, current history, 288 local/remote branch refs, 10 open PRs, core docs/configuration, tests, and live endpoints. Not every historical branch diff or commit was individually reviewed. |
 | 2. Preserve previous requirements | Partial | Worktree was clean at start; the current main feature set and tests were retained. No stale branch was blindly merged. |
 | 3. Platform features | Partial | Existing auth, client/admin workflows, orders, fees, uploads, receipts, notifications, and management functions have implementation and backend coverage. External live user journeys and all roles were not independently exercised in production. |
-| 4. Jobs and scholarships | Partial | Scheduled refresh is configured for 07:45 IST; 20 sources are configured; backend/frontend filters, snapshot integrity, deadline, and freshness rules have regression coverage. Run #128 started at 14:47 IST, over seven hours after its scheduled time. Current production status is 6 successful, 11 degraded, 3 failed. KVS/IBPS succeeded with no published jobs; SEBI remains blocked with HTTP 530 and four consecutive failures; the production DRDO-RAC registry points to the official RAC URL but reports failed with four consecutive failures. The parser reads the official RAC page locally and rejects its expired notice. Job refresh #128 passed and production matched snapshot `c5669c0` and its exact digest. Scholarship refresh #96 passed and committed `6964fbb`; the live API currently returns 27 records and NMMS remains deadline-today. Source health and schedule reliability remain unresolved. |
+| 4. Jobs and scholarships | Partial | Scheduled refresh is configured for 07:45 IST; backend/frontend filters, snapshot integrity, deadlines, and freshness rules have regression coverage. Job-source health (6 successful, 11 degraded, 3 failed across 20) is the last verified status from 2026-11-15; PR #261 is now in current `main`, but source health was not rechecked after that merge. Job refresh #128 matched snapshot `c5669c0`; its run started over seven hours after the configured schedule. On 2026-11-16 the live scholarship API returned 27/27 official active items with fresh evidence, and official NSP confirms CSSS is open through 2026-11-30. Production discovery smoke #97 failed while the workflow still rejected any CSSS item; the logs did not retain the run's response body. The corrected workflow checks positive open evidence. Source health and schedule reliability remain unresolved. |
 | 5. POSP AI | Incomplete | Existing in-client support chat and admin operations AI are present with grounded context and safe error handling. `render.yaml` now selects the requested stable `gemini-3.5-flash-lite` model, and the existing `v1beta` `generateContent` request method matches Google's API documentation. `POSP_CLIENT_AI_ENABLED` remains false because no production key or successful live call has been verified. |
 | 6. WhatsApp Cloud API | Incomplete | Webhook verification/signature handling, inbound/outbound services, status updates, templates, consent, and admin monitoring are implemented and tested. Production `/api/whatsapp/config` reports disabled and notifications unavailable. The Meta app is unpublished; callback and verify-token fields are empty and webhook verification is disabled. |
 | 7. SEO/indexing | Partial | Public metadata/canonicals/structured data, sitemap and robots generation, prerendering, and private-route `X-Robots-Tag` behavior are implemented. Production sitemap contains 173 URLs; all three live job detail routes, including the long-slug alias, were verified. All 12 private routes return HTTP 200 with a noindex header. Search Console confirms the sitemap is successfully submitted (170 discovered pages); its overview shows 11 indexed and 166 not indexed. The latest detailed report lists 164 discovered-not-indexed and two alternate-canonical URLs; inspect representative pages and resolve indexing causes. |
@@ -264,6 +286,16 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 - Scholarship refresh #96 passed and published commit `6964fbb`; production
   still reports 27 scholarships, with NMMS at its student-application
   deadline-today status for 2026-11-15.
+- On 2026-11-16, production scholarship smoke #97 failed after two initial
+  30-second API timeouts and a retry loop; logs did not retain the response
+  body. A direct production API check returned HTTP 200, 27/27 official active
+  items, and fresh evidence. The official NSP listing and API both show CSSS
+  open through 2026-11-30. The prior smoke assertion rejected CSSS by title
+  regardless of current official status; its replacement permits only active
+  official items with `Scheme Open from` and `Student Application Open till`
+  evidence and rejects `NOT YET OPENED`. The updated feed and search criteria
+  passed a focused read-only production check; workflow YAML parsing and
+  `git diff --check` passed. The workflow awaits CI/PR review.
 - Restore drill #12 passed with a disposable PostgreSQL restore and validation.
 - Razorpay confirmation #21 passed for live configuration, webhook, read-only
   authentication, and public checkout secret-safety checks.
@@ -291,9 +323,10 @@ The prompt has **12 top-level requirement areas**. Their verified status is:
 1. Investigate DRDO-RAC's four consecutive production source failures using
    owner-authorized Render logs; the production endpoint confirms the corrected
    official RAC URL but hides the error cause. Do not bypass source controls.
-2. Resolve the SEBI HTTP 530 block (four consecutive degraded checks) through
-   an approved official source or owner-authorized network access; verify KVS
-   and IBPS parsing and keep all unavailable sources fail-closed.
+2. Recheck source health after PR #261, then resolve any remaining SEBI or
+   other source failures through approved official sources or owner-authorized
+   network access; verify KVS and IBPS parsing and keep unavailable sources
+   fail-closed.
 3. Check that the scholarship refresh removes NMMS after its 2026-11-15
    student-application deadline and that the production API and sitemap
    converge on the following refresh.

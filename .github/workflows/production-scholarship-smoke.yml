@@ -60,7 +60,6 @@ jobs:
               and payload.get('official_count', 0) >= 5
               and all(item.get('status') == 'active' and item.get('application_status') in {'open','deadline_today'} and item.get('source_type') == 'official' and item.get('status_evidence') and (item.get('source_checked_at') or item.get('verified_at')) for item in items)
               and not any('beedi' in str(item.get('title') or '').lower() for item in items)
-              and not any('central sector scheme of scholarship for college and university students' in str(item.get('title') or '').lower() for item in items)
               and sum('pm yasasvi' in str(item.get('title') or '').lower() for item in items) >= 2
               and not bad_provider
           )
@@ -91,6 +90,17 @@ jobs:
           import re
           from datetime import date, datetime, time as datetime_time, timedelta, timezone
           from zoneinfo import ZoneInfo
+
+          def is_open_csss(item):
+              evidence=str(item.get('status_evidence') or '')
+              return (
+                  item.get('status') == 'active'
+                  and item.get('source_type') == 'official'
+                  and item.get('application_status') in {'open','deadline_today'}
+                  and re.search(r'\bscheme open from\s*:', evidence, re.I)
+                  and re.search(r'\bstudent application open till\s*:', evidence, re.I)
+                  and not re.search(r'\bnot yet opened\b', evidence, re.I)
+              )
 
           with open('/tmp/scholarships.json', encoding='utf-8') as handle:
               payload=json.load(handle)
@@ -135,7 +145,7 @@ jobs:
 
           assert not any('beedi' in str(item.get('title') or '').lower() for item in items), 'Closed Beedi scholarship leaked into the active API'
           csss_items=[item for item in items if 'central sector scheme of scholarship for college and university students' in str(item.get('title') or '').lower()]
-          assert not csss_items, 'PM-USP CSSS is officially marked NOT YET OPENED and must not be in the active API'
+          assert all(is_open_csss(item) for item in csss_items), csss_items
           yasasvi=[item for item in items if 'pm yasasvi' in str(item.get('title') or '').lower()]
           assert len(yasasvi) >= 2, f'Both officially open PM YASASVI schemes must be published: {yasasvi}'
           for item in yasasvi:
@@ -150,7 +160,7 @@ jobs:
           with open('/tmp/csss.json', encoding='utf-8') as handle:
               csss=json.load(handle)
           csss_matches=[item for item in csss.get('items', []) if 'central sector scheme of scholarship for college and university students' in str(item.get('title') or '').lower()]
-          assert not csss_matches, f'PM-USP CSSS marked NOT YET OPENED leaked into search: {csss.get("items", [])[:3]}'
+          assert all(is_open_csss(item) for item in csss_matches), csss_matches
 
           with open('/tmp/nec.json', encoding='utf-8') as handle:
               nec=json.load(handle)

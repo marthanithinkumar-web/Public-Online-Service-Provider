@@ -1,6 +1,6 @@
 # POSP Final Completion Report
 
-**Report date:** 2026-11-15
+**Report date:** 2026-11-16
 **Repository:** `marthanithinkumar-web/public-online-service-provider`
 **Branch:** `main`
 
@@ -13,6 +13,24 @@ features are implemented and covered by tests. It means external activation,
 source health, and some coverage gaps remain unverified or unresolved.
 Production success is not inferred from code or a Git push.
 
+### Latest scheduled-run update (2026-11-16)
+
+The current remote `main` was fetched at `8a4ea50b0bee50fb07a591c18e686fde9f4948f4`;
+the prior local base was five commits behind. PRs #262 and #263 remain open
+against the older `e6859cd` base. PR #263's four CI checks passed; PR #262
+documents a DB-free backend deployment prerequisite. No merge or deployment
+was made during this increment.
+
+Production scholarship discovery smoke #97 failed after its retry loop; logs
+show two initial 30-second API timeouts but did not retain the response body.
+The current public API returned HTTP 200 with 27/27 official active scholarships
+and fresh evidence. The official NSP page confirms PM-USP CSSS applications
+are open through 2026-11-30, matching the API record. The smoke's blanket CSSS
+exclusion was stale, so it now requires open-status evidence when CSSS is
+present and still rejects `NOT YET OPENED` evidence. The updated criteria were
+run against the production listing and its `beedi`, `csss`, `nec`, and `aicte`
+searches; all passed. This workflow fix is not yet merged or deployed.
+
 ## Requirement status
 
 | # | Requirement area | Status | Evidence and remaining work |
@@ -20,7 +38,7 @@ Production success is not inferred from code or a Git push.
 | 1 | Repository audit | Partial | Inspected repository structure, current history, 288 branch refs, 10 open PRs, core documentation/configuration, tests, and live endpoints. Not every historical branch diff or commit was individually reviewed. |
 | 2 | Preserve previous requirements | Partial | Kept existing architecture and features; merged verified PR #259 and snapshot-integrity follow-up into `main`. No stale branch was blindly merged. |
 | 3 | Platform features | Partial | Existing auth/role checks, client/admin workflows, applications/orders, fee rules, uploads, receipts, and notifications have implementation and backend coverage. All live user journeys and roles were not independently exercised in production. |
-| 4 | Jobs and scholarships | Partial | Official-source validation, deadline/freshness logic, filters, snapshots, and scheduled refresh are implemented and regression-tested. Current production reports 20 sources: 6 successful, 11 degraded, 3 failed. KVS/IBPS checks succeeded with no published jobs; SEBI remains blocked with HTTP 530 (degraded, four consecutive failures). The official DRDO-RAC URL is configured, but it reports failed with four consecutive failures; its parser reads the official page locally and rejects its expired notice. Refresh #128 verified the exact production snapshot, but started at 14:47 IST, over seven hours after the configured 07:45 IST schedule. |
+| 4 | Jobs and scholarships | Partial | Official-source validation, deadline/freshness logic, filters, snapshots, and scheduled refresh are implemented and regression-tested. Job-source health (6 successful, 11 degraded, 3 failed across 20) is the last verified status from 2026-11-15; PR #261 is now in current `main`, but source health was not rechecked after that merge. Job refresh #128 matched the exact production snapshot but started over seven hours after the configured schedule. On 2026-11-16 the public scholarship API returned 27/27 official active items with fresh evidence; official NSP confirms CSSS is open through 2026-11-30. Production smoke #97 failed due a stale unconditional CSSS exclusion; the updated workflow validates current open evidence instead. |
 | 5 | POSP AI | Incomplete | Existing in-client and admin AI workflows are present. `render.yaml` now selects the requested `gemini-3.5-flash-lite`; Google's official model catalog marks it stable and documents the existing `v1beta` `generateContent` endpoint. Client AI remains disabled because no production key or successful live call was verified. |
 | 6 | WhatsApp Cloud API | Incomplete | Webhook, messaging, templates, consent, and status-handling code has tests. Production config reports Cloud API disabled and status notifications unavailable. The Meta app remains in Development mode and is unpublished; callback and verify-token fields are empty and webhook verification is disabled. No production message was sent. |
 | 7 | SEO and indexing | Partial | Metadata, canonical URLs, structured data, sitemap/robots generation, prerendering, and private-route noindex behavior are implemented. Production sitemap has 173 URLs and all three current job detail pages are present. The 237-character source slug uses `/jobs/notice-136282380084494`; production content and canonical were verified. Search Console confirms the sitemap is successfully submitted (170 discovered pages); its overview shows 11 indexed and 166 not indexed. The latest detailed report, last updated 2026-11-09, lists 164 discovered-not-indexed and two alternate-canonical URLs. |
@@ -143,6 +161,7 @@ Production success is not inferred from code or a Git push.
 - `frontend/src/pages/JobDetail.tsx`
 - `frontend/src/services/jobs.ts`
 - `POSP_FINAL_COMPLETION_REPORT.md`
+- `.github/workflows/production-scholarship-smoke.yml`
 - `.github/workflows/ci.yml`
 - `backend/.env.production.example`
 - `backend/app/main.py`
@@ -181,6 +200,9 @@ Production success is not inferred from code or a Git push.
 | Production smoke workflow #116 | **Passed** after workflow correction |
 | Production smoke workflow #117 | **Passed** after SEO alias deployment |
 | Scholarship discovery smoke #95 | **Passed** |
+| Production scholarship discovery smoke #97 | **Failed**; two initial API requests timed out at 30 seconds; the retry loop failed without retaining a response body. The workflow's blanket CSSS exclusion conflicts with current official status. |
+| Focused production scholarship criteria (2026-11-16) | **Passed**; API HTTP 200, 27/27 official active items with fresh evidence; official NSP corroborated CSSS through 2026-11-30; `beedi`, `csss`, `nec`, and `aicte` searches passed the updated checks. |
+| Updated smoke workflow YAML and `git diff --check` | **Passed** |
 | Authenticated browser E2E #470 | Failed on obsolete `>2000` sitemap threshold |
 | Authenticated browser E2E #471 | **Passed** after replacing the stale threshold with catalog coverage |
 | Authenticated browser E2E #473 | **Passed**, including long-slug alias page |
