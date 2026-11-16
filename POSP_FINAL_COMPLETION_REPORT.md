@@ -45,6 +45,11 @@ snapshots are live in production.
   No automated tests were run for this documentation-only update;
   `git diff --check` passed. The source and snapshot checks above were
   read-only.
+- Report commit `4532c58` is pushed on branch
+  `docs/posp-report-refresh-evidence-20261116-run`. No PR was opened because
+  `gh` is not installed and the available GitHub integration has no PR-create
+  action. No credentials were accessed. The branch is ready for an authorized
+  GitHub user to open a PR.
 
 ## Requirement status
 
