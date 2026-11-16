@@ -377,3 +377,9 @@ owner-authorized deployment configuration.
 - Exact-head CI, authenticated E2E, merge, both Render deployments and post-deployment checks are pending. Do not call this branch verified until all exact-head checks finish green. Do not claim production fee behavior or login latency is fixed until live verification.
 - Render remains on the existing free plan. Cold-start duration can still depend on Render's free-instance wake-up time; the change prevents login from racing the wake-up and makes the wait visible, but does not change plan/billing.
 - The separate official-source expired jobs/scholarships blocker remains open. This work does not certify the live active listing set as clean.
+
+### Verification rerun note — 2026-11-16
+- First CI attempt at commit c12531c45e4cc88e540b01b6842f2fc76e0dd5d6 passed backend tests, frontend typecheck/build and operational script safety. Browser E2E failed only on ambiguous responsive form selectors (two Search services inputs and two Password labels); those test selectors were corrected to target the first visible input.
+- Added further coverage for scholarship services whose service name is generic but whose category is Scholarships & Student Welfare; order metadata now records the server's scholarship classification so the payment UI and payment guard agree.
+- The exact latest integration branch is fix/posp-fees-home-auth-zip-integration-verified-20261116, forked from code head 0d6f5ac61c5787560ad36cf30a002325969d739f. A fresh PR is being opened so all required workflows execute against the final head. Earlier draft PR #264 is superseded and will be closed after the replacement PR is open.
+- Do not use the earlier passing CI as final verification: the latest fee/category changes and corrected E2E selectors require a fresh full CI + browser E2E run.
