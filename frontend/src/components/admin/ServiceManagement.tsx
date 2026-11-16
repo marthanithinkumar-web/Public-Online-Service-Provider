@@ -143,7 +143,9 @@ export default function ServiceManagement(){
       setBusy(true);setError('');setMessage('')
       const result=await updateScholarshipAssistanceFee(value)
       setScholarshipFee(Number(result.price_inr))
-      setMessage(`${result.message} Existing submitted scholarship applications keep their original agreed fee.`)
+      await load()
+      const updatedCount=Number(result.service_catalog_updated_count||0)
+      setMessage(`${result.message} Updated ${updatedCount} scholarship service entries. Existing submitted scholarship applications keep their agreed fee.`)
     }catch(err:any){setError(err?.response?.data?.error||'Unable to update the website-wide scholarship application assistance fee.')}
     finally{setBusy(false)}
   }
