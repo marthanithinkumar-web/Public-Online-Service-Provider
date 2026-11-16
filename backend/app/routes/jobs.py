@@ -51,6 +51,8 @@ def list_jobs():
     term = (request.args.get('q') or '').strip()
     job_type = (request.args.get('type') or '').strip().lower()
     featured = (request.args.get('featured') or '').strip().lower()
+    location = (request.args.get('location') or '').strip()[:120]
+    qualification = (request.args.get('qualification') or '').strip()[:120]
     if term:
         aliases = {'govt': 'government', 'railways': 'railway'}
         tokens = list(dict.fromkeys(
@@ -73,6 +75,12 @@ def list_jobs():
         query = query.filter(JobNotification.job_type == job_type)
     if featured in {'1', 'true', 'yes'}:
         query = query.filter(JobNotification.is_featured.is_(True))
+    if location:
+        location_pattern = '%' + location.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
+        query = query.filter(JobNotification.location.ilike(location_pattern, escape='\\'))
+    if qualification:
+        qualification_pattern = '%' + qualification.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
+        query = query.filter(JobNotification.qualification.ilike(qualification_pattern, escape='\\'))
     candidates = query.order_by(
         JobNotification.is_featured.desc(),
         JobNotification.deadline.asc(),
