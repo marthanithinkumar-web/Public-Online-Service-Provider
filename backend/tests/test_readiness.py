@@ -1,5 +1,7 @@
 import redis
 
+from app.utils.database import db
+from app.utils.limiter import limiter
 from app.utils.readiness import (
     production_readiness,
     readiness_status,
@@ -240,3 +242,45 @@ def test_readiness_endpoint_can_fail_closed_in_strict_mode(client, monkeypatch):
     response = client.get('/readiness')
     assert response.status_code == 503
     assert response.get_json()['status'] == 'needs_configuration'
+
+
+def test_rate_limit_health_endpoint_is_database_free(client, monkeypatch):
+    monkeypatch.setattr('app.main.shared_rate_limit_configured', lambda: True)
+    monkeypatch.setattr('app.main.shared_rate_limit_connectivity', lambda: True)
+    monkeypatch.setattr(limiter, '_storage_dead', False)
+    with client.application.app_context():
+        engine = db.engine
+
+    def fail_database_connection(*args, **kwargs):
+        raise AssertionError('rate-limit health probe must not connect to the production database')
+
+    monkeypatch.setattr(engine, 'connect', fail_database_connection)
+    response = client.get('/health/rate-limit')
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        'status': 'ready',
+        'checks': {
+            'shared_rate_limit_storage': True,
+            'shared_rate_limit_connectivity': True,
+            'fallback_active': False,
+        },
+    }
+
+
+def test_rate_limit_health_endpoint_reports_redis_failure(client, monkeypatch):
+    monkeypatch.setattr('app.main.shared_rate_limit_configured', lambda: True)
+    monkeypatch.setattr('app.main.shared_rate_limit_connectivity', lambda: False)
+    monkeypatch.setattr(limiter, '_storage_dead', False)
+
+    response = client.get('/health/rate-limit')
+
+    assert response.status_code == 503
+    assert response.get_json() == {
+        'status': 'unavailable',
+        'checks': {
+            'shared_rate_limit_storage': True,
+            'shared_rate_limit_connectivity': False,
+            'fallback_active': False,
+        },
+    }
