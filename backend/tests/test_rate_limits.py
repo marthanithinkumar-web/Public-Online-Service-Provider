@@ -65,7 +65,7 @@ def test_authentication_route_limits_are_preserved(client, path, limit):
     assert statuses[limit] == 429
 
 
-@pytest.mark.parametrize('path', ['/health', '/readiness'])
+@pytest.mark.parametrize('path', ['/health', '/health/rate-limit', '/readiness'])
 def test_operational_health_routes_are_exempt_from_default_limits(client, monkeypatch, path):
     monkeypatch.setenv('STRICT_PRODUCTION_READINESS', '0')
     monkeypatch.setattr('app.main.persistent_storage_connectivity', lambda: False)
