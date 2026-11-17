@@ -6,8 +6,18 @@ import os
 
 import requests
 
-# Reuse TCP/TLS connections between AI requests in each Gunicorn worker.
-_HTTP = requests.Session()
+# Reuse provider connections per Gunicorn thread without sharing mutable sessions.
+from threading import local
+
+_HTTP_LOCAL = local()
+
+
+def _http_session():
+    session = getattr(_HTTP_LOCAL, 'session', None)
+    if session is None:
+        session = requests.Session()
+        _HTTP_LOCAL.session = session
+    return session
 
 
 def configured_provider():
@@ -62,7 +72,7 @@ def call_model(instructions, prompt, max_output_tokens=900):
     try:
         if provider == "gemini":
             api_key = os.getenv("GEMINI_API_KEY", "").strip()
-            response = _HTTP.post(
+            response = _http_session().post(
                 f"https://generativelanguage.googleapis.com/v1beta/models/{configured_model()}:generateContent",
                 headers={
                     "x-goog-api-key": api_key,
@@ -81,7 +91,7 @@ def call_model(instructions, prompt, max_output_tokens=900):
             answer = _extract_gemini_text(response.json())
         else:
             api_key = os.getenv("OPENAI_API_KEY", "").strip()
-            response = requests.post(
+            response = _http_session().post(
                 "https://api.openai.com/v1/responses",
                 headers={
                     "Authorization": f"Bearer {api_key}",
@@ -93,7 +103,7 @@ def call_model(instructions, prompt, max_output_tokens=900):
                     "input": prompt,
                     "max_output_tokens": max_output_tokens,
                 },
-                timeout=45,
+                timeout=(5, 30),
             )
             if response.status_code >= 400:
                 return None, f"OpenAI request failed (HTTP {response.status_code})."
