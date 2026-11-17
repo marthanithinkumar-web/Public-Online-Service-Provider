@@ -6,6 +6,9 @@ import os
 
 import requests
 
+# Reuse TCP/TLS connections between AI requests in each Gunicorn worker.
+_HTTP = requests.Session()
+
 
 def configured_provider():
     """Choose an explicitly configured provider, or auto-detect from available keys."""
@@ -59,7 +62,7 @@ def call_model(instructions, prompt, max_output_tokens=900):
     try:
         if provider == "gemini":
             api_key = os.getenv("GEMINI_API_KEY", "").strip()
-            response = requests.post(
+            response = _HTTP.post(
                 f"https://generativelanguage.googleapis.com/v1beta/models/{configured_model()}:generateContent",
                 headers={
                     "x-goog-api-key": api_key,
@@ -70,7 +73,7 @@ def call_model(instructions, prompt, max_output_tokens=900):
                     "contents": [{"role": "user", "parts": [{"text": prompt}]}],
                     "generationConfig": {"maxOutputTokens": max_output_tokens, "temperature": 0.2},
                 },
-                timeout=45,
+                timeout=(5, 30),
             )
             if response.status_code >= 400:
                 # Keep credentials and provider response details out of client-visible errors.
