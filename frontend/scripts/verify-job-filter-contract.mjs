@@ -22,7 +22,7 @@ const required=[
   ['source name/key searchable in snapshot',/job\.source\?\.name,job\.source\?\.key/],
 ]
 for(const [name,pattern] of required){
-  if(!pattern.test(service))throw new Error(`Job filter contract missing: ${name}`)
+  if(!pattern.test(service))throw new Error('Job filter contract missing: '+name)
 }
 for(const [name,pattern] of [
   ['search form submission',/onSubmit=\{submit\}/],
@@ -30,15 +30,26 @@ for(const [name,pattern] of [
   ['private filter control',/setType\('private'\)/],
   ['all filter control',/setType\(''\)/],
 ]){
-  if(!pattern.test(page))throw new Error(`Jobs UI filter is not wired: ${name}`)
+  if(!pattern.test(page))throw new Error('Jobs UI filter is not wired: '+name)
 }
 for(const [name,pattern] of [
-  ['public current-deadline base query',/JobNotification\.deadline\.isnot\(None\)/],
-  ['type filter',/JobNotification\.job_type == job_type/],
-  ['featured filter',/JobNotification\.is_featured\.is_\(True\)/],
-  ['search source name/key',/JobNotification\.source\.has\(or_\(/],
+  ['read-only snapshot source',/_read_snapshot\(\)\['items'\]/],
+  ['published status gate',/raw\.get\('status'\) != 'published'/],
+  ['verified application status gate',/raw\.get\('application_status'\) not in \{'open', 'deadline_today'\}/],
+  ['official verification gate',/raw\.get\('verification_status'\) != 'official_source_checked'/],
+  ['successful source gate',/source\.get\('last_sync_status'\).*success/],
+  ['fresh successful source timestamp',/_is_fresh_timestamp\(source\.get\('last_successful_sync_at'/],
+  ['official deadline timezone and cutoff',/ZoneInfo\(timezone_name\)[\s\S]*?deadline_cutoff_time/],
+  ['duplicate slug suppression',/seen_slugs/],
+  ['HTTPS official notice and application links',/notice_url\.startswith\('https:\/\/'\)[\s\S]*?application_url\.startswith\('https:\/\/'\)/],
   ['bounded API limit',/min\(100, max\(1, int\(request\.args\.get\('limit', 30\)\)\)\)/],
 ]){
-  if(!pattern.test(api))throw new Error(`Backend job filter missing: ${name}`)
+  if(!pattern.test(api))throw new Error('Backend read-only job snapshot contract missing: '+name)
 }
-console.log('Verified job filter contract: active deadline, search, source, type, featured and limit.')
+if(/JobNotification\.query|JobSource\.query|db\.session|trigger_background_sync/.test(api)){
+  throw new Error('Public job API must not access the production database or trigger background sync')
+}
+if(!/hashlib\.sha256\(_SNAPSHOT_PATH\.read_bytes\(\)\)/.test(api)){
+  throw new Error('Snapshot status must verify the deployed JSON against its SHA-256 marker')
+}
+console.log('Verified read-only job snapshot API, official deadline/freshness gates, search, type, featured, detail, sources and limit.')

@@ -5,7 +5,6 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
-import requests
 from flask import Blueprint, jsonify, request
 
 from ..models.admin_audit import AdminAuditLog
@@ -17,7 +16,7 @@ from ..scholarships.catalog import load_catalog
 from ..utils.database import db
 from ..utils.jwt_handler import get_request_user
 from ..utils.readiness import production_readiness
-from ..ai_core import call_model as _call_model, configured_model as _configured_model, configured_provider as _configured_provider, is_configured as _ai_is_configured, _extract_openai_text as _extract_response_text
+from ..ai_core import call_model as _call_model, configured_model as _configured_model, configured_provider as _configured_provider, is_configured as _ai_is_configured, _extract_openai_text as _extract_response_text  # noqa: F401 - compatibility helper used by tests
 from .admin import _require_admin
 
 bp = Blueprint('ai_operations', __name__)
@@ -135,16 +134,13 @@ def _parse_client_ai_response(raw):
     return answer, handoff
 
 def _verified_active_job_context(limit=5):
-    # Reuse the exact server-side public eligibility query so POSP AI cannot
-    # bypass freshness/source-health filters that protect the public job API.
-    from .jobs import _public_query
+    # Use the same read-only verified snapshot as the public jobs API so POSP
+    # AI cannot bypass deadline, cutoff, freshness or source-health filters.
+    from .jobs import _public_snapshot_jobs
 
     context = []
-    candidates = _public_query().order_by(JobNotification.deadline.asc()).all()
-    for job in candidates:
-        if not job.is_open:
-            continue
-        data = job.to_dict()
+    candidates = _public_snapshot_jobs()
+    for data in candidates:
         source = data.get('source') or {}
         context.append({
             'title': data.get('title'),
@@ -161,7 +157,7 @@ def _verified_active_job_context(limit=5):
             'application_url': data.get('application_url'),
             'verification_status': data.get('verification_status'),
             'source_name': source.get('name'),
-            'source_checked_at': source.get('last_successful_sync_at'),
+            'source_checked_at': data.get('source_checked_at') or source.get('last_successful_sync_at'),
             'last_seen_at': data.get('last_seen_at'),
         })
         if len(context) >= max(1, int(limit)):

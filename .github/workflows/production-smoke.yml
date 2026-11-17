@@ -29,36 +29,64 @@ env:
 
 jobs:
   smoke:
-    name: Verify deployed public journeys
+    name: Verify deployed DB-free public journeys
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
-      - name: Wait for API health
+      - name: Wait for backend health and matching verified job snapshot
         run: |
           set -Eeuo pipefail
-          curl --fail --silent --show-error --location \
-            --retry 8 --retry-delay 8 --retry-all-errors \
-            --max-time 30 "$API_URL/health" | tee /tmp/health.json
-          python - <<'PY'
+          ready=0
+          for attempt in $(seq 1 36); do
+            curl --silent --show-error --location --max-time 20 "$API_URL/health" -o /tmp/health.json || true
+            curl --silent --show-error --location --max-time 20 "$UI_URL/data/jobs.json" -o /tmp/jobs-snapshot.json || true
+            curl --silent --show-error --location --max-time 20 "$API_URL/api/jobs/snapshot-status" -o /tmp/snapshot-status.json || true
+            if python - <<'PY'
+          import hashlib
           import json
-          with open('/tmp/health.json', encoding='utf-8') as handle:
-              payload = json.load(handle)
-          assert payload.get('status') == 'ok', payload
+          import sys
+          try:
+              with open('/tmp/health.json', encoding='utf-8') as handle:
+                  health=json.load(handle)
+              with open('/tmp/jobs-snapshot.json', 'rb') as handle:
+                  snapshot_bytes=handle.read()
+              with open('/tmp/snapshot-status.json', encoding='utf-8') as handle:
+                  status=json.load(handle)
+              snapshot=json.loads(snapshot_bytes.decode('utf-8'))
+          except Exception:
+              sys.exit(1)
+          expected=hashlib.sha256(snapshot_bytes).hexdigest()
+          ok=(
+              health.get('status') == 'ok'
+              and isinstance(snapshot.get('items'), list)
+              and status.get('ready') is True
+              and status.get('sha256') == expected
+          )
+          sys.exit(0 if ok else 1)
           PY
+            then
+              ready=1
+              break
+            fi
+            echo "Waiting for the backend to serve the committed job snapshot (attempt $attempt/36)..."
+            sleep 10
+          done
+          test "$ready" = "1" || {
+            echo "Backend health or verified snapshot fingerprint did not converge within the deployment window."
+            exit 1
+          }
 
-      - name: Verify production dependency readiness
+      - name: Verify external dependencies without connecting to the production database
         run: |
           set -Eeuo pipefail
-          curl --fail --silent --show-error --location \
-            --retry 5 --retry-delay 5 --retry-all-errors \
-            --max-time 30 "$API_URL/readiness" -o /tmp/readiness.json
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 5 --retry-all-errors --max-time 30 "$API_URL/health/dependencies" -o /tmp/dependencies.json
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 5 --retry-all-errors --max-time 30 "$API_URL/health/rate-limit" -o /tmp/rate-limit.json
           python - <<'PY'
           import json
-          with open('/tmp/readiness.json', encoding='utf-8') as handle:
-              payload = json.load(handle)
-          checks = payload.get('checks') or {}
-          required = [
-              'database',
+          with open('/tmp/dependencies.json', encoding='utf-8') as handle:
+              payload=json.load(handle)
+          checks=payload.get('checks') or {}
+          required=[
               'persistent_document_storage',
               'persistent_storage_connectivity',
               'shared_rate_limit_storage',
@@ -69,43 +97,102 @@ jobs:
               'razorpay_webhook',
               'razorpay_connectivity',
           ]
-          failed = [name for name in required if checks.get(name) is not True]
-          assert not failed, 'Production readiness failed: ' + ', '.join(failed)
-          print('Launch-critical production dependency checks are ready.')
+          failed=[name for name in required if checks.get(name) is not True]
+          assert payload.get('scope') == 'external_dependencies_only', payload
+          assert 'database' not in checks, 'DB-free dependency probe must never report or connect to the database'
+          assert payload.get('status') == 'ready' and not failed, (payload.get('status'), failed)
+          with open('/tmp/rate-limit.json', encoding='utf-8') as handle:
+              rate=json.load(handle)
+          assert rate.get('status') == 'ready', rate
+          rate_checks=rate.get('checks') or {}
+          assert rate_checks.get('shared_rate_limit_storage') is True, rate_checks
+          assert rate_checks.get('shared_rate_limit_connectivity') is True, rate_checks
+          assert rate_checks.get('fallback_active') is False, rate_checks
+          print('External dependencies and shared Valkey rate-limit storage are healthy; no production DB probe was made.')
           PY
 
-      - name: Verify public APIs
+      - name: Verify read-only public job and scholarship APIs
         run: |
           set -Eeuo pipefail
-          curl --fail --silent --show-error --location --retry 5 --retry-delay 5 --retry-all-errors --max-time 30 "$API_URL/api/services" -o /tmp/services.json
-          curl --fail --silent --show-error --location --retry 5 --retry-delay 5 --retry-all-errors --max-time 30 "$API_URL/api/services/search?q=income%20certificate" -o /tmp/search.json
-          curl --fail --silent --show-error --location --max-time 30 "$API_URL/api/fees/recharge-bill-assistance" -o /tmp/recharge-fee.json
-          curl --fail --silent --show-error --location --max-time 30 "$API_URL/api/jobs/?limit=5" -o /tmp/jobs.json
+          curl --fail --silent --show-error --location --max-time 30 "$API_URL/api/jobs/?limit=100" -o /tmp/jobs.json
+          curl --fail --silent --show-error --location --max-time 30 "$API_URL/api/jobs/sources" -o /tmp/job-sources.json
           curl --fail --silent --show-error --location --max-time 30 "$API_URL/api/scholarships/" -o /tmp/scholarships.json
+          curl --fail --silent --show-error --location --max-time 30 "$API_URL/api/scholarships/?q=beedi" -o /tmp/beedi.json
           python - <<'PY'
           import json
-          with open('/tmp/services.json', encoding='utf-8') as f: services=json.load(f)
-          with open('/tmp/search.json', encoding='utf-8') as f: search=json.load(f)
-          with open('/tmp/recharge-fee.json', encoding='utf-8') as f: recharge_fee=json.load(f)
-          with open('/tmp/jobs.json', encoding='utf-8') as f: jobs=json.load(f)
-          with open('/tmp/scholarships.json', encoding='utf-8') as f: scholarships=json.load(f)
-          assert isinstance(services, list) and len(services) >= 100
-          assert all(item.get('id') and item.get('name') and item.get('slug') for item in services[:10])
-          assert isinstance(search, list) and any('income' in str(item.get('name','')).lower() for item in search)
-          expected={
-              'Mobile Recharge','Mobile Postpaid Bill Payment Assistance','DTH Recharge Assistance',
-              'Broadband / Landline Bill Payment Assistance','FASTag Recharge Assistance','Piped Gas Bill Payment Assistance'
-          }
-          selected={item.get('catalog_name'):item for item in services if item.get('catalog_name') in expected}
-          assert set(selected) == expected, set(selected)
-          configured=float(recharge_fee['price_inr'])
-          for name,item in selected.items():
-              assert item.get('category') == 'Recharge & Bill Payments', name
-              assert item.get('official_fee_status') == 'none', name
-              assert float(item.get('official_fee_inr') or 0) == 0.0, name
-              assert float(item.get('price_inr')) == configured, name
-          assert isinstance(jobs, dict) and isinstance(jobs.get('items'), list) and isinstance(jobs.get('count'), int)
-          assert isinstance(scholarships, dict) and isinstance(scholarships.get('items'), list)
+          from datetime import date, datetime, timedelta, timezone
+          from zoneinfo import ZoneInfo
+
+          now=datetime.now(timezone.utc)
+          with open('/tmp/jobs.json', encoding='utf-8') as handle:
+              jobs=json.load(handle)
+          with open('/tmp/job-sources.json', encoding='utf-8') as handle:
+              sources=json.load(handle)
+          items=jobs.get('items') or []
+          assert isinstance(items, list), jobs
+          assert int(jobs.get('count', jobs.get('total', len(items)))) >= len(items), jobs
+          assert isinstance(sources, dict) and isinstance(sources.get('items'), list), sources
+
+          def parse_timestamp(value):
+              if not value:
+                  return None
+              parsed=datetime.fromisoformat(str(value).replace('Z','+00:00'))
+              if parsed.tzinfo is None:
+                  parsed=parsed.replace(tzinfo=timezone.utc)
+              return parsed.astimezone(timezone.utc)
+
+          for item in items:
+              assert item.get('status') == 'published', item.get('title')
+              assert item.get('verification_status') == 'official_source_checked', item.get('title')
+              assert item.get('application_status') in {'open','deadline_today'}, item.get('title')
+              assert str(item.get('official_notice_url') or '').startswith('https://'), item.get('title')
+              assert str(item.get('application_url') or '').startswith('https://'), item.get('title')
+              deadline=item.get('deadline')
+              assert deadline, item.get('title')
+              local_tz=ZoneInfo(str(item.get('deadline_timezone') or 'Asia/Kolkata'))
+              today=now.astimezone(local_tz).date()
+              deadline_date=date.fromisoformat(str(deadline)[:10])
+              assert deadline_date >= today, item.get('title')
+              if deadline_date == today:
+                  assert item.get('application_status') == 'deadline_today', item.get('title')
+                  if not item.get('deadline_cutoff_time'):
+                      assert item.get('can_apply') is False, item.get('title')
+              else:
+                  assert item.get('application_status') == 'open', item.get('title')
+              source=item.get('source') or {}
+              assert source.get('last_sync_status') == 'success', item.get('title')
+              for timestamp in (
+                  item.get('source_checked_at'),
+                  item.get('last_seen_at'),
+                  source.get('last_successful_sync_at'),
+              ):
+                  parsed=parse_timestamp(timestamp)
+                  assert parsed is not None and timedelta(0) <= now-parsed <= timedelta(hours=36), (item.get('title'), timestamp)
+
+          with open('/tmp/scholarships.json', encoding='utf-8') as handle:
+              scholarships=json.load(handle)
+          scholarship_items=scholarships.get('items') or []
+          assert scholarships.get('count') == len(scholarship_items), scholarships
+          for item in scholarship_items:
+              assert item.get('status') == 'active', item.get('title')
+              assert item.get('application_status') in {'open','deadline_today'}, item.get('title')
+              assert item.get('source_type') == 'official' and item.get('is_official') is True, item.get('title')
+              assert item.get('deadline_type') == 'student_application', item.get('title')
+              assert str(item.get('status_evidence') or '').strip(), item.get('title')
+              assert str(item.get('source_url') or '').startswith('https://'), item.get('title')
+              assert str(item.get('application_url') or '').startswith('https://'), item.get('title')
+              checked=parse_timestamp(item.get('source_checked_at') or item.get('verified_at'))
+              assert checked is not None and timedelta(0) <= now-checked <= timedelta(hours=36), item.get('title')
+              if item.get('deadline'):
+                  deadline_date=date.fromisoformat(str(item['deadline'])[:10])
+                  local_tz=ZoneInfo(str(item.get('deadline_timezone') or 'Asia/Kolkata'))
+                  today=now.astimezone(local_tz).date()
+                  assert deadline_date >= today, item.get('title')
+                  assert item.get('application_status') == ('deadline_today' if deadline_date == today else 'open'), item.get('title')
+          with open('/tmp/beedi.json', encoding='utf-8') as handle:
+              beedi=json.load(handle)
+          assert not (beedi.get('items') or []), beedi
+          print(f"Verified {len(items)} public jobs and {len(scholarship_items)} active official scholarships without a production DB request.")
           PY
 
       - name: Verify homepage and public discovery pages
@@ -137,6 +224,53 @@ jobs:
           require_text /tmp/sitemap.xml "$UI_URL/" 'sitemap production host'
           require_text /tmp/sitemap.xml "$UI_URL/services/mobile-recharge" 'mobile recharge sitemap entry'
           require_text /tmp/sitemap.xml "$UI_URL/services/apply-fastag-recharge" 'FASTag sitemap entry'
+          python - <<'PY'
+          import json
+          import os
+          import re
+
+          base=os.environ['UI_URL'].rstrip('/')
+          with open('/tmp/jobs.json', encoding='utf-8') as handle:
+              jobs=json.load(handle)
+          with open('/tmp/scholarships.json', encoding='utf-8') as handle:
+              scholarships=json.load(handle)
+          with open('/tmp/sitemap.xml', encoding='utf-8') as handle:
+              sitemap=handle.read()
+          urls=set(re.findall(r'<loc>([^<]+)</loc>', sitemap))
+
+          expected_jobs=set()
+          for item in jobs.get('items') or []:
+              if str(item.get('job_type') or '').lower() != 'government':
+                  continue
+              slug=str(item.get('slug') or '').strip()
+              if not slug:
+                  raise AssertionError(f"Public job has no canonical slug: {item.get('title')}")
+              if len(slug) > 200:
+                  identifier=item.get('id')
+                  if not str(identifier or '').isdigit() or int(identifier) <= 0:
+                      raise AssertionError(f"Long job slug has no safe numeric ID: {item.get('title')}")
+                  slug=f"notice-{int(identifier)}"
+              expected_jobs.add(f"{base}/jobs/{slug}")
+
+          expected_scholarships=set()
+          for item in scholarships.get('items') or []:
+              slug=str(item.get('slug') or '').strip()
+              if not slug:
+                  raise AssertionError(f"Public scholarship has no canonical slug: {item.get('title')}")
+              expected_scholarships.add(f"{base}/scholarships/{slug}")
+
+          actual_jobs={url for url in urls if url.startswith(f"{base}/jobs/")}
+          actual_scholarships={url for url in urls if url.startswith(f"{base}/scholarships/")}
+          assert actual_jobs == expected_jobs, {
+              'missing_jobs': sorted(expected_jobs-actual_jobs),
+              'unexpected_jobs': sorted(actual_jobs-expected_jobs),
+          }
+          assert actual_scholarships == expected_scholarships, {
+              'missing_scholarships': sorted(expected_scholarships-actual_scholarships),
+              'unexpected_scholarships': sorted(actual_scholarships-expected_scholarships),
+          }
+          print(f"Verified sitemap parity: {len(actual_jobs)} eligible job details and {len(actual_scholarships)} active scholarship details; no stale or unverified detail URLs.")
+          PY
 
       - name: Verify private routes send noindex response headers
         run: |

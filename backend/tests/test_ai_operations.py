@@ -29,67 +29,75 @@ def test_parse_client_ai_response_keeps_safe_answer():
     assert handoff is False
     assert answer == 'You can track your request from your dashboard.'
 
-def test_ai_job_context_uses_public_freshness_and_cutoff_eligibility(client):
-    from datetime import datetime, time, timedelta, timezone
+def test_ai_job_context_uses_public_freshness_and_cutoff_eligibility(monkeypatch, tmp_path):
+    import json
+    from datetime import datetime, timedelta, timezone
+    from zoneinfo import ZoneInfo
 
-    from app.jobs.sources import JobItem, india_today
-    from app.jobs.sync import upsert_item
-    from app.models.job import JobSource
+    from app.routes import jobs as jobs_route
     from app.routes.ai_operations import _verified_active_job_context
-    from app.utils.database import db
 
-    with client.application.test_request_context('/'): 
-        checked = datetime.now(timezone.utc).replace(tzinfo=None)
-        fresh_source = JobSource.query.filter_by(key='employment_news').one()
-        fresh_source.last_sync_status = 'success'
-        fresh_source.last_sync_completed_at = checked
-        fresh_source.last_successful_sync_at = checked
-        fresh_source.consecutive_failures = 0
-    
-        stale_source = JobSource.query.filter_by(key='ssc').one()
-        stale_source.last_sync_status = 'success'
-        stale_source.last_sync_completed_at = checked
-        stale_source.last_successful_sync_at = checked - timedelta(hours=37)
-        stale_source.consecutive_failures = 0
-    
-        def add(source, external_id, title, deadline, cutoff=None):
-            item = JobItem(
-                external_id=external_id,
-                title=title,
-                organization='Official Recruitment Board',
-                # Synthetic fixture URLs use an allow-listed official host; this test never fetches them.
-                official_notice_url=f'https://ssc.gov.in/test-fixtures/notices/{external_id}',
-                application_url=f'https://ssc.gov.in/test-fixtures/apply/{external_id}',
-                deadline=deadline,
-                deadline_cutoff_time=cutoff,
-                deadline_timezone='Asia/Kolkata',
-                qualification='Graduate',
-                confidence=0.95,
-            )
-            return upsert_item(source, item)[0]
-    
-        today = india_today()
-        add(fresh_source, 'ai-future', 'Verified Future', today + timedelta(days=2))
-        add(fresh_source, 'ai-today', 'Deadline Today', today)
-        add(fresh_source, 'ai-expired', 'Expired Notice', today - timedelta(days=1))
-        add(fresh_source, 'ai-cutoff', 'Cutoff Passed', today, time(0, 0))
-        add(stale_source, 'ai-stale', 'Stale Source Notice', today + timedelta(days=3))
-        db.session.commit()
-    
-        context = _verified_active_job_context(limit=10)
-        titles = {item['title'] for item in context}
-        assert titles == {'Verified Future', 'Deadline Today'}
-    
-        today_item = next(item for item in context if item['title'] == 'Deadline Today')
-        assert today_item['application_status'] == 'deadline_today'
-        assert today_item['status_label'] == 'Deadline today—check official portal'
-        assert today_item['can_apply'] is False
-    
-        future_item = next(item for item in context if item['title'] == 'Verified Future')
-        assert future_item['application_status'] == 'open'
-        assert future_item['status_label'] == 'Verified open'
-        assert future_item['can_apply'] is True
-    
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    checked = now.isoformat().replace('+00:00', 'Z')
+    stale = (now - timedelta(hours=37)).isoformat().replace('+00:00', 'Z')
+    local_now = now.astimezone(ZoneInfo('Asia/Kolkata'))
+    today = local_now.date()
+
+    def item(slug, title, deadline, checked_at=checked, cutoff=None):
+        return {
+            'id': len(slug),
+            'slug': slug,
+            'title': title,
+            'organization': 'Official Recruitment Board',
+            'job_type': 'government',
+            'deadline': deadline.isoformat() if deadline else None,
+            'deadline_cutoff_time': cutoff,
+            'deadline_timezone': 'Asia/Kolkata',
+            'application_status': 'open',
+            'can_apply': True,
+            'status_label': 'Verified open',
+            'location': 'India',
+            'qualification': 'Graduate',
+            'official_notice_url': 'https://example.gov.in/notices/' + slug + '.pdf',
+            'application_url': 'https://example.gov.in/apply/' + slug,
+            'verification_status': 'official_source_checked',
+            'status': 'published',
+            'source_checked_at': checked_at,
+            'last_seen_at': checked_at,
+            'published_at': checked,
+            'source': {
+                'key': 'official_board',
+                'name': 'Official Recruitment Board',
+                'last_sync_status': 'success',
+                'last_successful_sync_at': checked_at,
+            },
+        }
+
+    cutoff = (local_now - timedelta(minutes=10)).strftime('%H:%M')
+    items = [
+        item('ai-future', 'Verified Future', today + timedelta(days=2)),
+        item('ai-today', 'Deadline Today', today),
+        item('ai-expired', 'Expired Notice', today - timedelta(days=1)),
+        item('ai-cutoff', 'Cutoff Passed', today, cutoff=cutoff),
+        item('ai-stale', 'Stale Source Notice', today + timedelta(days=3), checked_at=stale),
+    ]
+    snapshot_path = tmp_path / 'jobs.json'
+    snapshot_path.write_text(json.dumps({'items': items, 'sources': []}), encoding='utf-8')
+    monkeypatch.setattr(jobs_route, '_SNAPSHOT_PATH', snapshot_path)
+
+    context = _verified_active_job_context(limit=10)
+    titles = {entry['title'] for entry in context}
+    assert titles == {'Verified Future', 'Deadline Today'}
+
+    today_item = next(entry for entry in context if entry['title'] == 'Deadline Today')
+    assert today_item['application_status'] == 'deadline_today'
+    assert today_item['status_label'] == 'Deadline today—check official portal'
+    assert today_item['can_apply'] is False
+
+    future_item = next(entry for entry in context if entry['title'] == 'Verified Future')
+    assert future_item['application_status'] == 'open'
+    assert future_item['status_label'] == 'Verified open'
+    assert future_item['can_apply'] is True
 
 def test_ai_scholarship_context_preserves_deadline_and_renewal_scope(monkeypatch):
     from app.routes.ai_operations import _verified_active_scholarship_context
