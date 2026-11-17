@@ -224,7 +224,7 @@ def generate_client_reply(user, current_message):
     # Load only context relevant to this question. Avoid querying orders, job
     # feeds and scholarship catalogs for greetings or unrelated support questions.
     intents = _client_message_intents(current_message)
-    message_terms = {term for term in re.findall(r"[a-z0-9]+", current_message.lower()) if len(term) >= 4 and term not in {
+    message_terms = {term for term in re.findall(r"[a-z0-9]+", current_message.lower()) if len(term) >= 3 and term not in {
         'what', 'when', 'where', 'which', 'with', 'from', 'that', 'this', 'have', 'your', 'about', 'please', 'help', 'does', 'will', 'would', 'could', 'should', 'want', 'need'
     }}
     service_query = Service.query.filter_by(is_active=True).options(joinedload(Service.category))
