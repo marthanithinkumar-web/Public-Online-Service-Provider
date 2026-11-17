@@ -132,7 +132,7 @@ def _operations_findings(context):
 
 def _client_message_intents(message):
     """Classify the latest question so unrelated datasets are not loaded."""
-    terms = set(re.findall(r"[a-z0-9]+", str(message or "").lower()))
+    terms = set(re.findall(r"\\w+", str(message or "").lower()))
     return {
         'jobs': bool(terms & {'job', 'jobs', 'vacancy', 'vacancies', 'recruitment', 'recruit', 'notification', 'notifications', 'exam', 'admit', 'employment'}),
         'scholarships': bool(terms & {'scholarship', 'scholarships', 'stipend', 'stipends', 'fellowship', 'fellowships'}),
@@ -224,7 +224,7 @@ def generate_client_reply(user, current_message):
     # Load only context relevant to this question. Avoid querying orders, job
     # feeds and scholarship catalogs for greetings or unrelated support questions.
     intents = _client_message_intents(current_message)
-    message_terms = {term for term in re.findall(r"[a-z0-9]+", current_message.lower()) if len(term) >= 3 and term not in {
+    message_terms = {term for term in re.findall(r"\\w+", current_message.lower()) if len(term) >= 3 and term not in {
         'what', 'when', 'where', 'which', 'with', 'from', 'that', 'this', 'have', 'your', 'about', 'please', 'help', 'does', 'will', 'would', 'could', 'should', 'want', 'need'
     }}
     service_query = Service.query.filter_by(is_active=True).options(joinedload(Service.category))
@@ -243,7 +243,7 @@ def generate_client_reply(user, current_message):
     ranked_services = []
     for service in candidates:
         searchable = f"{service.name or ''} {service.description or ''} {service.keywords or ''} {service.category.name if service.category else ''}".lower()
-        searchable_terms = {term for term in re.findall(r"[a-z0-9]+", searchable) if len(term) > 2}
+        searchable_terms = {term for term in re.findall(r"\\w+", searchable) if len(term) > 2}
         score = len(message_terms & searchable_terms)
         if message_terms and searchable_terms:
             for term in message_terms - searchable_terms:
