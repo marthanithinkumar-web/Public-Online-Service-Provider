@@ -136,7 +136,7 @@ def _client_message_intents(message):
     return {
         'jobs': bool(terms & {'job', 'jobs', 'vacancy', 'vacancies', 'recruitment', 'recruit', 'notification', 'notifications', 'exam', 'admit', 'employment'}),
         'scholarships': bool(terms & {'scholarship', 'scholarships', 'stipend', 'stipends', 'fellowship', 'fellowships'}),
-        'orders': bool(terms & {'order', 'orders', 'application', 'applications', 'status', 'track', 'tracking', 'payment', 'payments', 'receipt', 'transaction', 'request', 'requests'}),
+        'orders': bool(terms & {'order', 'orders', 'status', 'track', 'tracking', 'payment', 'payments', 'receipt', 'transaction', 'request', 'requests'}),
     }
 
 
