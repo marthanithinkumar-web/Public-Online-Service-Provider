@@ -119,3 +119,15 @@ def test_ai_scholarship_context_preserves_deadline_and_renewal_scope(monkeypatch
     assert renewal_item['status_label'] == 'Verified open—renewal only'
     assert renewal_item['can_apply'] is False
 
+
+
+
+def test_client_ai_intent_detection_limits_unrelated_context():
+    from app.routes.ai_operations import _client_message_intents
+
+    assert _client_message_intents("hello, how are you?") == {
+        'jobs': False, 'scholarships': False, 'orders': False,
+    }
+    assert _client_message_intents("show current government jobs")['jobs'] is True
+    assert _client_message_intents("find scholarships for engineering")['scholarships'] is True
+    assert _client_message_intents("track my application payment status")['orders'] is True
