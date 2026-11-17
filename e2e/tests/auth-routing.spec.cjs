@@ -136,16 +136,18 @@ test('authenticated desktop and mobile Track Request links open the tracking vie
 })
 
 
-test('homepage displays the configured public assistance fee', async ({ page }) => {
+test('homepage hides the generic assistance fee and does not request it', async ({ page }) => {
+  let homepageFeeRequested = false
   await page.route('**/api/**', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
   })
   await page.route('**/api/services/homepage-assistance-fee', async (route) => {
+    homepageFeeRequested = true
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ price_inr: 45 }) })
   })
   await page.goto('/')
-  await expect(page.getByText('Homepage assistance fee', { exact: true })).toBeVisible()
-  await expect(page.getByText('₹45', { exact: true })).toBeVisible()
+  await expect(page.getByText('Homepage assistance fee', { exact: true })).toHaveCount(0)
+  expect(homepageFeeRequested).toBe(false)
 })
 
 test('service search cards use the current configured scholarship assistance fee', async ({ page }) => {

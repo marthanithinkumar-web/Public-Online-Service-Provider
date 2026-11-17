@@ -1,11 +1,14 @@
 import difflib
 import json
 import os
+import re
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
 import requests
+from sqlalchemy import or_
+from sqlalchemy.orm import joinedload
 from flask import Blueprint, jsonify, request
 
 from ..models.admin_audit import AdminAuditLog
@@ -127,6 +130,16 @@ def _operations_findings(context):
         findings.append({'severity': 'warning', 'area': 'jobs', 'message': f"{context['jobs']['source_failures']} job source(s) are failed or degraded; their records are excluded from verified-active results."})
     return findings
 
+def _client_message_intents(message):
+    """Classify the latest question so unrelated datasets are not loaded."""
+    terms = set(re.findall(r"\w+", str(message or "").lower()))
+    return {
+        'jobs': bool(terms & {'job', 'jobs', 'vacancy', 'vacancies', 'recruitment', 'recruit', 'notification', 'notifications', 'exam', 'admit', 'employment'}),
+        'scholarships': bool(terms & {'scholarship', 'scholarships', 'stipend', 'stipends', 'fellowship', 'fellowships'}),
+        'orders': bool(terms & {'order', 'orders', 'status', 'track', 'tracking', 'payment', 'payments', 'receipt', 'transaction', 'request', 'requests'}),
+    }
+
+
 def _parse_client_ai_response(raw):
     lines = raw.splitlines()
     first_line = lines[0].strip().upper() if lines else ''
@@ -208,20 +221,29 @@ def _verified_active_scholarship_context(limit=5):
 def generate_client_reply(user, current_message):
     if os.getenv('POSP_CLIENT_AI_ENABLED', 'false').strip().lower() != 'true':
         return None, False, 'Client AI is disabled.'
-    # Keep the prompt small: sending the full service catalogue and long chat history
-    # increases latency and can distract the model from the client's actual question.
-    # Lightweight fuzzy token matching helps route misspelled service names without
-    # spending a second model call just to rewrite the client's question.
-    message_terms = {term for term in ''.join(
-        char.lower() if char.isalnum() else ' ' for char in current_message
-    ).split() if len(term) > 2}
-    candidates = Service.query.filter_by(is_active=True).order_by(Service.name).all()
+    # Load only context relevant to this question. Avoid querying orders, job
+    # feeds and scholarship catalogs for greetings or unrelated support questions.
+    intents = _client_message_intents(current_message)
+    message_terms = {term for term in re.findall(r"\w+", current_message.lower()) if len(term) >= 3 and term not in {
+        'what', 'when', 'where', 'which', 'with', 'from', 'that', 'this', 'have', 'your', 'about', 'please', 'help', 'does', 'will', 'would', 'could', 'should', 'want', 'need'
+    }}
+    service_query = Service.query.filter_by(is_active=True).options(joinedload(Service.category))
+    if message_terms:
+        service_filters = []
+        for term in message_terms:
+            pattern = f"%{term}%"
+            service_filters.extend((Service.name.ilike(pattern), Service.description.ilike(pattern), Service.keywords.ilike(pattern)))
+        candidates = service_query.filter(or_(*service_filters)).order_by(Service.name).limit(80).all()
+        # Preserve typo tolerance: if exact matching finds nothing, fall back to
+        # the bounded catalog and use the existing fuzzy token matcher below.
+        if not candidates:
+            candidates = Service.query.filter_by(is_active=True).options(joinedload(Service.category)).order_by(Service.name).limit(160).all()
+    else:
+        candidates = []
     ranked_services = []
     for service in candidates:
         searchable = f"{service.name or ''} {service.description or ''} {service.keywords or ''} {service.category.name if service.category else ''}".lower()
-        searchable_terms = {term for term in ''.join(
-            char if char.isalnum() else ' ' for char in searchable
-        ).split() if len(term) > 2}
+        searchable_terms = {term for term in re.findall(r"\w+", searchable) if len(term) > 2}
         score = len(message_terms & searchable_terms)
         if message_terms and searchable_terms:
             for term in message_terms - searchable_terms:
@@ -233,27 +255,36 @@ def generate_client_reply(user, current_message):
     services = [{
         'name': service.name,
         'category': service.category.name if service.category else None,
-        'description': (service.description or '')[:220],
+        'description': (service.description or '')[:180],
         'application_fee_inr': float(service.price_inr or 0),
         'official_fee_inr': float(service.official_fee_inr) if service.official_fee_inr is not None else None,
         'official_fee_status': service.official_fee_status or 'unconfirmed',
-        'keywords': (service.keywords or '')[:160],
-    } for _, service in ranked_services[:8]]
-    orders = [{
-        'order_code': order.order_code,
-        'service': order.service.name if order.service else None,
-        'status': order.status,
-        'updated_at': (order.updated_at or order.created_at).isoformat(),
-    } for order in Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).limit(5).all()]
+        'keywords': (service.keywords or '')[:120],
+    } for _, service in ranked_services[:5]]
+    orders = []
+    if intents['orders']:
+        orders = [{
+            'order_code': order.order_code,
+            'service': order.service.name if order.service else None,
+            'status': order.status,
+            'updated_at': (order.updated_at or order.created_at).isoformat(),
+        } for order in Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).limit(3).all()]
     india_today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
-    active_job_context = _verified_active_job_context(limit=5)
-    active_scholarship_context = _verified_active_scholarship_context(limit=5)
+    active_job_context = _verified_active_job_context(limit=3) if intents['jobs'] else []
+    active_scholarship_context = _verified_active_scholarship_context(limit=3) if intents['scholarships'] else []
     history = [{
         'role': 'client' if item.sender_role == 'client' else 'assistant',
-        'content': item.message[:500],
+        'content': item.message[:320],
     } for item in SupportMessage.query.filter_by(user_id=user.id)
-        .order_by(SupportMessage.created_at.desc()).limit(8).all()][::-1]
-    context = {'relevant_services': services, 'client_requests': orders, 'recent_conversation': history, 'active_jobs_verified': active_job_context, 'active_scholarships_verified': active_scholarship_context, 'listing_checked_date_ist': india_today.isoformat()}
+        .order_by(SupportMessage.created_at.desc()).limit(4).all()][::-1]
+    context = {
+        'relevant_services': services,
+        'client_requests': orders,
+        'recent_conversation': history,
+        'active_jobs_verified': active_job_context,
+        'active_scholarships_verified': active_scholarship_context,
+        'listing_checked_date_ist': india_today.isoformat() if intents['jobs'] or intents['scholarships'] else None,
+    }
     prompt = f"""Answer the client's latest POSP support question directly, accurately, and in plain simple English.
 Interpret spelling mistakes, typos, missing letters or words, phonetic spellings, shorthand, grammar errors, mixed-up word order, and silly or incomplete questions charitably. Infer the likely intent from the whole message and recent conversation; do not criticize the user or ask them to retype if the intent is reasonably clear. Do this in this same call; never request a separate correction/rewriting call.
 For general questions, greetings, thanks, and casual or silly messages, respond naturally when safe. Use POSP context for POSP-specific facts. Keep the answer to 1–4 short sentences or a few steps. Do not repeat the question or explain internal reasoning.
@@ -262,7 +293,7 @@ POSP helps people APPLY for public services; it is not a government portal.
 Context JSON: {json.dumps(context, ensure_ascii=False, separators=(',', ':'))}
 Latest client message (may contain typos, missing words, or scrambled phrasing): {current_message}
 """
-    raw, error = _call_model(CLIENT_AI_PROMPT, prompt, 220)
+    raw, error = _call_model(CLIENT_AI_PROMPT, prompt, 160)
     if error:
         return None, True, error
     answer, handoff = _parse_client_ai_response(raw)
