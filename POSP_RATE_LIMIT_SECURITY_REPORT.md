@@ -118,3 +118,12 @@ not a failing test. CI is configured to run it against its Redis service.
   configured URI but does not independently record an exact hostname match.
 - Production quota thresholds were not probed by repeated requests; limits
   were measured locally and shared-counter behavior was verified in CI.
+
+
+## 2026-11-19 verification boundary (append-only)
+
+- No rate-limit implementation change was made in this run. The pinned Flask-Limiter version remains 2.9.0; the constructor registers the intended 500/hour and 2,000/day defaults; explicit login/registration/password-reset limits remain; the backend reads `RATELIMIT_STORAGE_URI`; and the documented bounded outage policy remains five minutes of per-process fallback for ordinary limited routes with immediate fail-closed authentication and fail-closed behavior for other limited routes after the window.
+- The last full live strict-readiness/shared-Valkey PING evidence remains 2026-11-15 (10/10 checks). No fresh production connectivity probe or quota stress test was run. Main `/readiness` performs a database check; main `/api/jobs` is DB-backed and may trigger background sync. Do not call either endpoint or manually run the current `production-smoke.yml` under the absolute production-database no-touch rule.
+- The latest main production scholarship smoke run `44295458327` failed on 2026-11-18 because `/api/scholarships/` did not return valid JSON within 24 attempts; the first request timed out after 30 seconds. This is a production API availability/response failure, not evidence of a rate-limit quota failure.
+- PR #268 adds DB-free `/health/rate-limit` and `/health/dependencies` probes and changes the public jobs API to a read-only verified snapshot. Exact-head CI `43952859017` and E2E `43952858934` passed on head `fb1b1ed5a0e4f1021c1044c141fb5152d81a4e64`, but the branch is 41 ahead / 6 behind current main and non-mergeable. Its SBI URL change to `/current-openings1` still requires live official-source proof before merge. These probes are not deployed; do not report fresh shared-store connectivity until they are deployed and checked.
+- No production rate-limit flooding, database access, Key Value creation/deletion/reconfiguration, secret change, merge, or deployment occurred.
