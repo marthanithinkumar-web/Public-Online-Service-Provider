@@ -1,7 +1,7 @@
 # POSP Completion Audit
 
 **Audit date:** 2026-11-15  
-**Latest evidence update:** 2026-11-16
+**Latest evidence update:** 2026-11-18
 **Repository:** `marthanithinkumar-web/public-online-service-provider`  
 **Starting branch:** `main` at `023a581ed5a88180d263cdf83ad10fd9b025b556`
 
@@ -9,6 +9,33 @@ This audit distinguishes code/test evidence from production behavior and from
 external integrations that could not be verified without account credentials.
 It is a point-in-time assessment; the final completion report records changes
 made after this audit.
+
+## 2026-11-18 scheduled-run verification boundary
+
+The 2026-11-18 increment inspected the repository and refreshed live
+readiness evidence without changing application code or production data.
+The checkout was clean on
+`fix/posp-scholarship-smoke-current-official-evidence-20261116` at commit
+`164f99d9456a9d91edd8bd00d8ad2589d005d07f`; `origin/main` was refreshed to
+`f7a35955d7c6b1169ac8fd6976af4636f2609013`.
+
+- Production `GET /health` returned HTTP 200:
+  `{"status":"ok"}`.
+- Production strict `GET /readiness` returned HTTP 200 with status `ready`;
+  database, persistent storage and connectivity, shared Valkey storage and
+  connectivity, SMTP, and Razorpay checks were all reported true.
+- Production `GET /api/scholarships/` returned HTTP 200 with 27 items,
+  all 27 classified as official and all item-level source-check timestamps
+  updated on 2026-11-18.
+- Focused backend verification passed 35 tests covering health/readiness,
+  global and route limits, Redis outage behavior, auth fail-closed behavior,
+  and recovery. This is direct limiter evidence but is not a production quota
+  probe.
+
+No PR was merged or deployment made during this increment. PR #262 remains
+open and PR #263 remains closed/superseded. PR #267 and later open work must
+be re-reviewed before any merge so stale heads or conflicting changes are not
+overwritten.
 
 ## 2026-11-16 scheduled-run update
 

@@ -158,3 +158,24 @@ rate-limiter code or configuration issue. This adds no new evidence for
 production Valkey hostname matching, PING, quotas, outage behavior, or
 readiness: those checks were not repeated, and no production quota-probing
 was performed. Existing production PING evidence remains dated 2026-11-15.
+
+## 2026-11-18 16:14 IST — verified production refresh
+
+The production API was rechecked without modifying configuration or counters:
+
+- `GET /health` returned HTTP 200 with `{"status":"ok"}`.
+- Strict `GET /readiness` returned HTTP 200 with `status=ready`.
+- Readiness reported `shared_rate_limit_storage=true` and
+  `shared_rate_limit_connectivity=true`, along with database and the other
+  configured dependency checks.
+- Focused local tests passed: 35/35 across health/readiness, hourly/daily
+  defaults, auth route limits, Redis outage/fallback, auth fail-closed,
+  bounded fallback, health exemptions, and reconnect recovery.
+- The production response is credential-safe and exposes no Redis URI,
+  hostname, or secret material.
+
+This refresh does not independently match the masked configured hostname to
+the Render Key Value resource by exact name, and it does not probe 501st or
+2001st requests because that would consume legitimate production quota.
+Cross-worker shared counters remain CI-verified against Redis 7, not a live
+worker repeated-probe.
