@@ -468,3 +468,9 @@ Run timestamp: 2026-11-21 01:18 IST. This section is append-only.
 - PR #270 was documentation-only at head `ef900bc9dbdd770e2aba5f2cf488f5b44b176ed6` (3 changed files, 3 ahead / 4 behind current main); its exact-head CI 44389263193 and E2E 44389263177 passed before this append. Revalidate checks and base immediately before any merge.
 - PR #262 remains stale and must not be merged as-is. PR #232 still has insufficient missing-deadline behavior. PR #251's robots.txt Disallow approach conflicts with the current X-Robots-Tag noindex strategy. PR #252 and older overlapping PRs require fresh comparison before any action.
 - No code change, merge, or new deployment was made in this audit. Keep the listing-correctness blocker open until the missing SBI notices, failed-source coverage, full API exposure, and scholarship UI scope are verified and fixed. Keep the Copilot AI provider refactor blocked pending explicit model/configuration review.
+
+
+### Admin and item-evidence refinement
+
+- The backend AI Operations endpoint computes job verified-open/deadline-today/unverified-or-stale counts, source failures, and last successful sync, plus scholarship unverified/stale/source-failure counts. The current `AiOperations.tsx` renders only partial job/scholarship counts and scholarship source rows; the full job source-health list, total checked, verified-open/deadline-today counts, unverified counts, and last successful sync are not visibly surfaced. This remains an admin observability gap.
+- The NSP closed-item records still show per-item `source_checked_at` values of 13/15 Nov, although the source-level refresh succeeded on 20 Nov and the official page was rechecked on 21 Nov. Refresh item-level evidence timestamps on successful checks; do not treat the older item timestamp as the 21 Nov check.
