@@ -441,3 +441,9 @@ After the items above are complete and tested, continue the existing full improv
 - No verified expired or deadline-today active listings found in the committed static snapshots. Do not declare POSP clean: DB-backed jobs API, live UI, sitemap, AI/notification exposure, source completeness and full scholarship API remain unverified. Do not call `/readiness` or `/api/jobs/` under the production DB no-touch rule.
 - PR #268 remains 41 ahead / 10 behind and non-mergeable despite historical green CI/E2E. PR #270 is docs-only, 8 ahead / 4 behind; exact-head CI/E2E passed before this append and must be rerun. PR #253 is closed unmerged; PR #255 is the merged replacement.
 - No production DB, Render config, Key Value, credentials, merge or deployment was changed.
+
+
+### SSC notice cutoff and eligibility — 2026-11-21
+
+- Official SSC PDF gives the restricted Grade C Stenographer cadre eligibility and application cutoff **8 Dec 2026, 23:00 IST**.
+- Current public record has `deadline_cutoff_time=null`, `appointment_type=null`, and presents the notice as a generic government job. `parse_ssc` reads notice-board JSON dates but not the PDF cutoff. Extract/store 23:00 Asia/Kolkata and clearly label/exclude the limited departmental exam from general-public recruitment. Until fixed, keep the safe deadline-today label and disable Apply when the cutoff is unknown.
