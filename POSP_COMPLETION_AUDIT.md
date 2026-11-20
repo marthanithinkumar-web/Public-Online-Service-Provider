@@ -431,3 +431,40 @@ owner-authorized deployment configuration.
 
 ### Run outcome
 - No application code, snapshots, production configuration, database, or service was changed. No merge/deployment occurred. This checkpoint records read-only evidence and unresolved blockers; all production and feed-correctness blockers remain open.
+
+
+## 2026-11-21 run audit
+
+Run timestamp: 2026-11-21 01:18 IST. This section is append-only.
+
+### Copilot ZIP inspection and disposition
+
+- Exact Library attachment `POSP.zip` was accessible and inspected recursively. SHA-256: `306a55c63fbe23155929d6c07c915bca0e9a4a5550a7a860c74009f3477b3d0f`. Layout contains an outer working repository at `POSP/` and a nested repository at `POSP/public-online-service-provider/`; the nested repository root was not assumed from the first folder.
+- The nested repository contained 379 relevant source, test, documentation, and configuration files after excluding Git metadata, dependency trees, caches, generated builds, local databases, and archive artifacts. After normalizing Windows CRLF to LF, 342 matched current main and 37 differed. The differences were reconciled against current main and the open PR set; the nested SEBI parser change is already represented by PR #261.
+- The archive contains local SQLite/test database files, uploads, caches, Git metadata, dependency trees, generated bundles and line-ending-only rewrites. These were not imported or inspected as application data. A static scan found no confirmed real credentials; the only credential-shaped match was a test-only E2E placeholder. No database contents were read.
+- Safe ZIP changes already merged and deployed: PR #260 rate-limit hardening (merge `c730b8c4058adc0b8843cb4dab78641ca919caba`; CI 43706405080 and E2E 43706405135 passed); PR #261 SEBI parser (merge `d9386e448524d31b57c608bcb9dd02e5f4e30f43`; CI 43726642174 and E2E 43726642122 passed); PR #265 safe UI/filter/privacy and fee/login fixes (merge `da7be9d7ffcd39073d485ba502879403491aea82`; CI 43882543484 and E2E 43882543522 passed); PR #267 Render database-startup hard guard (merge `772eaa39d62dc50c4e51e00e8e8962f962c12bfc`; CI 43884521242 and E2E 43884521284 passed).
+- The remaining unmerged Copilot provider abstraction adds `backend/app/ai/providers/*`, `backend/app/ai/text.py`, `backend/tests/test_ai_provider_architecture.py`, and `docs/AI_PROVIDER_ARCHITECTURE.md`, and changes `backend/app/ai_core.py` and `render.yaml`. Its default OpenAI model string `gpt-6-luna` is not validated; the manifest enables both `POSP_AI_ENABLED` and `POSP_CLIENT_AI_ENABLED`, while the current main configuration intentionally uses `gemini-3.5-flash-lite` and keeps client AI disabled. Do not merge or deploy this refactor until provider/model configuration, credential handling, privacy, and provider-backed tests are reviewed. It remains a specific integration blocker, not a completed feature.
+
+### Current main and production state
+
+- Latest inspected main: `8d92d831151350195bfeb0c4d72b1e831d1720d6` (data refresh; no code change in this commit).
+- Existing Render frontend `pospindia` deployment `dep-dc01upsipgvc738sa6e0` and backend `public-online-service-provider-api` deployment `dep-dc01upsipgvc738sa5g0` are both live from that commit. No deployment was triggered by this audit.
+- Backend Render logs on 2026-11-20 show `SKIP_DATABASE_BOOTSTRAP=1` caused `pre_migrate.py`, Alembic upgrade, `seed.py`, and job snapshot import to skip. No production database migration, seed, snapshot import, or other database write was performed in this run.
+- Render liveness logs show `/health` returning 200. `/readiness` and the DB-backed `/api/jobs/` endpoint were not called because they can connect to the production database, which remains prohibited. The live `/api/scholarships/` fetch returned the Render loading interstitial; API-level production verification is therefore incomplete.
+
+### Public opportunity audit (2026-11-21)
+
+- Live static jobs snapshot: 5 records, generated 2026-11-20T09:57:59Z. No published deadline before or on 2026-11-21 was found. The official SBI page currently lists six open notices: CRPD/SCO/2026-27/31 (10 Dec), /36 (3 Dec), /29 (25 Nov), /28 (25 Nov), /26 (23 Nov), and /27 (23 Nov). The current POSP snapshot contains /31, /36, /26, and /27 but omits the two still-open notices /29 and /28. SBI /30, whose official application last date was 16 Nov, is absent from the active snapshot. The SBI source is marked successful with four published items despite the two omissions; source completeness is not demonstrated.
+- Job source health in the same snapshot shows 13 of 20 sources failed or degraded: NVS, Sainik Schools, DRDO-RAC, RRB, UPSC, MHA IB, TGPRB, India Post GDS, India Post Vacancies, ISRO, NCS, Infosys, and Accenture. These errors are not evidence of expiry; the affected opportunities must remain unverified until checked.
+- Live static scholarship snapshot: 27 records, generated 2026-11-20T10:21:34.719517Z. All 27 have a 30 Nov student-application or renewal deadline; none is expired or due on 21 Nov. The official NSP page confirms Beedi/Cine/IOMC/LSDM Pre-Matric and Post-Matric student applications closed 31 Oct, Pre-Matric Scholarship for Students with Disabilities closed 31 Oct, and NMMS student applications closed 15 Nov. These closed schemes are absent from the active public snapshot. PR #253 is closed unmerged; the replacement scholarship-status fix was merged in PR #255 (`e014f50756ff59694a8a972ba768a8f648ba4ce4`; CI 43497910100 and E2E 43497910086 passed).
+- NEC Merit Scholarship is explicitly renewal-only on the official NSP page. The backend catalog carries `application_scope=renewal_only`, while the checked-in frontend snapshot has a null scope; ensure the UI and fallback snapshot do not present a renewal deadline as a general first-time application.
+- Scholarship source health records failures for AP JnanaBhumi (HTTPError), Social Justice (ConnectTimeout), and Tribal Affairs (SSLError), with six unverified records. These are not expiry evidence and must stay excluded from verified-open public counts until rechecked.
+- The live sitemap contains 140 URLs, including 5 job details and 27 scholarship details; no closed Beedi/NMMS items were found in those active detail routes. Live robots.txt contains `User-agent: *`, `Allow: /`, and the sitemap URL. Render configuration sets `X-Robots-Tag: noindex, nofollow, noarchive` for private routes; live response-header verification remains outstanding.
+- Expiry notification for this run: **No verified expired or deadline-today active listings found in the live static snapshots.** This does not certify the DB-backed jobs API or the full sync set as clean.
+
+### Open PRs and blockers
+
+- PR #268 head `fb1b1ed5a0e4f1021c1044c141fb5152d81a4e64`: CI 43952859017 and E2E 43952858934 passed, but it is 41 commits ahead / 10 behind current main and not mergeable. It contains a snapshot-only jobs API, DB-free `/health/rate-limit` and `/health/dependencies` probes, an SBI current-openings source change, and a regression test for /28 and /29. Rebase/reconcile it against current main and extend the SBI test to cover the newly listed /31 and /36 before considering merge.
+- PR #270 was documentation-only at head `ef900bc9dbdd770e2aba5f2cf488f5b44b176ed6` (3 changed files, 3 ahead / 4 behind current main); its exact-head CI 44389263193 and E2E 44389263177 passed before this append. Revalidate checks and base immediately before any merge.
+- PR #262 remains stale and must not be merged as-is. PR #232 still has insufficient missing-deadline behavior. PR #251's robots.txt Disallow approach conflicts with the current X-Robots-Tag noindex strategy. PR #252 and older overlapping PRs require fresh comparison before any action.
+- No code change, merge, or new deployment was made in this audit. Keep the listing-correctness blocker open until the missing SBI notices, failed-source coverage, full API exposure, and scholarship UI scope are verified and fixed. Keep the Copilot AI provider refactor blocked pending explicit model/configuration review.
