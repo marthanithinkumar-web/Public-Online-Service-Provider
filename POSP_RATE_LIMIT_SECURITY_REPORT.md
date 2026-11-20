@@ -127,3 +127,28 @@ not a failing test. CI is configured to run it against its Redis service.
 - The latest main production scholarship smoke run `44295458327` failed on 2026-11-18 because `/api/scholarships/` did not return valid JSON within 24 attempts; the first request timed out after 30 seconds. This is a production API availability/response failure, not evidence of a rate-limit quota failure.
 - PR #268 adds DB-free `/health/rate-limit` and `/health/dependencies` probes and changes the public jobs API to a read-only verified snapshot. Exact-head CI `43952859017` and E2E `43952858934` passed on head `fb1b1ed5a0e4f1021c1044c141fb5152d81a4e64`, but the branch is 41 ahead / 6 behind current main and non-mergeable. Its SBI URL change to `/current-openings1` still requires live official-source proof before merge. These probes are not deployed; do not report fresh shared-store connectivity until they are deployed and checked.
 - No production rate-limit flooding, database access, Key Value creation/deletion/reconfiguration, secret change, merge, or deployment occurred.
+
+
+## 2026-11-21 rate-limit revalidation
+
+Run timestamp: 2026-11-21 01:18 IST. This section records a read-only revalidation; no rate-limit configuration or secret was changed.
+
+### Current implementation on main
+
+- Latest inspected main is `8d92d831151350195bfeb0c4d72b1e831d1720d6`. The current backend requirements pin `Flask-Limiter==2.9.0`.
+- `backend/app/utils/limiter.py` reads `RATELIMIT_STORAGE_URI` (not `REDIS_URL`) and constructs the shared limiter with global defaults `2000 per day` and `500 per hour`. `/health` and `/readiness` are explicitly exempt. The explicit route-specific login, registration, and password-reset limits remain in place.
+- The documented outage policy uses Flask-Limiter's bounded in-memory fallback for at most 300 seconds. Authentication routes fail closed immediately when shared storage is missing or degraded; other non-operational routes retain local rate limiting only during that bounded window and then return 503. Health/readiness probes remain available so operators can detect the failure.
+- Strict readiness evaluates dependency checks and returns a non-ready status when any required dependency is unavailable. The implementation uses the pinned Flask-Limiter 2.9.0 storage-degraded state and is covered by focused tests.
+
+### Verification evidence and remaining gaps
+
+- PR #260 merged as `c730b8c4058adc0b8843cb4dab78641ca919caba`; exact-head CI 43706405080 and authenticated E2E 43706405135 both passed. The rate-limit unit and Redis integration tests are present on main. This run did not rerun tests or trigger a new CI workflow.
+- The current unit suite covers the app's hourly default, explicit authentication limits, fallback behavior, immediate authentication fail-closed behavior, the 300-second cutoff, and recovery. The daily 2,000-request assertion currently uses a separate test Limiter instance rather than exercising the full application limiter with both defaults together; add an application-level daily-default regression test before treating the combined global quota as fully proven.
+- Render Key Value `public-online-service-provider-rate-limit` is present and reports status `available`. The current service environment is not exposing secret values, and no secret was read or changed.
+- The latest backend deployment is `dep-dc01upsipgvc738sa5g0` from main `8d92d831151350195bfeb0c4d72b1e831d1720d6`. Render logs show production pre-migration, Alembic migration, seed, and snapshot import tasks skipped because `SKIP_DATABASE_BOOTSTRAP=1`. Liveness `/health` returned 200 in Render logs.
+- `/readiness` was deliberately not called in this run because its production check includes the application database and the owner has prohibited production database connections. The Key Value instance's `available` state is not a Redis PING. Therefore current shared Redis connectivity is **not reverified** in this run; the earlier successful readiness result remains historical evidence only.
+- PR #268 adds database-free `/health/rate-limit` and `/health/dependencies` probes with tests that assert no database connection. Its exact-head CI 43952859017 and E2E 43952858934 passed, but its head is 41 commits ahead / 10 behind current main and the PR is not mergeable. Rebase and revalidate it before using these probes in production.
+
+### Status
+
+No production database connection, migration, write, rate-limit secret change, Key Value creation/deletion, merge, or deployment was performed by this rate-limit audit. Current Redis connectivity remains unverified until a database-free rate-limit health probe is merged and deployed.
