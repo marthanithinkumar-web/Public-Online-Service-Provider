@@ -430,3 +430,14 @@ After the items above are complete and tested, continue the existing full improv
 
 - The backend AI Operations overview already calculates job verified-open/deadline-today/unverified-or-stale counts, source failures, and last successful sync, plus scholarship unverified/stale/source-failure counts. The current `AiOperations.tsx` UI renders only job published/needs-review/expired, scholarship active/official/stale, scholarship source rows, and a general findings list; it does not visibly render the full job source-health list, total checked, verified-open/deadline-today counts, unverified counts, or last successful sync. Add these fields and actionable per-source errors. Do not show a success message when the sync result is null or failed.
 - NSP closed-record audit entries still carry item-level `source_checked_at` values from 13/15 Nov even though the source-level sync succeeded on 20 Nov and the official page was rechecked on 21 Nov. Refresh per-item evidence timestamps on successful source checks so the audit timestamp reflects the actual evidence retrieval.
+
+
+### 2026-11-21 01:48 follow-up
+
+- Re-upload the exact `POSP.zip`: the current conversation has no attachment bytes. Do not substitute the historical Library copy/hash.
+- Main's static jobs snapshot has 5 items; official SBI lists 6 open notices. /28 and /29 (25 Nov) are missing; /30 (16 Nov) is absent. Source health is 7/20 success, 4 failed, 9 degraded. `sync_source` treats any non-empty parse as success without a completeness check, so source success can mask missing notices.
+- The SSC Grade C Stenographers LDCE 2026 listing is restricted to existing specified Grade C Stenographer cadres; it must not appear as an unrestricted general-public job. Official deadline is 8 Dec 2026, 23:00.
+- Current scholarship snapshot/UI now correctly carries NEC Merit `application_scope=renewal_only`; the prior null-scope gap is corrected in main, subject to live UI verification. Keep 4 closed and 6 unverified records excluded; refresh item-level closed-record evidence timestamps.
+- No verified expired or deadline-today active listings found in the committed static snapshots. Do not declare POSP clean: DB-backed jobs API, live UI, sitemap, AI/notification exposure, source completeness and full scholarship API remain unverified. Do not call `/readiness` or `/api/jobs/` under the production DB no-touch rule.
+- PR #268 remains 41 ahead / 10 behind and non-mergeable despite historical green CI/E2E. PR #270 is docs-only, 8 ahead / 4 behind; exact-head CI/E2E passed before this append and must be rerun. PR #253 is closed unmerged; PR #255 is the merged replacement.
+- No production DB, Render config, Key Value, credentials, merge or deployment was changed.
