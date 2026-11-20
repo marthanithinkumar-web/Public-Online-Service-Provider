@@ -1,4 +1,17 @@
 User-agent: *
 Allow: /
 
+# Keep authentication, account, order, messaging and submission routes out of search crawling.
+Disallow: /login
+Disallow: /register
+Disallow: /request-reset
+Disallow: /reset-password
+Disallow: /account-settings
+Disallow: /my-orders
+Disallow: /messages
+Disallow: /grievances
+Disallow: /submit-grievance
+Disallow: /submit-review
+Disallow: /admin
+
 Sitemap: https://pospindia.onrender.com/sitemap.xml
