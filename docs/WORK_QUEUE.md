@@ -396,3 +396,31 @@ After the items above are complete and tested, continue the existing full improv
 ### P1 — Documentation / PR hygiene
 - PR #262 has 39 changed files, including application code; it is not safe to merge as a documentation-only PR. It is 6 ahead / 6 behind current main and diverged. This run's checkpoint is being carried in a separate docs-only PR from current main. Reconcile/close stale PRs only after checking their unique changes; never merge stale branches wholesale.
 - Next order: obtain the exact ZIP attachment; reconcile PR #268 against current main and verify the correct official SBI source URL; fix ePASS Fresh/Renewal evidence parsing with synthetic regression tests; verify all active jobs/scholarships against official sources; resolve production scholarship API timeout using Render read-only diagnostics without touching Neon; deploy only after exact-head checks and DB-free startup/probe verification; then verify API/UI/sitemap/AI exposure and update the audit.
+
+
+## 2026-11-21 carry-forward
+
+### P0 — POSP ZIP integration and production correctness
+
+- **Copilot ZIP:** the exact archive was inspected recursively (SHA-256 `306a55c63fbe23155929d6c07c915bca0e9a4a5550a7a860c74009f3477b3d0f`). Safe changes are already represented by merged PRs #260, #261, #265, and #267. Exclude nested Git metadata, local SQLite/pytest databases, uploads, caches, dependency trees, generated bundles, and CRLF-only rewrites. Keep the unmerged provider abstraction out of production until its `gpt-6-luna` default is replaced with a verified model and client AI remains disabled until approved credentials/privacy review.
+- **Expiry audit:** this run found no verified expired or deadline-today active records in the live static jobs and scholarship snapshots. Keep the overall blocker open because the DB-backed jobs API and readiness endpoint were not called under the no-production-database-connection rule, and the complete live sync/API surface is not yet verified.
+- **Jobs coverage:** the public static snapshot has five active jobs. Official SBI current openings lists six active notices; CRPD/SCO/2026-27/28 and /29 (both 25 Nov) are missing from the snapshot. SBI /30 (last date 16 Nov) is correctly absent. The SBI source is reported successful but publishes only four records; add completeness-aware parsing and tests for /28, /29, /31, /36, and expired /30. Thirteen of twenty job sources are failed/degraded; do not treat fetch errors as proof of closure or continued openness.
+- **Scholarships:** the public static snapshot has 27 active items, all with 30 Nov deadlines. Beedi Pre-Matric and Post-Matric (31 Oct), Pre-Matric Disability (31 Oct), and NMMS (15 Nov) are closed on the official NSP page and absent from active public listings. PR #253 is closed unmerged; PR #255 is the merged replacement. NEC Merit is renewal-only: backend catalog scope is `renewal_only`, but the checked-in frontend snapshot has null scope; preserve the distinction in every fallback and UI recommendation. Three scholarship source failures and six unverified records remain.
+- **Database-safe live verification:** do not call `/readiness` or the current DB-backed `/api/jobs/` endpoint. Rebase PR #268, which adds a snapshot-only jobs API and DB-free `/health/rate-limit`/`/health/dependencies` probes, then verify those endpoints after exact-head CI and merge. PR #268 is currently 41 ahead / 10 behind main and is not mergeable.
+- **SEO:** sitemap currently has 140 URLs (5 jobs, 27 scholarships); closed Beedi/NMMS detail routes are absent. robots.txt intentionally allows crawlers so they can receive Render `X-Robots-Tag: noindex` headers on private routes. Verify the live response headers; do not merge PR #251's Disallow rules without reconciling this policy.
+
+### P1 — Security, monitoring, and operations
+
+- Rate-limit code on main uses `RATELIMIT_STORAGE_URI`, Flask-Limiter 2.9.0, global defaults 500/hour and 2,000/day, explicit auth limits, and a bounded 300-second in-memory fallback. PR #260 CI/E2E passed. Add an app-level daily-default test; current daily assertion uses a separate Limiter instance. Current Redis connectivity is not reverified because the only deployed readiness probe touches the production database.
+- Ensure the admin operations view exposes actual source totals, verified-open/closed/unverified counts, stale-source failures, last successful sync, and actionable errors. A source marked success must not imply a complete parse; report partial coverage explicitly.
+- Keep PR #270 as the canonical append-only audit/continuity path. Its original exact-head CI/E2E passed; recheck the updated head and current main before merge.
+- Keep PR #262, #232, #251, and other overlapping older PRs unmerged until their diffs are reconciled against current main and exact-head CI is green. Do not force-push or overwrite concurrent work.
+
+### Next dependency-safe sequence
+
+1. Revalidate current main and PR #268; reconcile its 10-behind base without overwriting concurrent changes.
+2. Expand SBI source tests to include all six currently open notices plus expired /30, and verify partial/failed source snapshots are not reported as complete.
+3. Preserve the backend/frontend NEC renewal-only scope in static fallback, search, detail pages, and recommendations.
+4. Run targeted backend tests, full backend suite, frontend tests/build, lint/type/security, API/integration, and safe E2E on the exact PR head.
+5. Merge only after exact-head checks pass and main is revalidated; deploy only through existing Render auto-deploy workflow with database bootstrap guard intact.
+6. Verify live static/API/SEO behavior and DB-free Redis connectivity. Do not declare the listing set clean until the full active jobs and scholarships, sync results, sitemap, AI/notifications, and production behavior are audited.
