@@ -362,3 +362,88 @@ After the items above are complete and tested, continue the existing full improv
 - First rolling deploy after PR #265 included a legacy instance that ran pre-migration/Alembic startup and imported 3 job snapshot records into the production DB. The logs show DB revision 20261114_26 and no recorded Running upgrade line; seed writes cannot be ruled out. No direct DB inspection or rollback was attempted. Treat this as a disclosed incident; never claim the no-production-DB-touch rule was fully maintained for that rollout.
 - The subsequent deploy on current code logged skips for pre-migration, Alembic, seed and snapshot import. New branch fix/render-no-db-startup-hard-guard-20261116 adds unconditional Render-environment protection, even if migration opt-in is present. CI migration validation remains isolated SQLite-only.
 - Do not connect to or alter the production DB to inspect or reverse the imported snapshot records. Preserve the incident note and require the hard-guard PR to pass CI before the next deployment.
+
+
+## 2026-11-19 — Current POSP / SEO / AI carry-forward
+
+### P0 — Exact POSP.zip attachment unavailable
+- The exact `POSP.zip` bytes were not accessible in this conversation. No previous Library copy or alternate archive was substituted. Historical SHA-256 `306a55c63fbe23155929d6c07c915bca0e9a4a5550a7a860c74009f3477b3d0f` is prior-run evidence only. Founder must re-upload the exact archive before recursive comparison resumes. Do not mark ZIP integration complete.
+
+### P0 — Production API verification and database safety
+- Current main is `f7a35955d7c6b1169ac8fd6976af4636f2609013`. Main `production-smoke.yml` still calls DB-dependent `/readiness` and `/api/jobs`; do not manually dispatch or rerun it. PR #268 proposes DB-free probes and a read-only jobs API, but it is stale/non-mergeable and not deployed.
+- Production scholarship smoke run `44295458327` failed on 18 Nov after 24 attempts to obtain valid JSON from `/api/scholarships/`; first request timed out at 30 seconds. Live API/static/sitemap/robots URLs were inaccessible to the current web fetch. No current Render service state or deployment was rechecked. Do not claim live feed cleanliness or deployment completion.
+- Preserve the absolute no-production-database-touch rule. No database connection/query/write/migration/seed/import was performed by this run.
+
+### P0 — Expiry report and active-feed correctness
+- **No verified expired or deadline-today item is present in the current committed active jobs/scholarship snapshots.** This is a snapshot-only result; production API/sitemap/AI exposure remains unverified because the production scholarship smoke failed and live endpoints were inaccessible.
+- Keep repeating the alert until live removal is verified: SBI CRPD/SCO/2026-27/30, official last date 2026-11-16 (expired; absent from committed active job snapshot, live API/detail/sitemap status unknown); Beedi Pre-Matric and Post-Matric, official student last date 2026-10-31 (backend closed audit, absent from committed active frontend snapshot, live API status unknown); Pre-Matric Scholarship for Students with Disabilities, official student last date 2026-10-31 (closed audit, live API status unknown); National Means-cum-Merit Scholarship, official student last date 2026-11-15 (closed audit, live API status unknown). No deadline-today item is in the committed active snapshots on 19 Nov.
+- Current job snapshot: 3 active items, generated 2026-11-18T10:04:07Z; SBI /26 and /27 due 23 Nov, SSC Grade C Stenographers departmental examination due 8 Dec. Official SBI current-openings page checked 19 Nov lists four current openings; /28 and /29 (both due 25 Nov) are missing from the committed snapshot. Source health: 8 success, 9 degraded, 3 failed.
+- PR #268 head `fb1b1ed5a0e4f1021c1044c141fb5152d81a4e64` has green exact-head CI run `43952859017` and E2E run `43952858934`, but is 41 ahead / 6 behind and non-mergeable. It changes the SBI source URL to `/current-openings1`; validate this against the official `/current-openings` page that currently lists /29, /28, /26 and /27. Do not merge until source coverage, main rebase and exact-head CI are resolved.
+- Scholarship snapshot: 27 public active records, all student deadlines 2026-11-30; backend audit retains 4 closed and 6 unverified. Official NSP page confirms the four closures above and confirms PM-USP CSSS is currently open to 30 Nov. Telangana ePASS Post-Matric page explicitly gives 31-03-2027 for Fresh and Renewal; parser currently leaves those two records unverified. Next safe parser/test change should capture the official deadline, source evidence and Asia/Kolkata timezone. Keep Other-State, both Pre-Matric and Ambedkar SC overseas records unverified until their own official status/deadline is clear.
+- Scholarship source health: NSP and three ePASS sources succeeded; JnanaBhumi HTTPError, Social Justice ConnectTimeout, Tribal Affairs SSLError. Do not infer status from source failure.
+
+### P1 — Rate-limit verification
+- Flask-Limiter 2.9.0, global 500/hour + 2,000/day, explicit auth limits, `RATELIMIT_STORAGE_URI`, health/readiness exemptions, five-minute bounded fallback and fail-closed sensitive routes remain documented. Last live shared Valkey readiness/PING is 15 Nov. Do not call DB-bound readiness; verify through PR #268's DB-free probes only after safe merge/deploy.
+
+### P1 — SEO / private-route indexing
+- POSP `render.yaml` already defines private-route `X-Robots-Tag: noindex, nofollow, noarchive` patterns. Keep `robots.txt` crawlable so search engines can read the noindex header; do not use blanket Disallow as a substitute. PR #268 adds header checks; live header verification remains pending.
+- MNK Technologies repo main `21d3355e026336c9d3db8b6301bcc512b89ceb28`: canonical metadata, structured data, robots and one-URL sitemap are present; no open PR/issues. Render deployment not rechecked.
+- FileWeave repo main `4a47a8dc7831153ed3d954b0fdba642e85541140`: Vercel commit status success; canonical `fileweaveonline.vercel.app`, 12 sitemap URLs, 10 generated SEO pages. PR #88 exact-head `verify` failed in run `44387247430` at real-user pipeline cleanup timeout; issue #12 manual acceptance remains 0/10. Keep release blocked.
+
+### P1 — POSP AI
+- Keep `gemini-3.5-flash-lite` as configured primary; it remains in Google's current model catalog. Groq GPT-OSS 120B is a benchmark candidate only, not a production switch. Its advertised speed does not remove the documented 30 RPM / 1,000 RPD / 8,000 TPM developer limits. `render.yaml` still declares `POSP_CLIENT_AI_ENABLED=false`; actual Render runtime setting is unknown. No provider/enablement change.
+
+### P1 — Documentation / PR hygiene
+- PR #262 has 39 changed files, including application code; it is not safe to merge as a documentation-only PR. It is 6 ahead / 6 behind current main and diverged. This run's checkpoint is being carried in a separate docs-only PR from current main. Reconcile/close stale PRs only after checking their unique changes; never merge stale branches wholesale.
+- Next order: obtain the exact ZIP attachment; reconcile PR #268 against current main and verify the correct official SBI source URL; fix ePASS Fresh/Renewal evidence parsing with synthetic regression tests; verify all active jobs/scholarships against official sources; resolve production scholarship API timeout using Render read-only diagnostics without touching Neon; deploy only after exact-head checks and DB-free startup/probe verification; then verify API/UI/sitemap/AI exposure and update the audit.
+
+
+## 2026-11-21 carry-forward
+
+### P0 — POSP ZIP integration and production correctness
+
+- **Copilot ZIP:** the exact archive was inspected recursively (SHA-256 `306a55c63fbe23155929d6c07c915bca0e9a4a5550a7a860c74009f3477b3d0f`). Safe changes are already represented by merged PRs #260, #261, #265, and #267. Exclude nested Git metadata, local SQLite/pytest databases, uploads, caches, dependency trees, generated bundles, and CRLF-only rewrites. Keep the unmerged provider abstraction out of production until its `gpt-6-luna` default is replaced with a verified model and client AI remains disabled until approved credentials/privacy review.
+- **Expiry audit:** this run found no verified expired or deadline-today active records in the live static jobs and scholarship snapshots. Keep the overall blocker open because the DB-backed jobs API and readiness endpoint were not called under the no-production-database-connection rule, and the complete live sync/API surface is not yet verified.
+- **Jobs coverage:** the public static snapshot has five active jobs. Official SBI current openings lists six active notices; CRPD/SCO/2026-27/28 and /29 (both 25 Nov) are missing from the snapshot. SBI /30 (last date 16 Nov) is correctly absent. The SBI source is reported successful but publishes only four records; add completeness-aware parsing and tests for /28, /29, /31, /36, and expired /30. Thirteen of twenty job sources are failed/degraded; do not treat fetch errors as proof of closure or continued openness.
+- **Scholarships:** the public static snapshot has 27 active items, all with 30 Nov deadlines. Beedi Pre-Matric and Post-Matric (31 Oct), Pre-Matric Disability (31 Oct), and NMMS (15 Nov) are closed on the official NSP page and absent from active public listings. PR #253 is closed unmerged; PR #255 is the merged replacement. NEC Merit is renewal-only: backend catalog scope is `renewal_only`, but the checked-in frontend snapshot has null scope; preserve the distinction in every fallback and UI recommendation. Three scholarship source failures and six unverified records remain.
+- **Database-safe live verification:** do not call `/readiness` or the current DB-backed `/api/jobs/` endpoint. Rebase PR #268, which adds a snapshot-only jobs API and DB-free `/health/rate-limit`/`/health/dependencies` probes, then verify those endpoints after exact-head CI and merge. PR #268 is currently 41 ahead / 10 behind main and is not mergeable.
+- **SEO:** sitemap currently has 140 URLs (5 jobs, 27 scholarships); closed Beedi/NMMS detail routes are absent. robots.txt intentionally allows crawlers so they can receive Render `X-Robots-Tag: noindex` headers on private routes. Verify the live response headers; do not merge PR #251's Disallow rules without reconciling this policy.
+
+### P1 — Security, monitoring, and operations
+
+- Rate-limit code on main uses `RATELIMIT_STORAGE_URI`, Flask-Limiter 2.9.0, global defaults 500/hour and 2,000/day, explicit auth limits, and a bounded 300-second in-memory fallback. PR #260 CI/E2E passed. Add an app-level daily-default test; current daily assertion uses a separate Limiter instance. Current Redis connectivity is not reverified because the only deployed readiness probe touches the production database.
+- Ensure the admin operations view exposes actual source totals, verified-open/closed/unverified counts, stale-source failures, last successful sync, and actionable errors. A source marked success must not imply a complete parse; report partial coverage explicitly.
+- Keep PR #270 as the canonical append-only audit/continuity path. Its original exact-head CI/E2E passed; recheck the updated head and current main before merge.
+- Keep PR #262, #232, #251, and other overlapping older PRs unmerged until their diffs are reconciled against current main and exact-head CI is green. Do not force-push or overwrite concurrent work.
+
+### Next dependency-safe sequence
+
+1. Revalidate current main and PR #268; reconcile its 10-behind base without overwriting concurrent changes.
+2. Expand SBI source tests to include all six currently open notices plus expired /30, and verify partial/failed source snapshots are not reported as complete.
+3. Preserve the backend/frontend NEC renewal-only scope in static fallback, search, detail pages, and recommendations.
+4. Run targeted backend tests, full backend suite, frontend tests/build, lint/type/security, API/integration, and safe E2E on the exact PR head.
+5. Merge only after exact-head checks pass and main is revalidated; deploy only through existing Render auto-deploy workflow with database bootstrap guard intact.
+6. Verify live static/API/SEO behavior and DB-free Redis connectivity. Do not declare the listing set clean until the full active jobs and scholarships, sync results, sitemap, AI/notifications, and production behavior are audited.
+
+
+### 2026-11-21 admin and evidence detail
+
+- The backend AI Operations overview already calculates job verified-open/deadline-today/unverified-or-stale counts, source failures, and last successful sync, plus scholarship unverified/stale/source-failure counts. The current `AiOperations.tsx` UI renders only job published/needs-review/expired, scholarship active/official/stale, scholarship source rows, and a general findings list; it does not visibly render the full job source-health list, total checked, verified-open/deadline-today counts, unverified counts, or last successful sync. Add these fields and actionable per-source errors. Do not show a success message when the sync result is null or failed.
+- NSP closed-record audit entries still carry item-level `source_checked_at` values from 13/15 Nov even though the source-level sync succeeded on 20 Nov and the official page was rechecked on 21 Nov. Refresh per-item evidence timestamps on successful source checks so the audit timestamp reflects the actual evidence retrieval.
+
+
+### 2026-11-21 01:48 follow-up
+
+- Re-upload the exact `POSP.zip`: the current conversation has no attachment bytes. Do not substitute the historical Library copy/hash.
+- Main's static jobs snapshot has 5 items; official SBI lists 6 open notices. /28 and /29 (25 Nov) are missing; /30 (16 Nov) is absent. Source health is 7/20 success, 4 failed, 9 degraded. `sync_source` treats any non-empty parse as success without a completeness check, so source success can mask missing notices.
+- The SSC Grade C Stenographers LDCE 2026 listing is restricted to existing specified Grade C Stenographer cadres; it must not appear as an unrestricted general-public job. Official deadline is 8 Dec 2026, 23:00.
+- Current scholarship snapshot/UI now correctly carries NEC Merit `application_scope=renewal_only`; the prior null-scope gap is corrected in main, subject to live UI verification. Keep 4 closed and 6 unverified records excluded; refresh item-level closed-record evidence timestamps.
+- No verified expired or deadline-today active listings found in the committed static snapshots. Do not declare POSP clean: DB-backed jobs API, live UI, sitemap, AI/notification exposure, source completeness and full scholarship API remain unverified. Do not call `/readiness` or `/api/jobs/` under the production DB no-touch rule.
+- PR #268 remains 41 ahead / 10 behind and non-mergeable despite historical green CI/E2E. PR #270 is docs-only, 8 ahead / 4 behind; exact-head CI/E2E passed before this append and must be rerun. PR #253 is closed unmerged; PR #255 is the merged replacement.
+- No production DB, Render config, Key Value, credentials, merge or deployment was changed.
+
+
+### SSC notice cutoff and eligibility — 2026-11-21
+
+- Official SSC PDF gives the restricted Grade C Stenographer cadre eligibility and application cutoff **8 Dec 2026, 23:00 IST**.
+- Current public record has `deadline_cutoff_time=null`, `appointment_type=null`, and presents the notice as a generic government job. `parse_ssc` reads notice-board JSON dates but not the PDF cutoff. Extract/store 23:00 Asia/Kolkata and clearly label/exclude the limited departmental exam from general-public recruitment. Until fixed, keep the safe deadline-today label and disable Apply when the cutoff is unknown.
