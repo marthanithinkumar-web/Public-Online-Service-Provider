@@ -424,3 +424,9 @@ After the items above are complete and tested, continue the existing full improv
 4. Run targeted backend tests, full backend suite, frontend tests/build, lint/type/security, API/integration, and safe E2E on the exact PR head.
 5. Merge only after exact-head checks pass and main is revalidated; deploy only through existing Render auto-deploy workflow with database bootstrap guard intact.
 6. Verify live static/API/SEO behavior and DB-free Redis connectivity. Do not declare the listing set clean until the full active jobs and scholarships, sync results, sitemap, AI/notifications, and production behavior are audited.
+
+
+### 2026-11-21 admin and evidence detail
+
+- The backend AI Operations overview already calculates job verified-open/deadline-today/unverified-or-stale counts, source failures, and last successful sync, plus scholarship unverified/stale/source-failure counts. The current `AiOperations.tsx` UI renders only job published/needs-review/expired, scholarship active/official/stale, scholarship source rows, and a general findings list; it does not visibly render the full job source-health list, total checked, verified-open/deadline-today counts, unverified counts, or last successful sync. Add these fields and actionable per-source errors. Do not show a success message when the sync result is null or failed.
+- NSP closed-record audit entries still carry item-level `source_checked_at` values from 13/15 Nov even though the source-level sync succeeded on 20 Nov and the official page was rechecked on 21 Nov. Refresh per-item evidence timestamps on successful source checks so the audit timestamp reflects the actual evidence retrieval.
