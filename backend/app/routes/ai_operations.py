@@ -297,6 +297,10 @@ def generate_client_reply(user, current_message):
 
 
 def _answer_support_question(context, current_message):
+    intents = _client_message_intents(current_message)
+    for kind in ('jobs', 'scholarships'):
+        if intents[kind] and not context.get(f'active_{kind}_verified'):
+            return f'I cannot verify any matching {kind} from the current listings. The service team can help you check.', True, None
     prompt = f"""Answer the client's latest POSP support question directly, accurately, and in plain simple English.
 Interpret spelling mistakes, typos, missing letters or words, phonetic spellings, shorthand, grammar errors, mixed-up word order, and silly or incomplete questions charitably. Infer the likely intent from the whole message and recent conversation; do not criticize the user or ask them to retype if the intent is reasonably clear. Do this in this same call; never request a separate correction/rewriting call.
 For general questions, greetings, thanks, and casual or silly messages, respond naturally when safe. Use POSP context for POSP-specific facts. Keep the answer to 1–4 short sentences or a few steps. Do not repeat the question or explain internal reasoning.
