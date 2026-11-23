@@ -82,6 +82,14 @@ export default function AiOperations(){
         <span>Operations AI: {overview?.ai?.operations_ai_configured?'Configured':'Not configured'}</span>
         <span>Client AI: {overview?.ai?.client_ai_enabled?'Enabled':'Disabled'}</span>
       </div>
+      <div style={{display:'flex',gap:16,flexWrap:'wrap',marginTop:8}}>
+        <span>Selected provider: {overview?.ai?.provider||'None'}</span>
+        <span>Model: {overview?.ai?.model||'None'}</span>
+        <span>Availability: {overview?.ai?.provider_health?.state||'Unknown'}</span>
+      </div>
+      <div style={{display:'grid',gap:6,marginTop:8}}>
+        {Object.entries(overview?.ai?.provider_health?.providers||{}).map(([name,value]:[string,any])=><span key={name}>{name}: {value.state}{value.selected?' (selected)':''}</span>)}
+      </div>
     </article>
 
     <article className="admin-card" style={{marginTop:16}}>

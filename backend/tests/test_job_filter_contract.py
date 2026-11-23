@@ -229,3 +229,16 @@ def test_duplicate_snapshot_items_are_returned_once(client, monkeypatch, tmp_pat
     assert response.status_code == 200
     assert response.get_json()['total'] == 1
     assert [entry['slug'] for entry in response.get_json()['items']] == ['duplicate']
+
+
+def test_deadline_sort_before_pagination(client, monkeypatch, tmp_path):
+    today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+    _write_snapshot(monkeypatch, tmp_path, [
+        _job('later', featured=True, deadline=today + timedelta(days=5)),
+        _job('soon', deadline=today + timedelta(days=1)),
+        _job('outside', deadline=today + timedelta(days=10)),
+    ])
+    for page, slug in [(1, 'soon'), (2, 'later')]:
+        data = client.get(f'/api/jobs/?deadline=closing_soon&sort=deadline_soonest&page={page}&limit=1').get_json()
+        assert (data['total'], data['page'], data['limit']) == (2, page, 1)
+        assert [job['slug'] for job in data['items']] == [slug]

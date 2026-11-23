@@ -201,3 +201,11 @@ input,select,textarea{border-color:#d6e0eb!important}.btn,.search-submit,button{
   .hero-highlight-grid{grid-template-columns:1fr}.hero-highlight-grid div{border-right:0}.hero-highlight-grid div:nth-last-child(-n+2){border-bottom:1px solid var(--line)}.hero-highlight-grid div:last-child{border-bottom:0}
   .job-card-heading{gap:10px}.job-type-icon{width:40px;height:40px;flex-basis:40px}
 }
+
+.jobs-filter-form{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;align-items:end}
+.jobs-filter-form label{display:grid;gap:4px;min-width:0}
+.jobs-filter-form input,.jobs-filter-form select{max-width:100%}
+.job-pagination{display:flex;align-items:center;justify-content:center;gap:12px}
+@media(max-width:1024px){.jobs-filter-form{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.jobs-filter-form{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:380px){.jobs-filter-form{grid-template-columns:1fr}}

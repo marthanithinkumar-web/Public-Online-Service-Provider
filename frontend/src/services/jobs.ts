@@ -32,7 +32,20 @@ function jobPriority(job:JobNotification){
   if(name.includes('state bank of india')||name.includes('sbi'))return 4
   return 100
 }
-function compareJobs(a:JobNotification,b:JobNotification){
+function compareJobs(a:JobNotification,b:JobNotification,sort='priority'){
+  if(sort==='deadline_soonest'||sort==='deadline_asc'){
+    const deadline=String(a.deadline||'9999').localeCompare(String(b.deadline||'9999'))
+    if(deadline)return deadline
+  }
+  if(sort==='deadline_latest'||sort==='deadline_desc'){
+    const deadline=String(b.deadline||'').localeCompare(String(a.deadline||''))
+    if(deadline)return deadline
+  }
+  if(sort==='newest'){
+    const published=String(b.published_at||b.issue_date||'').localeCompare(String(a.published_at||a.issue_date||''))
+    if(published)return published
+    return String(a.deadline||'9999').localeCompare(String(b.deadline||'9999'))
+  }
   const priority=jobPriority(a)-jobPriority(b)
   if(priority)return priority
   const aDate=Date.parse(a.deadline||a.issue_date||a.published_at||'')||0
@@ -118,21 +131,33 @@ function filterSnapshot(data:JobFeedData,params:Record<string,string|number|bool
   const featured=['1','true','yes'].includes(String(params.featured||'').toLowerCase())
   const location=String(params.location||'').trim().toLowerCase()
   const qualification=String(params.qualification||'').trim().toLowerCase()
+  const deadline=String(params.deadline||'').trim().toLowerCase()
+  const sort=String(params.sort||'priority').trim().toLowerCase()
   const rawLimit=params.limit
   const requested=rawLimit===undefined||rawLimit===null||rawLimit===''?30:Number(rawLimit)
   const limit=Number.isFinite(requested)?Math.min(100,Math.max(1,requested)):30
-  const items=(data.items||[]).filter(job=>{
+  const rawPage=Number(params.page||1)
+  const page=Number.isFinite(rawPage)?Math.max(1,Math.floor(rawPage)):1
+  const today=indiaToday()
+  const matching=(data.items||[]).filter(job=>{
     if(!isVerifiedPublicJob(job))return false
     if(type&&job.job_type!==type)return false
     if(featured&&!job.is_featured)return false
     if(location&&!String(job.location||'').toLowerCase().includes(location))return false
     if(qualification&&!String(job.qualification||'').toLowerCase().includes(qualification))return false
+    if(deadline==='closing_soon'){
+      const days=(Date.parse(`${job.deadline}T00:00:00Z`)-Date.parse(`${today}T00:00:00Z`))/86400000
+      if(days>7)return false
+    }
+    if(deadline==='this_month'&&job.deadline?.slice(0,7)!==today.slice(0,7))return false
     if(!tokens.length)return true
     const searchable=[job.title,job.organization,job.qualification,job.location,job.source?.name,job.source?.key]
       .map(value=>String(value||'').toLowerCase()).join(' ')
     return tokens.every(token=>searchable.includes(token))
-  }).sort(compareJobs).slice(0,limit)
-  return {...data,items,count:items.length,total:items.length,verified_open_count:items.filter(job=>jobApplicationStatus(job)==='open').length,deadline_today_count:items.filter(job=>jobApplicationStatus(job)==='deadline_today').length}
+  }).sort((a,b)=>compareJobs(a,b,sort))
+  const total=matching.length
+  const items=matching.slice((page-1)*limit,page*limit)
+  return {...data,items,count:items.length,total,page,limit,verified_open_count:matching.filter(job=>jobApplicationStatus(job)==='open').length,deadline_today_count:matching.filter(job=>jobApplicationStatus(job)==='deadline_today').length}
 }
 
 async function refreshJobsInBackground(params:Record<string,string|number|boolean>){
@@ -154,8 +179,8 @@ export async function fetchJobs(params:Record<string,string|number|boolean>={}){
     return snapshot
   }catch{
     const data=(await api.get('/jobs/',{params})).data as JobFeedData
-    const items=(data.items||[]).filter(isVerifiedPublicJob).sort(compareJobs)
-    return {...data,items,count:items.length,total:items.length,verified_open_count:items.filter(job=>jobApplicationStatus(job)==='open').length,deadline_today_count:items.filter(job=>jobApplicationStatus(job)==='deadline_today').length}
+    const items=(data.items||[]).filter(isVerifiedPublicJob)
+    return {...data,items,count:items.length,total:data.total??items.length}
   }
 }
 

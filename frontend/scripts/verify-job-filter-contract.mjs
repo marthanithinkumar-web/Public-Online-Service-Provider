@@ -20,17 +20,26 @@ const required=[
   ['search all normalized tokens',/tokens\.every\(token=>searchable\.includes\(token\)\)/],
   ['bounded limit',/Math\.min\(100,Math\.max\(1,requested\)\)/],
   ['source name/key searchable in snapshot',/job\.source\?\.name,job\.source\?\.key/],
+  ['location/state filter',/String\(job\.location\|\|''\)\.toLowerCase\(\)\.includes\(location\)/],
+  ['qualification/education filter',/String\(job\.qualification\|\|''\)\.toLowerCase\(\)\.includes\(qualification\)/],
+  ['deadline windows',/deadline==='closing_soon'/],
+  ['pagination',/slice\(\(page-1\)\*limit,page\*limit\)/],
 ]
 for(const [name,pattern] of required){
-  if(!pattern.test(service))throw new Error('Job filter contract missing: '+name)
+  if(!pattern.test(service))throw new Error(`Job filter contract missing: ${name}`)
 }
 for(const [name,pattern] of [
   ['search form submission',/onSubmit=\{submit\}/],
-  ['government filter control',/setType\('government'\)/],
-  ['private filter control',/setType\('private'\)/],
-  ['all filter control',/setType\(''\)/],
+  ['government filter control',/updateFilters\(\{type:'government'\}\)/],
+  ['private filter control',/updateFilters\(\{type:'private'\}\)/],
+  ['all filter control',/updateFilters\(\{type:''\}\)/],
+  ['location and qualification controls',/id="job-location"[\s\S]*id="job-qualification"/],
+  ['featured control',/Featured only/],
+  ['deadline and sorting controls',/Closing within 7 days[\s\S]*Newest notices/],
+  ['clear filters control',/clearFilters/],
+  ['pagination controls',/Page \{page\} of \{pageCount\}/],
 ]){
-  if(!pattern.test(page))throw new Error('Jobs UI filter is not wired: '+name)
+  if(!pattern.test(page))throw new Error(`Jobs UI filter is not wired: ${name}`)
 }
 for(const [name,pattern] of [
   ['read-only snapshot source',/_read_snapshot\(\)\['items'\]/],

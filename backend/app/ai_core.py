@@ -1,101 +1,136 @@
-"""Shared AI provider layer for POSP customer and administrator workflows.
+"""Provider-neutral compatibility facade for POSP AI workflows."""
 
-Provider selection supports Gemini and OpenAI. Credentials remain server-side.
-"""
+from dataclasses import dataclass
 import os
+import re
+import threading
 
-import requests
+from .ai.providers import AIProvider, GeminiProvider, OpenAIProvider, ProviderError
+from .ai.text import extract_gemini_text as _extract_gemini_text
+from .ai.text import extract_openai_text as _extract_openai_text
+
+
+_PROVIDERS: dict[str, AIProvider] = {"openai": OpenAIProvider(), "gemini": GeminiProvider()}
+_DEFAULT_MODELS = {"openai": "gpt-5", "gemini": "gemini-3.5-flash-lite"}
+_MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+_health_lock = threading.Lock()
+_last_provider_state: dict[str, str] = {}
+
+
+@dataclass(frozen=True)
+class AISettings:
+    enabled: bool
+    provider: str | None
+    model: str | None
+    error: str | None = None
+
+
+def settings() -> AISettings:
+    """Load explicit provider settings; never choose a provider from keys alone."""
+    enabled_value = os.getenv("POSP_AI_ENABLED", "true").strip().lower()
+    if enabled_value not in {"true", "false", "1", "0", "yes", "no"}:
+        return AISettings(False, None, None, "POSP_AI_ENABLED must be a boolean value.")
+    enabled = enabled_value in {"true", "1", "yes"}
+    selected = (os.getenv("POSP_AI_PROVIDER") or "").strip().lower()
+    if not enabled or selected == "disabled":
+        return AISettings(False, None, None)
+    if not selected:
+        return AISettings(False, None, None, "POSP_AI_PROVIDER must explicitly select openai or gemini.")
+    if selected not in _PROVIDERS:
+        return AISettings(False, None, None, "POSP_AI_PROVIDER must be openai, gemini, or disabled.")
+
+    model = (
+        os.getenv(f"POSP_{selected.upper()}_MODEL")
+        or os.getenv("POSP_AI_MODEL")
+        or _DEFAULT_MODELS[selected]
+    ).strip()
+    wrong_provider = (selected == "gemini" and not model.startswith("gemini-")) or (
+        selected == "openai" and model.startswith("gemini-")
+    )
+    if not _MODEL_RE.fullmatch(model) or wrong_provider:
+        return AISettings(False, selected, None, f"POSP_AI_MODEL is invalid for the selected {selected} provider.")
+    return AISettings(True, selected, model)
 
 
 def configured_provider():
-    """Choose an explicitly configured provider, or auto-detect from available keys."""
-    requested = (os.getenv("POSP_AI_PROVIDER") or "").strip().lower()
-    if requested in {"gemini", "openai"}:
-        return requested
-    if (os.getenv("GEMINI_API_KEY") or "").strip() and not (os.getenv("OPENAI_API_KEY") or "").strip():
-        return "gemini"
-    return "openai"
+    return settings().provider
 
 
 def configured_model():
-    """Return the configured model, with a provider-appropriate default."""
-    model = (os.getenv("POSP_AI_MODEL") or "").strip()
-    provider = configured_provider()
-    if provider == "gemini":
-        return model if model.startswith("gemini-") else "gemini-2.5-flash"
-    return model if model and not model.startswith("gemini-") else "gpt-5"
+    return settings().model
 
 
 def is_configured():
-    """Whether the selected provider has a key configured."""
-    if configured_provider() == "gemini":
-        return bool((os.getenv("GEMINI_API_KEY") or "").strip())
-    return bool((os.getenv("OPENAI_API_KEY") or "").strip())
+    config = settings()
+    return bool(config.enabled and config.provider and _PROVIDERS[config.provider].is_configured())
 
 
-def _extract_openai_text(payload):
-    for item in payload.get("output", []):
-        for content in item.get("content", []) or []:
-            if content.get("type") in {"output_text", "text"} and content.get("text"):
-                return content["text"]
-    return ""
-
-
-def _extract_gemini_text(payload):
-    for candidate in payload.get("candidates", []) or []:
-        content = candidate.get("content") or {}
-        for part in content.get("parts", []) or []:
-            if part.get("text"):
-                return part["text"]
-    return ""
+def provider_health():
+    """Report configuration and last observed request status without a paid probe."""
+    config = settings()
+    providers = {}
+    for name, adapter in _PROVIDERS.items():
+        key_configured = adapter.is_configured()
+        selected = config.provider == name
+        if not config.enabled and not config.error:
+            state = "disabled"
+        elif selected and (config.error or not key_configured):
+            state = "unavailable"
+        elif selected:
+            with _health_lock:
+                state = _last_provider_state.get(name, "configured")
+        else:
+            state = "configured" if key_configured else "disabled"
+        providers[name] = {
+            "state": state,
+            "configured": key_configured,
+            "available": state == "available",
+            "selected": selected,
+            "model": config.model if selected else None,
+        }
+    state = (
+        providers[config.provider]["state"] if config.provider in providers
+        else ("disabled" if not config.enabled and not config.error else "unavailable")
+    )
+    return {"enabled": config.enabled, "provider": config.provider, "model": config.model,
+            "state": state, "error": config.error, "providers": providers}
 
 
 def call_model(instructions, prompt, max_output_tokens=900):
-    """Call the selected provider and return (answer, safe_error)."""
-    provider = configured_provider()
-    if not is_configured():
-        return None, f"{provider.title()} AI is not configured on the backend."
-
+    """Retain the existing (answer, safe_error) route contract."""
+    config = settings()
+    if config.error:
+        return None, config.error
+    if not config.enabled:
+        return None, "AI is disabled."
+    provider = _PROVIDERS[config.provider]
+    if not provider.is_configured():
+        return None, f"{provider.display_name} AI is not configured on the backend."
     try:
-        if provider == "gemini":
-            api_key = os.getenv("GEMINI_API_KEY", "").strip()
-            response = requests.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/{configured_model()}:generateContent",
-                headers={
-                    "x-goog-api-key": api_key,
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "systemInstruction": {"parts": [{"text": instructions}]},
-                    "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-                    "generationConfig": {"maxOutputTokens": max_output_tokens, "temperature": 0.2},
-                },
-                timeout=45,
-            )
-            if response.status_code >= 400:
-                # Keep credentials and provider response details out of client-visible errors.
-                return None, f"Gemini request failed (HTTP {response.status_code})."
-            answer = _extract_gemini_text(response.json())
-        else:
-            api_key = os.getenv("OPENAI_API_KEY", "").strip()
-            response = requests.post(
-                "https://api.openai.com/v1/responses",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": configured_model(),
-                    "instructions": instructions,
-                    "input": prompt,
-                    "max_output_tokens": max_output_tokens,
-                },
-                timeout=45,
-            )
-            if response.status_code >= 400:
-                return None, f"OpenAI request failed (HTTP {response.status_code})."
-            answer = _extract_openai_text(response.json())
+        answer = provider.generate(instructions=instructions, prompt=prompt, model=config.model,
+                                   max_output_tokens=max_output_tokens)
+        if answer and answer.strip():
+            with _health_lock:
+                _last_provider_state[config.provider] = "available"
+            return answer.strip(), None
+        with _health_lock:
+            _last_provider_state[config.provider] = "unavailable"
+        return None, f"{provider.display_name} returned no text response."
+    except ProviderError as exc:
+        with _health_lock:
+            _last_provider_state[config.provider] = "unavailable"
+        return None, exc.safe_message
+    except Exception:
+        with _health_lock:
+            _last_provider_state[config.provider] = "unavailable"
+        return None, f"{provider.display_name} AI is temporarily unavailable."
 
-        return (answer.strip(), None) if answer and answer.strip() else (None, f"{provider.title()} returned no text response.")
-    except (requests.RequestException, ValueError, TypeError):
-        return None, f"{provider.title()} could not be reached or returned an invalid response."
+
+def redact_sensitive_text(value):
+    """Remove common direct identifiers before client-authored text leaves POSP."""
+    text = str(value or "")
+    text = re.sub(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", "[email removed]", text, flags=re.I)
+    text = re.sub(r"(?<!\d)(?:\+?91[\s-]?)?[6-9]\d{9}(?!\d)", "[phone removed]", text)
+    text = re.sub(r"\b[A-Z]{5}\d{4}[A-Z]\b", "[identifier removed]", text, flags=re.I)
+    text = re.sub(r"\b(?:aadhaar|aadhar|uid)\s*(?:number|no\.?|#)?\s*[:#-]?\s*(?:\d[ -]?){11}\d\b", "[identifier removed]", text, flags=re.I)
+    return text

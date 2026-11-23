@@ -69,7 +69,9 @@ def send_client_message():
         from .ai_operations import generate_client_reply
         ai_answer, ai_handoff, ai_error = generate_client_reply(user, value)
     except Exception as exc:
-        logger.exception('POSP client AI call raised an exception (error_type=%s)', type(exc).__name__)
+        # Do not include arbitrary exception text or a traceback that could
+        # contain private values from a client request or provider response.
+        logger.error('POSP client AI call raised an exception (error_type=%s)', type(exc).__name__)
         ai_answer, ai_handoff, ai_error = None, True, 'Client AI failed safely.'
 
     ai_elapsed_ms = round((time.perf_counter() - ai_started) * 1000)
