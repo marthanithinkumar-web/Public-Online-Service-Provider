@@ -219,9 +219,17 @@ def _verified_active_scholarship_context(limit=5):
     return context
 
 
+_PRIVATE_SUPPORT_TEXT = re.compile(
+    r'\b(?:otp|password|passcode|pin|cvv|cvc|iban|ifsc|api[ _-]?key|access[ _-]?token)\b'
+    r'|(?<!\d)(?:\d[ -]?){11,18}\d(?!\d)', re.I,
+)
+
+
 def generate_client_reply(user, current_message):
     if os.getenv('POSP_CLIENT_AI_ENABLED', 'false').strip().lower() != 'true':
         return None, False, 'Client AI is disabled.'
+    if _PRIVATE_SUPPORT_TEXT.search(current_message):
+        return None, True, None
     # Load only context relevant to this question. Avoid querying orders, job
     # feeds and scholarship catalogs for greetings or unrelated support questions.
     intents = _client_message_intents(current_message)
@@ -257,7 +265,7 @@ def generate_client_reply(user, current_message):
         'name': service.name,
         'category': service.category.name if service.category else None,
         'description': (service.description or '')[:180],
-        'application_fee_inr': float(service.price_inr or 0),
+        'application_fee_inr': float(service.price_inr) if service.price_inr is not None else None,
         'official_fee_inr': float(service.official_fee_inr) if service.official_fee_inr is not None else None,
         'official_fee_status': service.official_fee_status or 'unconfirmed',
         'keywords': (service.keywords or '')[:120],
@@ -275,7 +283,7 @@ def generate_client_reply(user, current_message):
         'role': 'client' if item.sender_role == 'client' else 'assistant',
         'content': redact_sensitive_text(item.message[:320]),
     } for item in SupportMessage.query.filter_by(user_id=user.id)
-        .order_by(SupportMessage.created_at.desc()).limit(4).all()][::-1]
+        .order_by(SupportMessage.created_at.desc()).limit(4).all() if not _PRIVATE_SUPPORT_TEXT.search(item.message or '')][::-1]
     current_message = redact_sensitive_text(current_message[:2000])
     context = {
         'relevant_services': services,
@@ -289,6 +297,10 @@ def generate_client_reply(user, current_message):
 
 
 def _answer_support_question(context, current_message):
+    intents = _client_message_intents(current_message)
+    for kind in ('jobs', 'scholarships'):
+        if intents[kind] and not context.get(f'active_{kind}_verified'):
+            return f'I cannot verify any matching {kind} from the current listings. The service team can help you check.', True, None
     prompt = f"""Answer the client's latest POSP support question directly, accurately, and in plain simple English.
 Interpret spelling mistakes, typos, missing letters or words, phonetic spellings, shorthand, grammar errors, mixed-up word order, and silly or incomplete questions charitably. Infer the likely intent from the whole message and recent conversation; do not criticize the user or ask them to retype if the intent is reasonably clear. Do this in this same call; never request a separate correction/rewriting call.
 For general questions, greetings, thanks, and casual or silly messages, respond naturally when safe. Use POSP context for POSP-specific facts. Keep the answer to 1–4 short sentences or a few steps. Do not repeat the question or explain internal reasoning.
@@ -313,6 +325,12 @@ def support_check():
     cases = {
         'published_fee': ({'relevant_services': [{'name': 'Example service', 'application_fee_inr': 73}]},
                           'What assistance fee is listed for Example service?'),
+        'continuity': ({'recent_conversation': [{'role': 'client', 'content': 'I need the Example service.'}],
+                        'relevant_services': [{'name': 'Example service', 'application_fee_inr': 73}]},
+                       'What is its assistance fee?'),
+        'application_steps': ({'relevant_services': [{'name': 'Example service',
+                               'description': 'Select Apply, then upload the completed example form.'}]},
+                              'How do I apply for Example service?'),
         'unknown_payment': ({'client_requests': []}, 'Has my payment gone through?'),
         'no_jobs': ({'active_jobs_verified': []}, 'Which verified jobs can I apply for today?'),
         'no_scholarships': ({'active_scholarships_verified': []}, 'Which scholarships can I apply for today?'),

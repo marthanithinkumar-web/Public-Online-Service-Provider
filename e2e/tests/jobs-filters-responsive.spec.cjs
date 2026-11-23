@@ -51,6 +51,8 @@ async function openJobs(page) {
     status: 503,
     body: JSON.stringify({ error: 'API unavailable' }),
   }))
+  const fixtureNow = new Date()
+  await page.clock.setFixedTime(fixtureNow)
   await page.goto('/jobs')
   await expect(page.getByRole('heading', { name: 'Current published notices' })).toBeVisible()
   await expect(page.locator('.job-card').first()).toBeVisible()
@@ -113,9 +115,11 @@ test('featured, deadline, empty-result, reset, and pagination controls work', as
   await page.getByLabel('Featured only').click()
   await expect(page).not.toHaveURL(/featured=/)
 
+  await expect(page.locator('.job-card')).toHaveCount(10)
   await page.locator('#job-deadline').selectOption('closing_soon')
-  await expect(page.locator('.job-card')).toHaveCount(3)
   await expect(page).toHaveURL(/deadline=closing_soon/)
+  await expect(page.getByLabel('Featured only')).not.toBeChecked()
+  await expect(page.locator('.job-card')).toHaveCount(3)
 
   await page.locator('#job-deadline').selectOption('this_month')
   const todayMonth = dateFromToday(0).slice(0, 7)
