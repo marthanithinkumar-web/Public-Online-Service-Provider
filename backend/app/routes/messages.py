@@ -38,7 +38,7 @@ def client_messages():
         return jsonify({'error': 'Please log in as a client.'}), 401
     messages = SupportMessage.query.filter_by(user_id=user.id).order_by(SupportMessage.created_at.asc()).all()
     unread = sum(1 for item in messages if item.sender_role in {'admin', 'ai'} and not item.read_by_client)
-    return jsonify({'items': [item.to_dict() for item in messages], 'unread': unread})
+    return jsonify({'items': [item.to_dict() for item in messages], 'unread': unread, 'ai_enabled': os.getenv('POSP_CLIENT_AI_ENABLED', 'false').lower() == 'true'})
 
 @bp.post('/mine')
 @limiter.limit('12 per minute')
@@ -67,7 +67,8 @@ def send_client_message():
     ai_started = time.perf_counter()
     try:
         from .ai_operations import generate_client_reply
-        ai_answer, ai_handoff, ai_error = generate_client_reply(user, value)
+        if (request.get_json(silent=True) or {}).get('use_ai') is True:
+            ai_answer, ai_handoff, ai_error = generate_client_reply(user, value)
     except Exception as exc:
         # Do not include arbitrary exception text or a traceback that could
         # contain private values from a client request or provider response.

@@ -92,7 +92,7 @@ def test_client_ai_error_logs_do_not_include_client_identifier(client, monkeypat
     caplog.set_level('ERROR', logger='app.routes.messages')
     response = client.post(
         '/api/messages/mine',
-        json={'message': 'Please help with my application.'},
+        json={'message': 'Please help with my application.', 'use_ai': True},
         headers={'Authorization': f'Bearer {token}'},
     )
     assert response.status_code == 201
