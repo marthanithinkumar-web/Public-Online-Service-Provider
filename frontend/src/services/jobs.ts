@@ -160,27 +160,14 @@ function filterSnapshot(data:JobFeedData,params:Record<string,string|number|bool
   return {...data,items,count:items.length,total,page,limit,verified_open_count:matching.filter(job=>jobApplicationStatus(job)==='open').length,deadline_today_count:matching.filter(job=>jobApplicationStatus(job)==='deadline_today').length}
 }
 
-async function refreshJobsInBackground(params:Record<string,string|number|boolean>){
-  try{
-    // Ping the live API so its background sync can run, but never replace the
-    // checked-in verified snapshot cache with a potentially lagging DB result.
-    // Keeping the snapshot stable guarantees that a job just shown in the list
-    // can still be resolved when the user opens its detail page.
-    await api.get('/jobs/',{params,timeout:3500})
-  }catch{
-    // The checked-in verified snapshot remains the last-known-good result.
-  }
-}
-
 export async function fetchJobs(params:Record<string,string|number|boolean>={}){
   try{
-    const snapshot=filterSnapshot(await fetchSnapshot(),params)
-    void refreshJobsInBackground(params)
-    return snapshot
+    const data=(await api.get('/jobs/',{params,timeout:3500})).data as JobFeedData
+    if(!Array.isArray(data?.items)||!Number.isInteger(data.total))throw new Error('Invalid job feed')
+    const items=data.items.filter(isVerifiedPublicJob)
+    return {...data,items,count:items.length}
   }catch{
-    const data=(await api.get('/jobs/',{params})).data as JobFeedData
-    const items=(data.items||[]).filter(isVerifiedPublicJob)
-    return {...data,items,count:items.length,total:data.total??items.length}
+    return filterSnapshot(await fetchSnapshot(),params)
   }
 }
 

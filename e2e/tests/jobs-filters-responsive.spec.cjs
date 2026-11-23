@@ -48,7 +48,8 @@ async function openJobs(page) {
   }))
   await page.route('**/api/jobs/**', route => route.fulfill({
     contentType: 'application/json',
-    body: JSON.stringify({ items: [], total: 0 }),
+    status: 503,
+    body: JSON.stringify({ error: 'API unavailable' }),
   }))
   await page.goto('/jobs')
   await expect(page.getByRole('heading', { name: 'Current published notices' })).toBeVisible()
