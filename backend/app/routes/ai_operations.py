@@ -141,11 +141,15 @@ def _client_message_intents(message):
 
 
 def _parse_client_ai_response(raw):
-    lines = raw.splitlines()
-    first_line = lines[0].strip().upper() if lines else ''
-    handoff = first_line == 'HANDOFF=YES'
-    answer = raw.split('ANSWER=', 1)[1].strip() if 'ANSWER=' in raw else raw.strip()
-    return answer, handoff
+    if not isinstance(raw, str):
+        return '', True
+    header, _, body = raw.strip().partition('\n')
+    if header.strip().upper() not in {'HANDOFF=YES', 'HANDOFF=NO'}:
+        return '', True
+    if not body.startswith('ANSWER='):
+        return '', True
+    answer = body[len('ANSWER='):].strip()
+    return answer, not answer or header.strip().upper() == 'HANDOFF=YES'
 
 def _verified_active_job_context(limit=5):
     # Use the same read-only verified snapshot as the public jobs API so POSP

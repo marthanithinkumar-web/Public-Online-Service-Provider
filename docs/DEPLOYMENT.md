@@ -57,3 +57,16 @@ Troubleshooting
 
 Contact
 - Provider contact is visible in the site header and footer; update frontend/src/services/config.ts to change contact details.
+
+
+## Public directory and support verification
+
+The jobs directory queries `GET /api/jobs/` with `q`, `type`, `featured`, `location`, `qualification`, `deadline`, `sort`, `page` and `limit`. The API reads the deployed official snapshot, checks source freshness and application deadlines, filters and sorts the eligible records, then slices the requested page. The response includes `items`, `count`, `total`, `page` and `limit`. When the API is unavailable, the browser applies its filters to the published snapshot. Compare the SHA-256 of the live frontend `/data/jobs.json` with the API's `/api/jobs/snapshot-status` after deployment. The scholarship directory reads the verified scholarship feed. An open student application window must be distinguished from a later institute verification deadline.
+
+After CI and browser E2E pass, check the deployments of both Render services. An automated feed refresh can advance main during rollout, so compare the deployed commits and snapshot hashes. The production public and scholarship smoke workflows exercise live endpoints. Private routes allow crawlers to see the noindex response header.
+
+See [AI data handling](ai-data-handling.md) for support context and configuration and [WhatsApp Business](whatsapp-business.md) for Meta activation. A successful admin AI call confirms provider connectivity. Customer support requires separate quality and privacy verification. A malformed customer AI response goes to the service team.
+
+### Release checkpoint, 23 November 2026
+
+PRs #268 and #272 shipped read-only job queries and server-side directory filtering. Chromium received live API results at widths 320, 375, 430, 768, 1024 and 1440 pixels without horizontal page overflow. The API returned five verified jobs during the check. Its first two deadline-sorted pages were checked against the live snapshot. Production login succeeded after an earlier timeout. A synthetic admin Gemini request returned the requested text. The production WhatsApp status endpoint reported the Cloud API disabled, with phone number and webhook unconfigured. Customer AI remained disabled. Real customer messages and payments were excluded from these checks.
