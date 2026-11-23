@@ -74,7 +74,15 @@ test('job filters stay synchronized with the URL, cap search length, and remain 
   await expect(page.locator('.job-card')).toHaveCount(3)
   await expect(page).toHaveURL(/type=government/)
 
+  await typeGroup.getByRole('button', { name: 'Private' }).click()
+  await expect(page.locator('.job-card')).toHaveCount(1)
+  await typeGroup.getByRole('button', { name: 'All' }).click()
+  await expect(page.locator('.job-card')).toHaveCount(4)
+  await typeGroup.getByRole('button', { name: 'Government' }).click()
+
   await location.fill('Hyderabad')
+  await page.getByRole('button', { name: 'Apply filters' }).click()
+  await expect(page.locator('.job-card')).toHaveCount(3)
   await qualification.fill('Engineering')
   await page.getByRole('button', { name: 'Apply filters' }).click()
   await expect(page.locator('.job-card')).toHaveCount(3)
@@ -85,10 +93,45 @@ test('job filters stay synchronized with the URL, cap search length, and remain 
   await expect(page.locator('.job-card h3').first()).toContainText('Engineering Assistant 1')
   await expect(page).toHaveURL(/sort=newest/)
 
-  for (const width of [320, 375, 430, 768]) {
+  for (const width of [320, 375, 430, 768, 1024]) {
     await page.setViewportSize({ width, height: 900 })
     await expect(page.getByRole('heading', { name: 'Current published notices' })).toBeVisible()
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
     expect(overflow, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(1)
   }
+})
+
+test('featured, deadline, empty-result, reset, and pagination controls work', async ({ page }) => {
+  await openJobs(page)
+
+  await expect(page).not.toHaveURL(/featured=/)
+  await expect(page.getByLabel('Featured only')).not.toBeChecked()
+  await page.getByLabel('Featured only').click()
+  await expect(page.locator('.job-card')).toHaveCount(1)
+  await expect(page).toHaveURL(/featured=true/)
+  await page.getByLabel('Featured only').click()
+  await expect(page).not.toHaveURL(/featured=/)
+
+  await page.locator('#job-deadline').selectOption('closing_soon')
+  await expect(page.locator('.job-card')).toHaveCount(3)
+  await expect(page).toHaveURL(/deadline=closing_soon/)
+
+  await page.locator('#job-deadline').selectOption('this_month')
+  const todayMonth = dateFromToday(0).slice(0, 7)
+  const thisMonthCount = makeJobs().filter(job => job.deadline.slice(0, 7) === todayMonth).length
+  await expect(page.locator('.job-card')).toHaveCount(thisMonthCount)
+
+  await page.getByLabel('Search job notices').fill('no matching notice')
+  await page.getByRole('button', { name: 'Search jobs' }).click()
+  await expect(page.locator('.job-card')).toHaveCount(0)
+  await expect(page.getByText('No matching published notices')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Clear filters' }).click()
+  await expect(page.locator('.job-card')).toHaveCount(10)
+  await expect(page).not.toHaveURL(/(?:q|featured|deadline|type|location|qualification|sort|page)=/)
+  await page.getByRole('button', { name: 'Next' }).click()
+  await expect(page.locator('.job-card')).toHaveCount(2)
+  await expect(page.getByText('Page 2 of 2')).toBeVisible()
+  await page.getByRole('button', { name: 'Previous' }).click()
+  await expect(page.locator('.job-card')).toHaveCount(10)
 })

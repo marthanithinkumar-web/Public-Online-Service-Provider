@@ -150,7 +150,7 @@ test('homepage hides the generic assistance fee and does not request it', async 
   expect(homepageFeeRequested).toBe(false)
 })
 
-test('service search cards use the current configured scholarship assistance fee', async ({ page }) => {
+test('homepage scholarship search shows the service without displaying an assistance fee', async ({ page }) => {
   await page.route('**/api/**', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' })
   })
@@ -183,7 +183,9 @@ test('service search cards use the current configured scholarship assistance fee
   })
   await page.goto('/')
   await page.locator('#service-search input[type="search"]').fill('scholarship')
-  await expect(page.getByText('Applicable Assistance Fee ₹85', { exact: true })).toBeVisible()
+  const card = page.locator('#service-search .service-card').filter({ hasText: 'National Scholarship Portal (NSP) Assistance' })
+  await expect(card.getByRole('link', { name: 'View & apply' })).toBeVisible()
+  await expect(card).not.toContainText(/₹|assistance fee/i)
 })
 
 test('client login waits for the in-flight Render API warm-up before posting credentials', async ({ page }) => {

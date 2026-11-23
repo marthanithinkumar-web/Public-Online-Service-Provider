@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 import re
@@ -53,6 +53,7 @@ def list_jobs():
     featured = (request.args.get('featured') or '').strip().lower()
     location = (request.args.get('location') or '').strip()[:120]
     qualification = (request.args.get('qualification') or '').strip()[:120]
+    deadline_filter = (request.args.get('deadline') or '').strip().lower()
     if term:
         aliases = {'govt': 'government', 'railways': 'railway'}
         tokens = list(dict.fromkeys(
@@ -81,22 +82,40 @@ def list_jobs():
     if qualification:
         qualification_pattern = '%' + qualification.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
         query = query.filter(JobNotification.qualification.ilike(qualification_pattern, escape='\\'))
-    candidates = query.order_by(
-        JobNotification.is_featured.desc(),
-        JobNotification.deadline.asc(),
-        JobNotification.published_at.desc(),
-    ).all()
+    today = _india_today()
+    if deadline_filter == 'closing_soon':
+        query = query.filter(JobNotification.deadline <= today + timedelta(days=7))
+    elif deadline_filter == 'this_month':
+        next_month = date(today.year + (today.month == 12), 1 if today.month == 12 else today.month + 1, 1)
+        query = query.filter(JobNotification.deadline < next_month)
+    sort = (request.args.get('sort') or 'priority').strip().lower()
+    if sort == 'newest':
+        ordering = (JobNotification.published_at.desc().nullslast(), JobNotification.deadline.asc())
+    elif sort in {'deadline_soonest', 'deadline_asc'}:
+        ordering = (JobNotification.deadline.asc().nullslast(), JobNotification.id.asc())
+    elif sort in {'deadline_latest', 'deadline_desc'}:
+        ordering = (JobNotification.deadline.desc(), JobNotification.is_featured.desc())
+    else:
+        ordering = (JobNotification.is_featured.desc(), JobNotification.deadline.asc(), JobNotification.published_at.desc())
+    candidates = query.order_by(*ordering).all()
     eligible = [job for job in candidates if job.is_open]
     total = len(eligible)
     try:
         limit = min(100, max(1, int(request.args.get('limit', 30))))
     except (TypeError, ValueError):
         limit = 30
-    jobs = eligible[:limit]
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+    except (TypeError, ValueError):
+        page = 1
+    start = (page - 1) * limit
+    jobs = eligible[start:start + limit]
     response = jsonify({
         'items': [job.to_dict() for job in jobs],
         'count': len(jobs),
         'total': total,
+        'page': page,
+        'limit': limit,
         'verified_open_count': sum(1 for job in eligible if job.deadline_status() == 'open'),
         'deadline_today_count': sum(1 for job in eligible if job.deadline_status() == 'deadline_today'),
     })

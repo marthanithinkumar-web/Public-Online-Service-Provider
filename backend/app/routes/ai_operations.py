@@ -20,7 +20,7 @@ from ..scholarships.catalog import load_catalog
 from ..utils.database import db
 from ..utils.jwt_handler import get_request_user
 from ..utils.readiness import production_readiness
-from ..ai_core import call_model as _call_model, configured_model as _configured_model, configured_provider as _configured_provider, is_configured as _ai_is_configured, _extract_openai_text as _extract_response_text
+from ..ai_core import call_model as _call_model, configured_model as _configured_model, configured_provider as _configured_provider, is_configured as _ai_is_configured, provider_health as _provider_health, redact_sensitive_text, _extract_openai_text as _extract_response_text
 from .admin import _require_admin
 
 bp = Blueprint('ai_operations', __name__)
@@ -111,6 +111,7 @@ def _build_context():
             'operations_ai_configured': _ai_is_configured(),
             'provider': _configured_provider(),
             'model': _configured_model(),
+            'provider_health': _provider_health(),
         },
     }
 
@@ -264,19 +265,18 @@ def generate_client_reply(user, current_message):
     orders = []
     if intents['orders']:
         orders = [{
-            'order_code': order.order_code,
             'service': order.service.name if order.service else None,
             'status': order.status,
-            'updated_at': (order.updated_at or order.created_at).isoformat(),
         } for order in Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).limit(3).all()]
     india_today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
     active_job_context = _verified_active_job_context(limit=3) if intents['jobs'] else []
     active_scholarship_context = _verified_active_scholarship_context(limit=3) if intents['scholarships'] else []
     history = [{
         'role': 'client' if item.sender_role == 'client' else 'assistant',
-        'content': item.message[:320],
+        'content': redact_sensitive_text(item.message[:320]),
     } for item in SupportMessage.query.filter_by(user_id=user.id)
         .order_by(SupportMessage.created_at.desc()).limit(4).all()][::-1]
+    current_message = redact_sensitive_text(current_message[:2000])
     context = {
         'relevant_services': services,
         'client_requests': orders,

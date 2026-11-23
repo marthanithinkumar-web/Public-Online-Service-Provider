@@ -85,6 +85,10 @@ services:
         value: gemini
       - key: POSP_AI_MODEL
         value: gemini-3.5-flash-lite
+      - key: POSP_AI_ENABLED
+        value: "true"
+      # Customer chat AI stays off until its provider credentials, privacy
+      # review, and authenticated response/handoff checks are verified.
       - key: POSP_CLIENT_AI_ENABLED
         value: "false"
       # WhatsApp Cloud API: values are set in the Render dashboard
