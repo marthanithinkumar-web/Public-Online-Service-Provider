@@ -147,3 +147,17 @@ def test_invalid_support_reply_is_withheld_for_human_review():
     for raw in (None, '', 'Your application is approved.', 'HANDOFF=MAYBE\nANSWER=Approved',
                 'HANDOFF=NO\nMissing answer marker', 'HANDOFF=NO\nANSWER='):
         assert _parse_client_ai_response(raw) == ('', True)
+
+
+def test_support_check_requires_admin(client):
+    assert client.post('/api/admin/ai/support-check', json={'case': 'published_fee'}).status_code == 401
+
+
+def test_support_check_only_accepts_fixed_cases(client, monkeypatch):
+    from app.routes import ai_operations
+    monkeypatch.setattr(ai_operations, '_require_admin', lambda: True)
+    monkeypatch.setattr(ai_operations, '_call_model', lambda *args: ('HANDOFF=NO\nANSWER=73 INR', None))
+    assert client.post('/api/admin/ai/support-check', json={'case': 'custom'}).status_code == 400
+    result = client.post('/api/admin/ai/support-check', json={'case': 'published_fee'})
+    assert result.status_code == 200
+    assert result.get_json()['answer'] == '73 INR'
