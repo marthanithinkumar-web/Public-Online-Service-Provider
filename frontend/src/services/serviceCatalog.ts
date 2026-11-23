@@ -70,7 +70,7 @@ export function readCachedServices(allowStale=false):any[]{
 async function applyCurrentScholarshipFee(items:any[]):Promise<any[]>{
   if(!scholarshipFeeRequest){
     scholarshipFeeRequest=fetchPublicScholarshipAssistanceFee()
-      .then(result=>Number.isFinite(Number(result?.price_inr))?Math.max(0,Number(result.price_inr)):null)
+      .then(result=>result?.price_inr != null && Number.isFinite(Number(result.price_inr))?Math.max(0,Number(result.price_inr)):null)
       .catch(()=>null)
       .finally(()=>{scholarshipFeeRequest=null})
   }

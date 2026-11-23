@@ -91,6 +91,8 @@ def list_jobs():
     sort = (request.args.get('sort') or 'priority').strip().lower()
     if sort == 'newest':
         ordering = (JobNotification.published_at.desc().nullslast(), JobNotification.deadline.asc())
+    elif sort in {'deadline_soonest', 'deadline_asc'}:
+        ordering = (JobNotification.deadline.asc().nullslast(), JobNotification.id.asc())
     elif sort in {'deadline_latest', 'deadline_desc'}:
         ordering = (JobNotification.deadline.desc(), JobNotification.is_featured.desc())
     else:
