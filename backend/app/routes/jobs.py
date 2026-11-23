@@ -193,16 +193,39 @@ def list_jobs():
         eligible = [item for item in eligible if qualification in str(item.get('qualification') or '').lower()]
     eligible = [item for item in eligible if _matches_search(item, tokens)]
 
+    today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+    window = request.args.get('deadline')
+    if window == 'closing_soon':
+        cutoff = (today + timedelta(days=7)).isoformat()
+        eligible = [item for item in eligible if item['deadline'] <= cutoff]
+    elif window == 'this_month':
+        eligible = [item for item in eligible if item['deadline'][:7] == today.isoformat()[:7]]
+
+    sort = request.args.get('sort', 'priority')
+    if sort in {'deadline_soonest', 'deadline_asc'}:
+        eligible.sort(key=lambda item: (item['deadline'], item['slug']))
+    elif sort in {'deadline_latest', 'deadline_desc'}:
+        eligible.sort(key=lambda item: item['deadline'], reverse=True)
+    elif sort == 'newest':
+        eligible.sort(key=lambda item: item.get('published_at') or item.get('issue_date') or '', reverse=True)
+
     total = len(eligible)
     try:
         limit = min(100, max(1, int(request.args.get('limit', 30))))
     except (TypeError, ValueError):
         limit = 30
-    page_items = eligible[:limit]
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+    except (ValueError, TypeError):
+        page = 1
+    start = (page - 1) * limit
+    page_items = eligible[start:start + limit]
     response = jsonify({
         'items': page_items,
         'count': len(page_items),
         'total': total,
+        'page': page,
+        'limit': limit,
         'verified_open_count': sum(1 for item in eligible if item.get('application_status') == 'open'),
         'deadline_today_count': sum(1 for item in eligible if item.get('application_status') == 'deadline_today'),
     })
