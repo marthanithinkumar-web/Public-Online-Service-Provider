@@ -238,9 +238,11 @@ jobs:
               sitemap=handle.read()
           urls=set(re.findall(r'<loc>([^<]+)</loc>', sitemap))
 
+          # The SEO catalog indexes verified open government jobs. Same-day
+          # deadline notices remain visible in the directory only.
           expected_jobs=set()
           for item in jobs.get('items') or []:
-              if str(item.get('job_type') or '').lower() != 'government':
+              if item.get('application_status') != 'open' or str(item.get('job_type') or '').lower() != 'government':
                   continue
               slug=str(item.get('slug') or '').strip()
               if not slug:

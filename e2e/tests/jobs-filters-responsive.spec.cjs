@@ -136,3 +136,15 @@ test('featured, deadline, empty-result, reset, and pagination controls work', as
   await page.getByRole('button', { name: 'Previous' }).click()
   await expect(page.locator('.job-card')).toHaveCount(10)
 })
+
+test('job directory displays a filtered API page before using the snapshot', async ({page}) => {
+  const item = makeJobs()[3]
+  await page.route('**/api/jobs/**', route => {
+    const query = new URL(route.request().url()).searchParams
+    const items = query.get('type') === 'private' ? [item] : []
+    return route.fulfill({json: {items, total: items.length, count: items.length, page: 1, limit: 10}})
+  })
+  await page.goto('/jobs?type=private')
+  await expect(page.locator('.job-card')).toHaveCount(1)
+  await expect(page.locator('.job-card')).toContainText(item.title)
+})
