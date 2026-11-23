@@ -139,3 +139,11 @@ def test_client_ai_intent_detection_limits_unrelated_context():
     assert _client_message_intents("show current government jobs")['jobs'] is True
     assert _client_message_intents("find scholarships for engineering")['scholarships'] is True
     assert _client_message_intents("track my application payment status")['orders'] is True
+
+
+def test_invalid_support_reply_is_withheld_for_human_review():
+    from app.routes.ai_operations import _parse_client_ai_response
+
+    for raw in (None, '', 'Your application is approved.', 'HANDOFF=MAYBE\nANSWER=Approved',
+                'HANDOFF=NO\nMissing answer marker', 'HANDOFF=NO\nANSWER='):
+        assert _parse_client_ai_response(raw) == ('', True)
