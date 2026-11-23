@@ -285,6 +285,10 @@ def generate_client_reply(user, current_message):
         'active_scholarships_verified': active_scholarship_context,
         'listing_checked_date_ist': india_today.isoformat() if intents['jobs'] or intents['scholarships'] else None,
     }
+    return _answer_support_question(context, current_message)
+
+
+def _answer_support_question(context, current_message):
     prompt = f"""Answer the client's latest POSP support question directly, accurately, and in plain simple English.
 Interpret spelling mistakes, typos, missing letters or words, phonetic spellings, shorthand, grammar errors, mixed-up word order, and silly or incomplete questions charitably. Infer the likely intent from the whole message and recent conversation; do not criticize the user or ask them to retype if the intent is reasonably clear. Do this in this same call; never request a separate correction/rewriting call.
 For general questions, greetings, thanks, and casual or silly messages, respond naturally when safe. Use POSP context for POSP-specific facts. Keep the answer to 1–4 short sentences or a few steps. Do not repeat the question or explain internal reasoning.
@@ -300,6 +304,25 @@ Latest client message (may contain typos, missing words, or scrambled phrasing):
     if not answer:
         return None, True, 'AI produced an empty client answer.'
     return answer, handoff, None
+
+@bp.post('/support-check')
+def support_check():
+    if not _require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    # Fixed fixtures exercise the production model without loading a client thread.
+    cases = {
+        'published_fee': ({'relevant_services': [{'name': 'Example service', 'application_fee_inr': 73}]},
+                          'What assistance fee is listed for Example service?'),
+        'unknown_payment': ({'client_requests': []}, 'Has my payment gone through?'),
+        'no_jobs': ({'active_jobs_verified': []}, 'Which verified jobs can I apply for today?'),
+        'no_scholarships': ({'active_scholarships_verified': []}, 'Which scholarships can I apply for today?'),
+    }
+    case = (request.get_json(silent=True) or {}).get('case')
+    if not isinstance(case, str) or case not in cases:
+        return jsonify({'error': 'Unknown support check.'}), 400
+    answer, handoff, error = _answer_support_question(*cases[case])
+    return jsonify({'case': case, 'answer': answer, 'handoff': handoff, 'error': error}), 502 if error else 200
+
 
 @bp.get('/overview')
 def overview():
