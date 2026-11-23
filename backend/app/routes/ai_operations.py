@@ -325,6 +325,12 @@ def support_check():
     cases = {
         'published_fee': ({'relevant_services': [{'name': 'Example service', 'application_fee_inr': 73}]},
                           'What assistance fee is listed for Example service?'),
+        'continuity': ({'recent_conversation': [{'role': 'client', 'content': 'I need the Example service.'}],
+                        'relevant_services': [{'name': 'Example service', 'application_fee_inr': 73}]},
+                       'What is its assistance fee?'),
+        'application_steps': ({'relevant_services': [{'name': 'Example service',
+                               'description': 'Select Apply, then upload the completed example form.'}]},
+                              'How do I apply for Example service?'),
         'unknown_payment': ({'client_requests': []}, 'Has my payment gone through?'),
         'no_jobs': ({'active_jobs_verified': []}, 'Which verified jobs can I apply for today?'),
         'no_scholarships': ({'active_scholarships_verified': []}, 'Which scholarships can I apply for today?'),

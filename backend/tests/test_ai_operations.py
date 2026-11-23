@@ -168,3 +168,16 @@ def test_sensitive_message_goes_to_staff_before_customer_data_is_loaded(monkeypa
     monkeypatch.setenv('POSP_CLIENT_AI_ENABLED', 'true')
     for message in ('My OTP is 123456', 'Card 4111 1111 1111 1111', 'my password is example'):
         assert generate_client_reply(None, message) == (None, True, None)
+
+
+def test_unavailable_listings_handoff_without_model(monkeypatch):
+    from app.routes.ai_operations import _answer_support_question
+    for kind in ('jobs', 'scholarships'):
+        answer, handoff, error = _answer_support_question({}, f'Show verified {kind}')
+        assert kind in answer and handoff and error is None
+
+
+def test_truncated_gemini_reply_is_withheld():
+    from app.ai.text import extract_gemini_text
+    assert extract_gemini_text({'candidates': [{'finishReason': 'MAX_TOKENS',
+        'content': {'parts': [{'text': 'We currently have'}]}}]}) == ''
