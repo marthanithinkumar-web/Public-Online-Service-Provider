@@ -1,59 +1,101 @@
-from calendar import monthrange
+import hashlib
+import json
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from app.jobs.sources import JobItem
-from app.jobs.sync import upsert_item
-from app.models.job import JobNotification, JobSource
+import pytest
+
+from app.routes import jobs as jobs_route
 from app.utils.database import db
 
 
-def _filter_item(external_id, title, job_type='government'):
-    return JobItem(
-        external_id=external_id,
-        title=title,
-        organization='Example Recruitment Board',
-        official_notice_url='https://www.upsc.gov.in/recruitment/advertisement',
-        deadline=date.today() + timedelta(days=20),
-        job_type=job_type,
-        qualification='Any graduate',
-        confidence=0.95,
-    )
+def _now():
+    return datetime.now(timezone.utc).replace(microsecond=0)
 
 
-def test_public_job_filters_match_source_type_featured_and_limit(client):
-    with client.application.app_context():
-        source = JobSource.query.filter_by(key='upsc').first()
-        if source is None:
-            source = JobSource(
-                key='upsc',
-                name='Union Public Service Commission',
-                listing_url='https://www.upsc.gov.in/recruitment',
-                enabled=True,
-            )
-            db.session.add(source)
-            db.session.commit()
-        featured, *_ = upsert_item(source, _filter_item('filter-upsc-featured', 'Graduate Assistant'))
-        featured.is_featured = True
-        featured.location = 'Hyderabad, Telangana'
-        featured.qualification = 'Engineering degree'
-        upsert_item(source, _filter_item('filter-upsc-private', 'Graduate Private Assistant', 'private'))
-        db.session.commit()
-        checked = datetime.now(timezone.utc).replace(tzinfo=None)
-        source.last_sync_status = 'success'
-        source.last_sync_completed_at = checked
-        source.last_successful_sync_at = checked
-        source.consecutive_failures = 0
-        featured.last_seen_at = checked
-        # Persist the source and item freshness evidence before the request runs
-        # in a new Flask application context.
-        db.session.commit()
-        featured_slug = featured.slug
+def _timestamp(value=None):
+    value = value or _now()
+    return value.isoformat().replace('+00:00', 'Z')
+
+
+def _job(
+    slug,
+    title='Graduate Assistant',
+    *,
+    job_type='government',
+    featured=False,
+    location='Hyderabad, Telangana',
+    qualification='Engineering degree',
+    deadline='auto',
+    cutoff=None,
+    checked_at=None,
+    source_status='success',
+):
+    checked_at = checked_at or _timestamp()
+    today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+    return {
+        'id': abs(hash(slug)) % 1000000,
+        'slug': slug,
+        'title': title,
+        'organization': 'Example Recruitment Board',
+        'job_type': job_type,
+        'location': location,
+        'qualification': qualification,
+        'deadline': (today + timedelta(days=20)).isoformat() if deadline == 'auto' else (deadline.isoformat() if isinstance(deadline, date) else deadline),
+        'deadline_cutoff_time': cutoff,
+        'deadline_timezone': 'Asia/Kolkata',
+        'application_status': 'open',
+        'can_apply': True,
+        'status_label': 'Verified open',
+        'source_checked_at': checked_at,
+        'official_notice_url': f'https://example.gov.in/notices/{slug}.pdf',
+        'application_url': f'https://example.gov.in/apply/{slug}',
+        'status': 'published',
+        'verification_status': 'official_source_checked',
+        'is_featured': featured,
+        'source': {
+            'key': 'upsc',
+            'name': 'Union Public Service Commission',
+            'listing_url': 'https://www.upsc.gov.in/recruitment',
+            'last_sync_status': source_status,
+            'last_successful_sync_at': checked_at,
+            'consecutive_failures': 0,
+        },
+        'last_seen_at': checked_at,
+        'published_at': checked_at,
+    }
+
+
+def _write_snapshot(monkeypatch, tmp_path, items, sources=None):
+    snapshot_path = tmp_path / 'jobs.json'
+    snapshot_path.write_text(json.dumps({
+        'schema_version': 1,
+        'generated_at': _timestamp(),
+        'items': items,
+        'sources': sources or [{
+            'key': 'upsc',
+            'name': 'Union Public Service Commission',
+            'listing_url': 'https://www.upsc.gov.in/recruitment',
+            'enabled': True,
+            'last_sync_status': 'success',
+            'last_successful_sync_at': _timestamp(),
+            'consecutive_failures': 0,
+        }],
+        'count': len(items),
+    }), encoding='utf-8')
+    monkeypatch.setattr(jobs_route, '_SNAPSHOT_PATH', snapshot_path)
+    return snapshot_path
+
+
+def test_public_job_filters_match_source_type_featured_and_limit(client, monkeypatch, tmp_path):
+    featured = _job('upsc-featured', featured=True)
+    private = _job('private-role', title='Private Graduate Assistant', job_type='private', featured=False)
+    _write_snapshot(monkeypatch, tmp_path, [featured, private])
 
     response = client.get('/api/jobs/?q=UPSC&type=government&featured=true&location=Hyderabad&qualification=Engineering&limit=1')
     assert response.status_code == 200
     assert response.get_json()['total'] == 1
-    assert [item['slug'] for item in response.get_json()['items']] == [featured_slug]
+    assert [item['slug'] for item in response.get_json()['items']] == ['upsc-featured']
 
     no_match = client.get('/api/jobs/?q=upsc&type=private&featured=true')
     assert no_match.status_code == 200
@@ -64,64 +106,139 @@ def test_public_job_filters_match_source_type_featured_and_limit(client):
     assert wrong_location.get_json()['items'] == []
 
 
-def test_public_job_deadline_sort_and_pagination_filters(client):
+def test_expired_and_undated_jobs_are_excluded_from_public_list_and_detail(client, monkeypatch, tmp_path):
+    today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+    expired = _job('expired', deadline=today - timedelta(days=1))
+    undated = _job('undated', deadline=None)
+    future = _job('future', deadline=today + timedelta(days=2))
+    _write_snapshot(monkeypatch, tmp_path, [expired, undated, future])
+
+    response = client.get('/api/jobs/')
+    assert response.status_code == 200
+    assert [item['slug'] for item in response.get_json()['items']] == ['future']
+    assert client.get('/api/jobs/expired').status_code == 404
+    assert client.get('/api/jobs/undated').status_code == 404
+    assert client.get('/api/jobs/future').status_code == 200
+
+
+def test_deadline_today_without_cutoff_is_warning_not_apply_now(client, monkeypatch, tmp_path):
+    today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+    _write_snapshot(monkeypatch, tmp_path, [_job('today-no-cutoff', deadline=today, cutoff=None)])
+
+    response = client.get('/api/jobs/')
+    assert response.status_code == 200
+    item = response.get_json()['items'][0]
+    assert item['application_status'] == 'deadline_today'
+    assert item['can_apply'] is False
+    assert item['status_label'] == 'Deadline today—check official portal'
+    assert response.get_json()['verified_open_count'] == 0
+    assert response.get_json()['deadline_today_count'] == 1
+
+
+def test_deadline_today_after_official_cutoff_is_excluded(client, monkeypatch, tmp_path):
+    today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+    cutoff = (datetime.now(ZoneInfo('Asia/Kolkata')) - timedelta(minutes=10)).strftime('%H:%M')
+    _write_snapshot(monkeypatch, tmp_path, [_job('today-after-cutoff', deadline=today, cutoff=cutoff)])
+
+    response = client.get('/api/jobs/')
+    assert response.status_code == 200
+    assert response.get_json()['items'] == []
+
+
+def test_stale_or_degraded_sources_are_excluded(client, monkeypatch, tmp_path):
+    stale = _timestamp(_now() - timedelta(hours=37))
+    fresh_but_degraded = _job('degraded', source_status='degraded')
+    stale_item = _job('stale', checked_at=stale)
+    _write_snapshot(monkeypatch, tmp_path, [fresh_but_degraded, stale_item])
+
+    response = client.get('/api/jobs/')
+    assert response.status_code == 200
+    assert response.get_json()['items'] == []
+
+
+def test_source_status_endpoint_uses_snapshot_and_hides_internal_errors(client, monkeypatch, tmp_path):
+    source = {
+        'key': 'upsc',
+        'name': 'Union Public Service Commission',
+        'listing_url': 'https://www.upsc.gov.in/recruitment',
+        'enabled': True,
+        'last_sync_status': 'degraded',
+        'last_successful_sync_at': _timestamp(),
+        'consecutive_failures': 1,
+        'last_error': 'Private parser exception detail',
+    }
+    _write_snapshot(monkeypatch, tmp_path, [], sources=[source])
+
+    response = client.get('/api/jobs/sources')
+    assert response.status_code == 200
+    item = response.get_json()['items'][0]
+    assert item['last_sync_status'] == 'degraded'
+    assert 'last_error' not in item
+
+
+def test_snapshot_status_requires_marker_to_match_snapshot_file(client, monkeypatch, tmp_path):
+    snapshot_path = tmp_path / 'jobs.json'
+    marker_path = tmp_path / 'verified_snapshot.sha256'
+    content = '{"schema_version":1,"items":[],"sources":[],"count":0}'
+    snapshot_path.write_text(content, encoding='utf-8')
+    marker_path.write_text(hashlib.sha256(content.encode('utf-8')).hexdigest(), encoding='utf-8')
+    monkeypatch.setattr(jobs_route, '_SNAPSHOT_PATH', snapshot_path)
+    monkeypatch.setattr(jobs_route, '_SNAPSHOT_MARKER', marker_path)
+
+    ready = client.get('/api/jobs/snapshot-status').get_json()
+    assert ready == {'ready': True, 'sha256': hashlib.sha256(content.encode('utf-8')).hexdigest()}
+
+    snapshot_path.write_text(content + ' ', encoding='utf-8')
+    not_ready = client.get('/api/jobs/snapshot-status').get_json()
+    assert not_ready == {'ready': False, 'sha256': None}
+
+
+def test_public_job_endpoints_do_not_open_database_connections(client, monkeypatch, tmp_path):
+    _write_snapshot(monkeypatch, tmp_path, [_job('read-only')])
     with client.application.app_context():
-        source = JobSource.query.filter_by(key='upsc').first()
-        if source is None:
-            source = JobSource(
-                key='upsc',
-                name='Union Public Service Commission',
-                listing_url='https://www.upsc.gov.in/recruitment',
-                enabled=True,
-            )
-            db.session.add(source)
-            db.session.commit()
+        engine = db.engine
 
-        today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
-        month_end = date(today.year, today.month, monthrange(today.year, today.month)[1])
-        expiring, *_ = upsert_item(source, _filter_item(
-            'filter-contract-expiring', 'Filter Contract Expiring',
-        ))
-        month_end_item, *_ = upsert_item(source, _filter_item(
-            'filter-contract-month-end', 'Filter Contract Month End',
-        ))
-        later, *_ = upsert_item(source, _filter_item(
-            'filter-contract-later', 'Filter Contract Later', 'private',
-        ))
-        expiring.deadline = today + timedelta(days=min(3, max(1, (month_end - today).days)))
-        month_end_item.deadline = month_end
-        later.deadline = today + timedelta(days=20)
-        checked = datetime.now(timezone.utc).replace(tzinfo=None)
-        for job in (expiring, month_end_item, later):
-            job.location = 'Filter Test City'
-            job.qualification = 'Filter Test Degree'
-            job.last_seen_at = checked
-        source.last_sync_status = 'success'
-        source.last_sync_completed_at = checked
-        source.last_successful_sync_at = checked
-        source.consecutive_failures = 0
-        expiring.published_at = checked - timedelta(days=2)
-        month_end_item.published_at = checked - timedelta(days=1)
-        later.published_at = checked
-        db.session.commit()
+    def fail_database_connection(*args, **kwargs):
+        pytest.fail('Public job snapshot endpoint attempted a database connection')
 
-    base = '/api/jobs/?q=Filter%20Contract&location=Filter%20Test%20City&qualification=Filter%20Test%20Degree'
-    closing_soon = client.get(base + '&deadline=closing_soon').get_json()
-    expected_closing = {'Filter Contract Expiring'}
-    if (month_end - today).days <= 7:
-        expected_closing.add('Filter Contract Month End')
-    assert {item['title'] for item in closing_soon['items']} == expected_closing
-    assert closing_soon['total'] == len(expected_closing)
+    monkeypatch.setattr(engine, 'connect', fail_database_connection)
+    response = client.get('/api/jobs/')
+    assert response.status_code == 200
+    assert response.get_json()['total'] == 1
 
-    this_month = client.get(base + '&deadline=this_month').get_json()
-    assert 'Filter Contract Month End' in {item['title'] for item in this_month['items']}
 
-    first_page = client.get(base + '&sort=newest&limit=1&page=1').get_json()
-    second_page = client.get(base + '&sort=newest&limit=1&page=2').get_json()
-    assert first_page['total'] == second_page['total'] == 3
-    assert first_page['page'] == 1 and first_page['limit'] == 1
-    assert first_page['items'][0]['title'] == 'Filter Contract Later'
-    assert second_page['items'][0]['title'] == 'Filter Contract Month End'
+def test_cancelled_unverified_and_missing_application_link_jobs_are_excluded(client, monkeypatch, tmp_path):
+    cancelled = _job('cancelled')
+    cancelled['application_status'] = 'cancelled'
+    unverified = _job('unverified')
+    unverified['verification_status'] = 'unverified'
+    no_application_link = _job('no-application-link')
+    no_application_link['application_url'] = ''
+    _write_snapshot(monkeypatch, tmp_path, [cancelled, unverified, no_application_link])
 
-    latest_deadline = client.get(base + '&sort=deadline_latest&limit=3').get_json()
-    assert latest_deadline['items'][0]['title'] == 'Filter Contract Later'
+    response = client.get('/api/jobs/')
+    assert response.status_code == 200
+    assert response.get_json()['items'] == []
+
+
+def test_duplicate_snapshot_items_are_returned_once(client, monkeypatch, tmp_path):
+    item = _job('duplicate')
+    _write_snapshot(monkeypatch, tmp_path, [item, dict(item)])
+
+    response = client.get('/api/jobs/')
+    assert response.status_code == 200
+    assert response.get_json()['total'] == 1
+    assert [entry['slug'] for entry in response.get_json()['items']] == ['duplicate']
+
+
+def test_deadline_sort_before_pagination(client, monkeypatch, tmp_path):
+    today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
+    _write_snapshot(monkeypatch, tmp_path, [
+        _job('later', featured=True, deadline=today + timedelta(days=5)),
+        _job('soon', deadline=today + timedelta(days=1)),
+        _job('outside', deadline=today + timedelta(days=10)),
+    ])
+    for page, slug in [(1, 'soon'), (2, 'later')]:
+        data = client.get(f'/api/jobs/?deadline=closing_soon&sort=deadline_soonest&page={page}&limit=1').get_json()
+        assert (data['total'], data['page'], data['limit']) == (2, page, 1)
+        assert [job['slug'] for job in data['items']] == [slug]

@@ -1,5 +1,7 @@
 import redis
 
+from app.utils.database import db
+from app.utils.limiter import limiter
 from app.utils.readiness import (
     production_readiness,
     readiness_status,
@@ -240,3 +242,95 @@ def test_readiness_endpoint_can_fail_closed_in_strict_mode(client, monkeypatch):
     response = client.get('/readiness')
     assert response.status_code == 503
     assert response.get_json()['status'] == 'needs_configuration'
+
+
+def test_rate_limit_health_endpoint_is_database_free(client, monkeypatch):
+    monkeypatch.setattr('app.main.shared_rate_limit_configured', lambda: True)
+    monkeypatch.setattr('app.main.shared_rate_limit_connectivity', lambda: True)
+    monkeypatch.setattr(limiter, '_storage_dead', False)
+    with client.application.app_context():
+        engine = db.engine
+
+    def fail_database_connection(*args, **kwargs):
+        raise AssertionError('rate-limit health probe must not connect to the production database')
+
+    monkeypatch.setattr(engine, 'connect', fail_database_connection)
+    response = client.get('/health/rate-limit')
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        'status': 'ready',
+        'checks': {
+            'shared_rate_limit_storage': True,
+            'shared_rate_limit_connectivity': True,
+            'fallback_active': False,
+        },
+    }
+
+
+def test_rate_limit_health_endpoint_reports_redis_failure(client, monkeypatch):
+    monkeypatch.setattr('app.main.shared_rate_limit_configured', lambda: True)
+    monkeypatch.setattr('app.main.shared_rate_limit_connectivity', lambda: False)
+    monkeypatch.setattr(limiter, '_storage_dead', False)
+
+    response = client.get('/health/rate-limit')
+
+    assert response.status_code == 503
+    assert response.get_json() == {
+        'status': 'unavailable',
+        'checks': {
+            'shared_rate_limit_storage': True,
+            'shared_rate_limit_connectivity': False,
+            'fallback_active': False,
+        },
+    }
+
+
+def test_external_dependency_health_endpoint_is_database_free(client, monkeypatch):
+    monkeypatch.setattr('app.main.production_readiness', lambda: {
+        'persistent_document_storage': True,
+        'shared_rate_limit_storage': True,
+        'smtp_delivery': True,
+        'razorpay_live_credentials': True,
+        'razorpay_webhook': True,
+    })
+    monkeypatch.setattr('app.main.persistent_storage_connectivity', lambda: True)
+    monkeypatch.setattr('app.main.shared_rate_limit_connectivity', lambda: True)
+    monkeypatch.setattr('app.main.smtp_connectivity', lambda: True)
+    monkeypatch.setattr('app.main.razorpay_connectivity', lambda: True)
+    with client.application.app_context():
+        engine = db.engine
+
+    def fail_database_connection(*args, **kwargs):
+        raise AssertionError('external dependency health probe must not connect to the production database')
+
+    monkeypatch.setattr(engine, 'connect', fail_database_connection)
+    response = client.get('/health/dependencies')
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload['status'] == 'ready'
+    assert payload['scope'] == 'external_dependencies_only'
+    assert 'database' not in payload['checks']
+    assert all(payload['checks'].values())
+
+
+def test_external_dependency_health_endpoint_fails_closed_on_dependency_error(client, monkeypatch):
+    monkeypatch.setattr('app.main.production_readiness', lambda: {
+        'persistent_document_storage': True,
+        'shared_rate_limit_storage': True,
+        'smtp_delivery': True,
+        'razorpay_live_credentials': True,
+        'razorpay_webhook': True,
+    })
+    monkeypatch.setattr('app.main.persistent_storage_connectivity', lambda: True)
+    monkeypatch.setattr('app.main.shared_rate_limit_connectivity', lambda: False)
+    monkeypatch.setattr('app.main.smtp_connectivity', lambda: True)
+    monkeypatch.setattr('app.main.razorpay_connectivity', lambda: True)
+
+    response = client.get('/health/dependencies')
+
+    assert response.status_code == 503
+    payload = response.get_json()
+    assert payload['status'] != 'ready'
+    assert payload['checks']['shared_rate_limit_connectivity'] is False

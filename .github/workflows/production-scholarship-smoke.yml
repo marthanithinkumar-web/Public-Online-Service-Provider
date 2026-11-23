@@ -33,13 +33,13 @@ jobs:
   smoke:
     name: Verify daily scholarship discovery in production
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Wait for discovered scholarship feed deployment
         run: |
           set -Eeuo pipefail
           ready=0
-          for attempt in $(seq 1 24); do
+          for attempt in $(seq 1 48); do
             curl --fail --silent --show-error --location --max-time 30 \
               "$API_URL/api/scholarships/" -o /tmp/scholarships.json || true
             if python - <<'PY'
@@ -70,7 +70,7 @@ jobs:
               ready=1
               break
             fi
-            echo "Waiting for current provider-clean scholarship discovery feed (attempt $attempt/24)..."
+            echo "Waiting for current provider-clean scholarship discovery feed (attempt $attempt/48)..."
             sleep 10
           done
           test "$ready" = "1"
