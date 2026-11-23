@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 import requests
 from pypdf import PdfReader
 from .official_fetch import BROWSER_HEADERS, fetch_official_page, validate_official_url
-from .sources import parse_explicit_deadline
+from .sources import parse_explicit_deadline, parse_explicit_deadline_cutoff_time
 
 MAX_NOTICE_BYTES=8*1024*1024
 
@@ -113,6 +113,10 @@ def enrich_job_item(item,session=None):
     start,deadline=_application_dates(text)
     if deadline is None:
         deadline=parse_explicit_deadline(text)
+    cutoff_time=parse_explicit_deadline_cutoff_time(text)
+    if cutoff_time is not None:
+        item.deadline_cutoff_time=cutoff_time
+        item.deadline_timezone='Asia/Kolkata'
     if deadline is None:
         parsed_url = urlparse(url)
         organization = str(getattr(item, 'organization', '') or '').lower()

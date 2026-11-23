@@ -18,7 +18,11 @@ def _register(profile, names):
 _register('identity', (
     'PAN Card - New Application', 'PAN Card - Correction / Update', 'PAN Card - Reprint',
     'Voter ID - New Registration', 'Voter ID - Correction / Update', 'Voter ID - Address / Constituency Change',
-    'Aadhaar - Update Assistance', 'Passport - New Application', 'Passport - Renewal / Reissue',
+    'Aadhaar - Update Assistance', 'Aadhaar Mobile Number Update Assistance',
+    'Aadhaar Address Update Assistance', 'Aadhaar Email Update Assistance',
+    'Aadhaar Document Update Assistance', 'Aadhaar Request Status Assistance',
+    'Aadhaar Biometric Lock / Unlock Assistance', 'e-Aadhaar Download Assistance',
+    'PAN - Aadhaar Linking Assistance', 'Passport - New Application', 'Passport - Renewal / Reissue',
     'Driving Licence / Learner Licence Assistance', 'RC / Vehicle Service Assistance', 'Aadhaar PVC Card Order',
     'DigiLocker Document Access Assistance', 'Official Document PDF Access Assistance',
 ))

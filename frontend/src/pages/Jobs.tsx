@@ -3,7 +3,9 @@ import {useSearchParams} from 'react-router-dom'
 import {fetchJobs,fetchJobSources,JobNotification,JobSource} from '../services/jobs'
 import JobCard from '../components/jobs/JobCard'
 
-const PAGE_SIZE=12
+const PAGE_SIZE=10
+type SortOrder='priority'|'deadline_soonest'|'deadline_latest'|'newest'
+const SORT_ORDERS:SortOrder[]=['priority','deadline_soonest','deadline_latest','newest']
 
 export default function Jobs(){
   const [params,setParams]=useSearchParams()
@@ -16,51 +18,48 @@ export default function Jobs(){
   const [loading,setLoading]=useState(true)
   const [error,setError]=useState('')
   const [retryCount,setRetryCount]=useState(0)
+  const submitted=(params.get('q')||'').slice(0,120)
   const type=params.get('type')||''
-  const featured=params.get('featured')==='true'
+  const featured=['true','1','yes'].includes((params.get('featured')||'').toLowerCase())
   const deadline=params.get('deadline')||''
-  const sort=params.get('sort')||'deadline_asc'
-  const page=Math.max(1,Number(params.get('page')||1)||1)
-  const submitted=params.get('q')||''
+  const requestedSort=(params.get('sort')||'priority') as SortOrder
+  const sort=SORT_ORDERS.includes(requestedSort)?requestedSort:'priority'
+  const page=Math.max(1,Math.floor(Number(params.get('page')||1)||1))
+  const locationFilter=params.get('location')||params.get('state')||''
+  const qualificationFilter=params.get('qualification')||params.get('education')||''
 
-  const updateFilters=(updates:Record<string,string>)=>{
-    const next=new URLSearchParams(params)
-    for(const [key,value] of Object.entries(updates)){
-      if(value)next.set(key,value)
-      else next.delete(key)
-    }
-    next.set('page','1')
-    setParams(next,{replace:true})
-  }
+  useEffect(()=>{
+    setQuery(submitted)
+    setLocation(locationFilter)
+    setQualification(qualificationFilter)
+  },[submitted,locationFilter,qualificationFilter])
 
   useEffect(()=>{
     let active=true
     setLoading(true)
     setError('')
-    fetchJobs({
-      limit:PAGE_SIZE,
-      page,
-      q:submitted,
-      type,
-      featured,
-      location:params.get('location')||params.get('state')||'',
-      qualification:params.get('qualification')||params.get('education')||'',
-      deadline,
-      sort,
-    }).then(data=>{
-      if(!active)return
-      setJobs(data.items||[])
-      setTotal(data.total??data.count??0)
-    }).catch(()=>active&&setError('We could not load the verified job feed. Please try again.')).finally(()=>active&&setLoading(false))
+    fetchJobs({limit:PAGE_SIZE,page,q:submitted,type,featured,location:locationFilter,qualification:qualificationFilter,deadline,sort})
+      .then(data=>{
+        if(!active)return
+        setJobs(data.items||[])
+        setTotal(data.total??data.count??0)
+        const lastPage=Math.max(1,Math.ceil((data.total??data.count??0)/PAGE_SIZE))
+        if(page>lastPage&&(data.total??0)>0){
+          const next=new URLSearchParams(params)
+          next.set('page',String(lastPage))
+          setParams(next,{replace:true})
+        }
+      })
+      .catch(()=>active&&setError('We could not load the verified job feed. Please try again.'))
+      .finally(()=>active&&setLoading(false))
     return ()=>{active=false}
-  },[submitted,type,featured,deadline,sort,page,params,retryCount])
+  },[submitted,type,featured,locationFilter,qualificationFilter,deadline,sort,page,retryCount])
 
   useEffect(()=>{fetchJobSources().then(data=>setSources(data.items||[])).catch(()=>{})},[])
 
-  const submit=(event:FormEvent)=>{
-    event.preventDefault()
+  const updateFilters=(updates:Record<string,string>)=>{
     const next=new URLSearchParams(params)
-    for(const [key,value] of [['q',query.trim()],['location',location.trim()],['qualification',qualification.trim()]] as const){
+    for(const [key,value] of Object.entries(updates)){
       if(value)next.set(key,value)
       else next.delete(key)
     }
@@ -69,7 +68,14 @@ export default function Jobs(){
     next.set('page','1')
     setParams(next,{replace:true})
   }
-
+  const submit=(event:FormEvent)=>{
+    event.preventDefault()
+    updateFilters({q:query.trim().slice(0,120)})
+  }
+  const applyFilters=(event:FormEvent)=>{
+    event.preventDefault()
+    updateFilters({location:location.trim(),qualification:qualification.trim()})
+  }
   const clearFilters=()=>{
     setQuery('')
     setLocation('')
@@ -77,10 +83,11 @@ export default function Jobs(){
     setParams({}, {replace:true})
   }
   const movePage=(nextPage:number)=>{
-    const next=new URLSearchParams(params.toString())
-    next.set('page',String(nextPage))
+    const next=new URLSearchParams(params)
+    next.set('page',String(Math.max(1,nextPage)))
     setParams(next)
   }
+  const pageCount=Math.max(1,Math.ceil(total/PAGE_SIZE))
 
   return <div className="jobs-page">
     <section className="jobs-hero">
@@ -89,12 +96,8 @@ export default function Jobs(){
       <p>Search government and private opportunities gathered from approved official portals. Unclear details are held for review, never guessed.</p>
       <form className="jobs-search" onSubmit={submit}>
         <label className="visually-hidden" htmlFor="job-search">Search job notices</label>
-        <input id="job-search" type="search" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search title, organization or keywords"/>
-        <label className="visually-hidden" htmlFor="job-location">Filter by state or location</label>
-        <input id="job-location" type="search" value={location} onChange={event=>setLocation(event.target.value)} placeholder="State or location"/>
-        <label className="visually-hidden" htmlFor="job-qualification">Filter by qualification or education</label>
-        <input id="job-qualification" type="search" value={qualification} onChange={event=>setQualification(event.target.value)} placeholder="Qualification or education"/>
-        <button type="submit">Apply filters</button>
+        <input id="job-search" type="search" maxLength={120} value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search title, organization or keywords"/>
+        <button type="submit">Search jobs</button>
       </form>
       <div className="jobs-trust-row"><span>✓ Official links only</span><span>✓ Updated daily</span><span>✓ No OTP, PIN or password requested</span></div>
     </section>
@@ -103,7 +106,7 @@ export default function Jobs(){
         <div>
           <span className="eyebrow">Opportunity directory</span>
           <h2 id="jobs-directory-title">Current published notices</h2>
-          {!loading&&!error&&<p className="job-results-summary" role="status">{total} verified notice{total===1?'':'s'}{submitted?` matching “${submitted}”`:''}</p>}
+          {!loading&&!error&&<p className="job-results-summary" role="status">{total} verified notice{total===1?'':'s'}{submitted?' matching “'+submitted+'”':''}</p>}
         </div>
         <div className="job-filter-tabs" role="group" aria-label="Filter jobs by type">
           <button type="button" className={!type?'active':''} onClick={()=>updateFilters({type:''})} aria-pressed={!type}>All</button>
@@ -111,26 +114,29 @@ export default function Jobs(){
           <button type="button" className={type==='private'?'active':''} onClick={()=>updateFilters({type:'private'})} aria-pressed={type==='private'}>Private</button>
         </div>
       </div>
-      <div className="job-filter-tabs" role="group" aria-label="Additional job filters">
-        <label><input type="checkbox" checked={featured} onChange={event=>updateFilters({featured:event.target.checked?'true':''})}/> Featured only</label>
-        <label>Deadline <select value={deadline} onChange={event=>updateFilters({deadline:event.target.value})}>
+      <form className="jobs-filter-form" onSubmit={applyFilters}>
+        <label htmlFor="job-location">Location<input id="job-location" value={location} onChange={event=>setLocation(event.target.value)} placeholder="State or city"/></label>
+        <label htmlFor="job-qualification">Qualification<input id="job-qualification" value={qualification} onChange={event=>setQualification(event.target.value)} placeholder="Graduate, diploma…"/></label>
+        <label><span>Featured only</span><input type="checkbox" checked={featured} onChange={event=>updateFilters({featured:event.target.checked?'true':''})}/></label>
+        <label>Deadline<select id="job-deadline" value={deadline} onChange={event=>updateFilters({deadline:event.target.value})}>
           <option value="">Any current deadline</option><option value="closing_soon">Closing within 7 days</option><option value="this_month">Closing this month</option>
         </select></label>
-        <label>Sort <select value={sort} onChange={event=>updateFilters({sort:event.target.value})}>
-          <option value="deadline_asc">Soonest deadline</option><option value="deadline_desc">Latest deadline</option><option value="newest">Recently published</option>
+        <label>Sort<select value={sort} onChange={event=>updateFilters({sort:event.target.value})}>
+          <option value="priority">Priority and deadline</option><option value="deadline_soonest">Deadline soonest</option><option value="deadline_latest">Deadline latest</option><option value="newest">Newest notices</option>
         </select></label>
-        <button type="button" onClick={clearFilters}>Clear filters</button>
-      </div>
+        <button type="submit">Apply filters</button>
+        <button type="button" className="btn btn-secondary" onClick={clearFilters}>Clear filters</button>
+      </form>
       {loading&&<div className="dashboard-state"><div className="loading-dot"/><p>Loading current notices…</p></div>}
       {error&&<div className="dashboard-state error-state" role="alert"><p>{error}</p><button onClick={()=>setRetryCount(value=>value+1)}>Try again</button></div>}
-      {!loading&&!error&&!jobs.length&&<div className="empty-dashboard"><h3>No matching published notices</h3><p>Try broader keywords, a different location, or clear some filters. Notices with incomplete or uncertain data remain in administrator review.</p></div>}
+      {!loading&&!error&&!jobs.length&&<div className="empty-dashboard"><h3>No matching published notices</h3><p>Try broader keywords or clear some filters. Notices with incomplete or uncertain data remain in administrator review.</p></div>}
       <div className="jobs-list">{jobs.map(job=><JobCard key={job.id} job={job}/>)}</div>
       {!loading&&!error&&total>PAGE_SIZE&&<nav className="job-pagination" aria-label="Job result pages">
         <button type="button" disabled={page<=1} onClick={()=>movePage(page-1)}>Previous</button>
-        <span>Page {page} of {Math.ceil(total/PAGE_SIZE)}</span>
-        <button type="button" disabled={page>=Math.ceil(total/PAGE_SIZE)} onClick={()=>movePage(page+1)}>Next</button>
+        <span>Page {page} of {pageCount}</span>
+        <button type="button" disabled={page>=pageCount} onClick={()=>movePage(page+1)}>Next</button>
       </nav>}
     </section>
-    <section className="job-source-transparency"><div><span className="eyebrow">Source transparency</span><h2>Approved official sources</h2><p>The official boards are checked automatically every day at about 7:45 AM IST. New notices appear after source, duplicate, date and completeness checks; unclear details are never guessed.</p><p>This independent website links to source organizations; it does not represent them. Always confirm eligibility, fees and deadlines in the official notice.</p></div><div className="source-chip-list">{sources.map(source=><a key={source.key} href={source.listing_url} target="_blank" rel="noopener noreferrer"><span className={`source-status ${source.last_sync_status==='success'?'healthy':''}`}/><strong>{source.name}</strong><small>{source.last_sync_completed_at?`Last checked ${new Date(source.last_sync_completed_at).toLocaleString('en-IN')}`:'Scheduled for daily checks'}</small></a>)}</div></section>
+    <section className="job-source-transparency"><div><span className="eyebrow">Source transparency</span><h2>Approved official sources</h2><p>The official boards are checked automatically every day at about 7:45 AM IST. New notices appear after source, duplicate, date and completeness checks; unclear details are never guessed.</p><p>This independent website links to source organizations; it does not represent them. Always confirm eligibility, fees and deadlines in the official notice.</p></div><div className="source-chip-list">{sources.map(source=><a key={source.key} href={source.listing_url} target="_blank" rel="noopener noreferrer"><span className={'source-status '+(source.last_sync_status==='success'?'healthy':'')}/><strong>{source.name}</strong><small>{source.last_successful_sync_at?'Last successful check '+new Date(source.last_successful_sync_at).toLocaleString('en-IN'):(source.last_sync_completed_at?'Last attempt '+new Date(source.last_sync_completed_at).toLocaleString('en-IN'):'Scheduled for daily checks')+(Number(source.consecutive_failures||0)>0?' · '+source.consecutive_failures+' consecutive failure(s)':'')}</small></a>)}</div></section>
   </div>
 }

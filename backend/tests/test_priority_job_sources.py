@@ -1,8 +1,22 @@
 from app.jobs import sources
-from app.jobs.priority_sources import parse_drdo, parse_kvs, parse_rbi, parse_sbi
+from app.jobs.priority_sources import (
+    parse_drdo,
+    parse_drdo_rac,
+    parse_kvs,
+    parse_rbi,
+    parse_sebi,
+    parse_sbi,
+)
 from app.jobs import snapshot, notice_enrichment
-from app.jobs.sources import JobItem, SOURCE_DEFINITIONS, parse_all_dates, parse_date, parse_explicit_deadline
-from datetime import date, datetime, timedelta, timezone
+from app.jobs.sources import (
+    JobItem,
+    SOURCE_DEFINITIONS,
+    parse_all_dates,
+    parse_date,
+    parse_explicit_deadline,
+    parse_explicit_deadline_cutoff_time,
+)
+from datetime import date, datetime, time, timezone
 
 
 def test_employment_news_all_jobs_is_removed_and_priority_sources_are_registered():
@@ -15,23 +29,29 @@ def test_employment_news_all_jobs_is_removed_and_priority_sources_are_registered
     assert keys.index('rbi') < keys.index('ssc')
     assert keys.index('sbi') < keys.index('ssc')
     assert all('employmentnews.gov.in/NewEmp/AllJobs.aspx' not in source.listing_url for source in sources.SOURCE_DEFINITIONS)
+    drdo_rac = next(source for source in sources.SOURCE_DEFINITIONS if source.key == 'drdo_rac')
+    assert drdo_rac.listing_url == 'https://rac.gov.in/index.php?lang=en&id=0'
+    assert drdo_rac.parser is parse_drdo_rac
+    sebi = next(source for source in sources.SOURCE_DEFINITIONS if source.key == 'sebi')
+    assert sebi.listing_url == 'https://www.sebi.gov.in/sebiweb/about/AboutAction.do?doVacancies=yes'
+    assert sebi.parser is parse_sebi
+    assert not sebi.allow_missing_deadline
 
 
 def test_priority_parser_keeps_recruitment_notice_and_excludes_results():
-    deadline = date.today() + timedelta(days=30)
     html = '''
     <ul>
-      <li><a href="/Scripts/bs_viewcontent.aspx?Id=5001">Direct Recruitment for Officers Grade B - Last date {deadline}</a></li>
+      <li><a href="/Scripts/bs_viewcontent.aspx?Id=5001">Direct Recruitment for Officers Grade B 2099 - Last date 30 October 2099</a></li>
       <li><a href="/Scripts/bs_viewcontent.aspx?Id=5002">Final Result - Recruitment for Officers Grade B 2026</a></li>
       <li><a href="/Scripts/CallLetters.aspx">Call Letter for Recruitment Examination</a></li>
     </ul>
-    '''.format(deadline=deadline.strftime('%d %B %Y'))
+    '''
 
     items = parse_rbi(html, 'https://opportunities.rbi.org.in/Scripts/Vacancies.aspx')
 
     assert len(items) == 1
     assert items[0].organization == 'Reserve Bank of India (RBI)'
-    assert items[0].deadline == deadline
+    assert items[0].deadline.isoformat() == '2099-10-30'
     assert items[0].official_notice_url == 'https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=5001'
 
 
@@ -43,6 +63,81 @@ def test_dotted_dates_and_explicit_deadline_labels():
     assert parse_explicit_deadline('Last date 30 October 2026') == date(2026, 10, 30)
     assert parse_explicit_deadline('Last date for submission of online applications: 09.11.2026') == date(2026, 11, 9)
     assert parse_explicit_deadline('Online applications from 19.10.2026 to 09.11.2026') == date(2026, 11, 9)
+
+
+def test_hyphenated_month_dates_parse_for_official_notice_dates_and_deadlines():
+    assert parse_date('14-Aug-2026') == date(2026, 8, 14)
+    assert parse_all_dates('Online registration from 02-Nov-2026 to 23-Nov-2026') == [
+        date(2026, 11, 2),
+        date(2026, 11, 23),
+    ]
+    assert parse_explicit_deadline('Last date to apply: 23-Nov-2026') == date(2026, 11, 23)
+    cutoff = parse_explicit_deadline_cutoff_time(
+        'Last date to apply: 23-Nov-2026 at 17:00 hrs IST'
+    )
+    assert cutoff.isoformat(timespec='minutes') == '17:00'
+
+
+def test_sebi_parser_uses_recent_recruitment_rows_and_excludes_archive_results(monkeypatch):
+    import app.jobs.priority_sources as priority_sources
+
+    monkeypatch.setattr(priority_sources, 'india_today', lambda: date(2026, 11, 15))
+    html = '''
+      <table>
+        <tr><th>Date</th><th>Title</th></tr>
+        <tr><td>14-Aug-2026</td><td><a href="/sebiweb/other/careerdetail.jsp?careerId=157">Recruitment of Security Coordinator - Last date to apply: 23-Nov-2026</a></td></tr>
+        <tr><td>12-Aug-2026</td><td><a href="/sebiweb/other/careerdetail.jsp?careerId=158">Final Result for Officer Grade A Recruitment</a></td></tr>
+        <tr><td>10-Apr-2026</td><td><a href="/sebiweb/other/careerdetail.jsp?careerId=160">Application for the post of Part-Time Counsellor (on contract basis)</a></td></tr>
+        <tr><td>12-Feb-2026</td><td><a href="/sebiweb/other/careerdetail.jsp?careerId=161">Recruitment of Officer Grade A - Information Handout and Scribe Declaration</a></td></tr>
+        <tr><td>14-Nov-2024</td><td><a href="/sebiweb/other/careerdetail.jsp?careerId=159">Recruitment of Executive Director</a></td></tr>
+      </table>
+    '''
+
+    items = parse_sebi(
+        html,
+        'https://www.sebi.gov.in/sebiweb/about/AboutAction.do?doVacancies=yes',
+    )
+
+    assert len(items) == 2
+    assert items[0].issue_date == date(2026, 8, 14)
+    assert items[0].deadline == date(2026, 11, 23)
+    assert items[0].official_notice_url == 'https://www.sebi.gov.in/sebiweb/other/careerdetail.jsp?careerId=157'
+    assert items[1].title == 'Application for the post of Part-Time Counsellor (on contract basis)'
+    assert items[1].issue_date == date(2026, 4, 10)
+
+
+def test_sebi_parser_rejects_an_unrecognized_listing_page():
+    import pytest
+
+    with pytest.raises(ValueError, match='dated listing table'):
+        parse_sebi(
+            '<html><body>Maintenance</body></html>',
+            'https://www.sebi.gov.in/sebiweb/about/AboutAction.do?doVacancies=yes',
+        )
+
+
+def test_sebi_archive_notice_with_expired_deadline_is_not_published(monkeypatch):
+    import app.jobs.priority_sources as priority_sources
+
+    source = next(item for item in SOURCE_DEFINITIONS if item.key == 'sebi')
+    html = '''
+      <table>
+        <tr><th>Date</th><th>Title</th></tr>
+        <tr><td>14-Aug-2026</td><td><a href="/sebiweb/other/careerdetail.jsp?careerId=157">Recruitment of Security Coordinator - Last date to apply: 03-Sep-2026</a></td></tr>
+      </table>
+    '''
+    monkeypatch.setattr(priority_sources, 'india_today', lambda: date(2026, 11, 15))
+    monkeypatch.setattr(snapshot, 'SOURCE_DEFINITIONS', (source,))
+    monkeypatch.setattr(snapshot, 'fetch_official_page', lambda url, session=None: html)
+    monkeypatch.setattr(snapshot, 'enrich_job_item', lambda item, session=None: item)
+
+    result = snapshot.build_snapshot(
+        now=datetime(2026, 11, 15, 12, 0, tzinfo=timezone.utc),
+    )
+
+    assert result['count'] == 0
+    assert result['sources'][0]['last_sync_status'] == 'success'
+    assert result['sources'][0]['fetched_count'] == 1
 
 
 def test_html_notice_supplies_explicit_dotted_deadline(monkeypatch):
@@ -137,23 +232,20 @@ def test_application_deadline_formats_seen_in_official_notices():
 
 
 def test_sbi_grouped_parser_preserves_titles_notice_urls_and_application_urls():
-    fixed_term_deadline = date.today() + timedelta(days=30)
-    extension_deadline = date.today() + timedelta(days=10)
-    expired_deadline = date.today() - timedelta(days=1)
     html = '''
-      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM EMPLOYMENT BASIS (Apply Online from 19.10.2026 TO {fixed_deadline})</p>
+      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM EMPLOYMENT BASIS (Apply Online from 19.10.2099 TO 09.11.2099)</p>
       <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/30</p>
       <ul>
         <li><a href="/documents/adv30.pdf/abc123">DOWNLOAD ADVERTISEMENT English</a></li>
-        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply">APPLY ONLINE (19.10.2026 TO {fixed_deadline})</a></li>
+        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply">APPLY ONLINE (19.10.2099 TO 09.11.2099)</a></li>
       </ul>
-      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON CONTRACT BASIS (Online Registration Extended till {extension_deadline})</p>
+      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON CONTRACT BASIS (Online Registration Extended till 31.10.2099)</p>
       <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/25</p>
       <ul>
         <li><a href="/documents/adv25.pdf/abc125">DOWNLOAD ADVERTISEMENT English</a></li>
-        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-25/apply">APPLY ONLINE (Online Registration Extended till {extension_deadline})</a></li>
+        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-25/apply">APPLY ONLINE (Online Registration Extended till 31.10.2099)</a></li>
       </ul>
-      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON CONTRACT BASIS (Registration Extended till {expired_deadline})</p>
+      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON CONTRACT BASIS (Registration Extended till 16.10.2026)</p>
       <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/20</p>
       <ul>
         <li><a href="/documents/adv20.pdf/abc120">DOWNLOAD ADVERTISEMENT English</a></li>
@@ -162,17 +254,13 @@ def test_sbi_grouped_parser_preserves_titles_notice_urls_and_application_urls():
       <p>ENGAGEMENT OF SPECIALIST CADRE OFFICER ON CONTRACT BASIS (INTERVIEW SCHEDULE ANNOUNCED)</p>
       <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/21</p>
       <ul><li><a href="/documents/adv21.pdf/abc121">DOWNLOAD ADVERTISEMENT English</a></li></ul>
-    '''.format(
-        fixed_deadline=fixed_term_deadline.strftime('%d.%m.%Y'),
-        extension_deadline=extension_deadline.strftime('%d.%m.%Y'),
-        expired_deadline=expired_deadline.strftime('%d.%m.%Y'),
-    )
+    '''
 
     items = parse_sbi(html, 'https://sbi.bank.in/web/careers/current-openings')
 
     assert len(items) == 2
-    fixed_term = next(item for item in items if item.deadline == fixed_term_deadline)
-    extension = next(item for item in items if item.deadline == extension_deadline)
+    fixed_term = next(item for item in items if item.deadline == date(2099, 11, 9))
+    extension = next(item for item in items if item.deadline == date(2099, 10, 31))
     assert fixed_term.title.startswith('ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM')
     assert fixed_term.official_notice_url == 'https://sbi.bank.in/documents/adv30.pdf/abc123'
     assert fixed_term.application_url == 'https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply'
@@ -195,11 +283,11 @@ def test_rbi_application_arrival_deadline_after_prior_sentence():
 
 def test_sbi_grouped_parser_finds_advertisement_anchor_outside_list_item():
     html = '''
-      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM EMPLOYMENT BASIS (Apply Online from 19.10.2026 TO 09.11.2026)</p>
+      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM EMPLOYMENT BASIS (Apply Online from 19.10.2099 TO 09.11.2099)</p>
       <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/30</p>
       <div><a href="https://sbi.bank.in/documents/adv30.pdf/document-id?t=1">DOWNLOAD ADVERTISEMENT English</a></div>
       <ul>
-        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply">APPLY ONLINE (19.10.2026 TO 09.11.2026)</a></li>
+        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply">APPLY ONLINE (19.10.2099 TO 09.11.2099)</a></li>
       </ul>
     '''
     items = parse_sbi(html, 'https://sbi.bank.in/web/careers/current-openings')
@@ -211,11 +299,11 @@ def test_sbi_grouped_parser_finds_advertisement_anchor_outside_list_item():
 
 def test_sbi_dynamic_download_button_uses_onclick_pdf_url_not_placeholder():
     html = '''
-      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM EMPLOYMENT BASIS (Apply Online from 19.10.2026 TO 09.11.2026)</p>
+      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM EMPLOYMENT BASIS (Apply Online from 19.10.2099 TO 09.11.2099)</p>
       <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/30</p>
       <ul>
         <li><a href="#" onclick="window.open('https://sbi.bank.in/documents/adv30.pdf/document-id?t=1')">DOWNLOAD ADVERTISEMENT English (796 KB)</a></li>
-        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply">APPLY ONLINE (19.10.2026 TO 09.11.2026)</a></li>
+        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply">APPLY ONLINE (19.10.2099 TO 09.11.2099)</a></li>
       </ul>
     '''
     items = parse_sbi(html, 'https://sbi.bank.in/web/careers/current-openings')
@@ -226,11 +314,11 @@ def test_sbi_dynamic_download_button_uses_onclick_pdf_url_not_placeholder():
 
 def test_sbi_dynamic_pdf_outside_list_is_paired_with_its_application_link():
     html = '''
-      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM EMPLOYMENT BASIS (Apply Online from 19.10.2026 TO 09.11.2026)</p>
+      <p>ENGAGEMENT OF SPECIALIST CADRE OFFICERS ON FIXED TERM EMPLOYMENT BASIS (Apply Online from 19.10.2099 TO 09.11.2099)</p>
       <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/30</p>
       <a href="#" onclick="window.open('https://sbi.bank.in/documents/77530/57941334/17102026_Detail_ADV_CRPD_SCO_2026-27_30.pdf/document-id?t=1')">English (796 KB)</a>
       <ul>
-        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply">APPLY ONLINE (19.10.2026 TO 09.11.2026)</a></li>
+        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-30/apply">APPLY ONLINE (19.10.2099 TO 09.11.2099)</a></li>
       </ul>
     '''
     items = parse_sbi(html, 'https://sbi.bank.in/web/careers/current-openings')
@@ -277,6 +365,69 @@ def test_drdo_vacancy_parser_keeps_individual_official_vacancy_page():
     assert items[0].official_notice_url == 'https://drdo.gov.in/drdo/offerings/vacancies/npol-kochi-invites-application-consultant'
 
 
+def test_drdo_rac_parser_uses_extended_application_deadline_not_page_update_date():
+    html = '''
+      <h2>Ongoing Recruitment Opportunities in DRDO</h2>
+      <h3>Lateral Recruitment of Scientists</h3>
+      <small>Advertisement #</small><span>157</span>
+      <a href="download/advt_157.pdf">Advertisement</a>
+      <p>Closing date: 19-June-2026 (16:00 hrs. IST)</p>
+      <p>Extended Form Submission date: 30 Jun 2026 (16:00 hrs. IST)</p>
+      <p>Last updated on: 22 Oct, 2026</p>
+      <h4>Advertisement No. 156</h4>
+      <p>Final cutoff marks for shortlisted candidates</p>
+    '''
+    items = parse_drdo_rac(html, 'https://rac.gov.in/index.php?lang=en&id=0')
+
+    assert len(items) == 1
+    assert items[0].title == 'DRDO-RAC Lateral Recruitment of Scientists (Advertisement 157)'
+    assert items[0].deadline == date(2026, 6, 30)
+    assert items[0].official_notice_url == 'https://rac.gov.in/download/advt_157.pdf'
+    assert items[0].application_url is None
+
+
+def test_drdo_rac_parser_rejects_result_only_or_undated_notices():
+    result_only = '''
+      <h2>Ongoing Recruitment Opportunities in DRDO</h2>
+      <h3>Final Result for Lateral Recruitment of Scientists</h3>
+      <p>Advertisement # 157</p>
+      <p>Last updated on: 22 Oct, 2026</p>
+    '''
+    undated = '''
+      <h2>Ongoing Recruitment Opportunities in DRDO</h2>
+      <h3>Lateral Recruitment of Scientists</h3>
+      <p>Advertisement # 158</p>
+      <p>Last updated on: 22 Oct, 2026</p>
+    '''
+
+    assert parse_drdo_rac(result_only, 'https://rac.gov.in/index.php?lang=en&id=0') == []
+    assert parse_drdo_rac(undated, 'https://rac.gov.in/index.php?lang=en&id=0') == []
+
+
+def test_drdo_rac_expired_notice_is_not_published_by_snapshot(monkeypatch):
+    source = next(item for item in SOURCE_DEFINITIONS if item.key == 'drdo_rac')
+    html = '''
+      <h2>Ongoing Recruitment Opportunities in DRDO</h2>
+      <h3>Lateral Recruitment of Scientists</h3>
+      <small>Advertisement #</small><span>157</span>
+      <a href="download/advt_157.pdf">Advertisement</a>
+      <p>Closing date: 19-June-2026 (16:00 hrs. IST)</p>
+      <p>Extended Form Submission date: 30 Jun 2026 (16:00 hrs. IST)</p>
+      <p>Last updated on: 22 Oct, 2026</p>
+    '''
+    monkeypatch.setattr(snapshot, 'SOURCE_DEFINITIONS', (source,))
+    monkeypatch.setattr(snapshot, 'fetch_official_page', lambda url, session=None: html)
+    monkeypatch.setattr(snapshot, 'enrich_job_item', lambda item, session=None: item)
+
+    result = snapshot.build_snapshot(
+        now=datetime(2026, 11, 15, 12, 0, tzinfo=timezone.utc),
+    )
+
+    assert result['count'] == 0
+    assert result['sources'][0]['last_sync_status'] == 'success'
+    assert result['sources'][0]['fetched_count'] == 1
+
+
 def test_drdo_end_date_is_used_only_on_official_drdo_vacancy_detail(monkeypatch):
     item = JobItem(
         external_id='drdo-npol-consultant',
@@ -293,3 +444,95 @@ def test_drdo_end_date_is_used_only_on_official_drdo_vacancy_detail(monkeypatch)
     )
     notice_enrichment.enrich_job_item(item)
     assert item.deadline == date(2026, 11, 9)
+
+
+def test_sbi_grouped_parser_extracts_explicit_application_cutoff_time():
+    html = '''
+      <p>RECRUITMENT OF SPECIALIST CADRE OFFICERS ON REGULAR BASIS (Last date to apply: 13.11.2099 at 17:00 hrs IST)</p>
+      <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/28</p>
+      <ul>
+        <li><a href="https://sbi.bank.in/documents/adv28.pdf/document-id">DOWNLOAD ADVERTISEMENT English</a></li>
+        <li><a href="https://recruitment.sbi.bank.in/crpd-sco-2026-27-28/apply">APPLY ONLINE</a></li>
+      </ul>
+    '''
+    items = parse_sbi(html, 'https://sbi.bank.in/web/careers/current-openings')
+    assert len(items) == 1
+    assert items[0].deadline.isoformat() == '2099-11-13'
+    assert items[0].deadline_cutoff_time.isoformat(timespec='minutes') == '17:00'
+
+
+def test_generic_rbi_parser_extracts_explicit_application_cutoff_time():
+    html = '''
+      <ul>
+        <li><a href="/Scripts/bs_viewcontent.aspx?Id=5999">
+          Direct Recruitment for Officers Grade B - Last date to apply: 13.11.2099 at 17:00 IST
+        </a></li>
+      </ul>
+    '''
+    items = parse_rbi(html, 'https://opportunities.rbi.org.in/Scripts/Vacancies.aspx')
+    assert len(items) == 1
+    assert items[0].deadline.isoformat() == '2099-11-13'
+    assert items[0].deadline_cutoff_time.isoformat(timespec='minutes') == '17:00'
+
+
+def test_sbi_grouped_parser_includes_current_manager_security_opening():
+    html = '''
+      <p>RECRUITMENT OF SPECIALIST CADRE OFFICERS ON REGULAR BASIS FOR THE POST OF MANAGER(SECURITY)/DEPUTY MANAGER (Apply Online from 04.11.2026 TO 25.11.2026)</p>
+      <p>ADVERTISEMENT NO: CRPD/SCO/2026-27/28</p>
+      <ul>
+        <li><a href="https://sbi.bank.in/documents/77530/57941334/03112026_1_ADV_Security_Officer.pdf/69e017fe-5e1c-6312-c285-8855f9882102?t=1793713497818">DOWNLOAD ADVERTISEMENT English</a></li>
+        <li><a href="https://ibpsreg.ibps.in/sbirscooct26/">APPLY ONLINE (04.11.2026 to 25.11.2026)</a></li>
+      </ul>
+    '''
+    items = parse_sbi(html, 'https://sbi.bank.in/web/careers/current-openings')
+    assert len(items) == 1
+    assert 'MANAGER(SECURITY)/DEPUTY MANAGER' in items[0].title
+    assert items[0].deadline.isoformat() == '2026-11-25'
+    assert items[0].official_notice_url.startswith('https://sbi.bank.in/documents/')
+    assert items[0].application_url == 'https://ibpsreg.ibps.in/sbirscooct26/'
+
+
+def test_job_snapshot_serializes_deadline_today_warning_and_cutoff():
+    definition = next(source for source in SOURCE_DEFINITIONS if source.key == 'rbi')
+    now = datetime(2026, 11, 14, 20, 2, tzinfo=timezone.utc)  # 01:32 IST on 15 Nov
+    checked_at = now.isoformat().replace('+00:00', 'Z')
+    no_cutoff = JobItem(
+        external_id='snapshot-today-no-cutoff',
+        title='Synthetic deadline-today notice',
+        organization='Reserve Bank of India',
+        official_notice_url=definition.listing_url,
+        deadline=date(2026, 11, 15),
+        deadline_timezone='Asia/Kolkata',
+        confidence=0.95,
+    )
+    warning = snapshot._serialize_item(no_cutoff, definition, checked_at, now=now)
+    assert warning['application_status'] == 'deadline_today'
+    assert warning['status_label'] == 'Deadline today—check official portal'
+    assert warning['can_apply'] is False
+    assert warning['source_checked_at'] == checked_at
+
+    with_cutoff = JobItem(
+        external_id='snapshot-today-with-cutoff',
+        title='Synthetic deadline-today cutoff notice',
+        organization='Reserve Bank of India',
+        official_notice_url=definition.listing_url,
+        deadline=date(2026, 11, 15),
+        deadline_cutoff_time=time(17, 0),
+        deadline_timezone='Asia/Kolkata',
+        confidence=0.95,
+    )
+    allowed = snapshot._serialize_item(with_cutoff, definition, checked_at, now=now)
+    assert allowed['application_status'] == 'deadline_today'
+    assert allowed['can_apply'] is True
+    assert '17:00 Asia/Kolkata' in allowed['status_label']
+
+
+def test_job_model_deadline_status_uses_the_job_timezone():
+    from app.models.job import JobNotification
+
+    job = JobNotification(
+        deadline=date(2026, 11, 14),
+        deadline_timezone='America/New_York',
+    )
+    now = datetime(2026, 11, 15, 0, 30, tzinfo=timezone.utc)  # 19:30 EST on 14 Nov
+    assert job.deadline_status(now=now) == 'deadline_today'

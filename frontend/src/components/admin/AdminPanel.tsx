@@ -11,6 +11,7 @@ import NotificationManagement from './NotificationManagement'
 import ActivityReports from './ActivityReports'
 import AdminSettings from './AdminSettings'
 import MessageManagement from './MessageManagement'
+import WhatsAppManagement from './WhatsAppManagement'
 import JobManagement from './JobManagement'
 import AiOperations from './AiOperations'
 
@@ -23,6 +24,7 @@ const links=[
   ['/admin/services','Services & Fees'],
   ['/admin/notifications','Notifications'],
   ['/admin/messages','Client Messages'],
+  ['/admin/whatsapp','WhatsApp'],
   ['/admin/grievances','Grievances'],
   ['/admin/reviews','Reviews'],
   ['/admin/reports','Activity & Reports'],
@@ -53,6 +55,7 @@ export default function AdminPanel(){
         <Route path="/users" element={<UserManagement/>}/>
         <Route path="/notifications" element={<NotificationManagement/>}/>
         <Route path="/messages" element={<MessageManagement/>}/>
+      <Route path="/whatsapp" element={<WhatsAppManagement/>}/>
         <Route path="/reports" element={<ActivityReports/>}/>
         <Route path="/settings" element={<AdminSettings/>}/>
         <Route path="*" element={<Navigate to="/admin/dashboard" replace/>}/>

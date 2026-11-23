@@ -10,7 +10,11 @@ const api=read('backend/app/routes/jobs.py')
 
 const required=[
   ['published status',/job\.status!=='published'/],
-  ['current explicit deadline',/hasCurrentDeadline\(job\.deadline\)/],
+  ['current explicit deadline state',/function deadlineState\(job:JobNotification\)/],
+  ['deadline closes after its date',/if\(deadline<local\.date\)return 'closed'/],
+  ['same-day cutoff closes at the official minute',/if\(cutoff&&local\.time\.slice\(0,5\)>=cutoff\)return 'closed'/],
+  ['fresh official source verification',/function sourceIsFresh\(job:JobNotification\)/],
+  ['public feed requires fresh source and deadline state',/function isVerifiedPublicJob\(job:JobNotification\)[\s\S]*?sourceIsFresh\(job\)[\s\S]*?deadlineState\(job\)/],
   ['government/private type',/job\.job_type!==type/],
   ['featured flag',/!job\.is_featured/],
   ['search all normalized tokens',/tokens\.every\(token=>searchable\.includes\(token\)\)/],
@@ -31,9 +35,9 @@ for(const [name,pattern] of [
   ['all filter control',/updateFilters\(\{type:''\}\)/],
   ['location and qualification controls',/id="job-location"[\s\S]*id="job-qualification"/],
   ['featured control',/Featured only/],
-  ['deadline and sorting controls',/Closing within 7 days[\s\S]*Recently published/],
+  ['deadline and sorting controls',/Closing within 7 days[\s\S]*Newest notices/],
   ['clear filters control',/clearFilters/],
-  ['pagination controls',/Page \{page\} of \{Math\.ceil\(total\/PAGE_SIZE\)\}/],
+  ['pagination controls',/Page \{page\} of \{pageCount\}/],
 ]){
   if(!pattern.test(page))throw new Error(`Jobs UI filter is not wired: ${name}`)
 }
@@ -45,7 +49,7 @@ for(const [name,pattern] of [
   ['location/state filter',/JobNotification\.location\.ilike/],
   ['qualification/education filter',/JobNotification\.qualification\.ilike/],
   ['deadline window filter',/deadline_filter == 'closing_soon'/],
-  ['pagination offset',/offset\(\(page - 1\) \* limit\)/],
+  ['pagination after current-open filtering',/eligible\[start:start \+ limit\]/],
   ['bounded API limit',/min\(100, max\(1, int\(request\.args\.get\('limit', 30\)\)\)\)/],
 ]){
   if(!pattern.test(api))throw new Error(`Backend job filter missing: ${name}`)

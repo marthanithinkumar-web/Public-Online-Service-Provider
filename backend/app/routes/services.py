@@ -142,7 +142,7 @@ def list_services():
 @bp.route('/homepage-assistance-fee', methods=['GET'])
 def public_homepage_assistance_fee():
     response = jsonify({'price_inr': homepage_assistance_fee()})
-    response.headers['Cache-Control'] = 'public, max-age=60, stale-while-revalidate=300'
+    response.headers['Cache-Control'] = 'no-store'
     return response
 
 

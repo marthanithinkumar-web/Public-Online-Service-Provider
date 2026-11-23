@@ -60,3 +60,9 @@ export async function sendAdminSupportMessage(userId:number,message:string){ ret
 export async function fetchAiOperationsOverview(){ return (await api.get('/admin/ai/overview',{headers:authHeader()})).data }
 export async function chatWithAiOperations(message:string){ return (await api.post('/admin/ai/chat',{message},{headers:authHeader(),timeout:60000})).data }
 export async function runAiJobSync(){ return (await api.post('/admin/ai/run-job-sync',{}, {headers:authHeader(),timeout:90000})).data }
+export async function fetchWhatsAppAdminStatus(){ return (await api.get('/whatsapp/admin/status',{headers:authHeader()})).data }
+export async function fetchWhatsAppAdminMessages(filters:Record<string,string|number>={}){ return (await api.get('/whatsapp/admin/messages',{params:filters,headers:authHeader()})).data }
+export async function retryWhatsAppMessage(id:number){ return (await api.post(`/whatsapp/admin/messages/${id}/retry`,{},{headers:authHeader()})).data }
+export async function fetchWhatsAppOrderMessages(orderId:number){ return (await api.get(`/whatsapp/orders/${orderId}/messages`,{headers:authHeader()})).data }
+export async function sendWhatsAppAdminReply(payload:{order_id?:number,user_id?:number,message:string}){ return (await api.post('/whatsapp/admin/reply',payload,{headers:authHeader()})).data }
+export async function sendWhatsAppDocumentEvent(orderId:number,event:string){ return (await api.post(`/whatsapp/admin/orders/${orderId}/document-event`,{event},{headers:authHeader()})).data }

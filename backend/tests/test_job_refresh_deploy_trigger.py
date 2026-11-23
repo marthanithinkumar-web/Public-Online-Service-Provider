@@ -1,4 +1,12 @@
+import hashlib
 from pathlib import Path
+
+
+def test_snapshot_marker_matches_committed_snapshot():
+    snapshot = Path('frontend/public/data/jobs.json').read_bytes().replace(b'\r\n', b'\n')
+    expected = Path('backend/app/jobs/verified_snapshot.sha256').read_text(encoding='utf-8').strip()
+
+    assert hashlib.sha256(snapshot).hexdigest() == expected
 
 
 def test_daily_job_refresh_commits_backend_snapshot_marker():

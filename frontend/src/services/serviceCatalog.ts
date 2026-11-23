@@ -1,11 +1,13 @@
 import axios from 'axios'
 import {apiBase} from './apiBase'
+import {fetchPublicScholarshipAssistanceFee} from './fees'
 
 const CACHE_KEY='psp_service_catalog_v2'
 const MAX_AGE_MS=15*60*1000
 const STALE_MAX_AGE_MS=7*24*60*60*1000
-const REQUEST_TIMEOUT_MS=12000
+const REQUEST_TIMEOUT_MS=3500
 let request:Promise<any[]>|null=null
+let scholarshipFeeRequest:Promise<number|null>|null=null
 let snapshotRequest:Promise<any[]>|null=null
 let snapshotItems:any[]|null=null
 
@@ -65,11 +67,41 @@ export function readCachedServices(allowStale=false):any[]{
   }catch{return[]}
 }
 
+async function applyCurrentScholarshipFee(items:any[]):Promise<any[]>{
+  if(!scholarshipFeeRequest){
+    scholarshipFeeRequest=fetchPublicScholarshipAssistanceFee()
+      .then(result=>Number.isFinite(Number(result?.price_inr))?Math.max(0,Number(result.price_inr)):null)
+      .catch(()=>null)
+      .finally(()=>{scholarshipFeeRequest=null})
+  }
+  const currentFee=await scholarshipFeeRequest
+  if(currentFee===null)return items
+  const updated=items.map(item=>{
+    const category=typeof item?.category==='string'?item.category:item?.category?.name||''
+    const identity=`${item?.name||''} ${item?.catalog_name||''} ${category}`
+    return /scholarship/i.test(identity)?{...item,price_inr:currentFee}:item
+  })
+  try{localStorage.setItem(CACHE_KEY,JSON.stringify({saved_at:Date.now(),items:updated}))}catch{}
+  return updated
+}
+
 export async function fetchServiceCatalog(force=false):Promise<any[]>{
   const cached=readCachedServices()
-  if(cached.length&&!force)return cached
+  if(cached.length&&!force)return applyCurrentScholarshipFee(cached)
   if(request)return request
-  request=axios.get(`${apiBase}/services`,{timeout:REQUEST_TIMEOUT_MS}).then(response=>{const items=Array.isArray(response.data)?response.data:[];try{localStorage.setItem(CACHE_KEY,JSON.stringify({saved_at:Date.now(),items}))}catch{}return items}).finally(()=>{request=null})
+  request=axios.get(`${apiBase}/services`,{timeout:REQUEST_TIMEOUT_MS})
+    .then(async response=>{
+      if(!Array.isArray(response.data))throw new Error('The service catalog response is invalid.')
+      const items=response.data
+      return applyCurrentScholarshipFee(items)
+    })
+    .catch(async()=>{
+      // Keep homepage discovery useful while the API is waking or unavailable.
+      // The snapshot has no authoritative current price, so the UI must label it as such.
+      const items=await fetchSnapshotCatalog()
+      return items.map(item=>({...item,id:`snapshot-${item.slug}`,price_inr:null,__catalogFallback:true}))
+    })
+    .finally(()=>{request=null})
   return request
 }
 

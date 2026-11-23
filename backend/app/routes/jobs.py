@@ -1,9 +1,9 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 import re
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, abort, current_app, jsonify, request
 from sqlalchemy import and_, or_
 
 from ..models.job import JobNotification, JobSource
@@ -27,14 +27,21 @@ def _india_today():
 
 
 def _public_query():
-    # Public listings must have a valid, current deadline. Undated records may
-    # remain in storage for review, but must not be advertised as open.
+    # A published row is public only while its own notice and its source check
+    # are fresh. A failed/degraded source must not keep stale records visible.
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    freshness_cutoff = now - timedelta(hours=36)
     return JobNotification.query.filter(
         JobNotification.status == 'published',
         JobNotification.deadline.isnot(None),
-        JobNotification.deadline >= _india_today(),
+        JobNotification.deadline >= (_india_today() - timedelta(days=1)),
+        JobNotification.last_seen_at >= freshness_cutoff,
+        JobNotification.source.has(and_(
+            JobSource.last_sync_status.in_(['success', 'running']),
+            JobSource.last_successful_sync_at.isnot(None),
+            JobSource.last_successful_sync_at >= freshness_cutoff,
+        )),
     )
-
 
 @bp.get('/')
 def list_jobs():
@@ -42,10 +49,10 @@ def list_jobs():
     trigger_background_sync(current_app._get_current_object())
     query = _public_query()
     term = (request.args.get('q') or '').strip()
-    job_type = (request.args.get('type') or request.args.get('job_type') or '').strip().lower()
+    job_type = (request.args.get('type') or '').strip().lower()
     featured = (request.args.get('featured') or '').strip().lower()
-    location = (request.args.get('location') or request.args.get('state') or '').strip()[:120]
-    qualification = (request.args.get('qualification') or request.args.get('education') or '').strip()[:120]
+    location = (request.args.get('location') or '').strip()[:120]
+    qualification = (request.args.get('qualification') or '').strip()[:120]
     deadline_filter = (request.args.get('deadline') or '').strip().lower()
     if term:
         aliases = {'govt': 'government', 'railways': 'railway'}
@@ -67,19 +74,30 @@ def list_jobs():
         ]))
     if job_type in {'government', 'private'}:
         query = query.filter(JobNotification.job_type == job_type)
-    if location:
-        query = query.filter(JobNotification.location.ilike(f'%{location}%'))
-    if qualification:
-        query = query.filter(JobNotification.qualification.ilike(f'%{qualification}%'))
     if featured in {'1', 'true', 'yes'}:
         query = query.filter(JobNotification.is_featured.is_(True))
+    if location:
+        location_pattern = '%' + location.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
+        query = query.filter(JobNotification.location.ilike(location_pattern, escape='\\'))
+    if qualification:
+        qualification_pattern = '%' + qualification.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'
+        query = query.filter(JobNotification.qualification.ilike(qualification_pattern, escape='\\'))
+    today = _india_today()
     if deadline_filter == 'closing_soon':
-        query = query.filter(JobNotification.deadline <= _india_today() + timedelta(days=7))
+        query = query.filter(JobNotification.deadline <= today + timedelta(days=7))
     elif deadline_filter == 'this_month':
-        today = _india_today()
         next_month = date(today.year + (today.month == 12), 1 if today.month == 12 else today.month + 1, 1)
         query = query.filter(JobNotification.deadline < next_month)
-    total = query.count()
+    sort = (request.args.get('sort') or 'priority').strip().lower()
+    if sort == 'newest':
+        ordering = (JobNotification.published_at.desc().nullslast(), JobNotification.deadline.asc())
+    elif sort in {'deadline_latest', 'deadline_desc'}:
+        ordering = (JobNotification.deadline.desc(), JobNotification.is_featured.desc())
+    else:
+        ordering = (JobNotification.is_featured.desc(), JobNotification.deadline.asc(), JobNotification.published_at.desc())
+    candidates = query.order_by(*ordering).all()
+    eligible = [job for job in candidates if job.is_open]
+    total = len(eligible)
     try:
         limit = min(100, max(1, int(request.args.get('limit', 30))))
     except (TypeError, ValueError):
@@ -88,15 +106,17 @@ def list_jobs():
         page = max(1, int(request.args.get('page', 1)))
     except (TypeError, ValueError):
         page = 1
-    sort = (request.args.get('sort') or 'deadline_asc').strip().lower()
-    if sort == 'deadline_desc':
-        ordering = (JobNotification.deadline.desc(), JobNotification.is_featured.desc())
-    elif sort == 'newest':
-        ordering = (JobNotification.published_at.desc(), JobNotification.deadline.asc())
-    else:
-        ordering = (JobNotification.is_featured.desc(), JobNotification.deadline.asc(), JobNotification.published_at.desc())
-    jobs = query.order_by(*ordering).offset((page - 1) * limit).limit(limit).all()
-    response = jsonify({'items': [job.to_dict() for job in jobs], 'count': len(jobs), 'total': total, 'page': page, 'limit': limit})
+    start = (page - 1) * limit
+    jobs = eligible[start:start + limit]
+    response = jsonify({
+        'items': [job.to_dict() for job in jobs],
+        'count': len(jobs),
+        'total': total,
+        'page': page,
+        'limit': limit,
+        'verified_open_count': sum(1 for job in eligible if job.deadline_status() == 'open'),
+        'deadline_today_count': sum(1 for job in eligible if job.deadline_status() == 'deadline_today'),
+    })
     response.headers['Cache-Control'] = 'public, max-age=300, stale-while-revalidate=600'
     return response
 
@@ -127,6 +147,8 @@ def snapshot_status():
 @bp.get('/<slug>')
 def job_detail(slug):
     job = _public_query().filter_by(slug=slug).first_or_404()
+    if not job.is_open:
+        abort(404)
     response = jsonify({'job': job.to_dict()})
     response.headers['Cache-Control'] = 'public, max-age=300, stale-while-revalidate=600'
     return response

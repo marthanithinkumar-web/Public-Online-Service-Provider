@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import {fileURLToPath} from 'node:url'
-import {publicRoutes,readIndexableJobs,readScholarships,siteUrl} from './seo-catalog.mjs'
+import {jobRouteSlug,publicRoutes,readIndexableJobs,readScholarships,siteUrl} from './seo-catalog.mjs'
 
 const scriptDir=path.dirname(fileURLToPath(import.meta.url))
 const distDir=path.resolve(scriptDir,'../dist')
@@ -84,14 +84,14 @@ for(const service of services){
 }
 
 for(const job of jobs){
-  const route=`/jobs/${job.slug}`
+  const route=`/jobs/${jobRouteSlug(job)}`
   const title=`${job.title} — ${job.organization||'Recruitment notice'}`
   const description=normalizeDescription(job.summary,`Review eligibility, deadlines and official application details for ${job.organization||'this recruitment notice'}.`)
   const facts=[['Organization',job.organization],['Location',job.location],['Qualification',job.qualification],['Age limit',job.age_limit],['Vacancies',job.vacancies],['Salary',job.salary],['Deadline',job.deadline]].filter(([,value])=>Boolean(value)).map(([label,value])=>`<li><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</li>`).join('')
   const officialUrl=safeHttpsUrl(job.official_notice_url)
   const body=`<article><p><a href="/">Home</a> / <a href="/jobs">Jobs</a></p><h1>${escapeHtml(job.title)}</h1><p><strong>${escapeHtml(job.organization)}</strong></p><p>${escapeHtml(description)}</p><h2>Notice details</h2><ul>${facts}</ul><p>Read the authoritative eligibility, reservation, fee and document requirements in the linked official notice before applying.</p>${officialUrl==='#'?'':`<p><a href="${escapeHtml(officialUrl)}">View official notification</a></p>`}<p><a href="${route}">Open this job notice</a></p></article>`
   const schema={'@context':'https://schema.org','@type':'WebPage',name:title,url:`${siteUrl}${route}`,description,isPartOf:{'@type':'WebSite',name:'Public Online Service Provider',url:siteUrl}}
-  const target=path.join(distDir,'jobs',job.slug);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,pageHtml({route,title,description,body,schema}))
+  const target=path.join(distDir,route.slice(1));fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,pageHtml({route,title,description,body,schema}))
 }
 
 for(const item of scholarships){

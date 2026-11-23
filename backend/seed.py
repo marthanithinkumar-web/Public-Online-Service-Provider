@@ -1,4 +1,10 @@
 import os
+from app.utils.startup_safety import should_skip_database_startup
+
+if __name__ == '__main__' and should_skip_database_startup():
+    print('Skipping production database seed because SKIP_DATABASE_BOOTSTRAP=1.')
+    raise SystemExit(0)
+
 from app.main import create_app
 from app.utils.database import db
 from app.models.service import Category, Service

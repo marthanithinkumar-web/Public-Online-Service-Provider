@@ -279,6 +279,23 @@ def update_status(order_id):
             message += f' {note}'
         db.session.add(Notification(user_id=o.user_id, order_id=o.id, title='Request status updated', message=message[:4000]))
     db.session.commit()
+    # Best-effort WhatsApp notifications, deduped per status transition.
+    # Document-related statuses get the document event as well as the
+    # status event only if it is a distinct event key; the notify
+    # helper's event keys keep them from duplicating each other.
+    if str(o.contact_method or '').lower() == 'whatsapp':
+        try:
+            from ..services.whatsapp_notify import notify_status_change, notify_document_event, notify_completion
+            if status == 'Completed':
+                notify_completion(o)
+            elif status == 'Documents Required':
+                # One message for this transition, via the document event,
+                # not a second identical status message.
+                notify_document_event(o, 'Documents Required')
+            else:
+                notify_status_change(o, status)
+        except Exception:
+            pass
     return jsonify({'message': 'Status updated', 'order': o.to_dict(include_admin=True), 'history': history.to_dict()})
 
 

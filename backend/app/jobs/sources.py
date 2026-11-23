@@ -1,11 +1,20 @@
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, time, timezone
 from html import unescape
 from html.parser import HTMLParser
 from typing import Callable
+from zoneinfo import ZoneInfo
 from urllib.parse import urljoin
+
+
+def india_today(now=None):
+    """Return the current India calendar date for application deadlines."""
+    current = now or datetime.now(ZoneInfo('Asia/Kolkata'))
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    return current.astimezone(ZoneInfo('Asia/Kolkata')).date()
 
 
 @dataclass
@@ -26,6 +35,8 @@ class JobItem:
     issue_date: date | None = None
     application_start_date: date | None = None
     deadline: date | None = None
+    deadline_cutoff_time: time | None = None
+    deadline_timezone: str = 'Asia/Kolkata'
     application_url: str | None = None
     confidence: float = 0.0
     warnings: list[str] = field(default_factory=list)
@@ -52,6 +63,7 @@ def parse_date(value):
     for pattern in (
         r'(?<!\d)(20\d{2})-(\d{1,2})-(\d{1,2})(?!\d)',
         r'\b(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\b',
+        r'\b(\d{1,2})[-\s]+([A-Za-z]{3,9})[-\s]+(20\d{2})\b',
         r'\b(\d{1,2})\s+([A-Za-z]{3,9})\s+(20\d{2})\b',
         r'\b([A-Za-z]{3,9})\s+(\d{1,2})\s+(20\d{2})\b',
     ):
@@ -71,6 +83,7 @@ def parse_all_dates(value):
     text = clean(value).replace(',', ' ')
     candidates = re.findall(
         r'20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]20\d{2}|'
+        r'\d{1,2}[-\s]+[A-Za-z]{3,9}[-\s]+20\d{2}|'
         r'\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}|[A-Za-z]{3,9}\s+\d{1,2}\s+20\d{2}',
         text,
         re.I,
@@ -81,7 +94,7 @@ def parse_all_dates(value):
 def parse_explicit_deadline(value):
     """Extract only application dates attached to explicit deadline language."""
     text = clean(value)
-    token = r'(?:20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]20\d{2}|\d{1,2}\s+[A-Za-z]{3,9}\s+20\d{2}|[A-Za-z]{3,9}\s+\d{1,2},?\s+20\d{2})'
+    token = r'(?:20\d{2}-\d{1,2}-\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]20\d{2}|\d{1,2}[-\s]+[A-Za-z]{3,9}[-\s]+20\d{2}|[A-Za-z]{3,9}\s+\d{1,2},?\s+20\d{2})'
     time_clause = r'(?:\s+\d{1,2}[.:]\d{2}\s*(?:hrs?|hours?)\s+on)?'
     closing_patterns = (
         rf'(?:last date(?: and time)?(?:\s+for\s+(?:receipt|submission|applying|online application|filling|registration|applications?)(?:\s+of\s+(?:online\s+)?applications?)?)?|last date to apply|closing date(?: for applications?)?|application deadline|applications? close(?:s)? on|apply by)\s*[:\-]?\s*({token})',
@@ -109,6 +122,69 @@ def parse_explicit_deadline(value):
                 return deadline
     return None
 
+
+def parse_explicit_deadline_cutoff_time(value):
+    """Extract a cutoff only when it is explicitly attached to an application deadline."""
+    text = clean(value)
+    date_token = (
+        r'(?:20\d{2}-\d{1,2}-\d{1,2}|'
+        r'\d{1,2}[./-]\d{1,2}[./-]20\d{2}|'
+        r'\d{1,2}[-\s]+[A-Za-z]{3,9}[-\s]+20\d{2}|'
+        r'[A-Za-z]{3,9}\s+\d{1,2},?\s+20\d{2})'
+    )
+    time_token = r'(\d{1,2}[.:]\d{2}\s*(?:AM|PM)?)'
+
+    def as_time(raw):
+        raw = re.sub(r'\s+', '', raw).replace('.', ':')
+        match = re.fullmatch(r'(\d{1,2}):(\d{2})(AM|PM)?', raw, re.I)
+        if not match:
+            return None
+        hour, minute = int(match.group(1)), int(match.group(2))
+        meridiem = (match.group(3) or '').upper()
+        if minute > 59 or hour > (12 if meridiem else 23) or hour < (1 if meridiem else 0):
+            return None
+        if meridiem == 'AM':
+            hour = 0 if hour == 12 else hour
+        elif meridiem == 'PM':
+            hour = 12 if hour == 12 else hour + 12
+        return time(hour, minute)
+
+    # "On or before 17:00 hrs on 13.11.2099" places the time before the date.
+    match = re.search(
+        rf'\bon or before\s*{time_token}\s*(?:hrs?|hours?)\s+on\s*{date_token}',
+        text,
+        re.I,
+    )
+    if match:
+        parsed = as_time(match.group(1))
+        if parsed is not None:
+            return parsed
+
+    # Other notices put the date first: "Last date to apply: 13.11.2099 at
+    # 17:00 hrs IST". Locate the date after explicit application-deadline
+    # wording, then inspect only the text immediately following that date.
+    deadline_label = re.compile(
+        r'\b(?:last date(?: and time)?|last date to apply|'
+        r'closing date(?: for applications?)?|application deadline|apply by)\b',
+        re.I,
+    )
+    for label in deadline_label.finditer(text):
+        segment = text[label.end():label.end() + 300]
+        date_match = re.search(date_token, segment, re.I)
+        if not date_match:
+            continue
+        after_date = segment[date_match.end():date_match.end() + 100]
+        match = re.search(
+            rf'\b(?:at|by)\s*{time_token}\s*(?:hrs?|hours?|IST|Indian Standard Time)?',
+            after_date,
+            re.I,
+        )
+        if match:
+            parsed = as_time(match.group(1))
+            if parsed is not None:
+                return parsed
+
+    return None
 
 class OfficialHTMLParser(HTMLParser):
     def __init__(self):
@@ -541,7 +617,7 @@ def parse_india_post_gds(html, base_url):
     if len(application_dates) < 2:
         return []
     start_date, deadline = application_dates[0], application_dates[-1]
-    if deadline < date.today():
+    if deadline < india_today():
         return []
 
     document = parse_html(html)
@@ -573,7 +649,7 @@ def parse_isro_opportunities(html, base_url):
     document = parse_html(html)
     items = []
     seen = set()
-    today = date.today()
+    today = india_today()
     for record in _table_records(document):
         title = _first(record, ('post', 'position', 'recruitment'))
         advert = _first(record, ('advertisement number', 'advertisement no', 'advt'))

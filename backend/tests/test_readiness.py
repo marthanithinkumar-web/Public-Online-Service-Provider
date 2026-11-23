@@ -1,8 +1,11 @@
+import redis
+
 from app.utils.readiness import (
     production_readiness,
     readiness_status,
     persistent_storage_connectivity,
     shared_rate_limit_configured,
+    shared_rate_limit_connectivity,
     smtp_configured,
     smtp_connectivity,
     razorpay_live_credentials_configured,
@@ -97,6 +100,19 @@ def test_rate_limit_readiness_rejects_invalid_redis_uri(monkeypatch):
 
     monkeypatch.setenv('RATELIMIT_STORAGE_URI', 'rediss://default:password@redis.example.test:6379/0')
     assert shared_rate_limit_configured() is True
+
+
+def test_rate_limit_readiness_reports_ping_failure_without_leaking_uri(monkeypatch):
+    _clear_readiness_env(monkeypatch)
+    _set_complete_readiness_env(monkeypatch)
+
+    class UnavailableRedis:
+        def ping(self):
+            raise redis.exceptions.ConnectionError('unavailable')
+
+    monkeypatch.setattr('redis.Redis.from_url', lambda *args, **kwargs: UnavailableRedis())
+
+    assert shared_rate_limit_connectivity() is False
 
 
 def test_smtp_readiness_validates_port_sender_and_credentials(monkeypatch):

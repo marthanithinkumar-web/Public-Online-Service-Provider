@@ -35,6 +35,7 @@ export default function SearchPanel({context='home',variant='section'}:{context?
   const results=useMemo(()=>{if(!term)return[];const tokens=serviceSearchTokens(term);if(!tokens.length)return services;return services.filter(service=>{const searchable=normalise(`${service.name||''} ${service.catalog_name||''} ${service.description||''} ${service.keywords||''} ${categoryName(service)}`);return tokens.every(token=>searchable.includes(token))})},[services,term])
   const categories=useMemo(()=>Array.from(new Set(results.map(categoryName))).sort(),[results])
   const visible=useMemo(()=>category?results.filter(item=>categoryName(item)===category):results,[results,category])
+  const showingCatalogFallback=services.some(service=>service.__catalogFallback)
   const choose=(value:string)=>{setQ(value);setCategory('');inputRef.current?.focus()}
 
   return <section className={variant==='hero'?'hero-search-panel':'content-section search-panel-premium'} id="service-search" aria-labelledby={titleId}>
@@ -44,8 +45,9 @@ export default function SearchPanel({context='home',variant='section'}:{context?
     {term&&<Link className="job-search-forward" to={`/jobs?q=${encodeURIComponent(term)}`}>Search current official job notices for “{term}” →</Link>}
     {categories.length>1&&<label className="search-category-filter">Filter results by category<select value={category} onChange={e=>setCategory(e.target.value)}><option value="">All categories</option>{categories.map(item=><option key={item}>{item}</option>)}</select></label>}
     {loading&&services.length===0&&<div className="empty-state" role="status"><div className="loading-dot"/><p>Loading services… The secure server may take a moment on the first visit.</p></div>}
+    {showingCatalogFallback&&<div className="empty-state error-state" role="status"><p>The live service server is slow or unavailable. You can browse the published service catalog; current service availability and fees will be confirmed before an application.</p><button type="button" onClick={()=>setRetry(value=>value+1)}>Try again</button></div>}
     {error&&<div className="empty-state error-state" role="alert"><p>{error}</p><button type="button" onClick={()=>setRetry(value=>value+1)}>Try again</button></div>}
     {!loading&&!error&&term&&visible.length===0&&<div className="empty-state"><h3>No services found for “{term}”</h3><p>Try a shorter phrase, another category, or one of the popular searches above.</p><button type="button" className="btn-secondary" onClick={()=>setQ('')}>Browse all categories</button></div>}
-    {!loading&&!error&&visible.length>0&&<ul className="service-list" aria-live="polite">{visible.map(service=><li key={service.id} className="service-card"><div className="service-card-top"><span className="service-badge">{categoryName(service)}</span><span className="service-price">Applicable Assistance Fee ₹{service.price_inr}</span></div><h3><Link to={servicePath(service)}>{service.name}</Link></h3><Link className="text-link" to={servicePath(service)}>View & apply</Link></li>)}</ul>}
+    {!loading&&!error&&visible.length>0&&<ul className="service-list" aria-live="polite">{visible.map(service=><li key={service.id||service.slug} className="service-card"><div className="service-card-top"><span className="service-badge">{categoryName(service)}</span><span className="service-price">{service.price_inr==null?'Fee confirmed before application':`Applicable Assistance Fee ₹${service.price_inr}`}</span></div><h3><Link to={servicePath(service)}>{service.name}</Link></h3><Link className="text-link" to={servicePath(service)}>View & apply</Link></li>)}</ul>}
   </section>
 }

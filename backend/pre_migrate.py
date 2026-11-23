@@ -9,7 +9,12 @@ sets ``RUN_HISTORICAL_ATTACHMENT_PURGE=1``.
 import os
 
 from sqlalchemy import inspect, text
+from app.utils.startup_safety import should_skip_database_startup
 
+
+if __name__ == '__main__' and should_skip_database_startup():
+    print('Skipping production database pre-migration task because SKIP_DATABASE_BOOTSTRAP=1.')
+    raise SystemExit(0)
 
 os.environ['SKIP_DATABASE_BOOTSTRAP'] = '1'
 

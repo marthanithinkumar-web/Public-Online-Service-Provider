@@ -30,7 +30,7 @@ ALLOWED_HOSTS = {
     'sainikschoolsociety.in', 'www.sainikschoolsociety.in',
     'kvsangathan.nic.in', 'www.kvsangathan.nic.in',
     'sebi.gov.in', 'www.sebi.gov.in',
-    'ibps.in', 'www.ibps.in',
+    'ibps.in', 'www.ibps.in', 'ibpsreg.ibps.in',
     'rac.gov.in', 'www.rac.gov.in',
     'careers.wipro.com',
     'digitalcareers.infosys.com',

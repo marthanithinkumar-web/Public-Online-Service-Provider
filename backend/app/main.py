@@ -1,11 +1,13 @@
 import os
-from flask import Flask, jsonify
+import time
+from flask import Flask, jsonify, request
 from sqlalchemy import text
 from dotenv import load_dotenv
 from .utils.database import db
 from .config import _database_url
 from .utils.schema_compat import ensure_user_schema
-from .utils.readiness import production_readiness, readiness_status, persistent_storage_connectivity, shared_rate_limit_connectivity, smtp_connectivity, razorpay_connectivity
+from .utils.startup_safety import should_skip_database_startup
+from .utils.readiness import production_readiness, readiness_status, persistent_storage_connectivity, shared_rate_limit_configured, shared_rate_limit_connectivity, smtp_connectivity, razorpay_connectivity
 from .models.user import User
 from .models.service import Category, Service
 from .models.job import JobSource
@@ -86,24 +88,54 @@ def create_app():
     configured_origins=os.getenv('CORS_ORIGINS');frontends=configured_origins or os.getenv('FRONTEND_URL','http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173');allowed_origins=[o.strip().rstrip('/') for o in frontends.split(',') if o.strip()]
     render_ui='https://pospindia.onrender.com'
     if render_ui not in allowed_origins:allowed_origins.append(render_ui)
-    CORS(app,resources={r'/api/*':{'origins':allowed_origins}},supports_credentials=True,allow_headers=['Content-Type','Authorization','X-Razorpay-Signature'],methods=['GET','POST','PUT','PATCH','DELETE','OPTIONS']);Migrate(app,db)
-    from .utils.limiter import limiter
-    upload_limit_mb=int(os.getenv('MAX_UPLOAD_MB','10'));app.config['MAX_CONTENT_LENGTH']=(upload_limit_mb+1)*1024*1024
-    limiter._default_limits=['2000 per day','500 per hour'];limiter.init_app(app)
+    CORS(app,resources={r'/api/*':{'origins':allowed_origins,'max_age':600}},supports_credentials=True,allow_headers=['Content-Type','Authorization','X-Razorpay-Signature'],methods=['GET','POST','PUT','PATCH','DELETE','OPTIONS']);Migrate(app,db)
+    from .utils.limiter import FALLBACK_MAX_SECONDS, limiter, storage_degraded
+    upload_limit_mb=int(os.getenv('MAX_UPLOAD_MB','10'));app.config['MAX_UPLOAD_BYTES']=upload_limit_mb*1024*1024;app.config['MAX_CONTENT_LENGTH']=(upload_limit_mb+1)*1024*1024
+    app.config['RATELIMIT_REQUIRE_SHARED_STORAGE']=os.getenv('FLASK_ENV')=='production'
+    app.config['RATELIMIT_SHARED_STORAGE_CONFIGURED']=shared_rate_limit_configured()
+    limiter.init_app(app)
+
+    @app.before_request
+    def enforce_rate_limit_storage_policy():
+        fallback_state = 'posp_rate_limit_fallback'
+        storage_unavailable = storage_degraded() or (
+            app.config['RATELIMIT_REQUIRE_SHARED_STORAGE']
+            and not app.config['RATELIMIT_SHARED_STORAGE_CONFIGURED']
+        )
+        if not storage_unavailable:
+            app.extensions.pop(fallback_state, None)
+            return None
+
+        state=app.extensions.get(fallback_state)
+        if state is None:
+            state = {'started_at': time.monotonic(), 'expired_logged': False}
+            app.extensions[fallback_state] = state
+            app.logger.warning('Shared rate-limit storage is unavailable; using bounded per-process fallback.')
+        is_operational = request.path in {'/health', '/readiness'}
+        is_authentication = request.blueprint == 'auth'
+        fallback_expired = time.monotonic() - state['started_at'] >= FALLBACK_MAX_SECONDS
+        if not is_operational and (
+            (is_authentication and app.config['RATELIMIT_REQUIRE_SHARED_STORAGE'])
+            or fallback_expired
+        ):
+            if fallback_expired and not state['expired_logged']:
+                app.logger.error('Rate-limit storage outage exceeded the fallback window; rate-limited requests are failing closed.')
+                state['expired_logged'] = True
+            return jsonify({'error':'Service temporarily unavailable.'}),503
+        return None
     with app.app_context():
-        if os.getenv('SKIP_DATABASE_BOOTSTRAP') != '1':
+        if not should_skip_database_startup():
             db.create_all();ensure_user_schema(db);ensure_default_services();sync_verified_catalog();ensure_job_sources();ensure_admin_user()
     register_scholarship_payment_guard(app)
     app.register_blueprint(auth.bp,url_prefix='/api/auth');app.register_blueprint(services.bp,url_prefix='/api/services');app.register_blueprint(orders.bp,url_prefix='/api/orders');app.register_blueprint(admin.bp,url_prefix='/api/admin');app.register_blueprint(reviews.bp,url_prefix='/api/reviews');app.register_blueprint(grievances.bp,url_prefix='/api/grievances');app.register_blueprint(categories.bp,url_prefix='/api/categories');app.register_blueprint(notifications.bp,url_prefix='/api/notifications');app.register_blueprint(messages.bp,url_prefix='/api/messages');app.register_blueprint(jobs.bp,url_prefix='/api/jobs');app.register_blueprint(scholarships.bp,url_prefix='/api/scholarships');app.register_blueprint(fees.bp,url_prefix='/api/fees');app.register_blueprint(payments.bp,url_prefix='/api/payments');app.register_blueprint(admin_payments.bp,url_prefix='/api/admin');app.register_blueprint(push.bp,url_prefix='/api/push');app.register_blueprint(refunds.bp,url_prefix='/api/refunds');app.register_blueprint(whatsapp.bp,url_prefix='/api/whatsapp');app.register_blueprint(ai_operations.bp,url_prefix='/api/admin/ai');app.register_blueprint(__import__('app.routes.uploads',fromlist=['bp']).bp,url_prefix='/api/uploads')
     @app.get('/')
     def index():return jsonify({'message':'Public Online Service Provider API'})
     @app.get('/health')
+    @limiter.exempt
     def health():
-        try:db.session.execute(text('SELECT 1'))
-        except Exception:
-            app.logger.exception('Database health check failed');return jsonify({'status':'unavailable'}),503
         return jsonify({'status':'ok'}),200
     @app.get('/readiness')
+    @limiter.exempt
     def readiness():
         try:db.session.execute(text('SELECT 1'))
         except Exception:

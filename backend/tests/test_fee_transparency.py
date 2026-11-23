@@ -1,5 +1,5 @@
 from app.main import ensure_default_services
-from app.models.service import Service, PlatformSetting
+from app.models.service import Category, Service, PlatformSetting
 from app.models.user import User
 from app.utils.database import db
 from app.utils.password import hash_password
@@ -120,6 +120,10 @@ def test_homepage_fee_is_admin_controlled_without_changing_service_fees(client):
     public_default = client.get('/api/services/homepage-assistance-fee')
     assert public_default.status_code == 200
     assert public_default.get_json()['price_inr'] == 30
+    assert public_default.headers.get('Cache-Control') == 'no-store'
+    scholarship_fee = client.get('/api/fees/scholarship-assistance')
+    assert scholarship_fee.status_code == 200
+    assert scholarship_fee.headers.get('Cache-Control') == 'no-store'
 
     unauthorized = client.put('/api/admin/services/homepage-assistance-fee', json={'price_inr': 45})
     assert unauthorized.status_code == 401
@@ -265,3 +269,105 @@ def test_admin_can_change_and_disable_document_pdf_service(client):
         ensure_default_services()
         assert db.session.get(Service, service['id']).is_active is False
     assert all(item['id'] != service['id'] for item in client.get('/api/services/search?q=document pdf').get_json())
+
+
+def test_scholarship_fee_update_covers_all_catalog_services_and_future_requests(client):
+    admin_headers = _admin_headers(client)
+    with client.application.app_context():
+        category = Category.query.filter_by(name='Scholarships & Student Welfare').first()
+        if category is None:
+            category = Category(name='Scholarships & Student Welfare')
+            db.session.add(category)
+            db.session.flush()
+        names = [
+            'ePASS - Fresh Scholarship Application',
+            'ePASS - Scholarship Renewal',
+            'National Scholarship Portal (NSP) Assistance',
+            'Pre-Matric Scholarship Assistance',
+            'Post-Matric Scholarship Assistance',
+            'Student Welfare Assistance',
+        ]
+        services = []
+        for name in names:
+            service = Service.query.filter_by(name=name).first()
+            if service is None:
+                service = Service(name=name, price_inr=30, category_id=category.id, is_active=True)
+                db.session.add(service)
+            else:
+                service.price_inr = 30
+                service.category_id = category.id
+            services.append(service)
+        db.session.commit()
+        first_service_id = services[0].id
+        second_service_id = services[2].id
+        category_only_service_id = services[5].id
+
+    registration = client.post(
+        '/api/auth/register',
+        json={'name': 'Scholarship Fee Client', 'phone': '9990003333',
+              'email': 'scholarship-fee-client@example.com', 'password': 'strong-pass'},
+    )
+    client_headers = {'Authorization': f"Bearer {registration.get_json()['token']}"}
+    first = client.post(
+        '/api/orders/',
+        json={'service_id': first_service_id, 'contact_method': 'phone',
+              'application_data': {'student_name': 'First Student'}},
+        headers=client_headers,
+    )
+    assert first.status_code == 201
+    first_order = first.get_json()['order']
+    assert first_order['fee_inr'] == 30
+
+    changed = client.put(
+        '/api/fees/scholarship-assistance',
+        json={'price_inr': 85},
+        headers=admin_headers,
+    )
+    assert changed.status_code == 200
+    assert changed.get_json()['price_inr'] == 85
+    assert changed.get_json()['service_catalog_updated_count'] >= 7
+
+    with client.application.app_context():
+        for name in names + ['Scholarship Application Assistance']:
+            service = Service.query.filter_by(name=name).first()
+            assert service is not None
+            assert service.price_inr == 85
+
+    second = client.post(
+        '/api/orders/',
+        json={'service_id': second_service_id, 'contact_method': 'phone',
+              'application_data': {'student_name': 'Second Student'}},
+        headers=client_headers,
+    )
+    assert second.status_code == 201
+    second_order = second.get_json()['order']
+    assert second_order['fee_inr'] == 85
+
+    category_only_order = client.post(
+        '/api/orders/',
+        json={'service_id': category_only_service_id, 'contact_method': 'phone',
+              'application_data': {'student_name': 'Category Student'}},
+        headers=client_headers,
+    )
+    assert category_only_order.status_code == 201
+    category_order = category_only_order.get_json()['order']
+    assert category_order['fee_inr'] == 85
+    assert category_order['application_data']['is_scholarship_service'] is True
+
+    saved_first = client.get(f"/api/orders/{first_order['id']}", headers=client_headers)
+    assert saved_first.status_code == 200
+    assert saved_first.get_json()['order']['fee_inr'] == 30
+
+    anonymous_official_payment = client.post(
+        f"/api/payments/orders/{second_order['id']}/checkout",
+        json={'purpose': 'official_fee'},
+    )
+    assert anonymous_official_payment.status_code == 401
+
+    blocked_official_payment = client.post(
+        f"/api/payments/orders/{category_order['id']}/checkout",
+        json={'purpose': 'official_fee'},
+        headers=client_headers,
+    )
+    assert blocked_official_payment.status_code == 409
+    assert 'only the application assistance fee' in blocked_official_payment.get_json()['error']
