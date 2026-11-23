@@ -219,9 +219,17 @@ def _verified_active_scholarship_context(limit=5):
     return context
 
 
+_PRIVATE_SUPPORT_TEXT = re.compile(
+    r'\b(?:otp|password|passcode|pin|cvv|cvc|iban|ifsc|api[ _-]?key|access[ _-]?token)\b'
+    r'|(?<!\d)(?:\d[ -]?){11,18}\d(?!\d)', re.I,
+)
+
+
 def generate_client_reply(user, current_message):
     if os.getenv('POSP_CLIENT_AI_ENABLED', 'false').strip().lower() != 'true':
         return None, False, 'Client AI is disabled.'
+    if _PRIVATE_SUPPORT_TEXT.search(current_message):
+        return None, True, None
     # Load only context relevant to this question. Avoid querying orders, job
     # feeds and scholarship catalogs for greetings or unrelated support questions.
     intents = _client_message_intents(current_message)
@@ -257,7 +265,7 @@ def generate_client_reply(user, current_message):
         'name': service.name,
         'category': service.category.name if service.category else None,
         'description': (service.description or '')[:180],
-        'application_fee_inr': float(service.price_inr or 0),
+        'application_fee_inr': float(service.price_inr) if service.price_inr is not None else None,
         'official_fee_inr': float(service.official_fee_inr) if service.official_fee_inr is not None else None,
         'official_fee_status': service.official_fee_status or 'unconfirmed',
         'keywords': (service.keywords or '')[:120],
@@ -275,7 +283,7 @@ def generate_client_reply(user, current_message):
         'role': 'client' if item.sender_role == 'client' else 'assistant',
         'content': redact_sensitive_text(item.message[:320]),
     } for item in SupportMessage.query.filter_by(user_id=user.id)
-        .order_by(SupportMessage.created_at.desc()).limit(4).all()][::-1]
+        .order_by(SupportMessage.created_at.desc()).limit(4).all() if not _PRIVATE_SUPPORT_TEXT.search(item.message or '')][::-1]
     current_message = redact_sensitive_text(current_message[:2000])
     context = {
         'relevant_services': services,

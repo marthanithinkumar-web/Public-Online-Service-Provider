@@ -161,3 +161,10 @@ def test_support_check_only_accepts_fixed_cases(client, monkeypatch):
     result = client.post('/api/admin/ai/support-check', json={'case': 'published_fee'})
     assert result.status_code == 200
     assert result.get_json()['answer'] == '73 INR'
+
+
+def test_sensitive_message_goes_to_staff_before_customer_data_is_loaded(monkeypatch):
+    from app.routes.ai_operations import generate_client_reply
+    monkeypatch.setenv('POSP_CLIENT_AI_ENABLED', 'true')
+    for message in ('My OTP is 123456', 'Card 4111 1111 1111 1111', 'my password is example'):
+        assert generate_client_reply(None, message) == (None, True, None)
