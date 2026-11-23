@@ -99,3 +99,23 @@ def test_client_ai_error_logs_do_not_include_client_identifier(client, monkeypat
     assert 'client_id=' not in caplog.text
     assert 'error_type=RuntimeError' in caplog.text
 
+
+
+def test_support_sends_to_ai_only_with_explicit_boolean_opt_in(client, monkeypatch):
+    from app.routes import ai_operations
+
+    monkeypatch.setenv('POSP_CLIENT_AI_ENABLED', 'true')
+    token = _register(client, 'opt-in@example.com', 'Consent Test')
+    headers = {'Authorization': f'Bearer {token}'}
+    calls = []
+
+    def provider(user, message):
+        calls.append(message)
+        return None, True, None
+
+    monkeypatch.setattr(ai_operations, 'generate_client_reply', provider)
+    for options in ({}, {'use_ai': False}, {'use_ai': 'true'}, {'use_ai': True}):
+        response = client.post('/api/messages/mine', headers=headers,
+                               json={'message': 'Support question', **options})
+        assert response.status_code == 201
+    assert calls == ['Support question']
