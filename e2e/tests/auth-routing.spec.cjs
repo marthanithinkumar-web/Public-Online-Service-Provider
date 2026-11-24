@@ -283,3 +283,31 @@ test('administrator login also waits for the in-flight Render API warm-up', asyn
   await expect(page).toHaveURL(/dashboard$/)
   expect(loginRequestedBeforeWarmup).toBe(false)
 })
+
+test('notice reader extracts local text and image lines without sending them in chat', async ({page}) => {
+  await installSession(page)
+  await mockClientWorkspace(page)
+  await page.route('**/api/messages/mine', route => route.fulfill({json:{items:[], ai_enabled:true, ai_local_mode:true}}))
+  await page.addInitScript(() => {
+    window.TextDetector = class { async detect() { return [{rawValue:'Eligibility: image fixture'}] } }
+  })
+  const sent = []
+  page.on('request', request => {
+    if (request.method() !== 'GET') sent.push(request.url())
+  })
+  await page.goto('/messages')
+  const summary = page.getByText('Read a public notice on this device', {exact:true})
+  await summary.click()
+  const file = page.getByLabel('Notice file')
+  await file.setInputFiles({name:'notice.txt', mimeType:'text/plain', buffer:Buffer.from('Heading\nअंतिम तिथि: 4 मई\nDocuments: example only')})
+  await expect(page.getByText('अंतिम तिथि: 4 मई', {exact:true})).toBeVisible()
+  await expect(page.getByText('Documents: example only', {exact:true})).toBeVisible()
+  await file.setInputFiles({name:'notice.png', mimeType:'image/png', buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==','base64')})
+  await expect(page.getByText('Eligibility: image fixture', {exact:true})).toBeVisible()
+  await expect(page.getByText('Documents: example only', {exact:true})).toHaveCount(0)
+  await expect(page.getByLabel('Your message')).toHaveValue('')
+  await summary.click()
+  await summary.click()
+  await expect(page.getByText('Eligibility: image fixture', {exact:true})).toHaveCount(0)
+  expect(sent.filter(url => url.includes('/messages'))).toEqual([])
+})

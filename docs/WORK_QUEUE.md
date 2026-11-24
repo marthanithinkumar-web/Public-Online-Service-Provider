@@ -390,3 +390,7 @@ FAQ traffic and administrator benchmarks share one atomic request reservation pe
 Fixed public FAQs now answer after the support privacy and enablement checks, before account history and catalog retrieval. Privacy guidance is available in English, Hindi and Telugu.
 
 SEO review of PR #251: its source robots change is overwritten by generate-seo.mjs and conflicts with verify-robots-rules.mjs. Retain crawl access for private-route noindex headers. Leave #251 open for reconciliation.
+
+### Client notice reader
+
+Opt-in support includes a local reader for UTF-8 notices and PNGs in browsers that implement text detection. It extracts source lines about dates, fees, eligibility and documents in English, Hindi and Telugu. Extracted content stays in transient component state. Unsupported image recognition provides a text-file fallback. PDF interpretation, authenticated free-provider benchmarks, full streaming, global settings and cross-worker quota accounting remain pending.

@@ -1,4 +1,5 @@
 import React,{useEffect,useRef,useState} from 'react'
+import LocalNoticeReader from './LocalNoticeReader'
 import axios from 'axios'
 import {authHeader} from '../../services/auth'
 import {apiBase} from '../../services/apiBase'
@@ -24,6 +25,7 @@ export default function ClientSupportChat(){
   </div>
   {error&&<p className="info" role="alert">{error}</p>}
   {notice&&<p className="info" role="status">{notice}</p>}
+  {aiEnabled&&<LocalNoticeReader/>}
   <form className="chat-composer" onSubmit={send}>{aiEnabled&&<label><input type="checkbox" checked={useAi} disabled={busy} onChange={e=>setUseAi(e.target.checked)}/> Use POSP AI for this reply. {localMode?'POSP uses your question and recent chat to look up service information. General FAQs may use an external provider with a fixed prompt.':'Share this message, recent chat history and relevant request status with the external AI provider.'}</label>}<label htmlFor="client-support-message">Your message</label><div><textarea id="client-support-message" rows={3} maxLength={2000} value={message} onChange={event=>setMessage(event.target.value)} placeholder="Ask in your own words — typos are okay."/><button type="submit" disabled={busy||!message.trim()}>{busy?'Waiting for reply…':'Send message'}</button></div><small>{message.length}/2000</small></form>
  </section>
 }
