@@ -29,3 +29,26 @@ def test_followup_skips_current_question_and_honors_staff_request():
                                        {'role': 'client', 'content': 'What is its fee?'}]}
     assert '₹73' in support_answer(context, 'What is its fee?')[0]
     assert support_answer(context, 'What is the Example fee? Connect me to an administrator.')[1]
+
+
+def test_production_local_preflight_needs_no_db_or_provider(client, monkeypatch):
+    import requests
+    from sqlalchemy import event
+    from app.utils.database import db
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Readiness accessed an external dependency')
+
+    monkeypatch.setenv('POSP_AI_PROVIDER', 'builtin')
+    monkeypatch.setenv('POSP_CLIENT_AI_ENABLED', 'true')
+    monkeypatch.setattr(requests.Session, 'request', forbidden)
+    with client.application.app_context():
+        engine = db.engine
+        event.listen(engine, 'before_cursor_execute', forbidden)
+        try:
+            response = client.get('/api/admin/ai/local-readiness')
+        finally:
+            event.remove(engine, 'before_cursor_execute', forbidden)
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['local_mode'] and data['client_opt_in_available'] and all(data['checks'].values())
