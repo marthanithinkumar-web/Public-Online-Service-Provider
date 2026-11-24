@@ -13,10 +13,25 @@ def support_answer(context, question):
     text = question.casefold()
     if re.search(r'payment|refund|approval|complaint|human|भुगतान|చెల్లింపు', text):
         return handoff, True, None
-    if re.search(r'\bjobs?\b|vacanc|नौकरी|नौकरि|ఉద్యోగ', text):
-        return f'{jobs}: https://pospindia.onrender.com/jobs. {handoff}', True, None
-    if re.search(r'scholarship|छात्रवृत्ति|స్కాలర్|ఉపకార', text):
-        return f'{scholarships}: https://pospindia.onrender.com/scholarships. {handoff}', True, None
+    for kind, pattern, label in (
+        ('jobs', r'\bjobs?\b|vacanc|नौकरी|नौकरि|ఉద్యోగ', jobs),
+        ('scholarships', r'scholarship|छात्रवृत्ति|స్కాలర్|ఉపకార', scholarships),
+    ):
+        if not re.search(pattern, text):
+            continue
+        directory = f'https://pospindia.onrender.com/{kind}'
+        entries = []
+        for item in context.get(f'active_{kind}_verified') or []:
+            link = item.get('official_notice_url') or item.get('source_url') or ''
+            checked = item.get('source_checked_at')
+            if not checked or not link.startswith('https://') or not item.get('title'):
+                continue
+            parts = [item['title'], item.get('status_label'), item.get('qualification') or item.get('education_level'),
+                     item.get('location') or item.get('region'), item.get('deadline'), link, str(checked)[:10]]
+            entries.append(' · '.join(str(value) for value in parts if value))
+        if not entries:
+            return f'{label}: {directory}. {handoff}', True, None
+        return '\n'.join([f'{label}: {directory}', *entries[:3]]), False, None
     services = context.get('relevant_services') or []
     named = [s for s in services if s.get('name') and s['name'].casefold() in text]
     if not named and len(services) == 1 and re.search(r'\bits\b|उसका|దాని', text):

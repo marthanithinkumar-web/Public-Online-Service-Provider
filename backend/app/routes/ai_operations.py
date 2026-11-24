@@ -137,8 +137,8 @@ def _client_message_intents(message):
     """Classify the latest question so unrelated datasets are not loaded."""
     terms = set(re.findall(r"\w+", str(message or "").lower()))
     return {
-        'jobs': bool(terms & {'job', 'jobs', 'vacancy', 'vacancies', 'recruitment', 'recruit', 'notification', 'notifications', 'exam', 'admit', 'employment'}),
-        'scholarships': bool(terms & {'scholarship', 'scholarships', 'stipend', 'stipends', 'fellowship', 'fellowships'}),
+        'jobs': any(term in message for term in ('नौकरी', 'नौकरि', 'ఉద్యోగ')) or bool(terms & {'job', 'jobs', 'vacancy', 'vacancies', 'recruitment', 'recruit', 'notification', 'notifications', 'exam', 'admit', 'employment'}),
+        'scholarships': any(term in message for term in ('छात्रवृत्ति', 'స్కాలర్', 'ఉపకార')) or bool(terms & {'scholarship', 'scholarships', 'stipend', 'stipends', 'fellowship', 'fellowships'}),
         'orders': bool(terms & {'order', 'orders', 'status', 'track', 'tracking', 'payment', 'payments', 'receipt', 'transaction', 'request', 'requests'}),
     }
 

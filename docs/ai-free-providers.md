@@ -13,4 +13,4 @@ The optional server settings POSP_GROQ_FREE_ONLY_VERIFIED, POSP_GEMINI_FREE_ONLY
 
 A public GET to /api/admin/ai/local-readiness checks synthetic local fee answers and reports whether the local provider is selected. It performs no authentication lookup, database query or external inference. All dashboard and benchmark operations require admin access.
 
-Customer routing, streaming, multimodal inputs and provider management are tracked in WORK_QUEUE.md. Synthetic evaluation adapters alone do not enable these production features.
+Client and admin public FAQ routing sends only fixed prompts; personal messages never become provider input in this path. Set POSP_CLIENT_AI_PRIORITY and POSP_ADMIN_AI_PRIORITY to comma-separated provider names. Current-process counters reset daily UTC, requests are capped at 25 per provider per worker, and failures open a two-minute cooldown. These local bounds cannot verify account-wide free quotas. Streaming, multimodal support and account-wide administration remain in WORK_QUEUE.md.

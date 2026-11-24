@@ -372,8 +372,8 @@ The ₹0 constraint applies to client and admin AI, including diagnostics. Free 
 | --- | --- |
 | Existing provider interface, client consent, bounded retries, safe handoff and verified listing context | Previously shipped |
 | Built-in client knowledge and admin findings, local production spend guard | Implemented in this change; pending release verification |
-| Groq GPT-OSS 20B/120B, Gemini multimodal, Cloudflare Workers AI and strictly free OpenRouter adapters | Pending integration, mock coverage and account-specific free-tier verification |
-| Client/admin routing by task, language, latency and quotas; circuit recovery, caching, duplicate suppression, streaming and token accounting | Pending |
+| Groq GPT-OSS 20B/120B, Gemini multimodal, Cloudflare Workers AI and strictly free OpenRouter adapters | Adapters and synthetic mock coverage implemented; account verification and live comparison pending |
+| Client/admin routing by task, language, latency and quotas; circuit recovery, caching, duplicate suppression, streaming and token accounting | Fixed public FAQ routing, bounded cache, cooldowns, duplicate suppression and per-process counts implemented; streaming and shared accounting pending |
 | English, Hindi and Telugu assistance, continuity, personalized eligibility, official evidence, documents and image support | Partial; multilingual fee labels and directory navigation available locally |
 | Admin provider controls, consumption, quotas, latency, failures, fallback history and cache metrics | Pending |
 | Provider benchmarks and production enablement | Pending; do not call external providers during verification without confirmed hard billing limits |
