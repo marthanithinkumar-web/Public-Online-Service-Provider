@@ -82,7 +82,7 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: POSP_AI_PROVIDER
-        value: gemini
+        value: "builtin"
       - key: POSP_AI_MODEL
         value: gemini-3.5-flash-lite
       - key: POSP_AI_ENABLED

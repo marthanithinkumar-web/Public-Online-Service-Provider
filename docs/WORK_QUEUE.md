@@ -362,3 +362,19 @@ After the items above are complete and tested, continue the existing full improv
 - First rolling deploy after PR #265 included a legacy instance that ran pre-migration/Alembic startup and imported 3 job snapshot records into the production DB. The logs show DB revision 20261114_26 and no recorded Running upgrade line; seed writes cannot be ruled out. No direct DB inspection or rollback was attempted. Treat this as a disclosed incident; never claim the no-production-DB-touch rule was fully maintained for that rollout.
 - The subsequent deploy on current code logged skips for pre-migration, Alembic, seed and snapshot import. New branch fix/render-no-db-startup-hard-guard-20261116 adds unconditional Render-environment protection, even if migration opt-in is present. CI migration validation remains isolated SQLite-only.
 - Do not connect to or alter the production DB to inspect or reverse the imported snapshot records. Preserve the incident note and require the hard-guard PR to pass CI before the next deployment.
+
+
+## Permanent AI upgrade register — 24 November 2026
+
+The ₹0 constraint applies to client and admin AI, including diagnostics. Free allowances on billable accounts are insufficient. Never activate billing, recharge or paid failover. Keep credentials server-side. Development and verification use fixtures and isolated databases. Production verification must avoid application database access.
+
+| Requirement | Status at this change |
+| --- | --- |
+| Existing provider interface, client consent, bounded retries, safe handoff and verified listing context | Previously shipped |
+| Built-in client knowledge and admin findings, local production spend guard | Implemented in this change; pending release verification |
+| Groq GPT-OSS 20B/120B, Gemini multimodal, Cloudflare Workers AI and strictly free OpenRouter adapters | Pending integration, mock coverage and account-specific free-tier verification |
+| Client/admin routing by task, language, latency and quotas; circuit recovery, caching, duplicate suppression, streaming and token accounting | Pending |
+| English, Hindi and Telugu assistance, continuity, personalized eligibility, official evidence, documents and image support | Partial; multilingual fee labels and directory navigation available locally |
+| Admin provider controls, consumption, quotas, latency, failures, fallback history and cache metrics | Pending |
+| Provider benchmarks and production enablement | Pending; do not call external providers during verification without confirmed hard billing limits |
+| ZIP, WhatsApp, login, fees, verified filters and source sync, SEO, security, responsive UI and release work | Retain preceding queue and original acceptance criteria |
