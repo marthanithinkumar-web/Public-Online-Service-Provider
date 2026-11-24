@@ -1,0 +1,16 @@
+# POSP AI free-provider policy
+
+Production support uses local facts while external accounts are unverified. No customer prompt is accepted by the provider evaluation endpoint. An authenticated administrator can evaluate a fixed synthetic fee question in English, Hindi or Telugu with POST /api/admin/ai/support-check. Supply benchmark_provider, role and language. Confirm the provider-side plan refuses billable requests and disables auto-recharge before marking an account verified. A key or an advertised free allowance alone does not establish this.
+
+| Provider | Backend credential | Official account page | Permitted benchmark |
+| --- | --- | --- | --- |
+| Groq | GROQ_API_KEY | https://console.groq.com/keys | openai/gpt-oss-20b for client, openai/gpt-oss-120b for admin |
+| Gemini | GEMINI_API_KEY | https://aistudio.google.com/apikey | gemini-3.5-flash-lite on an eligible unbilled project |
+| Cloudflare | CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID | https://dash.cloudflare.com/profile/api-tokens | Workers Free account only |
+| OpenRouter | OPENROUTER_API_KEY | https://openrouter.ai/settings/keys | openai/gpt-oss-120b:free, zero input/output price caps |
+
+The optional server settings POSP_GROQ_FREE_ONLY_VERIFIED, POSP_GEMINI_FREE_ONLY_VERIFIED, POSP_CLOUDFLARE_FREE_ONLY_VERIFIED and POSP_OPENROUTER_FREE_ONLY_VERIFIED default to false. Never set them for a paid account. Confirm model availability and terms in the deployment region before each evaluation. Never paste keys in GitHub, frontend code or support chat.
+
+A public GET to /api/admin/ai/local-readiness checks synthetic local fee answers and reports whether the local provider is selected. It performs no authentication lookup, database query or external inference. All dashboard and benchmark operations require admin access.
+
+Customer routing, streaming, multimodal inputs and provider management are tracked in WORK_QUEUE.md. Synthetic evaluation adapters alone do not enable these production features.

@@ -359,6 +359,15 @@ def support_check():
     return jsonify({'case': case, 'answer': answer, 'handoff': handoff, 'error': error}), 502 if error else 200
 
 
+@bp.get('/local-readiness')
+def local_readiness():
+    """Readiness check using only a synthetic catalog row, with no database access."""
+    context = {'relevant_services': [{'name': 'Example', 'application_fee_inr': 0}]}
+    ready = all('₹0' in support_answer(context, question)[0]
+                for question in ('Example fee?', 'Example शुल्क?', 'Example ఫీజు?'))
+    return jsonify({'ready': ready, 'local_mode': _configured_provider() == 'builtin'}), 200 if ready else 503
+
+
 @bp.get('/overview')
 def overview():
     if not _require_admin():
