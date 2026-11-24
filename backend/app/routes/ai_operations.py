@@ -233,6 +233,10 @@ def generate_client_reply(user, current_message):
         return None, False, 'Client AI is disabled.'
     if _PRIVATE_SUPPORT_TEXT.search(current_message):
         return None, True, None
+    if _configured_provider() == 'builtin':
+        faq = public_faq(current_message, 'client')
+        if faq is not None:
+            return faq, False, None
     # Load only context relevant to this question. Avoid querying orders, job
     # feeds and scholarship catalogs for greetings or unrelated support questions.
     intents = _client_message_intents(current_message)
@@ -306,8 +310,7 @@ def generate_client_reply(user, current_message):
 
 def _answer_support_question(context, current_message):
     if _configured_provider() == 'builtin':
-        faq = public_faq(current_message, 'client')
-        return (faq, False, None) if faq else support_answer(context, current_message)
+        return support_answer(context, current_message)
     intents = _client_message_intents(current_message)
     for kind in ('jobs', 'scholarships'):
         if intents[kind] and not context.get(f'active_{kind}_verified'):

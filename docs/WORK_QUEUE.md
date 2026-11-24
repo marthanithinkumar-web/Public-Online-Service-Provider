@@ -386,3 +386,7 @@ PR #276 introduced local production routing, public FAQ provider candidates and 
 ### Phase 4 provider diagnostics
 
 FAQ traffic and administrator benchmarks share one atomic request reservation per provider per process, including failed attempts. The dashboard shows remaining daily process allowance, failures and recent response latency. Provider-reported tokens and attempts missing usage metadata are tracked locally. Provider account limits, streaming, multimodal processing and editable role settings remain open. Preserve the existing non-AI queue above.
+
+Fixed public FAQs now answer after the support privacy and enablement checks, before account history and catalog retrieval. Privacy guidance is available in English, Hindi and Telugu.
+
+SEO review of PR #251: its source robots change is overwritten by generate-seo.mjs and conflicts with verify-robots-rules.mjs. Retain crawl access for private-route noindex headers. Leave #251 open for reconciliation.

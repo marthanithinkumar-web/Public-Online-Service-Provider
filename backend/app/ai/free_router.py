@@ -24,12 +24,16 @@ _TOPICS = {
 _QUESTIONS = {
     'what is posp': ('help', 'English'), 'posp क्या है': ('help', 'Hindi'),
     'posp అంటే ఏమిటి': ('help', 'Telugu'),
+    'मुझे चैट में क्या साझा नहीं करना चाहिए': ('privacy', 'Hindi'),
+    'చాట్‌లో ఏమి పంచుకోకూడదు': ('privacy', 'Telugu'),
     'what should i avoid sharing': ('privacy', 'English'),
 }
 _LOCAL = {
     ('help', 'English'): 'POSP helps you apply for services. The service team can help with your request.',
     ('help', 'Hindi'): 'POSP सेवाओं के लिए आवेदन करने में सहायता करता है। सेवा टीम आपकी मदद कर सकती है।',
     ('help', 'Telugu'): 'సేవలకు దరఖాస్తు చేసుకోవడానికి POSP సహాయం చేస్తుంది. సేవా బృందాన్ని సంప్రదించవచ్చు.',
+    ('privacy', 'Hindi'): 'चैट में पासवर्ड, ओटीपी या कार्ड नंबर साझा न करें।',
+    ('privacy', 'Telugu'): 'చాట్‌లో పాస్‌వర్డ్‌లు, ఓటీపీలు లేదా కార్డు నంబర్లు పంచుకోకండి.',
     ('privacy', 'English'): 'Keep passwords, OTPs, and card numbers out of support chat.',
 }
 

@@ -52,3 +52,18 @@ def test_benchmark_failure_opens_faq_cooldown(provider, monkeypatch):
     assert status['providers']['groq']['attempts_without_usage'] == 1
     assert status['counts']['groq'] == 1
     assert status['events'] == [{'provider': 'groq', 'result': 'fallback'}]
+
+
+@pytest.mark.parametrize('question,word', [('What is POSP?', 'POSP'),
+                                          ('मुझे चैट में क्या साझा नहीं करना चाहिए?', 'ओटीपी'),
+                                          ('చాట్‌లో ఏమి పంచుకోకూడదు?', 'ఓటీపీ')])
+def test_local_faq_needs_no_user_or_catalog_lookup(monkeypatch, question, word):
+    from app.routes.ai_operations import generate_client_reply
+
+    monkeypatch.setenv('POSP_CLIENT_AI_ENABLED', 'true')
+    monkeypatch.setenv('POSP_AI_PROVIDER', 'builtin')
+    monkeypatch.setenv('POSP_CLIENT_AI_PRIORITY', '')
+    monkeypatch.setattr(router, '_cache', {})
+    answer, handoff, error = generate_client_reply(None, question)
+    assert word in answer
+    assert not handoff and error is None
