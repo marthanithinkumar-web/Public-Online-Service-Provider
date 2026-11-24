@@ -5,6 +5,7 @@ import time
 from flask import Blueprint, jsonify, request
 from sqlalchemy import func
 
+from ..ai_core import configured_provider
 from ..middleware.auth import require_admin
 from ..models.admin_audit import AdminAuditLog
 from ..models.notification import Notification
@@ -38,7 +39,7 @@ def client_messages():
         return jsonify({'error': 'Please log in as a client.'}), 401
     messages = SupportMessage.query.filter_by(user_id=user.id).order_by(SupportMessage.created_at.asc()).all()
     unread = sum(1 for item in messages if item.sender_role in {'admin', 'ai'} and not item.read_by_client)
-    return jsonify({'items': [item.to_dict() for item in messages], 'unread': unread, 'ai_enabled': os.getenv('POSP_CLIENT_AI_ENABLED', 'false').lower() == 'true'})
+    return jsonify({'items': [item.to_dict() for item in messages], 'unread': unread, 'ai_local_mode': configured_provider() == 'builtin', 'ai_enabled': os.getenv('POSP_CLIENT_AI_ENABLED', 'false').lower() == 'true'})
 
 @bp.post('/mine')
 @limiter.limit('12 per minute')
