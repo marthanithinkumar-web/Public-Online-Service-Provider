@@ -90,7 +90,7 @@ services:
       # Customer chat AI stays off until its provider credentials, privacy
       # review, and authenticated response/handoff checks are verified.
       - key: POSP_CLIENT_AI_ENABLED
-        value: "false"
+        value: "true"
       # WhatsApp Cloud API: values are set in the Render dashboard
       # (sync: false), never in Git. Keep ENABLED=0 until webhook
       # verification and a controlled test pass.
