@@ -44,8 +44,8 @@ export default function LocalNoticeReader() {
       const text = await readNotice(file)
       if (version.current !== current) return
       const matches = text.split(/\r?\n/).map(line => line.trim()).filter(line => noticeTerms.test(line))
-      setLines(matches.slice(0, 12).map(line => line.slice(0, 600)))
-      setStatus(matches.length ? 'Excerpts from your file. Confirm dates and requirements with the issuing authority.' : 'No deadline, eligibility, fee or document lines were recognized.')
+      setLines(matches.slice(0, 12).map(line => line.length > 600 ? line.slice(0, 599) + '…' : line))
+      setStatus(matches.length ? 'Up to 12 matching excerpts from your file. Confirm dates and requirements with the issuing authority.' : 'No deadline, eligibility, fee or document lines were recognized.')
     } catch (error) {
       if (version.current === current) setStatus(error instanceof Error && error.constructor === Error
         ? error.message : 'Could not read this file. Try a UTF-8 text file.')
