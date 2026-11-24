@@ -14,6 +14,7 @@ def provider(monkeypatch):
     monkeypatch.setattr(router.FreeTransport, 'eligible', lambda self: True)
 
     def reply(self, role, prompt):
+        self.reported_tokens = 12
         calls.append(prompt)
         return 'Fixture answer'
 
@@ -30,6 +31,8 @@ def test_benchmark_and_faq_share_daily_budget(provider, monkeypatch):
         router.benchmark_reply('groq', 'admin', 'Telugu')
     assert router.public_faq('what should i avoid sharing', 'client') == router._LOCAL['privacy', 'English']
     status = router.routing_status()
+    assert status['providers']['groq']['reported_tokens'] == 24
+    assert status['providers']['groq']['attempts_without_usage'] == 0
     assert len(provider) == 2
     assert status['counts']['cache_hits'] == 1
     assert status['providers']['groq']['remaining_requests'] == 0
@@ -46,5 +49,6 @@ def test_benchmark_failure_opens_faq_cooldown(provider, monkeypatch):
     assert router.public_faq('what is posp', 'client') == router._LOCAL['help', 'English']
     status = router.routing_status()
     assert status['providers']['groq']['failures'] == 1
+    assert status['providers']['groq']['attempts_without_usage'] == 1
     assert status['counts']['groq'] == 1
     assert status['events'] == [{'provider': 'groq', 'result': 'fallback'}]

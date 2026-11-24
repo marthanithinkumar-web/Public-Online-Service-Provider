@@ -8,7 +8,11 @@ class GeminiProvider(ProviderAdapter):
     endpoint_template = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
     def generate(self, *, instructions, prompt, model, max_output_tokens):
-        payload = self.post_json(
+        payload = self.generate_payload(instructions=instructions, prompt=prompt, model=model, max_output_tokens=max_output_tokens)
+        return extract_gemini_text(payload)
+
+    def generate_payload(self, *, instructions, prompt, model, max_output_tokens):
+        return self.post_json(
             headers={"x-goog-api-key": self.api_key(), "Content-Type": "application/json"},
             endpoint=self.endpoint_template.format(model=model),
             payload={
@@ -17,4 +21,3 @@ class GeminiProvider(ProviderAdapter):
                 "generationConfig": {"maxOutputTokens": max_output_tokens, "temperature": 0.2},
             },
         )
-        return extract_gemini_text(payload)

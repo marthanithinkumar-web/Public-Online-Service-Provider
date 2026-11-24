@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 
 import requests
 
+from .text import extract_gemini_text
 from .providers.base import ProviderAdapter
 from .providers.errors import ProviderError
 from .providers.gemini import GeminiProvider
@@ -44,6 +45,11 @@ class FreeTransport(ProviderAdapter):
     def __init__(self, name):
         self.name = name
         self.key_env = KEYS[name]
+        self.reported_tokens = None
+
+    def _read_usage(self, usage, field='total_tokens'):
+        tokens = usage.get(field) if isinstance(usage, dict) else None
+        self.reported_tokens = tokens if type(tokens) is int and tokens >= 0 else None
 
     def eligible(self):
         # Set only after verifying provider-side hard denial of billable usage.
@@ -53,12 +59,18 @@ class FreeTransport(ProviderAdapter):
         return bool(verified and self.is_configured() and account_ok)
 
     def synthetic_reply(self, role, prompt):
+        self.reported_tokens = None
         if role not in ('client', 'admin') or not self.eligible():
             raise ProviderError('disabled', 'Free-tier account is unverified.')
         model = MODELS[self.name][role]
         instructions = 'Answer this synthetic POSP support evaluation briefly in the requested language.'
         if self.name == 'gemini':
-            return GeminiProvider().generate(instructions=instructions, prompt=prompt, model=model, max_output_tokens=256)
+            adapter = GeminiProvider()
+            adapter.max_attempts = self.max_attempts
+            adapter.timeout = self.timeout
+            data = adapter.generate_payload(instructions=instructions, prompt=prompt, model=model, max_output_tokens=256)
+            self._read_usage(data.get("usageMetadata"), "totalTokenCount")
+            return extract_gemini_text(data)
         messages = [{'role': 'system', 'content': instructions}, {'role': 'user', 'content': prompt}]
         body = {'messages': messages, 'max_tokens': 256}
         if self.name == 'cloudflare':
@@ -75,7 +87,10 @@ class FreeTransport(ProviderAdapter):
                                     'data_collection': 'deny', 'allow_fallbacks': False}
         data = self.post_json(endpoint=url, headers={'Authorization': f'Bearer {self.api_key()}'}, payload=body)
         if self.name == 'cloudflare':
-            return (data.get('result') or {}).get('response', '') if data.get('success') else ''
+            result = data.get('result') or {}
+            self._read_usage(result.get('usage'))
+            return result.get('response', '') if data.get('success') else ''
+        self._read_usage(data.get('usage'))
         choices = data.get('choices') or []
         if not choices or choices[0].get('finish_reason') != 'stop':
             return ''

@@ -21,13 +21,14 @@ def test_free_text_payload_and_output(monkeypatch, name):
     def post(**kwargs):
         if name == 'cloudflare':
             assert MODELS[name]['admin'] in kwargs['endpoint']
-            return {'success': True, 'result': {'response': '73 INR'}}
+            return {'success': True, 'result': {'response': '73 INR', 'usage': {'total_tokens': 17}}}
         assert kwargs['payload']['model'] == MODELS[name]['admin']
         if name == 'openrouter':
             assert kwargs['payload']['provider']['max_price']['completion'] == 0
-        return {'choices': [{'finish_reason': 'stop', 'message': {'content': '73 INR'}}]}
+        return {'usage': {'total_tokens': 17}, 'choices': [{'finish_reason': 'stop', 'message': {'content': '73 INR'}}]}
     monkeypatch.setattr(adapter, 'post_json', post)
     assert adapter.synthetic_reply('admin', 'fixture') == '73 INR'
+    assert adapter.reported_tokens == 17
 
 
 @pytest.mark.parametrize('price,expected', [('0', True), ('0.001', False), (None, False)])

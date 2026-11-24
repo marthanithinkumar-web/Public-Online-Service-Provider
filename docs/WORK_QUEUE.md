@@ -385,4 +385,4 @@ PR #276 introduced local production routing, public FAQ provider candidates and 
 
 ### Phase 4 provider diagnostics
 
-FAQ traffic and administrator benchmarks share one atomic request reservation per provider per process, including failed attempts. The dashboard shows remaining daily process allowance, failures and recent response latency. Provider account limits, token accounting, streaming, multimodal processing and editable role settings remain open. Preserve the existing non-AI queue above.
+FAQ traffic and administrator benchmarks share one atomic request reservation per provider per process, including failed attempts. The dashboard shows remaining daily process allowance, failures and recent response latency. Provider-reported tokens and attempts missing usage metadata are tracked locally. Provider account limits, streaming, multimodal processing and editable role settings remain open. Preserve the existing non-AI queue above.

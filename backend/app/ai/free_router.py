@@ -51,6 +51,7 @@ def _request(name, role, prompt):
         if _cooldown.get(name, 0) > monotonic() or _counts[name] >= _DAILY_LIMIT:
             raise ProviderError('rate_limited', 'Free-provider request budget or cooldown is active.')
         _counts[name] += 1
+        reserved_day = _day
     start = monotonic()
     try:
         result = adapter.synthetic_reply(role, prompt)
@@ -64,6 +65,14 @@ def _request(name, role, prompt):
         if isinstance(exc, ProviderError):
             raise
         raise ProviderError('unavailable', 'Free provider is unavailable.') from None
+    finally:
+        with _lock:
+            _roll_day()
+            if _day == reserved_day:
+                if adapter.reported_tokens is None:
+                    _counts[name + '_missing_usage'] += 1
+                else:
+                    _counts[name + '_tokens'] += adapter.reported_tokens
     with _lock:
         _events.append({'provider': name, 'result': 'ok', 'latency_ms': round((monotonic() - start) * 1000)})
     return result
@@ -114,4 +123,6 @@ def routing_status():
                 'providers': {name: {'eligible': FreeTransport(name).eligible(),
                                      'remaining_requests': max(0, _DAILY_LIMIT - _counts[name]),
                                      'failures': _counts[name + '_failures'],
+                                     'reported_tokens': _counts[name + '_tokens'],
+                                     'attempts_without_usage': _counts[name + '_missing_usage'],
                                      'cooling_down': _cooldown.get(name, 0) > monotonic()} for name in _ORDER}}
