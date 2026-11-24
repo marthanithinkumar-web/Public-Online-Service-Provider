@@ -21,7 +21,7 @@ from ..utils.jwt_handler import get_request_user
 from ..utils.readiness import production_readiness
 from ..ai_core import call_model as _call_model, configured_model as _configured_model, configured_provider as _configured_provider, is_configured as _ai_is_configured, provider_health as _provider_health, redact_sensitive_text, _extract_openai_text as _extract_response_text  # noqa: F401 - compatibility export
 from ..ai.knowledge import support_answer
-from ..ai.free_router import public_faq, routing_status
+from ..ai.free_router import benchmark_reply, public_faq, routing_status
 from .admin import _require_admin
 
 bp = Blueprint('ai_operations', __name__)
@@ -348,7 +348,7 @@ def support_check():
     }
     payload = request.get_json(silent=True) or {}
     if isinstance(payload, dict) and 'benchmark_provider' in payload:
-        from ..ai.free_transport import FreeTransport, KEYS
+        from ..ai.free_transport import KEYS
         from ..ai.providers.errors import ProviderError
         provider = payload.get('benchmark_provider')
         role = payload.get('role', 'client')
@@ -356,7 +356,7 @@ def support_check():
         if provider not in tuple(KEYS) or role not in ('client', 'admin') or language not in ('English', 'Hindi', 'Telugu'):
             return jsonify({'error': 'Unknown evaluation configuration.'}), 400
         try:
-            answer = FreeTransport(provider).synthetic_reply(role, f'Explain in {language} that the fixture assistance fee is 73 INR.')
+            answer = benchmark_reply(provider, role, language)
         except ProviderError as exc:
             return jsonify({'error': exc.safe_message}), 503
         return jsonify({'provider': provider, 'role': role, 'language': language, 'answer': answer}), 200 if answer else 502
