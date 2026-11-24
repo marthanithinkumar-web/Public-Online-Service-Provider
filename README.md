@@ -92,3 +92,6 @@ Database backup and recovery
   the Neon URL, B2 application key, or backup encryption passphrase.
 
 License: MIT
+
+
+For the current POSP AI spending policy, provider enrollment and local verification, see [Free AI providers](docs/ai-free-providers.md) and the [requirements register](docs/WORK_QUEUE.md).

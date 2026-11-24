@@ -34,6 +34,8 @@ def settings() -> AISettings:
     selected = (os.getenv("POSP_AI_PROVIDER") or "").strip().lower()
     if not enabled or selected == "disabled":
         return AISettings(False, None, None)
+    if selected == 'builtin' or os.getenv('RENDER', '').lower() == 'true':
+        return AISettings(True, 'builtin', 'posp-knowledge')
     if not selected:
         return AISettings(False, None, None, "POSP_AI_PROVIDER must explicitly select openai or gemini.")
     if selected not in _PROVIDERS:
@@ -62,6 +64,8 @@ def configured_model():
 
 def is_configured():
     config = settings()
+    if config.provider == 'builtin':
+        return True
     return bool(config.enabled and config.provider and _PROVIDERS[config.provider].is_configured())
 
 
@@ -88,6 +92,10 @@ def provider_health():
             "selected": selected,
             "model": config.model if selected else None,
         }
+    if config.provider == 'builtin':
+        providers['builtin'] = {'state': 'available', 'configured': True, 'available': True, 'selected': True, 'model': config.model}
+        for name in _PROVIDERS:
+            providers[name]['state'] = 'disabled'
     state = (
         providers[config.provider]["state"] if config.provider in providers
         else ("disabled" if not config.enabled and not config.error else "unavailable")
@@ -103,6 +111,8 @@ def call_model(instructions, prompt, max_output_tokens=900):
         return None, config.error
     if not config.enabled:
         return None, "AI is disabled."
+    if config.provider == 'builtin':
+        return None, 'External AI is disabled by the zero-cost policy.'
     provider = _PROVIDERS[config.provider]
     if not provider.is_configured():
         return None, f"{provider.display_name} AI is not configured on the backend."

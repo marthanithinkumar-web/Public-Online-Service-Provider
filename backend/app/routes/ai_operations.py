@@ -20,6 +20,8 @@ from ..utils.database import db
 from ..utils.jwt_handler import get_request_user
 from ..utils.readiness import production_readiness
 from ..ai_core import call_model as _call_model, configured_model as _configured_model, configured_provider as _configured_provider, is_configured as _ai_is_configured, provider_health as _provider_health, redact_sensitive_text, _extract_openai_text as _extract_response_text  # noqa: F401 - compatibility export
+from ..ai.knowledge import support_answer
+from ..ai.free_router import public_faq, routing_status
 from .admin import _require_admin
 
 bp = Blueprint('ai_operations', __name__)
@@ -111,6 +113,7 @@ def _build_context():
             'provider': _configured_provider(),
             'model': _configured_model(),
             'provider_health': _provider_health(),
+            'free_routing': routing_status(),
         },
     }
 
@@ -134,8 +137,8 @@ def _client_message_intents(message):
     """Classify the latest question so unrelated datasets are not loaded."""
     terms = set(re.findall(r"\w+", str(message or "").lower()))
     return {
-        'jobs': bool(terms & {'job', 'jobs', 'vacancy', 'vacancies', 'recruitment', 'recruit', 'notification', 'notifications', 'exam', 'admit', 'employment'}),
-        'scholarships': bool(terms & {'scholarship', 'scholarships', 'stipend', 'stipends', 'fellowship', 'fellowships'}),
+        'jobs': any(term in message for term in ('नौकरी', 'नौकरि', 'ఉద్యోగ')) or bool(terms & {'job', 'jobs', 'vacancy', 'vacancies', 'recruitment', 'recruit', 'notification', 'notifications', 'exam', 'admit', 'employment'}),
+        'scholarships': any(term in message for term in ('छात्रवृत्ति', 'స్కాలర్', 'ఉపకార')) or bool(terms & {'scholarship', 'scholarships', 'stipend', 'stipends', 'fellowship', 'fellowships'}),
         'orders': bool(terms & {'order', 'orders', 'status', 'track', 'tracking', 'payment', 'payments', 'receipt', 'transaction', 'request', 'requests'}),
     }
 
@@ -233,7 +236,17 @@ def generate_client_reply(user, current_message):
     # Load only context relevant to this question. Avoid querying orders, job
     # feeds and scholarship catalogs for greetings or unrelated support questions.
     intents = _client_message_intents(current_message)
-    message_terms = {term for term in re.findall(r"\w+", current_message.lower()) if len(term) >= 3 and term not in {
+    history = [{
+        'role': 'client' if item.sender_role == 'client' else 'assistant',
+        'content': redact_sensitive_text(item.message[:320]),
+    } for item in SupportMessage.query.filter_by(user_id=user.id)
+        .order_by(SupportMessage.created_at.desc()).limit(4).all() if not _PRIVATE_SUPPORT_TEXT.search(item.message or '')][::-1]
+    previous_clients = [row['content'] for row in history if row['role'] == 'client']
+    if previous_clients and previous_clients[-1] == redact_sensitive_text(current_message[:320]):
+        previous_clients.pop()
+    referent = previous_clients[-1] if previous_clients and re.search(r'\bits\b|उसका|దాని', current_message, re.I) else ''
+    search_text = referent or current_message
+    message_terms = {term for term in re.findall(r"\w+", search_text.lower()) if len(term) >= 3 and term not in {
         'what', 'when', 'where', 'which', 'with', 'from', 'that', 'this', 'have', 'your', 'about', 'please', 'help', 'does', 'will', 'would', 'could', 'should', 'want', 'need'
     }}
     service_query = Service.query.filter_by(is_active=True).options(joinedload(Service.category))
@@ -279,11 +292,6 @@ def generate_client_reply(user, current_message):
     india_today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
     active_job_context = _verified_active_job_context(limit=3) if intents['jobs'] else []
     active_scholarship_context = _verified_active_scholarship_context(limit=3) if intents['scholarships'] else []
-    history = [{
-        'role': 'client' if item.sender_role == 'client' else 'assistant',
-        'content': redact_sensitive_text(item.message[:320]),
-    } for item in SupportMessage.query.filter_by(user_id=user.id)
-        .order_by(SupportMessage.created_at.desc()).limit(4).all() if not _PRIVATE_SUPPORT_TEXT.search(item.message or '')][::-1]
     current_message = redact_sensitive_text(current_message[:2000])
     context = {
         'relevant_services': services,
@@ -297,6 +305,9 @@ def generate_client_reply(user, current_message):
 
 
 def _answer_support_question(context, current_message):
+    if _configured_provider() == 'builtin':
+        faq = public_faq(current_message, 'client')
+        return (faq, False, None) if faq else support_answer(context, current_message)
     intents = _client_message_intents(current_message)
     for kind in ('jobs', 'scholarships'):
         if intents[kind] and not context.get(f'active_{kind}_verified'):
@@ -335,11 +346,34 @@ def support_check():
         'no_jobs': ({'active_jobs_verified': []}, 'Which verified jobs can I apply for today?'),
         'no_scholarships': ({'active_scholarships_verified': []}, 'Which scholarships can I apply for today?'),
     }
-    case = (request.get_json(silent=True) or {}).get('case')
+    payload = request.get_json(silent=True) or {}
+    if isinstance(payload, dict) and 'benchmark_provider' in payload:
+        from ..ai.free_transport import FreeTransport, KEYS
+        from ..ai.providers.errors import ProviderError
+        provider = payload.get('benchmark_provider')
+        role = payload.get('role', 'client')
+        language = payload.get('language', 'English')
+        if provider not in tuple(KEYS) or role not in ('client', 'admin') or language not in ('English', 'Hindi', 'Telugu'):
+            return jsonify({'error': 'Unknown evaluation configuration.'}), 400
+        try:
+            answer = FreeTransport(provider).synthetic_reply(role, f'Explain in {language} that the fixture assistance fee is 73 INR.')
+        except ProviderError as exc:
+            return jsonify({'error': exc.safe_message}), 503
+        return jsonify({'provider': provider, 'role': role, 'language': language, 'answer': answer}), 200 if answer else 502
+    case = payload.get('case')
     if not isinstance(case, str) or case not in cases:
         return jsonify({'error': 'Unknown support check.'}), 400
     answer, handoff, error = _answer_support_question(*cases[case])
     return jsonify({'case': case, 'answer': answer, 'handoff': handoff, 'error': error}), 502 if error else 200
+
+
+@bp.get('/local-readiness')
+def local_readiness():
+    """Readiness check using only a synthetic catalog row, with no database access."""
+    context = {'relevant_services': [{'name': 'Example', 'application_fee_inr': 0}]}
+    ready = all('₹0' in support_answer(context, question)[0]
+                for question in ('Example fee?', 'Example शुल्क?', 'Example ఫీజు?'))
+    return jsonify({'ready': ready, 'local_mode': _configured_provider() == 'builtin'}), 200 if ready else 503
 
 
 @bp.get('/overview')
@@ -360,6 +394,11 @@ def chat():
     if len(message) > 4000:
         return jsonify({'error': 'Message is too long.'}), 400
     context = _build_context()
+    if _configured_provider() == 'builtin':
+        findings = _operations_findings(context)
+        faq = public_faq(message, 'admin')
+        answer = faq or ' '.join(item['message'] for item in findings) or 'No warnings in the current operations checks.'
+        return jsonify({'configured': True, 'provider': 'builtin', 'answer': answer, 'checked_at': context['checked_at'], 'model': 'posp-knowledge'})
     prompt = f"""Operational context (JSON):
 {json.dumps(context, ensure_ascii=False, separators=(',', ':'))}
 
