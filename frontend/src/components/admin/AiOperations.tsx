@@ -48,10 +48,15 @@ export default function AiOperations(){
     {overview?.ai?.free_routing && <section className="admin-card"><h3>Free AI routing</h3>
       <p>Usage shown for this server process today (UTC).</p>
       {Object.entries(overview.ai.free_routing.providers).map(([name, raw])=>{
-        const provider = raw as {eligible:boolean;cooling_down:boolean}
-        return <p key={name}>{name}: {provider.cooling_down?'Cooling down':provider.eligible?'Eligible':'Disabled'} · {overview.ai.free_routing.counts[name] || 0} attempts</p>
+        const provider = raw as {eligible:boolean;cooling_down:boolean;remaining_requests?:number;failures?:number;reported_tokens?:number;attempts_without_usage?:number}
+        return <p key={name}>{name}: {provider.cooling_down?'Cooling down':provider.eligible?'Eligible':'Disabled'} · {overview.ai.free_routing.counts[name] || 0} attempts · {provider.remaining_requests ?? "—"} remaining · {provider.failures ?? "—"} failures<br/>
+          {provider.reported_tokens ?? '—'} reported tokens · {provider.attempts_without_usage ?? '—'} attempts without usage data</p>
       })}
       <p>Cached replies: {overview.ai.free_routing.counts.cache_hits || 0}</p>
+      {overview.ai.free_routing.events?.length > 0 && <details><summary>Recent provider attempts</summary>
+        <ol>{overview.ai.free_routing.events.slice().reverse().map((event:{provider:string;result:string;latency_ms?:number},index:number)=>
+          <li key={index}>{event.provider} · {event.result === 'ok' ? `Answered in ${event.latency_ms} ms` : 'Failed'}</li>)}</ol>
+      </details>}
     </section>}
     <div className="section-header">
       <div><span className="eyebrow">POSP AI</span><h2>AI Operations</h2><p>One place to understand jobs, scholarships, source health and runtime issues.</p></div>
