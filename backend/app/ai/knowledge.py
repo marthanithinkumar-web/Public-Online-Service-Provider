@@ -11,7 +11,7 @@ def support_answer(context, question):
     }
     handoff, fee_label, jobs, scholarships = messages[language]
     text = question.casefold()
-    if re.search(r'payment|refund|approval|complaint|human|भुगतान|చెల్లింపు', text):
+    if re.search(r'payment|refund|approval|complaint|human|administrator|\\badmin\\b|agent|staff|service team|भुगतान|कर्मचारी|प्रतिनिधि|చెల్లింపు|సిబ్బంది|ప్రతినిధి', text):
         return handoff, True, None
     for kind, pattern, label in (
         ('jobs', r'\bjobs?\b|vacanc|नौकरी|नौकरि|ఉద్యోగ', jobs),
@@ -34,11 +34,13 @@ def support_answer(context, question):
         return '\n'.join([f'{label}: {directory}', *entries[:3]]), False, None
     services = context.get('relevant_services') or []
     named = [s for s in services if s.get('name') and s['name'].casefold() in text]
-    if not named and len(services) == 1 and re.search(r'\bits\b|उसका|దాని', text):
+    if not named and re.search(r'\bits\b|उसका|దాని', text):
         history = context.get('recent_conversation') or []
-        if any(services[0]['name'].casefold() in row.get('content', '').casefold()
-               for row in history[-1:] if row.get('role') == 'client'):
-            named = services
+        prior = [row.get('content', '') for row in history if row.get('role') == 'client']
+        if prior and prior[-1] == question[:320]:
+            prior.pop()
+        if prior:
+            named = [s for s in services if s.get('name') and s['name'].casefold() in prior[-1].casefold()]
     if len(named) == 1:
         service = named[0]
         if re.search(r'official|government fee|सरकारी|ప్రభుత్వ', text):

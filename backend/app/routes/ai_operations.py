@@ -236,7 +236,17 @@ def generate_client_reply(user, current_message):
     # Load only context relevant to this question. Avoid querying orders, job
     # feeds and scholarship catalogs for greetings or unrelated support questions.
     intents = _client_message_intents(current_message)
-    message_terms = {term for term in re.findall(r"\w+", current_message.lower()) if len(term) >= 3 and term not in {
+    history = [{
+        'role': 'client' if item.sender_role == 'client' else 'assistant',
+        'content': redact_sensitive_text(item.message[:320]),
+    } for item in SupportMessage.query.filter_by(user_id=user.id)
+        .order_by(SupportMessage.created_at.desc()).limit(4).all() if not _PRIVATE_SUPPORT_TEXT.search(item.message or '')][::-1]
+    previous_clients = [row['content'] for row in history if row['role'] == 'client']
+    if previous_clients and previous_clients[-1] == redact_sensitive_text(current_message[:320]):
+        previous_clients.pop()
+    referent = previous_clients[-1] if previous_clients and re.search(r'\bits\b|उसका|దాని', current_message, re.I) else ''
+    search_text = referent or current_message
+    message_terms = {term for term in re.findall(r"\w+", search_text.lower()) if len(term) >= 3 and term not in {
         'what', 'when', 'where', 'which', 'with', 'from', 'that', 'this', 'have', 'your', 'about', 'please', 'help', 'does', 'will', 'would', 'could', 'should', 'want', 'need'
     }}
     service_query = Service.query.filter_by(is_active=True).options(joinedload(Service.category))
@@ -282,11 +292,6 @@ def generate_client_reply(user, current_message):
     india_today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
     active_job_context = _verified_active_job_context(limit=3) if intents['jobs'] else []
     active_scholarship_context = _verified_active_scholarship_context(limit=3) if intents['scholarships'] else []
-    history = [{
-        'role': 'client' if item.sender_role == 'client' else 'assistant',
-        'content': redact_sensitive_text(item.message[:320]),
-    } for item in SupportMessage.query.filter_by(user_id=user.id)
-        .order_by(SupportMessage.created_at.desc()).limit(4).all() if not _PRIVATE_SUPPORT_TEXT.search(item.message or '')][::-1]
     current_message = redact_sensitive_text(current_message[:2000])
     context = {
         'relevant_services': services,
