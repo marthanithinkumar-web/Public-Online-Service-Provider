@@ -21,6 +21,7 @@ from ..utils.jwt_handler import get_request_user
 from ..utils.readiness import production_readiness
 from ..ai_core import call_model as _call_model, configured_model as _configured_model, configured_provider as _configured_provider, is_configured as _ai_is_configured, provider_health as _provider_health, redact_sensitive_text, _extract_openai_text as _extract_response_text  # noqa: F401 - compatibility export
 from ..ai.knowledge import support_answer
+from ..ai.free_router import public_faq, routing_status
 from .admin import _require_admin
 
 bp = Blueprint('ai_operations', __name__)
@@ -112,6 +113,7 @@ def _build_context():
             'provider': _configured_provider(),
             'model': _configured_model(),
             'provider_health': _provider_health(),
+            'free_routing': routing_status(),
         },
     }
 
@@ -299,7 +301,8 @@ def generate_client_reply(user, current_message):
 
 def _answer_support_question(context, current_message):
     if _configured_provider() == 'builtin':
-        return support_answer(context, current_message)
+        faq = public_faq(current_message, 'client')
+        return (faq, False, None) if faq else support_answer(context, current_message)
     intents = _client_message_intents(current_message)
     for kind in ('jobs', 'scholarships'):
         if intents[kind] and not context.get(f'active_{kind}_verified'):
@@ -388,7 +391,8 @@ def chat():
     context = _build_context()
     if _configured_provider() == 'builtin':
         findings = _operations_findings(context)
-        answer = ' '.join(item['message'] for item in findings) or 'No warnings in the current operations checks.'
+        faq = public_faq(message, 'admin')
+        answer = faq or ' '.join(item['message'] for item in findings) or 'No warnings in the current operations checks.'
         return jsonify({'configured': True, 'provider': 'builtin', 'answer': answer, 'checked_at': context['checked_at'], 'model': 'posp-knowledge'})
     prompt = f"""Operational context (JSON):
 {json.dumps(context, ensure_ascii=False, separators=(',', ':'))}
