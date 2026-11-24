@@ -378,3 +378,7 @@ The ₹0 constraint applies to client and admin AI, including diagnostics. Free 
 | Admin provider controls, consumption, quotas, latency, failures, fallback history and cache metrics | Pending |
 | Provider benchmarks and production enablement | Pending; do not call external providers during verification without confirmed hard billing limits |
 | ZIP, WhatsApp, login, fees, verified filters and source sync, SEO, security, responsive UI and release work | Retain preceding queue and original acceptance criteria |
+
+### Customer opt-in release verification
+
+PR #276 introduced local production routing, public FAQ provider candidates and the free-tier spending guard. The customer opt-in release checks confirmed fees in three languages, unknown fees, conversation continuity, application guidance, requests for staff, payment uncertainty and empty verified listings through synthetic inputs. The readiness endpoint reports the configured opt-in flag independently of the probe results. Per-message consent is still required. Live external provider benchmarking, account-wide quota reporting, streaming inference, image/document processing and dashboard configuration remain open.

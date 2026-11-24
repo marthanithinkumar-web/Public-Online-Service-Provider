@@ -371,9 +371,23 @@ def support_check():
 def local_readiness():
     """Readiness check using only a synthetic catalog row, with no database access."""
     context = {'relevant_services': [{'name': 'Example', 'application_fee_inr': 0}]}
-    ready = all('₹0' in support_answer(context, question)[0]
-                for question in ('Example fee?', 'Example शुल्क?', 'Example ఫీజు?'))
-    return jsonify({'ready': ready, 'local_mode': _configured_provider() == 'builtin'}), 200 if ready else 503
+    questions = ('Example fee?', 'Example शुल्क?', 'Example ఫీజు?')
+    checks = {'zero_fee_languages': all('₹0' in support_answer(context, q)[0] for q in questions)}
+    service = context['relevant_services'][0]
+    service['application_fee_inr'] = None
+    checks['unknown_fee_handoff'] = support_answer(context, 'Example fee?')[1]
+    service['application_fee_inr'] = 73
+    context['recent_conversation'] = [{'role': 'client', 'content': 'I need Example'},
+                                      {'role': 'client', 'content': 'What is its fee?'}]
+    checks['continuity'] = '₹73' in support_answer(context, 'What is its fee?')[0]
+    service['description'] = 'Upload the example form.'
+    checks['application_steps'] = service['description'] in support_answer(context, 'How do I apply for Example?')[0]
+    checks['staff_handoff'] = support_answer(context, 'Can a human check the Example fee?')[1]
+    checks['payment_handoff'] = support_answer({}, 'Is my payment approved?')[1]
+    checks['empty_listings'] = all(support_answer({}, question)[1] for question in ('jobs', 'scholarships'))
+    ready = all(checks.values())
+    return jsonify({'ready': ready, 'checks': checks, 'local_mode': _configured_provider() == 'builtin',
+                    'client_opt_in_available': os.getenv('POSP_CLIENT_AI_ENABLED', 'false').lower() == 'true'}), 200 if ready else 503
 
 
 @bp.get('/overview')
