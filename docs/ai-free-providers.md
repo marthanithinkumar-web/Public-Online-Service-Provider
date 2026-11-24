@@ -7,7 +7,7 @@ Production support uses local facts while external accounts are unverified. No c
 | Groq | GROQ_API_KEY | https://console.groq.com/keys | openai/gpt-oss-20b for client, openai/gpt-oss-120b for admin |
 | Gemini | GEMINI_API_KEY | https://aistudio.google.com/apikey | gemini-3.5-flash-lite on an eligible unbilled project |
 | Cloudflare | CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID | https://dash.cloudflare.com/profile/api-tokens | Workers Free account only |
-| OpenRouter | OPENROUTER_API_KEY | https://openrouter.ai/settings/keys | openai/gpt-oss-120b:free, zero input/output price caps |
+| OpenRouter | OPENROUTER_API_KEY | https://openrouter.ai/settings/keys | google/gemma-4-26b-a4b-it:free, zero input/output price caps |
 
 The optional server settings POSP_GROQ_FREE_ONLY_VERIFIED, POSP_GEMINI_FREE_ONLY_VERIFIED, POSP_CLOUDFLARE_FREE_ONLY_VERIFIED and POSP_OPENROUTER_FREE_ONLY_VERIFIED default to false. Never set them for a paid account. Confirm model availability and terms in the deployment region before each evaluation. Never paste keys in GitHub, frontend code or support chat.
 

@@ -1,6 +1,9 @@
 """Allowlisted text endpoints for provider evaluations using synthetic inputs."""
 import os
 import re
+from decimal import Decimal, InvalidOperation
+
+import requests
 
 from .providers.base import ProviderAdapter
 from .providers.errors import ProviderError
@@ -10,11 +13,28 @@ from .providers.gemini import GeminiProvider
 MODELS = {
     'groq': {'client': 'openai/gpt-oss-20b', 'admin': 'openai/gpt-oss-120b'},
     'cloudflare': dict.fromkeys(('client', 'admin'), '@cf/meta/llama-3.1-8b-instruct'),
-    'openrouter': dict.fromkeys(('client', 'admin'), 'openai/gpt-oss-120b:free'),
+    'openrouter': dict.fromkeys(('client', 'admin'), 'google/gemma-4-26b-a4b-it:free'),
     'gemini': dict.fromkeys(('client', 'admin'), 'gemini-3.5-flash-lite'),
 }
 KEYS = {'groq': 'GROQ_API_KEY', 'cloudflare': 'CLOUDFLARE_API_TOKEN',
         'openrouter': 'OPENROUTER_API_KEY', 'gemini': 'GEMINI_API_KEY'}
+
+
+def verified_free_listing(model):
+    if not model.endswith(':free'):
+        return False
+    try:
+        response = requests.get('https://openrouter.ai/api/v1/models', timeout=(2, 3), allow_redirects=False)
+        response.raise_for_status()
+        for item in response.json()['data']:
+            if item.get('id') != model:
+                continue
+            prices = item['pricing']
+            return {'prompt', 'completion'} <= prices.keys() and all(
+                Decimal(str(price)) == 0 for price in prices.values())
+    except (requests.RequestException, ValueError, KeyError, AttributeError, TypeError, InvalidOperation):
+        return False
+    return False
 
 
 class FreeTransport(ProviderAdapter):
@@ -49,6 +69,8 @@ class FreeTransport(ProviderAdapter):
                    'openrouter': 'https://openrouter.ai/api/v1/chat/completions'}[self.name]
             body['model'] = model
             if self.name == 'openrouter':
+                if not verified_free_listing(model):
+                    raise ProviderError('disabled', 'Free model pricing could not be verified.')
                 body['provider'] = {'max_price': {'prompt': 0, 'completion': 0},
                                     'data_collection': 'deny', 'allow_fallbacks': False}
         data = self.post_json(endpoint=url, headers={'Authorization': f'Bearer {self.api_key()}'}, payload=body)
