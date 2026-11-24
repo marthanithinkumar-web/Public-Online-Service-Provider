@@ -338,7 +338,21 @@ def support_check():
         'no_jobs': ({'active_jobs_verified': []}, 'Which verified jobs can I apply for today?'),
         'no_scholarships': ({'active_scholarships_verified': []}, 'Which scholarships can I apply for today?'),
     }
-    case = (request.get_json(silent=True) or {}).get('case')
+    payload = request.get_json(silent=True) or {}
+    if isinstance(payload, dict) and 'benchmark_provider' in payload:
+        from ..ai.free_transport import FreeTransport, KEYS
+        from ..ai.providers.errors import ProviderError
+        provider = payload.get('benchmark_provider')
+        role = payload.get('role', 'client')
+        language = payload.get('language', 'English')
+        if provider not in tuple(KEYS) or role not in ('client', 'admin') or language not in ('English', 'Hindi', 'Telugu'):
+            return jsonify({'error': 'Unknown evaluation configuration.'}), 400
+        try:
+            answer = FreeTransport(provider).synthetic_reply(role, f'Explain in {language} that the fixture assistance fee is 73 INR.')
+        except ProviderError as exc:
+            return jsonify({'error': exc.safe_message}), 503
+        return jsonify({'provider': provider, 'role': role, 'language': language, 'answer': answer}), 200 if answer else 502
+    case = payload.get('case')
     if not isinstance(case, str) or case not in cases:
         return jsonify({'error': 'Unknown support check.'}), 400
     answer, handoff, error = _answer_support_question(*cases[case])
