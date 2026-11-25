@@ -11,7 +11,7 @@ def support_answer(context, question):
     }
     handoff, fee_label, jobs, scholarships = messages[language]
     text = question.casefold()
-    if re.search(r'payment|refund|approval|complaint|human|administrator|\\badmin\\b|agent|staff|service team|भुगतान|कर्मचारी|प्रतिनिधि|చెల్లింపు|సిబ్బంది|ప్రతినిధి', text):
+    if re.search(r'payment|refund|approval|complaint|human|administrator|\badmin\b|agent|staff|service team|भुगतान|कर्मचारी|प्रतिनिधि|చెల్లింపు|సిబ్బంది|ప్రతినిధి', text):
         return handoff, True, None
     for kind, pattern, label in (
         ('jobs', r'\bjobs?\b|vacanc|नौकरी|नौकरि|ఉద్యోగ', jobs),
@@ -43,7 +43,16 @@ def support_answer(context, question):
             named = [s for s in services if s.get('name') and s['name'].casefold() in prior[-1].casefold()]
     if len(named) == 1:
         service = named[0]
-        if re.search(r'official|government fee|सरकारी|ప్రభుత్వ', text):
+        intent = text.replace(service['name'].casefold(), ' ')
+        if re.search(r'official|government fee|सरकारी|ప్రభుత్వ', intent):
+            fee_question = re.search(r'\bfees?\b|शुल्क|రుసుము|ఫీజు', intent)
+            status = service.get('official_fee_status')
+            amount = service.get('official_fee_inr')
+            if fee_question and status in ('known', 'none') and amount is not None:
+                if status == 'none' and amount != 0:
+                    return handoff, True, None
+                official_label = {'en': 'Official fee', 'hi': 'सरकारी शुल्क', 'te': 'ప్రభుత్వ రుసుము'}[language]
+                return f"{service['name']} — {official_label}: ₹{amount}.", False, None
             return handoff, True, None
         if re.search(r'fee|शुल्क|రుసుము|ఫీజు', text) and service.get('application_fee_inr') is not None:
             return f"{service['name']} — {fee_label}: ₹{service['application_fee_inr']}.", False, None

@@ -20,3 +20,5 @@ Admin benchmarks consume the same process allowance as FAQ requests. Refresh AI 
 The process reports only total tokens returned by the provider. Failed requests and responses without valid usage metadata are counted separately as attempts without usage data. Usage is attributed to the UTC day the request started.
 
 The support notice reader uses browser file APIs and the browser's optional native text detector for PNGs. It sends no files or excerpts to POSP or its AI adapters. Text matching extracts original lines, without verifying the issuer, interpreting legal eligibility or confirming deadlines.
+
+AI Operations offers a streaming Groq benchmark for a fixed example in English, Hindi or Telugu. The admin-only endpoint accepts role and language. Free-account verification, daily reservations and cooldowns apply. Stopping a benchmark may still consume its reserved attempt. Incomplete output is discarded by the dashboard. No provider key or customer message is accepted by this endpoint.

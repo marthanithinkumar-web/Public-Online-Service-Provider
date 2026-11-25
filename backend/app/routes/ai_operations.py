@@ -8,7 +8,7 @@ from pathlib import Path
 
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
-from flask import Blueprint, jsonify, request
+from flask import Response, Blueprint, jsonify, request
 
 from ..models.admin_audit import AdminAuditLog
 from ..models.job import JobNotification, JobSource
@@ -154,7 +154,25 @@ def _parse_client_ai_response(raw):
     answer = body[len('ANSWER='):].strip()
     return answer, not answer or header.strip().upper() == 'HANDOFF=YES'
 
-def _verified_active_job_context(limit=5):
+def _requested_region(message):
+    """Recognize a region before selecting the first three verified listings."""
+    patterns = (r'\b(?:jobs?|vacancies|scholarships?)\s+in\s+(.+?)\s*[?.!]*$',
+                r'([\w\u0900-\u097f -]+?)\s+में\s+(?:नौकरियाँ|नौकरी|छात्रवृत्ति)[?.।]*$',
+                r'([\w\u0c00-\u0c7f -]+?)లో\s+(?:ఉద్యోగాలు|ఉపకార వేతనాలు)[?.]*$')
+    for pattern in patterns:
+        match = re.search(pattern, message.strip(), re.I)
+        if match:
+            return match.group(1).strip().casefold()
+    return ''
+
+
+def _region_matches(region, value):
+    if not region:
+        return True
+    return bool(re.search(r'(?<!\w)' + re.escape(region) + r'(?!\w)', str(value or '').casefold()))
+
+
+def _verified_active_job_context(limit=5, region=''):
     # Use the same read-only verified snapshot as the public jobs API so POSP
     # AI cannot bypass deadline, cutoff, freshness or source-health filters.
     from .jobs import _public_snapshot_jobs
@@ -162,6 +180,8 @@ def _verified_active_job_context(limit=5):
     context = []
     candidates = _public_snapshot_jobs()
     for data in candidates:
+        if not _region_matches(region, data.get('location')):
+            continue
         source = data.get('source') or {}
         context.append({
             'title': data.get('title'),
@@ -186,10 +206,12 @@ def _verified_active_job_context(limit=5):
     return context
 
 
-def _verified_active_scholarship_context(limit=5):
+def _verified_active_scholarship_context(limit=5, region=''):
     payload = load_catalog()
     context = []
     for item in payload.get('items', []):
+        if not _region_matches(region, item.get('region')):
+            continue
         status = str(item.get('application_status') or '')
         if status not in {'open', 'deadline_today'}:
             continue
@@ -294,8 +316,9 @@ def generate_client_reply(user, current_message):
             'status': order.status,
         } for order in Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).limit(3).all()]
     india_today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
-    active_job_context = _verified_active_job_context(limit=3) if intents['jobs'] else []
-    active_scholarship_context = _verified_active_scholarship_context(limit=3) if intents['scholarships'] else []
+    region = _requested_region(current_message)
+    active_job_context = _verified_active_job_context(limit=3, region=region) if intents['jobs'] else []
+    active_scholarship_context = _verified_active_scholarship_context(limit=3, region=region) if intents['scholarships'] else []
     current_message = redact_sensitive_text(current_message[:2000])
     context = {
         'relevant_services': services,
@@ -370,6 +393,32 @@ def support_check():
     return jsonify({'case': case, 'answer': answer, 'handoff': handoff, 'error': error}), 502 if error else 200
 
 
+@bp.post('/support-check/stream')
+def stream_support_check():
+    from ..ai.free_router import stream_benchmark
+    from ..ai.providers.errors import ProviderError
+
+    if not _require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or set(payload) - {'role', 'language'}:
+        return jsonify({'error': 'Unknown evaluation configuration.'}), 400
+    role, language = payload.get('role', 'admin'), payload.get('language', 'English')
+    if role not in ('client', 'admin') or language not in ('English', 'Hindi', 'Telugu'):
+        return jsonify({'error': 'Unknown evaluation configuration.'}), 400
+
+    def events():
+        try:
+            for piece in stream_benchmark(role, language):
+                yield json.dumps({'text': piece}) + '\n'
+            yield '{"done":true}\n'
+        except ProviderError as exc:
+            yield json.dumps({'error': exc.safe_message}) + '\n'
+
+    return Response(events(), mimetype='application/x-ndjson',
+                    headers={'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no'})
+
+
 @bp.get('/local-readiness')
 def local_readiness():
     """Readiness check using only a synthetic catalog row, with no database access."""
@@ -388,6 +437,9 @@ def local_readiness():
     checks['staff_handoff'] = support_answer(context, 'Can a human check the Example fee?')[1]
     checks['payment_handoff'] = support_answer({}, 'Is my payment approved?')[1]
     checks['empty_listings'] = all(support_answer({}, question)[1] for question in ('jobs', 'scholarships'))
+    service.update(official_fee_status='known', official_fee_inr=25)
+    checks['official_fee'] = '₹25' in support_answer(context, 'Example official fee?')[0]
+    checks['admin_handoff'] = support_answer(context, 'Can an admin check the Example fee?')[1]
     ready = all(checks.values())
     return jsonify({'ready': ready, 'checks': checks, 'local_mode': _configured_provider() == 'builtin',
                     'client_opt_in_available': os.getenv('POSP_CLIENT_AI_ENABLED', 'false').lower() == 'true'}), 200 if ready else 503

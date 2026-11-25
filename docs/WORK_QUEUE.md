@@ -394,3 +394,9 @@ SEO review of PR #251: its source robots change is overwritten by generate-seo.m
 ### Client notice reader
 
 Opt-in support includes a local reader for UTF-8 notices and PNGs in browsers that implement text detection. It extracts source lines about dates, fees, eligibility and documents in English, Hindi and Telugu. Extracted content stays in transient component state. Unsupported image recognition provides a text-file fallback. PDF interpretation, authenticated free-provider benchmarks, full streaming, global settings and cross-worker quota accounting remain pending.
+
+### Phase 4 streaming diagnostics
+
+The admin dashboard can stream a fixed Groq fee benchmark in each supported language using the client or admin model. Diagnostics share the FAQ budget and cooldown. Test partial streams with fixtures. Live evaluations require confirmed hard-free accounts. General chat streaming, shared quota accounting, editable provider settings and verified external quality rankings remain pending alongside the earlier non-AI queue.
+
+Local support filters explicit region searches before taking the first three verified results. It distinguishes confirmed official fees from assistance fees, and requests for an admin trigger handoff. DB-free release probes include official fee and admin handoff.

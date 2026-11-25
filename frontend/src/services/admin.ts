@@ -66,3 +66,28 @@ export async function retryWhatsAppMessage(id:number){ return (await api.post(`/
 export async function fetchWhatsAppOrderMessages(orderId:number){ return (await api.get(`/whatsapp/orders/${orderId}/messages`,{headers:authHeader()})).data }
 export async function sendWhatsAppAdminReply(payload:{order_id?:number,user_id?:number,message:string}){ return (await api.post('/whatsapp/admin/reply',payload,{headers:authHeader()})).data }
 export async function sendWhatsAppDocumentEvent(orderId:number,event:string){ return (await api.post(`/whatsapp/admin/orders/${orderId}/document-event`,{event},{headers:authHeader()})).data }
+
+export async function streamAiBenchmark(role:string,language:string,onText:(text:string)=>void,signal:AbortSignal){
+  const response=await fetch(`${apiBase}/admin/ai/support-check/stream`, {
+    method:'POST', headers:{...authHeader(),'Content-Type':'application/json'},
+    body:JSON.stringify({role,language}), signal,
+  })
+  if(!response.ok || !response.body) throw new Error('Streaming check unavailable.')
+  const reader=response.body.getReader()
+  const decoder=new TextDecoder()
+  let pending=''
+  try{
+    for(;;){
+      const {value,done}=await reader.read()
+      if(done) throw new Error('The stream ended early.')
+      const lines=(pending+decoder.decode(value,{stream:true})).split('\n')
+      pending=lines.pop()||''
+      for(const line of lines){
+        const event=JSON.parse(line)
+        if(event.error) throw new Error(event.error)
+        if(event.done===true) return
+        if(typeof event.text==='string') onText(event.text)
+      }
+    }
+  }finally{await reader.cancel();reader.releaseLock()}
+}
