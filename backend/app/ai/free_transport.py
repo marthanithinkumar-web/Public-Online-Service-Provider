@@ -1,5 +1,7 @@
 """Allowlisted text endpoints for provider evaluations using synthetic inputs."""
+import json
 import os
+from time import monotonic
 import re
 from decimal import Decimal, InvalidOperation
 
@@ -53,10 +55,58 @@ class FreeTransport(ProviderAdapter):
 
     def eligible(self):
         # Set only after verifying provider-side hard denial of billable usage.
+        if os.getenv('POSP_AI_ENABLED', 'true').strip().lower() not in {'true', 'yes', '1'}:
+            return False
+        if os.getenv('POSP_AI_PROVIDER', '').strip().lower() == 'disabled':
+            return False
         verified = os.getenv(f'POSP_{self.name.upper()}_FREE_ONLY_VERIFIED') == 'true'
         account_ok = self.name != 'cloudflare' or re.fullmatch(
             r'[0-9a-fA-F]{32}', os.getenv('CLOUDFLARE_ACCOUNT_ID', ''))
         return bool(verified and self.is_configured() and account_ok)
+
+    def stream_fixture(self, role, language):
+        if self.name != 'groq' or not self.eligible():
+            raise ProviderError('disabled', 'Free streaming is unavailable.')
+        if role not in ('client', 'admin') or language not in ('English', 'Hindi', 'Telugu'):
+            raise ProviderError('disabled', 'Unknown evaluation configuration.')
+        prompt = f'Explain in {language} that the fixture assistance fee is 73 INR.'
+        payload = {'model': MODELS['groq'][role], 'max_tokens': 256, 'stream': True,
+                   'messages': [{'role': 'user', 'content': prompt}]}
+        deadline = monotonic() + 12
+        with requests.post('https://api.groq.com/openai/v1/chat/completions',
+                           headers={'Authorization': f'Bearer {self.api_key()}'}, json=payload,
+                           stream=True, timeout=self.timeout, allow_redirects=False) as response:
+            if response.status_code != 200:
+                raise ProviderError('unavailable', 'Free streaming provider is unavailable.')
+            size = 0
+            pending = b''
+            answered = finished = False
+            for chunk in response.iter_content(chunk_size=128):
+                size += len(chunk)
+                if size > 65536 or monotonic() > deadline:
+                    break
+                lines = (pending + chunk).split(b'\n')
+                pending = lines.pop()
+                for line in lines:
+                    if not line.startswith(b'data:'):
+                        continue
+                    event = line[5:].strip()
+                    if event == b'[DONE]':
+                        if finished and answered:
+                            return
+                        raise ProviderError('invalid_response', 'Incomplete provider stream.')
+                    data = json.loads(event)
+                    usage = data.get('usage') or (data.get('x_groq') or {}).get('usage')
+                    if usage is not None:
+                        self._read_usage(usage)
+                    for choice in data.get('choices') or []:
+                        piece = (choice.get('delta') or {}).get('content')
+                        if isinstance(piece, str) and piece:
+                            answered = True
+                            yield piece
+                        if choice.get('finish_reason') == 'stop':
+                            finished = True
+        raise ProviderError('invalid_response', 'Incomplete provider stream.')
 
     def synthetic_reply(self, role, prompt):
         self.reported_tokens = None

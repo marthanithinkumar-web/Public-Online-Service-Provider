@@ -1,4 +1,5 @@
 """Route public, fixed FAQ prompts only. Customer and admin input stays on POSP."""
+from contextlib import contextmanager
 from collections import Counter, deque
 from datetime import datetime, timezone
 from threading import Lock
@@ -46,7 +47,8 @@ def _roll_day():
         _day = today
 
 
-def _request(name, role, prompt):
+@contextmanager
+def _reserved_attempt(name):
     adapter = FreeTransport(name)
     if not adapter.eligible():
         raise ProviderError('disabled', 'Free-tier account is unverified.')
@@ -58,9 +60,7 @@ def _request(name, role, prompt):
         reserved_day = _day
     start = monotonic()
     try:
-        result = adapter.synthetic_reply(role, prompt)
-        if not isinstance(result, str) or not result.strip():
-            raise ValueError('Empty provider response')
+        yield adapter
     except Exception as exc:
         with _lock:
             _counts[name + '_failures'] += 1
@@ -79,7 +79,21 @@ def _request(name, role, prompt):
                     _counts[name + '_tokens'] += adapter.reported_tokens
     with _lock:
         _events.append({'provider': name, 'result': 'ok', 'latency_ms': round((monotonic() - start) * 1000)})
-    return result
+
+
+def _request(name, role, prompt):
+    with _reserved_attempt(name) as adapter:
+        result = adapter.synthetic_reply(role, prompt)
+        if not isinstance(result, str) or not result.strip():
+            raise ValueError('Empty provider response')
+        return result
+
+
+def stream_benchmark(role, language):
+    if role not in ('client', 'admin') or language not in ('English', 'Hindi', 'Telugu'):
+        raise ProviderError('disabled', 'Unknown evaluation configuration.')
+    with _reserved_attempt('groq') as adapter:
+        yield from adapter.stream_fixture(role, language)
 
 
 def benchmark_reply(name, role, language):

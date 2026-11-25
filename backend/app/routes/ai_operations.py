@@ -8,7 +8,7 @@ from pathlib import Path
 
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
-from flask import Blueprint, jsonify, request
+from flask import Response, Blueprint, jsonify, request
 
 from ..models.admin_audit import AdminAuditLog
 from ..models.job import JobNotification, JobSource
@@ -368,6 +368,32 @@ def support_check():
         return jsonify({'error': 'Unknown support check.'}), 400
     answer, handoff, error = _answer_support_question(*cases[case])
     return jsonify({'case': case, 'answer': answer, 'handoff': handoff, 'error': error}), 502 if error else 200
+
+
+@bp.post('/support-check/stream')
+def stream_support_check():
+    from ..ai.free_router import stream_benchmark
+    from ..ai.providers.errors import ProviderError
+
+    if not _require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or set(payload) - {'role', 'language'}:
+        return jsonify({'error': 'Unknown evaluation configuration.'}), 400
+    role, language = payload.get('role', 'admin'), payload.get('language', 'English')
+    if role not in ('client', 'admin') or language not in ('English', 'Hindi', 'Telugu'):
+        return jsonify({'error': 'Unknown evaluation configuration.'}), 400
+
+    def events():
+        try:
+            for piece in stream_benchmark(role, language):
+                yield json.dumps({'text': piece}) + '\n'
+            yield '{"done":true}\n'
+        except ProviderError as exc:
+            yield json.dumps({'error': exc.safe_message}) + '\n'
+
+    return Response(events(), mimetype='application/x-ndjson',
+                    headers={'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no'})
 
 
 @bp.get('/local-readiness')

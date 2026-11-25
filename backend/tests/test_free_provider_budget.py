@@ -67,3 +67,42 @@ def test_local_faq_needs_no_user_or_catalog_lookup(monkeypatch, question, word):
     answer, handoff, error = generate_client_reply(None, question)
     assert word in answer
     assert not handoff and error is None
+
+
+def test_stream_uses_only_visible_tokens_and_shares_budget(provider, monkeypatch):
+    from unittest.mock import MagicMock
+    monkeypatch.setattr(router, '_DAILY_LIMIT', 1)
+    response = MagicMock()
+    response.__enter__.return_value = response
+    response.status_code = 200
+    response.iter_content.return_value = [
+        b'data: {"choices":[{"delta":{"reasoning":"hidden"}}]}\n\nda',
+        b'ta: {"choices":[{"delta":{"content":"73 INR"},"finish_reason":"stop"}],"usage":{"total_tokens":9}}\n\ndata: [DONE]\n\n']
+    def post(url, **kwargs):
+        assert kwargs['json']['model'] == 'openai/gpt-oss-120b'
+        assert kwargs['stream'] and not kwargs['allow_redirects']
+        return response
+    monkeypatch.setattr('app.ai.free_transport.requests.post', post)
+    assert list(router.stream_benchmark('admin', 'Telugu')) == ['73 INR']
+    assert router.public_faq('what is posp', 'client') == router._LOCAL['help', 'English']
+    assert router.routing_status()['providers']['groq']['reported_tokens'] == 9
+
+
+def test_stream_rejects_untrusted_input_and_reports_disabled(client, monkeypatch):
+    from app.routes import ai_operations
+    path = '/api/admin/ai/support-check/stream'
+    assert client.post(path, json={}).status_code == 401
+    monkeypatch.setattr(ai_operations, '_require_admin', lambda: True)
+    assert client.post(path, json={'message':'fixture'}).status_code == 400
+    monkeypatch.setattr(router.FreeTransport, 'eligible', lambda self: False)
+    response = client.post(path, json={}, buffered=True)
+    assert response.mimetype == 'application/x-ndjson'
+    assert b'Free-tier account is unverified.' in response.data
+    assert b'"done":true' not in response.data
+
+
+def test_global_disable_prevents_benchmark_traffic(monkeypatch):
+    monkeypatch.setenv('GROQ_API_KEY', 'fixture')
+    monkeypatch.setenv('POSP_GROQ_FREE_ONLY_VERIFIED', 'true')
+    monkeypatch.setenv('POSP_AI_ENABLED', 'false')
+    assert not router.FreeTransport('groq').eligible()

@@ -1,3 +1,4 @@
+import FreeStreamCheck from './FreeStreamCheck'
 import React,{useEffect,useState} from 'react'
 import {fetchAiOperationsOverview,chatWithAiOperations,runAiJobSync} from '../../services/admin'
 
@@ -57,6 +58,7 @@ export default function AiOperations(){
         <ol>{overview.ai.free_routing.events.slice().reverse().map((event:{provider:string;result:string;latency_ms?:number},index:number)=>
           <li key={index}>{event.provider} · {event.result === 'ok' ? `Answered in ${event.latency_ms} ms` : 'Failed'}</li>)}</ol>
       </details>}
+      <FreeStreamCheck eligible={overview.ai.free_routing.providers.groq?.eligible === true}/>
     </section>}
     <div className="section-header">
       <div><span className="eyebrow">POSP AI</span><h2>AI Operations</h2><p>One place to understand jobs, scholarships, source health and runtime issues.</p></div>
