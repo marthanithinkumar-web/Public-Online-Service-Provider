@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react'
 import {Link,useLocation} from 'react-router-dom'
-import {fetchServiceCatalog,readCachedServices,servicePath,serviceSearchTokens} from '../../services/serviceCatalog'
+import {fetchPublishedServices,fetchServiceCatalog,readCachedServices,servicePath,serviceSearchTokens} from '../../services/serviceCatalog'
 
 const POPULAR=['Income certificate','Scholarships','Government jobs','Aadhaar update','Birth certificate','Ration card']
 const categoryName=(service:any)=>typeof service.category==='string'?service.category:service.category?.name||'Other services'
@@ -16,10 +16,16 @@ export default function SearchPanel({context='home',variant='section'}:{context?
 
   useEffect(()=>{
     let active=true
+    let liveFinished=false
     setError('')
-    if(!services.length)setLoading(true)
+    setLoading(true)
+    if(!services.length){
+      fetchPublishedServices().then(items=>{
+        if(active&&!liveFinished)setServices(items)
+      }).catch(()=>{/* The live request can still supply the catalog. */})
+    }
     fetchServiceCatalog(true)
-      .then(items=>{if(active)setServices(items)})
+      .then(items=>{liveFinished=true;if(active)setServices(items)})
       .catch((err:any)=>{if(active&&!services.length)setError(err?.code==='ECONNABORTED'?'The service server is taking too long to respond. Select Try again to reconnect.':'Services are temporarily unavailable. Please try again.')})
       .finally(()=>{if(active)setLoading(false)})
     return()=>{active=false}
@@ -45,9 +51,10 @@ export default function SearchPanel({context='home',variant='section'}:{context?
     {term&&<Link className="job-search-forward" to={`/jobs?q=${encodeURIComponent(term)}`}>Search current official job notices for “{term}” →</Link>}
     {categories.length>1&&<label className="search-category-filter">Filter results by category<select value={category} onChange={e=>setCategory(e.target.value)}><option value="">All categories</option>{categories.map(item=><option key={item}>{item}</option>)}</select></label>}
     {loading&&services.length===0&&<div className="empty-state" role="status"><div className="loading-dot"/><p>Loading services… The secure server may take a moment on the first visit.</p></div>}
-    {showingCatalogFallback&&<div className="empty-state error-state" role="status"><p>The live service server is slow or unavailable. You can browse the published service catalog; current service availability and fees will be confirmed before an application.</p><button type="button" onClick={()=>setRetry(value=>value+1)}>Try again</button></div>}
+    {showingCatalogFallback&&loading&&<p role="status">Browsing the published catalog while current services load.</p>}
+    {showingCatalogFallback&&!loading&&<div className="empty-state error-state" role="status"><p>The live service server is slow or unavailable. You can browse the published service catalog; current service availability and fees will be confirmed before an application.</p><button type="button" onClick={()=>setRetry(value=>value+1)}>Try again</button></div>}
     {error&&<div className="empty-state error-state" role="alert"><p>{error}</p><button type="button" onClick={()=>setRetry(value=>value+1)}>Try again</button></div>}
     {!loading&&!error&&term&&visible.length===0&&<div className="empty-state"><h3>No services found for “{term}”</h3><p>Try a shorter phrase, another category, or one of the popular searches above.</p><button type="button" className="btn-secondary" onClick={()=>setQ('')}>Browse all categories</button></div>}
-    {!loading&&!error&&visible.length>0&&<ul className="service-list" aria-live="polite">{visible.map(service=><li key={service.id||service.slug} className="service-card"><div className="service-card-top"><span className="service-badge">{categoryName(service)}</span></div><h3><Link to={servicePath(service)}>{service.name}</Link></h3><Link className="text-link" to={servicePath(service)}>View & apply</Link></li>)}</ul>}
+    {!error&&visible.length>0&&<ul className="service-list" aria-live="polite">{visible.map(service=><li key={service.id||service.slug} className="service-card"><div className="service-card-top"><span className="service-badge">{categoryName(service)}</span></div><h3><Link to={servicePath(service)}>{service.name}</Link></h3><Link className="text-link" to={servicePath(service)}>View & apply</Link></li>)}</ul>}
   </section>
 }
