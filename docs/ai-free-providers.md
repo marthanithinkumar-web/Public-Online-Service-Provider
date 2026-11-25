@@ -18,3 +18,5 @@ Client and admin public FAQ routing sends only fixed prompts; personal messages 
 Admin benchmarks consume the same process allowance as FAQ requests. Refresh AI Operations to see remaining attempts, failures and the last 32 outcomes across providers. A cache hit consumes no provider request. The allowance resets at midnight UTC or process restart.
 
 The process reports only total tokens returned by the provider. Failed requests and responses without valid usage metadata are counted separately as attempts without usage data. Usage is attributed to the UTC day the request started.
+
+The support notice reader uses browser file APIs and the browser's optional native text detector for PNGs. It sends no files or excerpts to POSP or its AI adapters. Text matching extracts original lines, without verifying the issuer, interpreting legal eligibility or confirming deadlines.
