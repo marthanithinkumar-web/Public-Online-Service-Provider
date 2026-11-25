@@ -180,6 +180,8 @@ def _verified_active_job_context(limit=5, region=''):
     context = []
     candidates = _public_snapshot_jobs()
     for data in candidates:
+        if not _region_matches(region, data.get('location')):
+            continue
         source = data.get('source') or {}
         context.append({
             'title': data.get('title'),
@@ -204,10 +206,12 @@ def _verified_active_job_context(limit=5, region=''):
     return context
 
 
-def _verified_active_scholarship_context(limit=5):
+def _verified_active_scholarship_context(limit=5, region=''):
     payload = load_catalog()
     context = []
     for item in payload.get('items', []):
+        if not _region_matches(region, item.get('region')):
+            continue
         status = str(item.get('application_status') or '')
         if status not in {'open', 'deadline_today'}:
             continue
@@ -312,8 +316,9 @@ def generate_client_reply(user, current_message):
             'status': order.status,
         } for order in Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).limit(3).all()]
     india_today = datetime.now(ZoneInfo('Asia/Kolkata')).date()
-    active_job_context = _verified_active_job_context(limit=3) if intents['jobs'] else []
-    active_scholarship_context = _verified_active_scholarship_context(limit=3) if intents['scholarships'] else []
+    region = _requested_region(current_message)
+    active_job_context = _verified_active_job_context(limit=3, region=region) if intents['jobs'] else []
+    active_scholarship_context = _verified_active_scholarship_context(limit=3, region=region) if intents['scholarships'] else []
     current_message = redact_sensitive_text(current_message[:2000])
     context = {
         'relevant_services': services,
