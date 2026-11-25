@@ -1,3 +1,4 @@
+import ProviderOrder from './ProviderOrder'
 import FreeStreamCheck from './FreeStreamCheck'
 import React,{useEffect,useState} from 'react'
 import {fetchAiOperationsOverview,chatWithAiOperations,runAiJobSync} from '../../services/admin'
@@ -47,10 +48,15 @@ export default function AiOperations(){
   const sourceHealth=overview?.scholarships?.source_health||[]
   return <section className="admin-section">
     {overview?.ai?.free_routing && <section className="admin-card"><h3>Free AI routing</h3>
-      <p>Usage shown for this server process today (UTC).</p>
+      <p>Remaining requests cover all workers on this instance today (UTC). Token, failure and cache counts cover this worker.</p>
+      {overview.ai.free_routing.shared?.orders && <details><summary>Edit provider routing</summary>
+        <p>Changes apply to this running instance. A deployment restores the configured priorities. Only verified free accounts can receive requests.</p>
+        {(['client','admin'] as const).map(role=><ProviderOrder key={role+JSON.stringify(overview.ai.free_routing.shared.orders[role])}
+          role={role} order={overview.ai.free_routing.shared.orders[role]} onSave={refresh}/>)}
+      </details>}
       {Object.entries(overview.ai.free_routing.providers).map(([name, raw])=>{
         const provider = raw as {eligible:boolean;cooling_down:boolean;remaining_requests?:number;failures?:number;reported_tokens?:number;attempts_without_usage?:number}
-        return <p key={name}>{name}: {provider.cooling_down?'Cooling down':provider.eligible?'Eligible':'Disabled'} · {overview.ai.free_routing.counts[name] || 0} attempts · {provider.remaining_requests ?? "—"} remaining · {provider.failures ?? "—"} failures<br/>
+        return <p key={name}>{name}: {provider.cooling_down?'Cooling down':provider.eligible?'Eligible':'Disabled'} · {overview.ai.free_routing.shared?.attempts?.[name] ?? overview.ai.free_routing.counts[name] ?? 0} attempts · {provider.remaining_requests ?? "—"} remaining · {provider.failures ?? "—"} failures<br/>
           {provider.reported_tokens ?? '—'} reported tokens · {provider.attempts_without_usage ?? '—'} attempts without usage data</p>
       })}
       <p>Cached replies: {overview.ai.free_routing.counts.cache_hits || 0}</p>

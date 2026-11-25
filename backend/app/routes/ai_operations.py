@@ -393,6 +393,24 @@ def support_check():
     return jsonify({'case': case, 'answer': answer, 'handoff': handoff, 'error': error}), 502 if error else 200
 
 
+@bp.put('/routing/<role>')
+def save_routing_order(role):
+    from ..ai.routing_state import set_order
+    from ..ai.providers.errors import ProviderError
+    if not _require_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or set(payload) != {'order'}:
+        return jsonify({'error': 'Expected a provider order.'}), 400
+    try:
+        set_order(role, payload['order'])
+    except ValueError:
+        return jsonify({'error': 'Invalid role or provider order.'}), 400
+    except ProviderError as exc:
+        return jsonify({'error': exc.safe_message}), 503
+    return jsonify({'role': role, 'order': payload['order']})
+
+
 @bp.post('/support-check/stream')
 def stream_support_check():
     from ..ai.free_router import stream_benchmark
