@@ -29,10 +29,10 @@ export default function FreeStreamCheck({eligible}:{eligible:boolean}){
   }
   return <details><summary>Test Groq streaming</summary>
     <p>Sends a fixed example about a ₹73 assistance fee. Each check uses one request from the verified free allowance.</p>
-    <label>Model role <select value={role} disabled={busy} onChange={e=>setRole(e.target.value)}>
+    <label>Model role <select aria-label="Model role" value={role} disabled={busy} onChange={e=>setRole(e.target.value)}>
       <option value="client">Client · 20B</option><option value="admin">Admin · 120B</option>
     </select></label>{' '}
-    <label>Language <select value={language} disabled={busy} onChange={e=>setLanguage(e.target.value)}>
+    <label>Language <select aria-label="Language" value={language} disabled={busy} onChange={e=>setLanguage(e.target.value)}>
       {['English','Hindi','Telugu'].map(name=><option key={name}>{name}</option>)}
     </select></label>{' '}
     <button type="button" disabled={busy||!eligible} onClick={run}>Run streaming check</button>

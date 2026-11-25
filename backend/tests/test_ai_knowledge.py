@@ -52,3 +52,28 @@ def test_production_local_preflight_needs_no_db_or_provider(client, monkeypatch)
     assert response.status_code == 200
     data = response.get_json()
     assert data['local_mode'] and data['client_opt_in_available'] and all(data['checks'].values())
+
+def test_confirmed_official_fees_are_distinct_from_assistance_fees():
+    row = {'name': 'Example', 'application_fee_inr': 73, 'official_fee_status': 'known', 'official_fee_inr': 25}
+    context = {'relevant_services': [row]}
+    for question in ('Example official fee?', 'Example सरकारी शुल्क?', 'Example ప్రభుత్వ రుసుము?'):
+        answer, handoff, _ = support_answer(context, question)
+        assert '₹25' in answer and '₹73' not in answer and not handoff
+    row.update(official_fee_status='none', official_fee_inr=0)
+    assert '₹0' in support_answer(context, 'Example official fee?')[0]
+    row['official_fee_status'] = 'unconfirmed'
+    assert support_answer(context, 'Example official fee?')[1]
+    assert support_answer(context, 'Can an admin confirm the Example fee?')[1]
+
+def test_explicit_region_filters_before_listing_limit(monkeypatch):
+    from app.routes.ai_operations import _requested_region, _verified_active_job_context, _verified_active_scholarship_context
+    assert _requested_region('Show jobs in New Delhi?') == 'new delhi'
+    assert _requested_region('दिल्ली में नौकरी') == 'दिल्ली'
+    assert _requested_region('తెలంగాణలో ఉద్యోగాలు') == 'తెలంగాణ'
+    rows = [{'title': place, 'location': place, 'region': place, 'application_status': 'open'}
+            for place in ('New Delhi', 'Mumbai', 'Bengaluru', 'Hyderabad')]
+    monkeypatch.setattr('app.routes.jobs._public_snapshot_jobs', lambda: rows)
+    monkeypatch.setattr('app.routes.ai_operations.load_catalog', lambda: {'items': rows})
+    for lookup in (_verified_active_job_context, _verified_active_scholarship_context):
+        assert [row['title'] for row in lookup(limit=1, region='hyderabad')] == ['Hyderabad']
+        assert lookup(limit=1, region='del') == []
