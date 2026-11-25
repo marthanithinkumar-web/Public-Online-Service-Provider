@@ -119,3 +119,44 @@ def test_support_sends_to_ai_only_with_explicit_boolean_opt_in(client, monkeypat
                                json={'message': 'Support question', **options})
         assert response.status_code == 201
     assert calls == ['Support question']
+
+def test_opt_in_faq_stream_replaces_failed_partial_and_persists_only_final(client, monkeypatch):
+    import json
+    from app.ai import free_router as router
+    token = _register(client, 'stream-one@example.com', 'Client')
+    _admin_token(client)
+    monkeypatch.setenv('POSP_CLIENT_AI_ENABLED', 'true')
+    monkeypatch.setenv('POSP_AI_PROVIDER', 'builtin')
+    monkeypatch.setenv('POSP_CLIENT_AI_PRIORITY', 'groq')
+    monkeypatch.setattr(router, '_cache', {})
+    monkeypatch.setattr(router, '_cooldown', {})
+    monkeypatch.setattr(router.FreeTransport, 'eligible', lambda self: self.name == 'groq')
+    def interrupted(self, role, prompt):
+        assert role == 'client'
+        assert 'stream-one' not in prompt and prompt.startswith('Explain that POSP')
+        yield 'unfinished'
+        raise TimeoutError()
+    monkeypatch.setattr(router.FreeTransport, 'stream_prompt', interrupted)
+    headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/x-ndjson'}
+    sent = client.post('/api/messages/mine', headers=headers, buffered=True,
+                       json={'message':'What is POSP?', 'use_ai':True})
+    assert sent.status_code == 201 and sent.mimetype == 'application/x-ndjson'
+    events = [json.loads(line) for line in sent.data.splitlines()]
+    assert events[:2] == [{'text':'unfinished'}, {'reset':True}]
+    final = events[-1]['done']
+    assert final['ai_item']['message'] == router._LOCAL['help', 'English']
+    history = client.get('/api/messages/mine', headers=headers).get_json()['items']
+    assert [row['id'] for row in history] == [final['item']['id'], final['ai_item']['id']]
+
+
+def test_stream_requires_exact_public_topic_and_explicit_consent(client, monkeypatch):
+    token = _register(client, 'privacy-one@example.com', 'Client')
+    headers = {'Authorization': f'Bearer {token}', 'Accept':'application/x-ndjson'}
+    monkeypatch.setenv('POSP_CLIENT_AI_ENABLED', 'true')
+    monkeypatch.setenv('POSP_AI_PROVIDER', 'builtin')
+    def forbidden(*args):
+        raise AssertionError('Unexpected external stream')
+    monkeypatch.setattr('app.ai.free_router.stream_client_faq', forbidden)
+    for message, consent in [('What is POSP?', False), ('What is POSP? My password is private.', True)]:
+        sent = client.post('/api/messages/mine', headers=headers, json={'message':message,'use_ai':consent})
+        assert sent.is_json and sent.get_json()['ai_handoff']

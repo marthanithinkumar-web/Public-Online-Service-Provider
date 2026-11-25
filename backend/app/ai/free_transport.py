@@ -70,6 +70,11 @@ class FreeTransport(ProviderAdapter):
         if role not in ('client', 'admin') or language not in ('English', 'Hindi', 'Telugu'):
             raise ProviderError('disabled', 'Unknown evaluation configuration.')
         prompt = f'Explain in {language} that the fixture assistance fee is 73 INR.'
+        yield from self.stream_prompt(role, prompt)
+
+    def stream_prompt(self, role, prompt):
+        if self.name != 'groq' or role not in ('client', 'admin') or not self.eligible():
+            raise ProviderError('disabled', 'Free streaming is unavailable.')
         payload = {'model': MODELS['groq'][role], 'max_tokens': 256, 'stream': True,
                    'messages': [{'role': 'user', 'content': prompt}]}
         deadline = monotonic() + 12

@@ -366,3 +366,27 @@ test('homepage can search published services before the live catalog responds', 
     await expect(search.getByRole('link',{name:'Example published notice'})).toHaveCount(0)
   }finally{release()}
 })
+
+test('client support streams a public FAQ and keeps its saved answer', async ({page})=>{
+  await installSession(page)
+  await mockClientWorkspace(page)
+  let posted=0
+  await page.route('**/api/messages/mine', async route=>{
+    if(route.request().method()==='GET') return route.fulfill({json:{items:[],ai_local_mode:true,ai_enabled:true}})
+    posted++
+    expect(route.request().postDataJSON()).toEqual({message:'What is POSP?',use_ai:true})
+    expect(route.request().headers().accept).toBe('application/x-ndjson')
+    const item={id:10,sender_role:'client',message:'What is POSP?',created_at:'2026-11-25T09:00:00Z'}
+    const ai_item={...item,id:11,sender_role:'ai',message:'POSP helps with applications.'}
+    await route.fulfill({status:201,contentType:'application/x-ndjson',
+      body:[{text:'Discard this partial'},{reset:true},{done:{item,ai_item,ai_handoff:false}}].map(x=>JSON.stringify(x)).join('\n')+'\n'})
+  })
+  await page.goto('/messages')
+  await page.getByLabel(/Use POSP AI for this reply/).check()
+  await page.getByLabel('Your message').fill('What is POSP?')
+  await page.getByRole('button',{name:'Send message',exact:true}).click()
+  await expect(page.getByText('POSP helps with applications.',{exact:true})).toBeVisible()
+  await expect(page.getByText('Discard this partial',{exact:true})).toHaveCount(0)
+  await expect(page.getByLabel(/Use POSP AI for this reply/)).not.toBeChecked()
+  expect(posted).toBe(1)
+})

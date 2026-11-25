@@ -1,8 +1,9 @@
+import json
 import logging
 import os
 import time
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, Response, jsonify, request, stream_with_context
 from sqlalchemy import func
 
 from ..ai_core import configured_provider
@@ -62,13 +63,39 @@ def send_client_message():
     db.session.add(item)
     db.session.commit()
 
+    consent = (request.get_json(silent=True) or {}).get('use_ai') is True
+    if (request.accept_mimetypes.best == 'application/x-ndjson' and consent
+            and os.getenv('POSP_CLIENT_AI_ENABLED', 'false').lower() == 'true'
+            and configured_provider() == 'builtin'):
+        from ..ai.free_router import faq_topic, stream_client_faq
+        key = faq_topic(value)
+        if key is not None:
+            @stream_with_context
+            def events():
+                answered = False
+                try:
+                    for event in stream_client_faq(key):
+                        if 'answer' in event:
+                            response, _ = _finish_message(user, item, event['answer'], False, None)
+                            answered = True
+                            yield json.dumps({'done': response.get_json()}) + '\n'
+                            return
+                        yield json.dumps(event) + '\n'
+                finally:
+                    if not answered:
+                        # The client message was committed before streaming began.
+                        send_admin_activity_alert('New client support message',
+                            f'Registered client #{user.id} needs support. Open Admin Messages to reply.')
+            return Response(events(), status=201, mimetype='application/x-ndjson',
+                            headers={'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no'})
+
     ai_answer = None
     ai_handoff = True
     ai_error = None
     ai_started = time.perf_counter()
     try:
         from .ai_operations import generate_client_reply
-        if (request.get_json(silent=True) or {}).get('use_ai') is True:
+        if consent:
             ai_answer, ai_handoff, ai_error = generate_client_reply(user, value)
     except Exception as exc:
         # Do not include arbitrary exception text or a traceback that could
@@ -85,6 +112,10 @@ def send_client_message():
         # client's message, API key, authorization headers, or provider payload.
         logger.warning('POSP client AI did not answer (reason=%s)', ai_error)
 
+    return _finish_message(user, item, ai_answer, ai_handoff, ai_error)
+
+
+def _finish_message(user, item, ai_answer, ai_handoff, ai_error):
     if ai_answer:
         ai_admin = User.query.filter_by(is_admin=True, is_active=True).order_by(User.id.asc()).first()
         if ai_admin:

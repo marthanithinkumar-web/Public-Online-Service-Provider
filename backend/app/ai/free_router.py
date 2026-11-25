@@ -103,41 +103,75 @@ def benchmark_reply(name, role, language):
     return _request(name, role, f'Explain in {language} that the fixture assistance fee is 73 INR.')
 
 
-def public_faq(question, role):
-    key = _QUESTIONS.get(question.strip().rstrip('?.।').casefold())
-    if key is None or role not in ('client', 'admin'):
-        return None
+def faq_topic(question):
+    return _QUESTIONS.get(question.strip().rstrip('?.।').casefold())
+
+
+def _faq_events(key, role, streaming):
+    local = _LOCAL[key]
     if not any(FreeTransport(name).eligible() for name in _ORDER):
-        return _LOCAL[key]
+        yield {'answer': local}
+        return
     try:
         order = routing_state.snapshot()['orders'][role]
     except ProviderError:
-        return _LOCAL[key]
-    if not order:
-        return _LOCAL[key]
+        order = []
     cache_key = (role, tuple(order), *key)
     with _lock:
         _roll_day()
         cached = _cache.get(cache_key)
         if cached and cached[0] > monotonic():
             _counts['cache_hits'] += 1
-            return cached[1]
-        if cache_key in _inflight:
-            return _LOCAL[key]
-        _inflight.add(cache_key)
+            immediate = cached[1]
+        elif not order or cache_key in _inflight:
+            immediate = local
+        else:
+            immediate = None
+            _inflight.add(cache_key)
+    if immediate is not None:
+        yield {'answer': immediate}
+        return
+    prompt = f'{_TOPICS[key[0]]} Reply in {key[1]}, in one sentence.'
     try:
         for name in order:
             try:
-                result = _request(name, role, f'{_TOPICS[key[0]]} Reply in {key[1]}, in one sentence.')
+                if streaming and name == 'groq':
+                    pieces = []
+                    with _reserved_attempt(name, role) as adapter:
+                        for piece in adapter.stream_prompt(role, prompt):
+                            pieces.append(piece)
+                            yield {'text': piece}
+                        result = ''.join(pieces)
+                        if not result.strip():
+                            raise ValueError('Empty provider response')
+                else:
+                    result = _request(name, role, prompt)
             except ProviderError:
+                if streaming:
+                    yield {'reset': True}
                 continue
             with _lock:
                 _cache[cache_key] = (monotonic() + 300, result)
-            return result
-        return _LOCAL[key]
+            yield {'answer': result}
+            return
+        yield {'answer': local}
     finally:
         with _lock:
             _inflight.discard(cache_key)
+
+
+def public_faq(question, role):
+    key = faq_topic(question)
+    if key is None or role not in ('client', 'admin'):
+        return None
+    for event in _faq_events(key, role, False):
+        if 'answer' in event:
+            return event['answer']
+    return None
+
+
+def stream_client_faq(key):
+    yield from _faq_events(key, 'client', True)
 
 
 def routing_status():
