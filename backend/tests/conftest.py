@@ -22,6 +22,11 @@ if not any(source.key == 'employment_news' for source in job_snapshot.SOURCE_DEF
     job_snapshot.SOURCE_DEFINITIONS = (LEGACY_TEST_SOURCE, *job_snapshot.SOURCE_DEFINITIONS)
 
 
+@pytest.fixture(autouse=True)
+def isolated_ai_routing(tmp_path, monkeypatch):
+    monkeypatch.setenv('POSP_AI_STATE_DIR', str(tmp_path / 'ai-routing'))
+
+
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     # ensure app uses sqlite in temp

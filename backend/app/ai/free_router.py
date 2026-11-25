@@ -4,8 +4,8 @@ from collections import Counter, deque
 from datetime import datetime, timezone
 from threading import Lock
 from time import monotonic
-import os
 
+from . import routing_state
 from .free_transport import FreeTransport, KEYS
 from .providers.errors import ProviderError
 
@@ -17,7 +17,7 @@ _counts = Counter()
 _events = deque(maxlen=32)
 _day = None
 _DAILY_LIMIT = 25
-_ORDER = ('groq', 'gemini', 'cloudflare', 'openrouter')
+_ORDER = routing_state.PROVIDERS
 _TOPICS = {
     'help': 'Explain that POSP helps with applications and that users can contact the service team.',
     'privacy': 'Explain that users should never share passwords, OTPs or card numbers in support chat.',
@@ -48,7 +48,7 @@ def _roll_day():
 
 
 @contextmanager
-def _reserved_attempt(name):
+def _reserved_attempt(name, role):
     adapter = FreeTransport(name)
     if not adapter.eligible():
         raise ProviderError('disabled', 'Free-tier account is unverified.')
@@ -56,6 +56,7 @@ def _reserved_attempt(name):
         _roll_day()
         if _cooldown.get(name, 0) > monotonic() or _counts[name] >= _DAILY_LIMIT:
             raise ProviderError('rate_limited', 'Free-provider request budget or cooldown is active.')
+        routing_state.reserve(name, role, _DAILY_LIMIT)
         _counts[name] += 1
         reserved_day = _day
     start = monotonic()
@@ -82,7 +83,7 @@ def _reserved_attempt(name):
 
 
 def _request(name, role, prompt):
-    with _reserved_attempt(name) as adapter:
+    with _reserved_attempt(name, role) as adapter:
         result = adapter.synthetic_reply(role, prompt)
         if not isinstance(result, str) or not result.strip():
             raise ValueError('Empty provider response')
@@ -92,7 +93,7 @@ def _request(name, role, prompt):
 def stream_benchmark(role, language):
     if role not in ('client', 'admin') or language not in ('English', 'Hindi', 'Telugu'):
         raise ProviderError('disabled', 'Unknown evaluation configuration.')
-    with _reserved_attempt('groq') as adapter:
+    with _reserved_attempt('groq', role) as adapter:
         yield from adapter.stream_fixture(role, language)
 
 
@@ -106,7 +107,15 @@ def public_faq(question, role):
     key = _QUESTIONS.get(question.strip().rstrip('?.।').casefold())
     if key is None or role not in ('client', 'admin'):
         return None
-    cache_key = (role, *key)
+    if not any(FreeTransport(name).eligible() for name in _ORDER):
+        return _LOCAL[key]
+    try:
+        order = routing_state.snapshot()['orders'][role]
+    except ProviderError:
+        return _LOCAL[key]
+    if not order:
+        return _LOCAL[key]
+    cache_key = (role, tuple(order), *key)
     with _lock:
         _roll_day()
         cached = _cache.get(cache_key)
@@ -117,10 +126,7 @@ def public_faq(question, role):
             return _LOCAL[key]
         _inflight.add(cache_key)
     try:
-        order = os.getenv(f'POSP_{role.upper()}_AI_PRIORITY', ','.join(_ORDER)).split(',')
-        for name in dict.fromkeys(item.strip() for item in order):
-            if name not in KEYS:
-                continue
+        for name in order:
             try:
                 result = _request(name, role, f'{_TOPICS[key[0]]} Reply in {key[1]}, in one sentence.')
             except ProviderError:
@@ -135,11 +141,15 @@ def public_faq(question, role):
 
 
 def routing_status():
+    try:
+        shared = routing_state.snapshot()
+    except ProviderError:
+        shared = None
     with _lock:
         _roll_day()
-        return {'scope': 'current process, UTC day', 'counts': dict(_counts), 'events': list(_events),
+        return {'shared': shared, 'scope': 'current process, UTC day', 'counts': dict(_counts), 'events': list(_events),
                 'providers': {name: {'eligible': FreeTransport(name).eligible(),
-                                     'remaining_requests': max(0, _DAILY_LIMIT - _counts[name]),
+                                     'remaining_requests': max(0, _DAILY_LIMIT - shared['attempts'].get(name, 0)) if shared else 0,
                                      'failures': _counts[name + '_failures'],
                                      'reported_tokens': _counts[name + '_tokens'],
                                      'attempts_without_usage': _counts[name + '_missing_usage'],

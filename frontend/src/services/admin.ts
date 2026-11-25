@@ -91,3 +91,7 @@ export async function streamAiBenchmark(role:string,language:string,onText:(text
     }
   }finally{await reader.cancel();reader.releaseLock()}
 }
+
+export async function saveFreeProviderOrder(role:'client'|'admin',order:string[]){
+  await api.put('/admin/ai/routing/'+role,{order},{headers:authHeader()})
+}

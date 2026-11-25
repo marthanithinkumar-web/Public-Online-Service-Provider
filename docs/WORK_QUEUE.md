@@ -404,3 +404,7 @@ Local support filters explicit region searches before taking the first three ver
 ### Homepage service search during backend delays
 
 Show the published catalog while the live service request is pending, then prefer the live result. Snapshot entries carry no confirmed price. Browser regression coverage holds the live response pending while searching and then releases it. Backend cold-start latency remains a separate operational issue.
+
+### Phase 4 shared quotas and routing administration
+
+All free inference paths reserve a daily slot across gunicorn workers on the same instance before sending a request. Admins can edit separate client and admin provider orders and select local-only mode. Runtime settings and counts survive worker restarts on that instance. A replacement instance restores environment priorities and starts a fresh allowance. The provider-side hard-free account requirement still applies. No production database or Valkey access is involved. Live external verification, cross-instance reporting, client streaming and the existing non-AI work remain tracked.
