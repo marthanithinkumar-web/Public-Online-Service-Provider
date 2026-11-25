@@ -408,3 +408,7 @@ Show the published catalog while the live service request is pending, then prefe
 ### Phase 4 shared quotas and routing administration
 
 All free inference paths reserve a daily slot across gunicorn workers on the same instance before sending a request. Admins can edit separate client and admin provider orders and select local-only mode. Runtime settings and counts survive worker restarts on that instance. A replacement instance restores environment priorities and starts a fresh allowance. The provider-side hard-free account requirement still applies. No production database or Valkey access is involved. Live external verification, cross-instance reporting, client streaming and the existing non-AI work remain tracked.
+
+### Customer support streaming
+
+The existing signed-in support composer negotiates streamed answers for opted-in public FAQs. Groq streams fixed prompts when verified, other allowed providers return complete answers, and an interruption discards partial text before fallback. A completed answer uses the same conversation and notification records as ordinary support. Development uses isolated SQLite and simulated provider streams. Private account questions remain on the established local support path. Remaining external evaluations require verified hard-free accounts; no provider has been promoted on fixture results.
