@@ -343,3 +343,26 @@ test('admin streaming check displays complete output and discards incomplete rep
   await expect(page.getByText('The stream ended early.',{exact:true})).toBeVisible()
   await expect(page.getByText('partial',{exact:true})).toHaveCount(0)
 })
+
+test('homepage can search published services before the live catalog responds', async ({page}) => {
+  let release
+  const waiting = new Promise(resolve => { release=resolve })
+  await page.route('**/seo-catalog.json', route=>route.fulfill({json:[
+    {slug:'example-notice',name:'Example published notice',category:'Certificates'}
+  ]}))
+  await page.route('**/api/services', async route=>{
+    await waiting
+    await route.fulfill({json:[{id:7,slug:'example-live',name:'Example live notice',category:'Certificates'}]})
+  })
+  await page.route('**/api/fees/**', route=>route.fulfill({json:{}}))
+  try {
+    await page.goto('/',{waitUntil:'domcontentloaded'})
+    const search=page.locator('#service-search')
+    await search.getByRole('searchbox').fill('Example')
+    await expect(search.getByRole('link',{name:'Example published notice'})).toBeVisible({timeout:3000})
+    await expect(search.getByRole('button',{name:'Try again'})).toHaveCount(0)
+    release()
+    await expect(search.getByRole('link',{name:'Example live notice'})).toBeVisible()
+    await expect(search.getByRole('link',{name:'Example published notice'})).toHaveCount(0)
+  }finally{release()}
+})

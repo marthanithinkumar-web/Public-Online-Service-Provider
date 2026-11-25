@@ -53,6 +53,11 @@ async function fetchSnapshotCatalog(){
   return snapshotRequest
 }
 
+export async function fetchPublishedServices():Promise<any[]>{
+  const items=await fetchSnapshotCatalog()
+  return items.map(item=>({...item,id:`snapshot-${item.slug}`,price_inr:null,__catalogFallback:true}))
+}
+
 export async function fetchServiceSnapshot(slug:string){
   const normalized=slugifyServiceName(slug)
   return (await fetchSnapshotCatalog()).find(item=>item.slug===normalized)||null
@@ -98,8 +103,7 @@ export async function fetchServiceCatalog(force=false):Promise<any[]>{
     .catch(async()=>{
       // Keep homepage discovery useful while the API is waking or unavailable.
       // The snapshot has no authoritative current price, so the UI must label it as such.
-      const items=await fetchSnapshotCatalog()
-      return items.map(item=>({...item,id:`snapshot-${item.slug}`,price_inr:null,__catalogFallback:true}))
+      return fetchPublishedServices()
     })
     .finally(()=>{request=null})
   return request
