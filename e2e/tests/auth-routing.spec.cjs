@@ -316,3 +316,30 @@ test('notice reader extracts local text and image lines without sending them in 
   await expect(page.getByText(/Choose a text file smaller/)).toBeVisible()
   expect(sent.filter(url => url.includes('/messages'))).toEqual([])
 })
+
+
+test('admin streaming check displays complete output and discards incomplete replies', async ({page}) => {
+  await installSession(page, { isAdmin:true })
+  await page.route('**/api/**', route => route.fulfill({json:{}}))
+  await page.route('**/api/admin/ai/overview', route => route.fulfill({json:{
+    ai:{free_routing:{providers:{groq:{eligible:true}},counts:{},events:[]}},
+  }}))
+  let complete = true
+  await page.route('**/api/admin/ai/support-check/stream', async route => {
+    expect(route.request().postDataJSON()).toEqual({role:'client',language:'Telugu'})
+    const body = complete ? '{"text":"₹"}\n{"text":"73"}\n{"done":true}\n' : '{"text":"partial"}\n'
+    await route.fulfill({contentType:'application/x-ndjson',body})
+  })
+  await page.goto('/admin/ai-operations')
+  await page.getByText('Test Groq streaming',{exact:true}).click()
+  await page.getByLabel('Model role').selectOption('client')
+  await page.getByLabel('Language',{exact:true}).selectOption('Telugu')
+  const run = page.getByRole('button',{name:'Run streaming check'})
+  await run.click()
+  await expect(page.getByText('Stream complete.',{exact:true})).toBeVisible()
+  await expect(page.getByText('₹73',{exact:true})).toBeVisible()
+  complete = false
+  await run.click()
+  await expect(page.getByText('The stream ended early.',{exact:true})).toBeVisible()
+  await expect(page.getByText('partial',{exact:true})).toHaveCount(0)
+})
